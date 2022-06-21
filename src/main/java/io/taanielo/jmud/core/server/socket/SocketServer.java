@@ -25,7 +25,7 @@ public class SocketServer implements Server {
     }
 
     @Override
-    public void start() throws IOException {
+    public void run() {
         log.debug("Starting server @ port {}", port);
 
         try (ServerSocket server = new ServerSocket(port)) {
@@ -39,6 +39,8 @@ public class SocketServer implements Server {
                     log.error("Client connecting error", e);
                 }
             }
+        } catch (IOException e) {
+            log.error("Server error", e);
         }
 
     }
