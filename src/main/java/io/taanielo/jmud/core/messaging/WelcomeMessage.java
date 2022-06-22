@@ -1,8 +1,6 @@
 package io.taanielo.jmud.core.messaging;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 
 import lombok.Value;
 
@@ -10,7 +8,11 @@ import lombok.Value;
 public class WelcomeMessage implements Message {
 
     @Override
-    public void send(OutputStream outputStream) throws IOException {
-        outputStream.write("\n\nWelcome to Xolo MUD!\n\nPlease enter your name: ".getBytes(StandardCharsets.UTF_8));
+    public void send(MessageWriter messageWriter) throws IOException {
+        messageWriter.writeLine();
+        messageWriter.writeLine();
+        messageWriter.writeLine("Welcome to Xolo MUD!");
+        messageWriter.writeLine();
+        messageWriter.write("Please enter your name: ");
     }
 }

@@ -15,7 +15,8 @@ import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
-import io.taanielo.jmud.core.messaging.SimpleMessage;
+import io.taanielo.jmud.core.messaging.MessageWriter;
+import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.server.Client;
 
@@ -34,6 +35,7 @@ public class SocketClient implements Client {
     private final Socket clientSocket;
     private final MessageBroadcaster messageBroadcaster;
     private final UserRegistry userRegistry;
+    private final MessageWriter messageWriter;
 
     private OutputStream output;
     private InputStream input;
@@ -47,6 +49,7 @@ public class SocketClient implements Client {
         log.debug("Client connected");
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
+        this.messageWriter = new SocketMessageWriter(clientSocket);
     }
 
     @Override
@@ -75,8 +78,8 @@ public class SocketClient implements Client {
                 log.debug("Read: {}", read);
                 if (bytes[0] == IAC) {
                     if (bytes[1] == IP) {
-                        log.debug("Received IP, closing connection");
-                        close();
+                        log.debug("Received IP, closing connection ..");
+                        break;
                     } else {
                         // ignore IAC responses for now
                         log.debug("Received IAC [{}], skipping ..", bytes);
@@ -100,41 +103,37 @@ public class SocketClient implements Client {
                             authenticationUser = existingUser.get();
                             log.debug("User exists: {}", authenticationUser.getUsername().getValue());
                             disableLocalEcho();
-                            output.write("Enter password: ".getBytes(StandardCharsets.UTF_8));
-                            output.flush();
+                            messageWriter.write("Enter password: ");
                         } else {
                             log.debug("User not found");
                             username = null;
                             // TODO taanielo 2022-06-22 create user
-                            output.write("User not found!\r\nEnter username: ".getBytes(StandardCharsets.UTF_8));
-                            output.flush();
+                            messageWriter.writeLine("User not found!");
+                            messageWriter.write("Enter username: ");
                         }
                     } else {
                         log.debug("Password received");
                         password = Password.of(clientInput);
                         if (authenticationUser.getPassword().equals(password)) {
                             log.debug("Login successful");
-                            output.write("\r\nLogin successful!\r\n".getBytes(StandardCharsets.UTF_8));
-                            output.flush();
+                            messageWriter.writeLine();
+                            messageWriter.writeLine("Login successful!");
                             enableLocalEcho();
                             authenticated = true;
                             user = authenticationUser;
                         } else {
                             log.debug("Password doesn't match, login unsuccessful");
                             username = null;
-                            output.write("\r\n".getBytes(StandardCharsets.UTF_8));
-                            output.flush();
-                            output.write("Incorrect password!\r\n".getBytes(StandardCharsets.UTF_8));
-                            output.flush();
-                            output.write("Enter username: ".getBytes(StandardCharsets.UTF_8));
-                            output.flush();
+                            messageWriter.writeLine();
+                            messageWriter.writeLine("Incorrect password!");
+                            messageWriter.write("Enter username: ");
                             enableLocalEcho();
                         }
                     }
                 } else {
                     //log.debug("Received: {}", clientInput);
                     if (clientInput.startsWith("say ")) {
-                        Message say = SimpleMessage.of(clientInput.substring(4), user.getUsername());
+                        Message say = UserSayMessage.of(clientInput.substring(4), user.getUsername());
                         messageBroadcaster.broadcast(this, say);
                     }
                 }
@@ -149,8 +148,7 @@ public class SocketClient implements Client {
     @Override
     public void sendMessage(Message message) {
         try {
-            message.send(output);
-            output.flush();
+            message.send(messageWriter);
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
