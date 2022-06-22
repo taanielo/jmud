@@ -180,22 +180,6 @@ public class SocketClient implements Client {
         log.debug("Connection closed");
     }
 
-    public static void main(String[] args) {
-        // disable response
-        // -1, -3, 1, 114, 107, 121, 13, 10
-        System.out.println(-1 & 0xFF);
-        System.out.println(-3 & 0xFF);
-        System.out.println(1 & 0xFF);
-        System.out.println(114 & 0xFF);
-        System.out.println(107 & 0xFF);
-        System.out.println(121 & 0xFF);
-
-        // enable response
-        // -1, -2, 1, 114, 107, 121, 13, 10
-        System.out.println(-1 & 0xFF);
-        System.out.println(-2 & 0xFF);
-    }
-
     private void disableLocalEcho() throws IOException {
         log.debug("Disabling local echo");
         output.write(IAC);
