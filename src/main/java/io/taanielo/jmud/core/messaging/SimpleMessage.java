@@ -6,14 +6,16 @@ import java.nio.charset.StandardCharsets;
 
 import lombok.Value;
 
+import io.taanielo.jmud.core.authentication.Username;
+
 @Value(staticConstructor = "of")
 public class SimpleMessage implements Message {
 
     String value;
-    String playerName;
+    Username username;
 
     @Override
     public void send(OutputStream outputStream) throws IOException {
-        outputStream.write((playerName + " said \"" + value + "\"\n").getBytes(StandardCharsets.UTF_8));
+        outputStream.write((username.getValue() + " said \"" + value + "\"\n").getBytes(StandardCharsets.UTF_8));
     }
 }
