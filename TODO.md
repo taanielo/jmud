@@ -1,6 +1,6 @@
 # TODO
 - [x] Separate server thread from main
-- [ ] Authentication (in-memory)
+- [x] Authentication (in-memory)
 - [ ] Basic command handling
 - [ ] Files structure, reading & writing (JSON)
 - [ ] Tick mechanism (500 ms as default?)
