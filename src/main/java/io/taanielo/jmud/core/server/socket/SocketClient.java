@@ -4,15 +4,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
-import io.taanielo.jmud.core.authentication.Password;
+import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.UserRegistry;
-import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageWriter;
@@ -23,19 +20,10 @@ import io.taanielo.jmud.core.server.Client;
 @Slf4j
 public class SocketClient implements Client {
 
-    /**
-     * Interpret as Command
-     */
-    private static final int IAC = -1;
-    /**
-     * Interrupt process (user pressed Ctrl + C)
-     */
-    private static final int IP = -12;
-
     private final Socket clientSocket;
     private final MessageBroadcaster messageBroadcaster;
-    private final UserRegistry userRegistry;
     private final MessageWriter messageWriter;
+    private final AuthenticationService authenticationService;
 
     private OutputStream output;
     private InputStream input;
@@ -45,11 +33,10 @@ public class SocketClient implements Client {
     private User user;
 
     public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry) throws IOException {
-        this.userRegistry = userRegistry;
-        log.debug("Client connected");
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
         this.messageWriter = new SocketMessageWriter(clientSocket);
+        authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
     }
 
     @Override
@@ -67,17 +54,14 @@ public class SocketClient implements Client {
 
 
         String clientInput;
-        Username username = null;
-        User authenticationUser = null;
-        Password password;
         try {
 
             byte[] bytes = new byte[1024];
             int read;
             while (connected && (read = input.read(bytes)) != -1) {
                 log.debug("Read: {}", read);
-                if (bytes[0] == IAC) {
-                    if (bytes[1] == IP) {
+                if (SocketCommand.isIAC(bytes)) {
+                    if (SocketCommand.isIP(bytes)) {
                         log.debug("Received IP, closing connection ..");
                         break;
                     } else {
@@ -86,7 +70,7 @@ public class SocketClient implements Client {
                     }
                     continue;
                 }
-                clientInput = readBytesIntoString(bytes);
+                clientInput = SocketCommand.readString(bytes);
                 // quit should be always first if users doesn't want to authenticate
                 log.debug("Received: \"{}\" [{}]", clientInput, bytes);
                 if ("quit".equals(clientInput)) {
@@ -94,42 +78,10 @@ public class SocketClient implements Client {
                     break;
                 }
                 if (!authenticated) {
-                    if (username == null) {
-                        log.debug("Start authentication ..");
-                        log.debug("Username received");
-                        username = Username.of(clientInput);
-                        Optional<User> existingUser = userRegistry.findByUsername(username);
-                        if (existingUser.isPresent()) {
-                            authenticationUser = existingUser.get();
-                            log.debug("User exists: {}", authenticationUser.getUsername().getValue());
-                            disableLocalEcho();
-                            messageWriter.write("Enter password: ");
-                        } else {
-                            log.debug("User not found");
-                            username = null;
-                            // TODO taanielo 2022-06-22 create user
-                            messageWriter.writeLine("User not found!");
-                            messageWriter.write("Enter username: ");
-                        }
-                    } else {
-                        log.debug("Password received");
-                        password = Password.of(clientInput);
-                        if (authenticationUser.getPassword().equals(password)) {
-                            log.debug("Login successful");
-                            messageWriter.writeLine();
-                            messageWriter.writeLine("Login successful!");
-                            enableLocalEcho();
-                            authenticated = true;
-                            user = authenticationUser;
-                        } else {
-                            log.debug("Password doesn't match, login unsuccessful");
-                            username = null;
-                            messageWriter.writeLine();
-                            messageWriter.writeLine("Incorrect password!");
-                            messageWriter.write("Enter username: ");
-                            enableLocalEcho();
-                        }
-                    }
+                    authenticationService.authenticate(clientInput, authenticatedUser -> {
+                        authenticated = true;
+                        user = authenticatedUser;
+                    });
                 } else {
                     //log.debug("Received: {}", clientInput);
                     if (clientInput.startsWith("say ")) {
@@ -176,32 +128,5 @@ public class SocketClient implements Client {
             log.error("Error closing socket", e);
         }
         log.debug("Connection closed");
-    }
-
-    private void disableLocalEcho() throws IOException {
-        log.debug("Disabling local echo");
-        output.write(IAC);
-        output.write(0xFB);
-        output.write(0x01);
-        output.flush();
-    }
-
-    private void enableLocalEcho() throws IOException {
-        log.debug("Enabling local echo");
-        output.write(IAC);
-        output.write(0xFC);
-        output.write(0x01);
-        output.flush();
-    }
-
-    private static String readBytesIntoString(byte[] bytes) {
-        int crlfPos = 0;
-        for (int i = 0; i < bytes.length; i++) {
-            if (bytes[i] == 13 && bytes[i + 1] == 10 || bytes[i] == 10) {
-                crlfPos = i;
-                break;
-            }
-        }
-        return new String(bytes, 0, crlfPos, StandardCharsets.UTF_8);
     }
 }
