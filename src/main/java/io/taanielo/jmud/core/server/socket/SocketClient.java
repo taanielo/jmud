@@ -1,32 +1,42 @@
 package io.taanielo.jmud.core.server.socket;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.authentication.AuthenticationService;
+import io.taanielo.jmud.core.authentication.User;
+import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
-import io.taanielo.jmud.core.messaging.SimpleMessage;
+import io.taanielo.jmud.core.messaging.MessageWriter;
+import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.server.Client;
 
 @Slf4j
 public class SocketClient implements Client {
+
     private final Socket clientSocket;
     private final MessageBroadcaster messageBroadcaster;
-    private OutputStream output;
-    private BufferedReader input;
-    private boolean connected;
-    private String playerName;
+    private final MessageWriter messageWriter;
+    private final AuthenticationService authenticationService;
 
-    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster) throws IOException {
-        log.debug("Client connected");
+    private OutputStream output;
+    private InputStream input;
+    private boolean connected;
+
+    private boolean authenticated;
+    private User user;
+
+    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry) throws IOException {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
+        this.messageWriter = new SocketMessageWriter(clientSocket);
+        authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
     }
 
     @Override
@@ -34,41 +44,63 @@ public class SocketClient implements Client {
         log.debug("Initializing connection ..");
         try {
             output = clientSocket.getOutputStream();
-            input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            input = clientSocket.getInputStream();
             connected = true;
         } catch (IOException e) {
             log.error("Error connecting client", e);
         }
         sendMessage(WelcomeMessage.of());
-        boolean setPlayerName = true;
+        authenticated = false;
 
 
         String clientInput;
         try {
-            while (connected && (clientInput = input.readLine()) != null) {
-                log.debug("Received: {}", clientInput);
-                if (setPlayerName) {
-                    playerName = clientInput;
-                    setPlayerName = false;
+
+            byte[] bytes = new byte[1024];
+            int read;
+            while (connected && (read = input.read(bytes)) != -1) {
+                log.debug("Read: {}", read);
+                if (SocketCommand.isIAC(bytes)) {
+                    if (SocketCommand.isIP(bytes)) {
+                        log.debug("Received IP, closing connection ..");
+                        break;
+                    } else {
+                        // ignore IAC responses for now
+                        log.debug("Received IAC [{}], skipping ..", bytes);
+                    }
+                    continue;
                 }
+                clientInput = SocketCommand.readString(bytes);
+                // quit should be always first if users doesn't want to authenticate
+                log.debug("Received: \"{}\" [{}]", clientInput, bytes);
                 if ("quit".equals(clientInput)) {
                     close();
-                } else if (clientInput.startsWith("say ")) {
-                    Message say = SimpleMessage.of(clientInput.substring(4), playerName);
-                    messageBroadcaster.broadcast(this, say);
+                    break;
+                }
+                if (!authenticated) {
+                    authenticationService.authenticate(clientInput, authenticatedUser -> {
+                        authenticated = true;
+                        user = authenticatedUser;
+                    });
+                } else {
+                    //log.debug("Received: {}", clientInput);
+                    if (clientInput.startsWith("say ")) {
+                        Message say = UserSayMessage.of(clientInput.substring(4), user.getUsername());
+                        messageBroadcaster.broadcast(this, say);
+                    }
                 }
             }
         } catch (IOException e) {
             log.error("Error receiving", e);
         }
         log.info("Client disconnected");
+        close();
     }
 
     @Override
     public void sendMessage(Message message) {
         try {
-            message.send(output);
-            output.flush();
+            message.send(messageWriter);
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
