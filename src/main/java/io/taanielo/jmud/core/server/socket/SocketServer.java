@@ -18,13 +18,11 @@ public class SocketServer implements Server {
     private final int port;
 
     private final ClientPool clientPool;
-    private final MessageBroadcaster messageBroadCaster;
     private final UserRegistry userRegistry;
 
     public SocketServer(int port, ClientPool clientPool) {
         this.port = port;
         this.clientPool = clientPool;
-        this.messageBroadCaster = new MessageBroadcasterImpl(clientPool);
         this.userRegistry = new UserRegistryImpl();
     }
 
@@ -37,7 +35,7 @@ public class SocketServer implements Server {
             while (true) {
                 Socket clientSocket = server.accept();
                 try {
-                    SocketClient client = new SocketClient(clientSocket, messageBroadCaster, userRegistry);
+                    SocketClient client = new SocketClient(clientSocket, clientPool, userRegistry);
                     clientPool.add(client);
                 } catch (IOException e) {
                     log.error("Client connecting error", e);

@@ -4,9 +4,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
+
+import io.taanielo.jmud.command.CommandRegistry;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.UserRegistry;
@@ -16,13 +22,15 @@ import io.taanielo.jmud.core.messaging.MessageWriter;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.server.Client;
+import io.taanielo.jmud.core.server.ClientPool;
 
 @Slf4j
 public class SocketClient implements Client {
 
     private final Socket clientSocket;
-    private final MessageBroadcaster messageBroadcaster;
+    private final ClientPool clientPool;
     private final MessageWriter messageWriter;
+    private final UserRegistry userRegistry;
     private final AuthenticationService authenticationService;
 
     private OutputStream output;
@@ -32,10 +40,11 @@ public class SocketClient implements Client {
     private boolean authenticated;
     private User user;
 
-    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry) throws IOException {
+    public SocketClient(Socket clientSocket, ClientPool clientPool, UserRegistry userRegistry) throws IOException {
         this.clientSocket = clientSocket;
-        this.messageBroadcaster = messageBroadcaster;
         this.messageWriter = new SocketMessageWriter(clientSocket);
+        this.clientPool = clientPool;
+        this.userRegistry = userRegistry;
         authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
     }
 
@@ -73,20 +82,20 @@ public class SocketClient implements Client {
                 clientInput = SocketCommand.readString(bytes);
                 // quit should be always first if users doesn't want to authenticate
                 log.debug("Received: \"{}\" [{}]", clientInput, bytes);
-                if ("quit".equals(clientInput)) {
-                    close();
-                    break;
-                }
                 if (!authenticated) {
                     authenticationService.authenticate(clientInput, authenticatedUser -> {
                         authenticated = true;
                         user = authenticatedUser;
                     });
                 } else {
-                    //log.debug("Received: {}", clientInput);
-                    if (clientInput.startsWith("say ")) {
-                        Message say = UserSayMessage.of(clientInput.substring(4), user.getUsername());
-                        messageBroadcaster.broadcast(this, say);
+                    String commandInput = clientInput.substring(0, clientInput.indexOf(" ")).toUpperCase(Locale.getDefault());
+                    String commandInputArgs = clientInput.substring(clientInput.indexOf(" ") + 1);
+                    switch (commandInput) {
+                        case "QUIT" -> CommandRegistry.QUIT.act()
+                                .input(this);
+                        case "SAY" -> CommandRegistry.SAY.act()
+                                .message(user.getUsername(), commandInputArgs, clientPool.clients());
+                        default -> messageWriter.writeLine("Unknown command");
                     }
                 }
             }
@@ -99,6 +108,17 @@ public class SocketClient implements Client {
 
     @Override
     public void sendMessage(Message message) {
+        try {
+            message.send(messageWriter);
+        } catch (IOException e) {
+            log.error("Error sending message", e);
+        }
+    }
+
+    public void sendMessage(UserSayMessage message) {
+        if (message.getUsername().equals(user.getUsername())) {
+            return;
+        }
         try {
             message.send(messageWriter);
         } catch (IOException e) {
