@@ -17,7 +17,7 @@ public class SayCommand implements Command {
     public void execute(Client client, String... args) {
         if (args.length > 0) {
             String text = String.join(" ", args);
-            Message say = UserSayMessage.of(text, context.getUser().getUsername());
+            Message say = UserSayMessage.of(text, context.getPlayer().getUsername());
             context.getMessageBroadcaster().broadcast(client, say);
         }
     }

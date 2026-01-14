@@ -18,6 +18,8 @@ import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageWriter;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
+import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 
 @Slf4j
@@ -28,20 +30,22 @@ public class SocketClient implements Client {
     private final MessageWriter messageWriter;
     private final AuthenticationService authenticationService;
     private final CommandHandler commandHandler;
+    private final PlayerRepository playerRepository;
 
     private OutputStream output;
     private InputStream input;
     private boolean connected;
 
     private boolean authenticated;
-    private User user;
+    private Player player;
 
-    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry) throws IOException {
+    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry, PlayerRepository playerRepository) throws IOException {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
         this.messageWriter = new SocketMessageWriter(clientSocket);
         this.authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
         this.commandHandler = new CommandHandler();
+        this.playerRepository = playerRepository;
         init();
     }
 
@@ -86,9 +90,15 @@ public class SocketClient implements Client {
                 if (!authenticated) {
                     authenticationService.authenticate(clientInput, authenticatedUser -> {
                         authenticated = true;
-                        user = authenticatedUser;
+                        player = playerRepository
+                            .loadPlayer(authenticatedUser.getUsername())
+                            .orElseGet(() -> {
+                                Player newPlayer = Player.of(authenticatedUser);
+                                playerRepository.savePlayer(newPlayer);
+                                return newPlayer;
+                            });
                         // initialize post-authentication commands
-                        var context = new ClientContext(user, messageBroadcaster);
+                        var context = new ClientContext(player, messageBroadcaster);
                         commandHandler.register("say", new SayCommand(context));
                     });
                 } else {
@@ -115,6 +125,10 @@ public class SocketClient implements Client {
     public void close() {
         log.debug("Closing connection ..");
         connected = false;
+        if (authenticated && player != null) {
+            playerRepository.savePlayer(player);
+            log.info("Player {} data saved on disconnect.", player.getUsername());
+        }
         try {
             input.close();
         } catch (IOException e) {
