@@ -19,15 +19,15 @@ public class SocketCommand {
      */
     private static final int IP = -12;
 
-    boolean isIAC(byte[] bytes) {
+    public static boolean isIAC(byte[] bytes) {
         return bytes.length > 0 && IAC == bytes[0];
     }
 
-    boolean isIP(byte[] bytes) {
+    public static boolean isIP(byte[] bytes) {
         return bytes.length > 1 && isIAC(bytes) && bytes[1] == IP;
     }
 
-    String readString(byte[] bytes) {
+    public static String readString(byte[] bytes) {
         if (bytes.length == 0) {
             return "";
         }
@@ -41,7 +41,7 @@ public class SocketCommand {
         return new String(bytes, 0, crlfPos, StandardCharsets.UTF_8);
     }
 
-    void disableEcho(OutputStream output) throws IOException {
+    public static void disableEcho(OutputStream output) throws IOException {
         log.debug("Disabling local echo");
         output.write(IAC);
         output.write(0xFB);
@@ -49,7 +49,7 @@ public class SocketCommand {
         output.flush();
     }
 
-    void enableEcho(OutputStream output) throws IOException {
+    public static void enableEcho(OutputStream output) throws IOException {
         log.debug("Enabling local echo");
         output.write(IAC);
         output.write(0xFC);

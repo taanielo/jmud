@@ -5,6 +5,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+import io.taanielo.jmud.core.command.CommandHandler;
+import io.taanielo.jmud.core.command.QuitCommand;
+import io.taanielo.jmud.core.command.SayCommand;
+import io.taanielo.jmud.core.server.ClientContext;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.authentication.AuthenticationService;
@@ -13,7 +17,6 @@ import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageWriter;
-import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.server.Client;
 
@@ -24,6 +27,7 @@ public class SocketClient implements Client {
     private final MessageBroadcaster messageBroadcaster;
     private final MessageWriter messageWriter;
     private final AuthenticationService authenticationService;
+    private final CommandHandler commandHandler;
 
     private OutputStream output;
     private InputStream input;
@@ -36,7 +40,13 @@ public class SocketClient implements Client {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
         this.messageWriter = new SocketMessageWriter(clientSocket);
-        authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
+        this.authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
+        this.commandHandler = new CommandHandler();
+        init();
+    }
+
+    private void init() {
+        commandHandler.register("quit", new QuitCommand());
     }
 
     @Override
@@ -71,23 +81,18 @@ public class SocketClient implements Client {
                     continue;
                 }
                 clientInput = SocketCommand.readString(bytes);
-                // quit should be always first if users doesn't want to authenticate
                 log.debug("Received: \"{}\" [{}]", clientInput, bytes);
-                if ("quit".equals(clientInput)) {
-                    close();
-                    break;
-                }
+
                 if (!authenticated) {
                     authenticationService.authenticate(clientInput, authenticatedUser -> {
                         authenticated = true;
                         user = authenticatedUser;
+                        // initialize post-authentication commands
+                        var context = new ClientContext(user, messageBroadcaster);
+                        commandHandler.register("say", new SayCommand(context));
                     });
                 } else {
-                    //log.debug("Received: {}", clientInput);
-                    if (clientInput.startsWith("say ")) {
-                        Message say = UserSayMessage.of(clientInput.substring(4), user.getUsername());
-                        messageBroadcaster.broadcast(this, say);
-                    }
+                    commandHandler.handle(this, clientInput);
                 }
             }
         } catch (IOException e) {
