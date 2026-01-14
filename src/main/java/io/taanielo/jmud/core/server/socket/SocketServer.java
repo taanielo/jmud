@@ -41,7 +41,7 @@ public class SocketServer implements Server {
             while (true) {
                 Socket clientSocket = server.accept();
                 try {
-                    SocketClient client = new SocketClient(clientSocket, messageBroadCaster, userRegistry, playerRepository);
+                    SocketClient client = new SocketClient(clientSocket, messageBroadCaster, userRegistry, playerRepository, clientPool);
                     clientPool.add(client);
                 } catch (IOException e) {
                     log.error("Client connecting error", e);

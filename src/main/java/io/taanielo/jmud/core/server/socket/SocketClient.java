@@ -4,23 +4,27 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Locale;
 
-import io.taanielo.jmud.core.command.CommandHandler;
-import io.taanielo.jmud.core.command.QuitCommand;
-import io.taanielo.jmud.core.command.SayCommand;
-import io.taanielo.jmud.core.server.ClientContext;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
+
+import io.taanielo.jmud.command.CommandRegistry;
+import io.taanielo.jmud.command.system.QuitCommand;
+import io.taanielo.jmud.command.system.SayCommand;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageWriter;
+import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
+import io.taanielo.jmud.core.server.ClientPool;
 
 @Slf4j
 public class SocketClient implements Client {
@@ -29,8 +33,8 @@ public class SocketClient implements Client {
     private final MessageBroadcaster messageBroadcaster;
     private final MessageWriter messageWriter;
     private final AuthenticationService authenticationService;
-    private final CommandHandler commandHandler;
     private final PlayerRepository playerRepository;
+    private final ClientPool clientPool;
 
     private OutputStream output;
     private InputStream input;
@@ -39,18 +43,18 @@ public class SocketClient implements Client {
     private boolean authenticated;
     private Player player;
 
-    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry, PlayerRepository playerRepository) throws IOException {
+    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry, PlayerRepository playerRepository, ClientPool clientPool) throws IOException {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
         this.messageWriter = new SocketMessageWriter(clientSocket);
         this.authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
-        this.commandHandler = new CommandHandler();
         this.playerRepository = playerRepository;
+        this.clientPool = clientPool;
         init();
     }
 
     private void init() {
-        commandHandler.register("quit", new QuitCommand());
+        // No command handler to register now
     }
 
     @Override
@@ -97,12 +101,21 @@ public class SocketClient implements Client {
                                 playerRepository.savePlayer(newPlayer);
                                 return newPlayer;
                             });
-                        // initialize post-authentication commands
-                        var context = new ClientContext(player, messageBroadcaster);
-                        commandHandler.register("say", new SayCommand(context));
                     });
                 } else {
-                    commandHandler.handle(this, clientInput);
+                    String commandInput = clientInput.substring(0, clientInput.indexOf(" ")).toUpperCase(Locale.getDefault());
+                    String commandInputArgs = clientInput.substring(clientInput.indexOf(" ") + 1);
+                    switch (commandInput) {
+                        case "QUIT":
+                            CommandRegistry.QUIT.act().input(this);
+                            break;
+                        case "SAY":
+                            CommandRegistry.SAY.act().message(player.getUsername(), commandInputArgs, clientPool.clients());
+                            break;
+                        default:
+                            messageWriter.writeLine("Unknown command");
+                            break;
+                    }
                 }
             }
         } catch (IOException e) {
@@ -114,6 +127,17 @@ public class SocketClient implements Client {
 
     @Override
     public void sendMessage(Message message) {
+        try {
+            message.send(messageWriter);
+        } catch (IOException e) {
+            log.error("Error sending message", e);
+        }
+    }
+
+    public void sendMessage(UserSayMessage message) {
+        if (message.getUsername().equals(player.getUsername())) {
+            return;
+        }
         try {
             message.send(messageWriter);
         } catch (IOException e) {
