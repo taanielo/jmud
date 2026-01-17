@@ -14,10 +14,10 @@ import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
-import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
-import io.taanielo.jmud.core.tick.TickRegistry;
-import io.taanielo.jmud.core.tick.TickScheduler;
-import io.taanielo.jmud.core.tick.system.CooldownSystem;
+import io.taanielo.jmud.core.world.RoomId;
+import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.repository.InMemoryRoomRepository;
+import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 @Slf4j
 public class SocketServer implements Server {
@@ -27,9 +27,8 @@ public class SocketServer implements Server {
     private final MessageBroadcaster messageBroadCaster;
     private final UserRegistry userRegistry;
     private final PlayerRepository playerRepository;
-    private final TickRegistry tickRegistry;
-    private final TickScheduler tickScheduler;
-    private final CooldownSystem cooldownSystem;
+    private final RoomRepository roomRepository;
+    private final RoomService roomService;
 
     public SocketServer(int port, ClientPool clientPool) {
         this.port = port;
@@ -37,23 +36,27 @@ public class SocketServer implements Server {
         this.messageBroadCaster = new MessageBroadcasterImpl(clientPool);
         this.userRegistry = new UserRegistryImpl();
         this.playerRepository = new JsonPlayerRepository();
-        this.tickRegistry = new TickRegistry();
-        this.cooldownSystem = new CooldownSystem();
-        this.tickRegistry.register(cooldownSystem);
-        this.tickScheduler = new FixedRateTickScheduler(tickRegistry);
+        this.roomRepository = new InMemoryRoomRepository();
+        this.roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
     }
 
     @Override
     public void run() {
         log.debug("Starting server @ port {}", port);
 
-        tickScheduler.start();
         try (ServerSocket server = new ServerSocket(port)) {
             //noinspection InfiniteLoopStatement
             while (true) {
                 Socket clientSocket = server.accept();
                 try {
-                    SocketClient client = new SocketClient(clientSocket, messageBroadCaster, userRegistry, playerRepository, clientPool);
+                    SocketClient client = new SocketClient(
+                        clientSocket,
+                        messageBroadCaster,
+                        userRegistry,
+                        playerRepository,
+                        roomService,
+                        clientPool
+                    );
                     clientPool.add(client);
                 } catch (IOException e) {
                     log.error("Client connecting error", e);
@@ -61,8 +64,6 @@ public class SocketServer implements Server {
             }
         } catch (IOException e) {
             log.error("Server error", e);
-        } finally {
-            tickScheduler.stop();
         }
 
     }
