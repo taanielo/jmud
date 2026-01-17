@@ -5,16 +5,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Locale;
+import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.commons.lang3.StringUtils;
-
 import io.taanielo.jmud.command.CommandRegistry;
-import io.taanielo.jmud.command.system.QuitCommand;
-import io.taanielo.jmud.command.system.SayCommand;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
-import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
@@ -25,6 +21,8 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
+import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.RoomService;
 
 @Slf4j
 public class SocketClient implements Client {
@@ -34,6 +32,7 @@ public class SocketClient implements Client {
     private final MessageWriter messageWriter;
     private final AuthenticationService authenticationService;
     private final PlayerRepository playerRepository;
+    private final RoomService roomService;
     private final ClientPool clientPool;
 
     private OutputStream output;
@@ -43,12 +42,20 @@ public class SocketClient implements Client {
     private boolean authenticated;
     private Player player;
 
-    public SocketClient(Socket clientSocket, MessageBroadcaster messageBroadcaster, UserRegistry userRegistry, PlayerRepository playerRepository, ClientPool clientPool) throws IOException {
+    public SocketClient(
+        Socket clientSocket,
+        MessageBroadcaster messageBroadcaster,
+        UserRegistry userRegistry,
+        PlayerRepository playerRepository,
+        RoomService roomService,
+        ClientPool clientPool
+    ) throws IOException {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
         this.messageWriter = new SocketMessageWriter(clientSocket);
         this.authenticationService = new SocketAuthenticationService(clientSocket, userRegistry, messageWriter);
         this.playerRepository = playerRepository;
+        this.roomService = roomService;
         this.clientPool = clientPool;
         init();
     }
@@ -101,21 +108,11 @@ public class SocketClient implements Client {
                                 playerRepository.savePlayer(newPlayer);
                                 return newPlayer;
                             });
+                        roomService.ensurePlayerLocation(player.getUsername());
+                        sendLook();
                     });
                 } else {
-                    String commandInput = clientInput.substring(0, clientInput.indexOf(" ")).toUpperCase(Locale.getDefault());
-                    String commandInputArgs = clientInput.substring(clientInput.indexOf(" ") + 1);
-                    switch (commandInput) {
-                        case "QUIT":
-                            CommandRegistry.QUIT.act().input(this);
-                            break;
-                        case "SAY":
-                            CommandRegistry.SAY.act().message(player.getUsername(), commandInputArgs, clientPool.clients());
-                            break;
-                        default:
-                            messageWriter.writeLine("Unknown command");
-                            break;
-                    }
+                    handleCommand(clientInput);
                 }
             }
         } catch (IOException e) {
@@ -171,5 +168,75 @@ public class SocketClient implements Client {
             log.error("Error closing socket", e);
         }
         log.debug("Connection closed");
+    }
+
+    private void handleCommand(String clientInput) throws IOException {
+        String trimmed = clientInput.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String command = parts[0].toUpperCase(Locale.ROOT);
+        String args = parts.length > 1 ? parts[1].trim() : "";
+
+        if (isLookCommand(command)) {
+            sendLook();
+            return;
+        }
+
+        Optional<Direction> direction = parseDirection(command, args);
+        if (direction.isPresent()) {
+            sendMove(direction.get());
+            return;
+        }
+
+        switch (command) {
+            case "QUIT":
+                CommandRegistry.QUIT.act().input(this);
+                return;
+            case "SAY":
+                if (args.isEmpty()) {
+                    messageWriter.writeLine("Say what?");
+                } else {
+                    CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
+                }
+                return;
+            default:
+                messageWriter.writeLine("Unknown command");
+        }
+    }
+
+    private boolean isLookCommand(String command) {
+        return command.equals("LOOK") || command.equals("L");
+    }
+
+    private Optional<Direction> parseDirection(String command, String args) {
+        Optional<Direction> direct = Direction.fromInput(command);
+        if (direct.isPresent()) {
+            return direct;
+        }
+        if (command.equals("MOVE") || command.equals("GO") || command.equals("WALK")) {
+            return Direction.fromInput(args);
+        }
+        return Optional.empty();
+    }
+
+    private void sendLook() {
+        RoomService.LookResult result = roomService.look(player.getUsername());
+        for (String line : result.lines()) {
+            try {
+                messageWriter.writeLine(line);
+            } catch (IOException e) {
+                log.error("Error sending room look", e);
+                return;
+            }
+        }
+    }
+
+    private void sendMove(Direction direction) throws IOException {
+        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
+        for (String line : result.lines()) {
+            messageWriter.writeLine(line);
+        }
     }
 }
