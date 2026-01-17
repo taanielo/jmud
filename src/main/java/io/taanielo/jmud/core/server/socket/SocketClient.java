@@ -6,6 +6,9 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,6 +24,9 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
+import io.taanielo.jmud.core.needs.NeedsSession;
+import io.taanielo.jmud.core.needs.NeedsSettings;
+import io.taanielo.jmud.core.needs.NeedsTickOutcome;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -34,6 +40,7 @@ public class SocketClient implements Client {
     private final PlayerRepository playerRepository;
     private final RoomService roomService;
     private final ClientPool clientPool;
+    private final Object writeLock = new Object();
 
     private OutputStream output;
     private InputStream input;
@@ -41,6 +48,8 @@ public class SocketClient implements Client {
 
     private boolean authenticated;
     private Player player;
+    private ScheduledExecutorService needsScheduler;
+    private volatile NeedsSession needsSession;
 
     public SocketClient(
         Socket clientSocket,
@@ -109,6 +118,7 @@ public class SocketClient implements Client {
                                 return newPlayer;
                             });
                         roomService.ensurePlayerLocation(player.getUsername());
+                        startNeedsSession();
                         sendLook();
                     });
                 } else {
@@ -125,7 +135,9 @@ public class SocketClient implements Client {
     @Override
     public void sendMessage(Message message) {
         try {
-            message.send(messageWriter);
+            synchronized (writeLock) {
+                message.send(messageWriter);
+            }
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
@@ -136,7 +148,9 @@ public class SocketClient implements Client {
             return;
         }
         try {
-            message.send(messageWriter);
+            synchronized (writeLock) {
+                message.send(messageWriter);
+            }
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
@@ -146,6 +160,7 @@ public class SocketClient implements Client {
     public void close() {
         log.debug("Closing connection ..");
         connected = false;
+        stopNeedsSession();
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
@@ -196,13 +211,13 @@ public class SocketClient implements Client {
                 return;
             case "SAY":
                 if (args.isEmpty()) {
-                    messageWriter.writeLine("Say what?");
+                    writeLineSafe("Say what?");
                 } else {
                     CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
                 }
                 return;
             default:
-                messageWriter.writeLine("Unknown command");
+                writeLineSafe("Unknown command");
         }
     }
 
@@ -224,19 +239,56 @@ public class SocketClient implements Client {
     private void sendLook() {
         RoomService.LookResult result = roomService.look(player.getUsername());
         for (String line : result.lines()) {
+            writeLineSafe(line);
+        }
+    }
+
+    private void sendMove(Direction direction) {
+        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
+        for (String line : result.lines()) {
+            writeLineSafe(line);
+        }
+    }
+
+    private void writeLineSafe(String message) {
+        synchronized (writeLock) {
             try {
-                messageWriter.writeLine(line);
+                messageWriter.writeLine(message);
             } catch (IOException e) {
-                log.error("Error sending room look", e);
-                return;
+                log.error("Error writing message", e);
             }
         }
     }
 
-    private void sendMove(Direction direction) throws IOException {
-        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
-        for (String line : result.lines()) {
-            messageWriter.writeLine(line);
+    private void startNeedsSession() {
+        if (!NeedsSettings.enabled()) {
+            return;
         }
+        needsSession = NeedsSession.forPlayer(player.getUsername());
+        needsScheduler = Executors.newSingleThreadScheduledExecutor(
+            Thread.ofVirtual().name("needs-" + player.getUsername().getValue() + "-", 0).factory()
+        );
+        long interval = NeedsSettings.tickMillis();
+        needsScheduler.scheduleAtFixedRate(this::tickNeeds, interval, interval, TimeUnit.MILLISECONDS);
+    }
+
+    private void tickNeeds() {
+        NeedsSession current = needsSession;
+        if (current == null) {
+            return;
+        }
+        NeedsTickOutcome outcome = current.tick();
+        needsSession = outcome.session();
+        for (String message : outcome.messages()) {
+            writeLineSafe(message);
+        }
+    }
+
+    private void stopNeedsSession() {
+        if (needsScheduler != null) {
+            needsScheduler.shutdownNow();
+            needsScheduler = null;
+        }
+        needsSession = null;
     }
 }
