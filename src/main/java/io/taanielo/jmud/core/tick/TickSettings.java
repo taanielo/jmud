@@ -6,7 +6,7 @@ public final class TickSettings {
     private TickSettings() {
     }
 
-    public static long resolveIntervalMillis() {
+    public static long intervalMillis() {
         String value = System.getProperty("jmud.tick.interval.ms");
         if (value == null || value.isBlank()) {
             return DEFAULT_INTERVAL_MS;

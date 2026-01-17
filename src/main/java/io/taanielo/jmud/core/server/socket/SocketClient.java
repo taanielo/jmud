@@ -6,9 +6,6 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,7 +45,6 @@ public class SocketClient implements Client {
 
     private boolean authenticated;
     private Player player;
-    private ScheduledExecutorService needsScheduler;
     private volatile NeedsSession needsSession;
 
     public SocketClient(
@@ -118,7 +114,7 @@ public class SocketClient implements Client {
                                 return newPlayer;
                             });
                         roomService.ensurePlayerLocation(player.getUsername());
-                        startNeedsSession();
+                        ensureNeedsSession();
                         sendLook();
                     });
                 } else {
@@ -160,7 +156,7 @@ public class SocketClient implements Client {
     public void close() {
         log.debug("Closing connection ..");
         connected = false;
-        stopNeedsSession();
+        clearNeedsSession();
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
@@ -260,19 +256,19 @@ public class SocketClient implements Client {
         }
     }
 
-    private void startNeedsSession() {
+    private void ensureNeedsSession() {
         if (!NeedsSettings.enabled()) {
             return;
         }
-        needsSession = NeedsSession.forPlayer(player.getUsername());
-        needsScheduler = Executors.newSingleThreadScheduledExecutor(
-            Thread.ofVirtual().name("needs-" + player.getUsername().getValue() + "-", 0).factory()
-        );
-        long interval = NeedsSettings.tickMillis();
-        needsScheduler.scheduleAtFixedRate(this::tickNeeds, interval, interval, TimeUnit.MILLISECONDS);
+        if (needsSession == null) {
+            needsSession = NeedsSession.forPlayer(player.getUsername());
+        }
     }
 
-    private void tickNeeds() {
+    void tickNeeds() {
+        if (!NeedsSettings.enabled()) {
+            return;
+        }
         NeedsSession current = needsSession;
         if (current == null) {
             return;
@@ -284,11 +280,7 @@ public class SocketClient implements Client {
         }
     }
 
-    private void stopNeedsSession() {
-        if (needsScheduler != null) {
-            needsScheduler.shutdownNow();
-            needsScheduler = null;
-        }
+    private void clearNeedsSession() {
         needsSession = null;
     }
 }

@@ -14,6 +14,8 @@ import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
+import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
+import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.InMemoryRoomRepository;
@@ -29,6 +31,8 @@ public class SocketServer implements Server {
     private final PlayerRepository playerRepository;
     private final RoomRepository roomRepository;
     private final RoomService roomService;
+    private final TickRegistry tickRegistry;
+    private final FixedRateTickScheduler tickScheduler;
 
     public SocketServer(int port, ClientPool clientPool) {
         this.port = port;
@@ -38,12 +42,16 @@ public class SocketServer implements Server {
         this.playerRepository = new JsonPlayerRepository();
         this.roomRepository = new InMemoryRoomRepository();
         this.roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
+        this.tickRegistry = new TickRegistry();
+        this.tickRegistry.register(new SocketNeedsTickSystem(clientPool));
+        this.tickScheduler = new FixedRateTickScheduler(tickRegistry);
     }
 
     @Override
     public void run() {
         log.debug("Starting server @ port {}", port);
 
+        tickScheduler.start();
         try (ServerSocket server = new ServerSocket(port)) {
             //noinspection InfiniteLoopStatement
             while (true) {
@@ -64,6 +72,8 @@ public class SocketServer implements Server {
             }
         } catch (IOException e) {
             log.error("Server error", e);
+        } finally {
+            tickScheduler.stop();
         }
 
     }
