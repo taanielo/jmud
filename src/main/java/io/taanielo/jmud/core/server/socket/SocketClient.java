@@ -21,9 +21,15 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
-import io.taanielo.jmud.core.needs.NeedsSession;
-import io.taanielo.jmud.core.needs.NeedsSettings;
-import io.taanielo.jmud.core.needs.NeedsTickOutcome;
+import java.util.ArrayList;
+import java.util.List;
+
+import io.taanielo.jmud.core.effects.EffectSettings;
+import io.taanielo.jmud.core.effects.HungerEffect;
+import io.taanielo.jmud.core.effects.MessageSink;
+import io.taanielo.jmud.core.effects.ThirstEffect;
+import io.taanielo.jmud.core.tick.TickRegistry;
+import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -37,6 +43,7 @@ public class SocketClient implements Client {
     private final PlayerRepository playerRepository;
     private final RoomService roomService;
     private final ClientPool clientPool;
+    private final TickRegistry tickRegistry;
     private final Object writeLock = new Object();
 
     private OutputStream output;
@@ -45,7 +52,8 @@ public class SocketClient implements Client {
 
     private boolean authenticated;
     private Player player;
-    private volatile NeedsSession needsSession;
+    private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
+    private boolean effectsInitialized;
 
     public SocketClient(
         Socket clientSocket,
@@ -53,6 +61,7 @@ public class SocketClient implements Client {
         UserRegistry userRegistry,
         PlayerRepository playerRepository,
         RoomService roomService,
+        TickRegistry tickRegistry,
         ClientPool clientPool
     ) throws IOException {
         this.clientSocket = clientSocket;
@@ -62,6 +71,7 @@ public class SocketClient implements Client {
         this.playerRepository = playerRepository;
         this.roomService = roomService;
         this.clientPool = clientPool;
+        this.tickRegistry = tickRegistry;
         init();
     }
 
@@ -114,7 +124,7 @@ public class SocketClient implements Client {
                                 return newPlayer;
                             });
                         roomService.ensurePlayerLocation(player.getUsername());
-                        ensureNeedsSession();
+                        registerEffects();
                         sendLook();
                     });
                 } else {
@@ -156,7 +166,7 @@ public class SocketClient implements Client {
     public void close() {
         log.debug("Closing connection ..");
         connected = false;
-        clearNeedsSession();
+        clearEffects();
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
@@ -256,31 +266,21 @@ public class SocketClient implements Client {
         }
     }
 
-    private void ensureNeedsSession() {
-        if (!NeedsSettings.enabled()) {
+    private void registerEffects() {
+        if (!EffectSettings.enabled() || effectsInitialized) {
             return;
         }
-        if (needsSession == null) {
-            needsSession = NeedsSession.forPlayer(player.getUsername());
-        }
+        MessageSink sink = this::writeLineSafe;
+        effectSubscriptions.add(tickRegistry.register(HungerEffect.defaultEffect(player, sink)));
+        effectSubscriptions.add(tickRegistry.register(ThirstEffect.defaultEffect(player, sink)));
+        effectsInitialized = true;
     }
 
-    void tickNeeds() {
-        if (!NeedsSettings.enabled()) {
-            return;
+    private void clearEffects() {
+        for (TickSubscription subscription : effectSubscriptions) {
+            subscription.unsubscribe();
         }
-        NeedsSession current = needsSession;
-        if (current == null) {
-            return;
-        }
-        NeedsTickOutcome outcome = current.tick();
-        needsSession = outcome.session();
-        for (String message : outcome.messages()) {
-            writeLineSafe(message);
-        }
-    }
-
-    private void clearNeedsSession() {
-        needsSession = null;
+        effectSubscriptions.clear();
+        effectsInitialized = false;
     }
 }

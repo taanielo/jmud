@@ -43,7 +43,6 @@ public class SocketServer implements Server {
         this.roomRepository = new InMemoryRoomRepository();
         this.roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
         this.tickRegistry = new TickRegistry();
-        this.tickRegistry.register(new SocketNeedsTickSystem(clientPool));
         this.tickScheduler = new FixedRateTickScheduler(tickRegistry);
     }
 
@@ -63,6 +62,7 @@ public class SocketServer implements Server {
                         userRegistry,
                         playerRepository,
                         roomService,
+                        tickRegistry,
                         clientPool
                     );
                     clientPool.add(client);
