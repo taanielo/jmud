@@ -7,8 +7,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import io.taanielo.jmud.core.world.Item;
-import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 
 class CharacterTest {
@@ -20,7 +18,14 @@ class CharacterTest {
             "Guard",
             RoomId.of("training-yard"),
             new SimpleInventory(),
-            new BasicStats(),
+            BasicStats.builder()
+                .hp(10)
+                .maxHp(10)
+                .mana(5)
+                .maxMana(5)
+                .strength(2)
+                .agility(3)
+                .build(),
             List.of(StatusEffect.of("alert"))
         );
 
@@ -30,13 +35,14 @@ class CharacterTest {
     }
 
     @Test
-    void inventoryAddsAndRemovesItems() {
+    void inventorySupportsAddRemove() {
         Inventory inventory = new SimpleInventory();
-        ItemId itemId = ItemId.of("apple");
-        inventory.add(new Item(itemId, "Apple", "A crisp apple."));
+        Inventory withItem = inventory.add("apple");
 
-        assertEquals(1, inventory.size());
-        assertTrue(inventory.remove(itemId));
-        assertEquals(0, inventory.size());
+        assertTrue(withItem.contains("apple"));
+        assertEquals(1, withItem.size());
+
+        Inventory removed = withItem.remove("apple");
+        assertEquals(0, removed.size());
     }
 }
