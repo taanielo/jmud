@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.world.dto;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.world.Item;
@@ -20,6 +21,13 @@ public class RoomMapper {
     public Room toDomain(RoomDto dto, List<Item> items) {
         Objects.requireNonNull(dto, "Room DTO is required");
         Objects.requireNonNull(items, "Room items are required");
-        return new Room(RoomId.of(dto.id()), dto.name(), dto.description(), items);
+        return new Room(
+            RoomId.of(dto.id()),
+            dto.name(),
+            dto.description(),
+            Map.of(),
+            items,
+            List.of()
+        );
     }
 }
