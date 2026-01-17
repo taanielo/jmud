@@ -28,8 +28,7 @@ class FixedRateTickSchedulerTest {
         FixedRateTickScheduler scheduler = new FixedRateTickScheduler(
             registry,
             10,
-            executor,
-            Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("tick-worker-test-", 0).factory())
+            executor
         );
 
         scheduler.start();

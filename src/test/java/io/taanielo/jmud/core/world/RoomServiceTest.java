@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 class RoomServiceTest {
@@ -93,8 +95,23 @@ class RoomServiceTest {
     }
 
     private record TestRoomRepository(Map<RoomId, Room> rooms) implements RoomRepository {
+        private TestRoomRepository(Map<RoomId, Room> rooms) {
+            this.rooms = new ConcurrentHashMap<>(rooms);
+        }
+
         @Override
-        public Optional<Room> findById(RoomId id) {
+        public void save(Room room) throws RepositoryException {
+            if (room == null) {
+                throw new RepositoryException("Room is required");
+            }
+            rooms.put(room.getId(), room);
+        }
+
+        @Override
+        public Optional<Room> findById(RoomId id) throws RepositoryException {
+            if (id == null) {
+                throw new RepositoryException("Room id is required");
+            }
             return Optional.ofNullable(rooms.get(id));
         }
     }
