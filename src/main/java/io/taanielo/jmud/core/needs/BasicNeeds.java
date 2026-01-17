@@ -45,7 +45,6 @@ public class BasicNeeds implements Needs {
     @Override
     public NeedsTickResult decay() {
         List<NeedEvent> events = new ArrayList<>();
-        int severeCount = 0;
         Map<NeedId, NeedState> next = needs.entrySet().stream()
             .collect(java.util.stream.Collectors.toMap(
                 Map.Entry::getKey,
@@ -54,15 +53,11 @@ public class BasicNeeds implements Needs {
                     NeedSeverity severity = decayed.severity();
                     if (severity != NeedSeverity.NORMAL) {
                         events.add(new NeedEvent(entry.getKey(), severity));
-                        if (severity == NeedSeverity.SEVERE) {
-                            severeCount++;
-                        }
                     }
                     return decayed;
                 }
             ));
-        int damage = severeCount * NeedsSettings.severeDamage();
-        return new NeedsTickResult(new BasicNeeds(next), List.copyOf(events), damage);
+        return new NeedsTickResult(new BasicNeeds(next), List.copyOf(events), 0);
     }
 
     @Override

@@ -45,13 +45,7 @@ public class NeedsSession {
             nextSeverities.put(event.needId(), event.severity());
         }
 
-        int nextHealth = health;
-        if (result.damage() > 0) {
-            nextHealth = Math.max(0, health - result.damage());
-            messages.add("You suffer " + result.damage() + " damage from neglect.");
-        }
-
-        NeedsSession nextSession = new NeedsSession(username, result.needs(), nextSeverities, nextHealth);
+        NeedsSession nextSession = new NeedsSession(username, result.needs(), nextSeverities, health);
         return new NeedsTickOutcome(nextSession, List.copyOf(messages));
     }
 

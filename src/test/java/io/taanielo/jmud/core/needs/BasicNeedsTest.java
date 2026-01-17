@@ -21,7 +21,7 @@ class BasicNeedsTest {
         NeedsTickResult result = needs.decay();
 
         assertEquals(2, result.events().size());
-        assertEquals(NeedsSettings.severeDamage(), result.damage());
+        assertEquals(0, result.damage());
         assertFalse(result.events().isEmpty());
     }
 }

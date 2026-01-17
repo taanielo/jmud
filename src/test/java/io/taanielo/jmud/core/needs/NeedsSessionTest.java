@@ -24,7 +24,6 @@ class NeedsSessionTest {
         NeedsTickOutcome outcome = session.tick();
 
         assertTrue(outcome.messages().stream().anyMatch(message -> message.contains("hungry")));
-        assertTrue(outcome.messages().stream().anyMatch(message -> message.contains("damage")));
-        assertEquals(9, outcome.session().health());
+        assertEquals(10, outcome.session().health());
     }
 }
