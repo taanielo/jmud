@@ -9,7 +9,7 @@ public class BasicStats implements Stats {
     private final int strength;
     private final int agility;
 
-    public BasicStats(int hp, int maxHp, int mana, int maxMana, int strength, int agility) {
+    private BasicStats(int hp, int maxHp, int mana, int maxMana, int strength, int agility) {
         if (maxHp < 0) {
             throw new IllegalArgumentException("Max HP must be non-negative");
         }
@@ -42,8 +42,51 @@ public class BasicStats implements Stats {
         this.agility = agility;
     }
 
-    public static BasicStats of(int hp, int maxHp, int mana, int maxMana, int strength, int agility) {
-        return new BasicStats(hp, maxHp, mana, maxMana, strength, agility);
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private int hp;
+        private int maxHp;
+        private int mana;
+        private int maxMana;
+        private int strength;
+        private int agility;
+
+        public Builder hp(int hp) {
+            this.hp = hp;
+            return this;
+        }
+
+        public Builder maxHp(int maxHp) {
+            this.maxHp = maxHp;
+            return this;
+        }
+
+        public Builder mana(int mana) {
+            this.mana = mana;
+            return this;
+        }
+
+        public Builder maxMana(int maxMana) {
+            this.maxMana = maxMana;
+            return this;
+        }
+
+        public Builder strength(int strength) {
+            this.strength = strength;
+            return this;
+        }
+
+        public Builder agility(int agility) {
+            this.agility = agility;
+            return this;
+        }
+
+        public BasicStats build() {
+            return new BasicStats(hp, maxHp, mana, maxMana, strength, agility);
+        }
     }
 
     @Override

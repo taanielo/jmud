@@ -18,7 +18,14 @@ class CharacterTest {
             "Guard",
             RoomId.of("training-yard"),
             new SimpleInventory(),
-            BasicStats.of(10, 10, 5, 5, 2, 3),
+            BasicStats.builder()
+                .hp(10)
+                .maxHp(10)
+                .mana(5)
+                .maxMana(5)
+                .strength(2)
+                .agility(3)
+                .build(),
             List.of(StatusEffect.of("alert"))
         );
 
