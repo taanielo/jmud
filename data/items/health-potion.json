@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "id": "health-potion",
+  "name": "Health Potion",
+  "description": "A small red vial that restores a bit of vitality."
+}

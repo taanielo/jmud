@@ -6,6 +6,10 @@ Welcome to the Java MUD (Multi-User Dungeon) Game! This project is a simple text
 
 This MUD game is implemented in Java and uses telnet socket connections to allow multiple users to connect and play simultaneously. The game features a simple command-based interface where players can navigate through rooms, interact with objects, and communicate with other players.
 
+## Game Data Persistence
+
+Game data is stored as JSON under `data/`. See `docs/data-schema.md` for the current schema versions and examples.
+
 ## Features (TODO)
 
 - Multiple users can connect and play simultaneously.
