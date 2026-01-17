@@ -31,6 +31,22 @@ telnet localhost 4444
 
 Replace `localhost` with the server's IP address and `4444` with the port number the server is listening on.
 
+## Running with Gradle
+
+Ensure you have Java 25 installed and Gradle available on your PATH.
+
+Build the project:
+
+```sh
+gradle build
+```
+
+Run the server:
+
+```sh
+gradle run
+```
+
 ## Basics of Java Telnet Socket Connection
 
 In this game, telnet is used as a simple protocol to handle text-based user interactions. The `ServerSocket` class in Java is used to create a server socket that listens on a specified port. When a client connects, a new `Socket` instance is created to handle the connection.
