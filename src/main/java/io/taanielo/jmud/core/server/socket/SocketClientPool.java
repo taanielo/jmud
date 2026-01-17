@@ -1,21 +1,25 @@
 package io.taanielo.jmud.core.server.socket;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 
 public class SocketClientPool implements ClientPool {
 
-    private final List<SocketClient> clients = new ArrayList<>();
+    private final List<SocketClient> clients = new CopyOnWriteArrayList<>();
+    private final AtomicInteger nextId = new AtomicInteger();
 
     @Override
     public void add(Client client) {
         if (client instanceof SocketClient socketClient) {
-            Thread thread = new Thread(socketClient, "client-" + clients.size());
+            int clientId = nextId.getAndIncrement();
             clients.add(socketClient);
-            thread.start();
+            Thread.ofVirtual()
+                .name("client-" + clientId)
+                .start(socketClient);
         }
     }
 
@@ -28,7 +32,7 @@ public class SocketClientPool implements ClientPool {
 
     @Override
     public int getNextId() {
-        return clients.size();
+        return nextId.get();
     }
 
     @Override
