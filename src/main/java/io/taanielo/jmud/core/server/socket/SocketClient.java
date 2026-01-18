@@ -513,6 +513,11 @@ public class SocketClient implements Client {
             new SocketAbilityMessageSink().sendToUsername(username, message);
         }
 
+        @Override
+        public void sendPrompt() {
+            SocketClient.this.sendPrompt();
+        }
+
     }
 
     private void registerEffects() {

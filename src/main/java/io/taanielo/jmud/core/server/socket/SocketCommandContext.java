@@ -58,6 +58,11 @@ public interface SocketCommandContext extends Client {
     void writeLineSafe(String message);
 
     /**
+     * Sends just the prompt to the player.
+     */
+    void sendPrompt();
+
+    /**
      * Sends a message to a specific connected username.
      */
     void sendToUsername(Username username, String message);
