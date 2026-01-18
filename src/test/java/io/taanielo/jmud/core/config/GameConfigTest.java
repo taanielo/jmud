@@ -17,7 +17,7 @@ class GameConfigTest {
 
     @Test
     void loadsDefaultsFromResource() throws IOException {
-        Path configFile = tempDir.resolve("application.properties");
+        Path configFile = tempDir.resolve("jmud.properties");
         Files.writeString(configFile, "jmud.effects.enabled=false\n");
 
         GameConfig config = GameConfig.load(configFile);

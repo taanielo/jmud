@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 public class GameConfig {
-    private static final String DEFAULT_RESOURCE = "application.properties";
+    private static final String DEFAULT_RESOURCE = "jmud.properties";
 
     private final Properties properties;
 

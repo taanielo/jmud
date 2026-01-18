@@ -212,6 +212,7 @@ Codex agents must:
 * Never block platform threads unnecessarily
 * Never mix infrastructure and domain logic
 * Always consider multiplayer impact
+* Run tests before pushing changes to GitHub
 
 When in doubt, choose the **simpler, safer design**.
 
@@ -223,4 +224,3 @@ When in doubt, choose the **simpler, safer design**.
 > Stability, fairness, and predictability matter more than raw speed.
 
 Agents should optimize for **trust**, not tricks.
-
