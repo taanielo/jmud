@@ -96,4 +96,40 @@ public class PlayerVitals {
     public int getMaxMove() {
         return maxMove;
     }
+
+    public PlayerVitals damage(int amount) {
+        validateAmount(amount, "Damage");
+        int nextHp = Math.max(0, hp - amount);
+        return new PlayerVitals(nextHp, maxHp, mana, maxMana, move, maxMove);
+    }
+
+    public PlayerVitals heal(int amount) {
+        validateAmount(amount, "Heal");
+        int nextHp = Math.min(maxHp, hp + amount);
+        return new PlayerVitals(nextHp, maxHp, mana, maxMana, move, maxMove);
+    }
+
+    public PlayerVitals consumeMana(int amount) {
+        validateAmount(amount, "Mana consumption");
+        int nextMana = Math.max(0, mana - amount);
+        return new PlayerVitals(hp, maxHp, nextMana, maxMana, move, maxMove);
+    }
+
+    public PlayerVitals restoreMana(int amount) {
+        validateAmount(amount, "Mana restoration");
+        int nextMana = Math.min(maxMana, mana + amount);
+        return new PlayerVitals(hp, maxHp, nextMana, maxMana, move, maxMove);
+    }
+
+    public PlayerVitals consumeMove(int amount) {
+        validateAmount(amount, "Move consumption");
+        int nextMove = Math.max(0, move - amount);
+        return new PlayerVitals(hp, maxHp, mana, maxMana, nextMove, maxMove);
+    }
+
+    private void validateAmount(int amount, String label) {
+        if (amount < 0) {
+            throw new IllegalArgumentException(label + " amount must be non-negative");
+        }
+    }
 }

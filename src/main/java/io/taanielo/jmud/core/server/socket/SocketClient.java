@@ -12,7 +12,15 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.command.CommandRegistry;
+import io.taanielo.jmud.core.ability.AbilityCatalog;
+import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
+import io.taanielo.jmud.core.ability.AbilityEngine;
+import io.taanielo.jmud.core.ability.AbilityTargetResolver;
+import io.taanielo.jmud.core.ability.AbilityUseResult;
+import io.taanielo.jmud.core.ability.CooldownTracker;
+import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
+import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
@@ -36,6 +44,7 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
+import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -53,6 +62,11 @@ public class SocketClient implements Client {
     private final Object writeLock = new Object();
     private final PromptRenderer promptRenderer = new PromptRenderer();
     private TextStyler textStyler;
+    private final AbilityEngine abilityEngine = new AbilityEngine(AbilityCatalog.defaultRegistry());
+    private final AbilityTargetResolver abilityTargetResolver;
+    private final CooldownSystem abilityCooldowns = new CooldownSystem();
+    private final AbilityCooldownTracker cooldownTracker = new CooldownTracker(abilityCooldowns);
+    private TickSubscription cooldownSubscription;
 
     private OutputStream output;
     private InputStream input;
@@ -80,6 +94,7 @@ public class SocketClient implements Client {
         this.roomService = roomService;
         this.clientPool = clientPool;
         this.tickRegistry = tickRegistry;
+        this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
         init();
     }
 
@@ -98,6 +113,7 @@ public class SocketClient implements Client {
             log.error("Error connecting client", e);
         }
         textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
+        cooldownSubscription = tickRegistry.register(abilityCooldowns);
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);
         sendMessage(WelcomeMessage.of(textStyler, onlineCount));
         authenticated = false;
@@ -181,6 +197,9 @@ public class SocketClient implements Client {
         log.debug("Closing connection ..");
         connected = false;
         clearEffects();
+        if (cooldownSubscription != null) {
+            cooldownSubscription.unsubscribe();
+        }
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
@@ -237,6 +256,10 @@ public class SocketClient implements Client {
                     CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
                     sendPrompt();
                 }
+                return;
+            case "CAST":
+            case "USE":
+                handleAbilityCommand(args);
                 return;
             case "ANSI":
                 handleAnsiCommand(args);
@@ -323,10 +346,57 @@ public class SocketClient implements Client {
             writeLineWithPrompt("ANSI is already " + (enabled ? "ON" : "OFF"));
             return;
         }
-        player = player.withAnsiEnabled(enabled);
-        playerRepository.savePlayer(player);
-        textStyler = TextStylers.forEnabled(enabled);
+        replacePlayer(player.withAnsiEnabled(enabled));
+        textStyler = TextStylers.forEnabled(player.isAnsiEnabled());
         writeLineWithPrompt("ANSI is now " + (enabled ? "ON" : "OFF"));
+    }
+
+    private void handleAbilityCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to use abilities.");
+            return;
+        }
+        AbilityUseResult result = abilityEngine.use(player, args, abilityTargetResolver, cooldownTracker);
+        replacePlayer(result.source());
+        if (!result.target().getUsername().equals(player.getUsername())) {
+            updateTarget(result.target());
+        }
+        for (String message : result.messages()) {
+            writeLineSafe(message);
+        }
+        sendPrompt();
+    }
+
+    private void replacePlayer(Player updated) {
+        player = updated;
+        playerRepository.savePlayer(player);
+        if (effectsInitialized) {
+            clearEffects();
+            registerEffects();
+        }
+    }
+
+    private void updateTarget(Player updatedTarget) {
+        playerRepository.savePlayer(updatedTarget);
+        for (Client client : clientPool.clients()) {
+            if (client instanceof SocketClient socketClient) {
+                if (socketClient.isAuthenticatedUser(updatedTarget.getUsername())) {
+                    socketClient.applyExternalPlayerUpdate(updatedTarget);
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean isAuthenticatedUser(Username username) {
+        return authenticated && player != null && player.getUsername().equals(username);
+    }
+
+    private void applyExternalPlayerUpdate(Player updated) {
+        if (!isAuthenticatedUser(updated.getUsername())) {
+            return;
+        }
+        replacePlayer(updated);
     }
 
     private void registerEffects() {

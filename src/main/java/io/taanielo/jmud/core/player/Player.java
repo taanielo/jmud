@@ -69,4 +69,8 @@ public class Player implements EffectTarget {
     public Player withAnsiEnabled(boolean enabled) {
         return new Player(user, level, experience, vitals, effects, promptFormat, enabled);
     }
+
+    public Player withVitals(PlayerVitals updatedVitals) {
+        return new Player(user, level, experience, updatedVitals, effects, promptFormat, ansiEnabled);
+    }
 }
