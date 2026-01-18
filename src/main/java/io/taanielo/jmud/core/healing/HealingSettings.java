@@ -1,8 +1,6 @@
 package io.taanielo.jmud.core.healing;
 
 import io.taanielo.jmud.core.config.GameConfig;
-import io.taanielo.jmud.core.character.ClassId;
-import io.taanielo.jmud.core.character.RaceId;
 
 public final class HealingSettings {
     public static final boolean DEFAULT_ENABLED = true;
@@ -25,12 +23,7 @@ public final class HealingSettings {
         return base;
     }
 
-    public static int raceModifier(RaceId raceId) {
-        String key = "jmud.healing.race." + normalize(raceId) + ".modifier";
-        return CONFIG.getInt(key, 0);
-    }
-
-    public static int classModifier(ClassId classId) {
+    public static int classModifier(io.taanielo.jmud.core.character.ClassId classId) {
         String key = "jmud.healing.class." + normalize(classId) + ".modifier";
         return CONFIG.getInt(key, 0);
     }
@@ -40,8 +33,7 @@ public final class HealingSettings {
             return "unknown";
         }
         String value = switch (id) {
-            case RaceId race -> race.getValue();
-            case ClassId clazz -> clazz.getValue();
+            case io.taanielo.jmud.core.character.ClassId clazz -> clazz.getValue();
             default -> String.valueOf(id);
         };
         if (value == null || value.isBlank()) {
@@ -49,4 +41,5 @@ public final class HealingSettings {
         }
         return value.trim().toLowerCase();
     }
+
 }

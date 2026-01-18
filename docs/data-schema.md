@@ -89,3 +89,16 @@ Ability example (`data/skills/spell.heal.json`):
 ```
 
 Message templates support `{source}`, `{target}`, and `{ability}` placeholders.
+
+Race example (`data/races/race.elf.json`):
+
+```json
+{
+  "schema_version": 1,
+  "id": "elf",
+  "name": "Elf",
+  "healing": {
+    "base_modifier": -2
+  }
+}
+```

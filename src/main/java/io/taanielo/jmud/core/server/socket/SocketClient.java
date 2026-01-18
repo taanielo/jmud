@@ -46,6 +46,8 @@ import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingSettings;
 import io.taanielo.jmud.core.healing.PlayerHealingTicker;
+import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
+import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
@@ -559,11 +561,11 @@ public class SocketClient implements Client {
         }
         try {
             HealingEngine engine = new HealingEngine(new JsonEffectRepository());
-            HealingBaseResolver baseResolver = new HealingBaseResolver();
+            HealingBaseResolver baseResolver = new HealingBaseResolver(new JsonRaceRepository());
             healingSubscription = tickRegistry.register(
                 new PlayerHealingTicker(() -> player, this::applyHealingUpdate, engine, baseResolver)
             );
-        } catch (EffectRepositoryException e) {
+        } catch (EffectRepositoryException | RaceRepositoryException e) {
             log.error("Failed to initialize healing", e);
             return;
         }

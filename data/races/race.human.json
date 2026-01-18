@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "human",
+  "name": "Human",
+  "healing": {
+    "base_modifier": 0
+  }
+}
