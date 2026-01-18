@@ -12,17 +12,17 @@ public class CooldownTracker implements AbilityCooldownTracker {
     }
 
     @Override
-    public boolean isOnCooldown(String abilityId) {
-        return cooldownSystem.isOnCooldown(abilityId);
+    public boolean isOnCooldown(AbilityId abilityId) {
+        return cooldownSystem.isOnCooldown(abilityId.getValue());
     }
 
     @Override
-    public int remainingTicks(String abilityId) {
-        return cooldownSystem.remainingTicks(abilityId);
+    public int remainingTicks(AbilityId abilityId) {
+        return cooldownSystem.remainingTicks(abilityId.getValue());
     }
 
     @Override
-    public void startCooldown(String abilityId, int ticks) {
-        cooldownSystem.register(abilityId, ticks);
+    public void startCooldown(AbilityId abilityId, int ticks) {
+        cooldownSystem.register(abilityId.getValue(), ticks);
     }
 }

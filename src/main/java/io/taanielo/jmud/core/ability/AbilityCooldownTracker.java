@@ -1,9 +1,9 @@
 package io.taanielo.jmud.core.ability;
 
 public interface AbilityCooldownTracker {
-    boolean isOnCooldown(String abilityId);
+    boolean isOnCooldown(AbilityId abilityId);
 
-    int remainingTicks(String abilityId);
+    int remainingTicks(AbilityId abilityId);
 
-    void startCooldown(String abilityId, int ticks);
+    void startCooldown(AbilityId abilityId, int ticks);
 }

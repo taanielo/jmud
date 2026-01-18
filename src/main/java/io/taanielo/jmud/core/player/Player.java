@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -24,7 +25,7 @@ public class Player implements EffectTarget {
     private final List<EffectInstance> effects;
     private final String promptFormat;
     private final boolean ansiEnabled;
-    private final List<String> learnedAbilities;
+    private final List<AbilityId> learnedAbilities;
 
     public static Player of(User user, String promptFormat) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of());
@@ -34,7 +35,7 @@ public class Player implements EffectTarget {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, ansiEnabled, List.of());
     }
 
-    public static Player of(User user, String promptFormat, boolean ansiEnabled, List<String> learnedAbilities) {
+    public static Player of(User user, String promptFormat, boolean ansiEnabled, List<AbilityId> learnedAbilities) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, ansiEnabled, learnedAbilities);
     }
 
@@ -47,7 +48,7 @@ public class Player implements EffectTarget {
         @JsonProperty("effects") List<EffectInstance> effects,
         @JsonProperty("promptFormat") String promptFormat,
         @JsonProperty("ansiEnabled") Boolean ansiEnabled,
-        @JsonProperty("learnedAbilities") List<String> learnedAbilities
+        @JsonProperty("learnedAbilities") List<AbilityId> learnedAbilities
     ) {
         this.user = Objects.requireNonNull(user, "User is required");
         this.level = level;
@@ -81,7 +82,7 @@ public class Player implements EffectTarget {
         return new Player(user, level, experience, updatedVitals, effects, promptFormat, ansiEnabled, learnedAbilities);
     }
 
-    public Player withLearnedAbilities(List<String> abilities) {
+    public Player withLearnedAbilities(List<AbilityId> abilities) {
         return new Player(user, level, experience, vitals, effects, promptFormat, ansiEnabled, abilities);
     }
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.dto.AbilityDto;
 import io.taanielo.jmud.core.ability.dto.AbilityMapper;
 import io.taanielo.jmud.core.ability.dto.SchemaVersions;
@@ -26,7 +27,7 @@ public class JsonAbilityRepository implements AbilityRepository {
     private final ObjectMapper objectMapper;
     private final AbilityMapper abilityMapper;
     private final Path skillsDirPath;
-    private final Map<String, Ability> cache;
+    private final Map<AbilityId, Ability> cache;
 
     public JsonAbilityRepository() throws AbilityRepositoryException {
         this(Path.of("data"));
@@ -41,15 +42,15 @@ public class JsonAbilityRepository implements AbilityRepository {
     }
 
     @Override
-    public Optional<Ability> findById(String id) throws AbilityRepositoryException {
-        if (id == null || id.isBlank()) {
+    public Optional<Ability> findById(AbilityId id) throws AbilityRepositoryException {
+        if (id == null) {
             throw new AbilityRepositoryException("Ability id is required");
         }
         Ability cached = cache.get(id);
         if (cached != null) {
             return Optional.of(cached);
         }
-        Path abilityFilePath = abilityFilePath(id);
+        Path abilityFilePath = abilityFilePath(id.getValue());
         if (!Files.exists(abilityFilePath)) {
             return Optional.empty();
         }

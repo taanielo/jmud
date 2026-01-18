@@ -30,7 +30,7 @@ class AbilityEngineTest {
         Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
         TestCooldowns cooldowns = new TestCooldowns();
-        List<String> learned = List.of("spell.fireball", "spell.fireball.greater");
+        List<AbilityId> learned = List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"));
 
         AbilityUseResult result = engine.use(source, "fireball bob", learned, resolver, cooldowns);
 
@@ -50,11 +50,11 @@ class AbilityEngineTest {
             java.util.List.of(),
             "prompt",
             false,
-            List.of("spell.heal")
+            List.of(AbilityId.of("spell.heal"))
         );
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
-        List<String> learned = List.of("spell.heal");
+        List<AbilityId> learned = List.of(AbilityId.of("spell.heal"));
 
         AbilityUseResult result = engine.use(source, "heal", learned, resolver, cooldowns);
 
@@ -67,7 +67,7 @@ class AbilityEngineTest {
         Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
-        List<String> learned = List.of("skill.bash");
+        List<AbilityId> learned = List.of(AbilityId.of("skill.bash"));
 
         AbilityUseResult result = engine.use(source, "bash", learned, resolver, cooldowns);
 
@@ -79,7 +79,7 @@ class AbilityEngineTest {
         Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
-        List<String> learned = List.of();
+        List<AbilityId> learned = List.of();
 
         AbilityUseResult result = engine.use(source, "bash", learned, resolver, cooldowns);
 
@@ -97,12 +97,12 @@ class AbilityEngineTest {
             java.util.List.of(),
             "prompt",
             false,
-            List.of("spell.fireball", "spell.fireball.greater")
+            List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"))
         );
         Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
         TestCooldowns cooldowns = new TestCooldowns();
-        List<String> learned = List.of("spell.fireball", "spell.fireball.greater");
+        List<AbilityId> learned = List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"));
 
         AbilityUseResult first = engine.use(source, "fireball bob", learned, resolver, cooldowns);
         AbilityUseResult second = engine.use(first.source(), "fireball bob", learned, resolver, cooldowns);
@@ -122,12 +122,12 @@ class AbilityEngineTest {
             java.util.List.of(),
             "prompt",
             false,
-            List.of("spell.fireball", "spell.fireball.greater")
+            List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"))
         );
         Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
         TestCooldowns cooldowns = new TestCooldowns();
-        List<String> learned = List.of("spell.fireball", "spell.fireball.greater");
+        List<AbilityId> learned = List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"));
 
         AbilityUseResult result = engine.use(source, "fireball bob", learned, resolver, cooldowns);
 
@@ -136,7 +136,7 @@ class AbilityEngineTest {
 
     private AbilityRegistry testRegistry() {
         Ability bash = new AbilityDefinition(
-            "skill.bash",
+            AbilityId.of("skill.bash"),
             "bash",
             AbilityType.SKILL,
             1,
@@ -147,7 +147,7 @@ class AbilityEngineTest {
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 4, null))
         );
         Ability fireball = new AbilityDefinition(
-            "spell.fireball",
+            AbilityId.of("spell.fireball"),
             "fireball",
             AbilityType.SPELL,
             1,
@@ -158,7 +158,7 @@ class AbilityEngineTest {
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 6, null))
         );
         Ability greaterFireball = new AbilityDefinition(
-            "spell.fireball.greater",
+            AbilityId.of("spell.fireball.greater"),
             "greater fireball",
             AbilityType.SPELL,
             2,
@@ -169,7 +169,7 @@ class AbilityEngineTest {
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 9, null))
         );
         Ability heal = new AbilityDefinition(
-            "spell.heal",
+            AbilityId.of("spell.heal"),
             "heal",
             AbilityType.SPELL,
             1,
@@ -183,21 +183,21 @@ class AbilityEngineTest {
     }
 
     private static class TestCooldowns implements AbilityCooldownTracker {
-        private final Map<String, Integer> cooldowns = new HashMap<>();
+        private final Map<AbilityId, Integer> cooldowns = new HashMap<>();
 
         @Override
-        public boolean isOnCooldown(String abilityId) {
+        public boolean isOnCooldown(AbilityId abilityId) {
             Integer remaining = cooldowns.get(abilityId);
             return remaining != null && remaining > 0;
         }
 
         @Override
-        public int remainingTicks(String abilityId) {
+        public int remainingTicks(AbilityId abilityId) {
             return cooldowns.getOrDefault(abilityId, 0);
         }
 
         @Override
-        public void startCooldown(String abilityId, int ticks) {
+        public void startCooldown(AbilityId abilityId, int ticks) {
             cooldowns.put(abilityId, ticks);
         }
     }

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class AbilityDefinition implements Ability {
-    private final String id;
+    private final AbilityId id;
     private final String name;
     private final AbilityType type;
     private final int level;
@@ -15,7 +15,7 @@ public class AbilityDefinition implements Ability {
     private final List<AbilityEffect> effects;
 
     public AbilityDefinition(
-        String id,
+        AbilityId id,
         String name,
         AbilityType type,
         int level,
@@ -25,7 +25,7 @@ public class AbilityDefinition implements Ability {
         List<String> aliases,
         List<AbilityEffect> effects
     ) {
-        this.id = validateText(id, "Ability id");
+        this.id = Objects.requireNonNull(id, "Ability id is required");
         this.name = validateText(name, "Ability name");
         this.type = Objects.requireNonNull(type, "Ability type is required");
         if (level <= 0) {
@@ -43,7 +43,7 @@ public class AbilityDefinition implements Ability {
     }
 
     @Override
-    public String id() {
+    public AbilityId id() {
         return id;
     }
 

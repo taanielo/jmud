@@ -9,6 +9,7 @@ import io.taanielo.jmud.core.ability.AbilityCost;
 import io.taanielo.jmud.core.ability.AbilityDefinition;
 import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
+import io.taanielo.jmud.core.ability.AbilityId;
 
 public class AbilityMapper {
 
@@ -25,7 +26,7 @@ public class AbilityMapper {
             .toList();
         return new AbilityDto(
             SchemaVersions.V1,
-            ability.id(),
+            ability.id().getValue(),
             ability.name(),
             ability.type(),
             ability.level(),
@@ -56,7 +57,7 @@ public class AbilityMapper {
             }
         }
         return new AbilityDefinition(
-            dto.id(),
+            AbilityId.of(dto.id()),
             dto.name(),
             dto.type(),
             dto.level(),

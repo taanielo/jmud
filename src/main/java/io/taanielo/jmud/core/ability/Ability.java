@@ -3,7 +3,7 @@ package io.taanielo.jmud.core.ability;
 import java.util.List;
 
 public interface Ability {
-    String id();
+    AbilityId id();
 
     String name();
 

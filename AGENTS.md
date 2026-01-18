@@ -12,6 +12,7 @@ The goal is to ensure **correctness under concurrency**, **predictable game beha
 * Game rules must be **deterministic** and **server-authoritative**
 * Concurrency must be **explicitly designed**, never accidental
 * Modern Java features are preferred when they improve clarity and safety
+* Prefer **value objects** over primitives for domain concepts; use primitives sparingly
 
 Agents must behave like a cautious backend engineer operating a real-time multiplayer system.
 

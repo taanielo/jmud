@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.ability.Ability;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityOperation;
 import io.taanielo.jmud.core.ability.AbilityStat;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
@@ -50,14 +51,14 @@ class JsonAbilityRepositoryTest {
 
         assertEquals(1, abilities.size());
         Ability ability = abilities.getFirst();
-        assertEquals("spell.heal", ability.id());
+        assertEquals("spell.heal", ability.id().getValue());
         assertEquals(AbilityType.SPELL, ability.type());
         assertEquals(AbilityTargeting.BENEFICIAL, ability.targeting());
         assertEquals(1, ability.effects().size());
         assertEquals(AbilityEffectKind.VITALS, ability.effects().getFirst().kind());
         assertEquals(AbilityStat.HP, ability.effects().getFirst().stat());
         assertEquals(AbilityOperation.INCREASE, ability.effects().getFirst().operation());
-        assertTrue(repository.findById("spell.heal").isPresent());
+        assertTrue(repository.findById(AbilityId.of("spell.heal")).isPresent());
     }
 
     @Test

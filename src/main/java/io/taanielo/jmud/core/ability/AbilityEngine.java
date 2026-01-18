@@ -21,7 +21,7 @@ public class AbilityEngine {
     public AbilityUseResult use(
         Player source,
         String input,
-        List<String> learnedAbilityIds,
+        List<AbilityId> learnedAbilityIds,
         AbilityTargetResolver targetResolver,
         AbilityCooldownTracker cooldowns
     ) {

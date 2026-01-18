@@ -10,18 +10,18 @@ import java.util.Optional;
 
 public class AbilityRegistry {
     private final List<Ability> abilities;
-    private final Map<String, Ability> abilityById;
+    private final Map<AbilityId, Ability> abilityById;
 
     public AbilityRegistry(List<Ability> abilities) {
         this.abilities = List.copyOf(abilities);
-        Map<String, Ability> map = new HashMap<>();
+        Map<AbilityId, Ability> map = new HashMap<>();
         for (Ability ability : this.abilities) {
             map.put(ability.id(), ability);
         }
         this.abilityById = Map.copyOf(map);
     }
 
-    public Optional<AbilityMatch> findBestMatch(String input, List<String> allowedAbilityIds) {
+    public Optional<AbilityMatch> findBestMatch(String input, List<AbilityId> allowedAbilityIds) {
         if (input == null || input.isBlank()) {
             return Optional.empty();
         }
@@ -32,7 +32,7 @@ public class AbilityRegistry {
         String[] tokens = trimmed.split("\\s+");
 
         List<Candidate> candidates = new ArrayList<>();
-        for (String abilityId : allowedAbilityIds) {
+        for (AbilityId abilityId : allowedAbilityIds) {
             Ability ability = abilityById.get(abilityId);
             if (ability == null) {
                 continue;
@@ -64,7 +64,7 @@ public class AbilityRegistry {
             .map(candidate -> new AbilityMatch(candidate.ability, candidate.remainingTarget.trim()));
     }
 
-    public List<String> abilityIds() {
+    public List<AbilityId> abilityIds() {
         return abilities.stream()
             .map(Ability::id)
             .toList();

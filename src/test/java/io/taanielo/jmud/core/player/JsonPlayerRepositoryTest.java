@@ -13,6 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
 
@@ -27,7 +28,16 @@ class JsonPlayerRepositoryTest {
         User user = User.of(Username.of("sparky"), Password.of("qwerty"));
         List<EffectInstance> effects = List.of(new EffectInstance(EffectId.of("stoneskin"), 5, 1));
         PlayerVitals vitals = new PlayerVitals(12, 20, 6, 10, 8, 15);
-        Player player = new Player(user, 3, 42, vitals, effects, "HP {hp}/{maxHp} Exp {exp}", true, List.of("spell.heal"));
+        Player player = new Player(
+            user,
+            3,
+            42,
+            vitals,
+            effects,
+            "HP {hp}/{maxHp} Exp {exp}",
+            true,
+            List.of(AbilityId.of("spell.heal"))
+        );
 
         repository.savePlayer(player);
 
@@ -40,7 +50,7 @@ class JsonPlayerRepositoryTest {
         assertEquals(20, loaded.get().getVitals().maxHp());
         assertEquals("HP {hp}/{maxHp} Exp {exp}", loaded.get().getPromptFormat());
         assertTrue(loaded.get().isAnsiEnabled());
-        assertEquals(List.of("spell.heal"), loaded.get().getLearnedAbilities());
+        assertEquals(List.of(AbilityId.of("spell.heal")), loaded.get().getLearnedAbilities());
         assertEquals(1, loaded.get().effects().size());
         assertEquals("stoneskin", loaded.get().effects().get(0).id().getValue());
     }
