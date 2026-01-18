@@ -74,6 +74,7 @@ public class SocketServer implements Server {
             log.error("Server error", e);
         } finally {
             tickScheduler.stop();
+            tickRegistry.clear();
         }
 
     }
