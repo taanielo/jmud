@@ -7,11 +7,9 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
-import io.taanielo.jmud.command.CommandRegistry;
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityEngine;
@@ -52,7 +50,6 @@ import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
-import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -79,6 +76,8 @@ public class SocketClient implements Client {
     private TickSubscription cooldownSubscription;
     private final AbilityMessageSink abilityMessageSink;
     private TickSubscription healingSubscription;
+    private final SocketCommandRegistry commandRegistry = new SocketCommandRegistry();
+    private final SocketCommandDispatcher commandDispatcher = new SocketCommandDispatcher(commandRegistry);
 
     private OutputStream output;
     private InputStream input;
@@ -112,7 +111,17 @@ public class SocketClient implements Client {
         this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
         this.abilityMessageSink = new SocketAbilityMessageSink();
         this.abilityEngine = createAbilityEngine(abilityRegistry);
+        registerCommands();
         init();
+    }
+
+    private void registerCommands() {
+        new LookCommand(commandRegistry);
+        new MoveCommand(commandRegistry);
+        new SayCommand(commandRegistry);
+        new AbilityCommand(commandRegistry);
+        new AnsiCommand(commandRegistry);
+        new QuitCommand(commandRegistry);
     }
 
     private AbilityEngine createAbilityEngine(AbilityRegistry registry) {
@@ -190,7 +199,7 @@ public class SocketClient implements Client {
                         roomService.ensurePlayerLocation(player.getUsername());
                         registerEffects();
                         registerHealing();
-                        sendLook();
+                        commandDispatcher.dispatch(new SocketCommandContextImpl(), "look");
                     });
                 } else {
                     handleCommand(clientInput);
@@ -262,74 +271,8 @@ public class SocketClient implements Client {
         log.debug("Connection closed");
     }
 
-    private void handleCommand(String clientInput) throws IOException {
-        String trimmed = clientInput.trim();
-        if (trimmed.isEmpty()) {
-            sendPrompt();
-            return;
-        }
-        String[] parts = trimmed.split("\\s+", 2);
-        String command = parts[0].toUpperCase(Locale.ROOT);
-        String args = parts.length > 1 ? parts[1].trim() : "";
-
-        if (isLookCommand(command)) {
-            sendLook();
-            return;
-        }
-
-        Optional<Direction> direction = parseDirection(command, args);
-        if (direction.isPresent()) {
-            sendMove(direction.get());
-            return;
-        }
-
-        switch (command) {
-            case "QUIT":
-                CommandRegistry.QUIT.act().input(this);
-                return;
-            case "SAY":
-                if (args.isEmpty()) {
-                    writeLineWithPrompt("Say what?");
-                } else {
-                    CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
-                    sendPrompt();
-                }
-                return;
-            case "CAST":
-            case "USE":
-                handleAbilityCommand(args);
-                return;
-            case "ANSI":
-                handleAnsiCommand(args);
-                return;
-            default:
-                writeLineWithPrompt("Unknown command");
-        }
-    }
-
-    private boolean isLookCommand(String command) {
-        return command.equals("LOOK") || command.equals("L");
-    }
-
-    private Optional<Direction> parseDirection(String command, String args) {
-        Optional<Direction> direct = Direction.fromInput(command);
-        if (direct.isPresent()) {
-            return direct;
-        }
-        if (command.equals("MOVE") || command.equals("GO") || command.equals("WALK")) {
-            return Direction.fromInput(args);
-        }
-        return Optional.empty();
-    }
-
-    private void sendLook() {
-        RoomService.LookResult result = roomService.look(player.getUsername());
-        writeLinesWithPrompt(result.lines());
-    }
-
-    private void sendMove(Direction direction) {
-        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
-        writeLinesWithPrompt(result.lines());
+    private void handleCommand(String clientInput) {
+        commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput);
     }
 
     private void writeLinesWithPrompt(List<String> lines) {
@@ -503,6 +446,89 @@ public class SocketClient implements Client {
                 }
             }
         }
+    }
+
+    private class SocketCommandContextImpl implements SocketCommandContext {
+        @Override
+        public boolean isAuthenticated() {
+            return authenticated;
+        }
+
+        @Override
+        public Player getPlayer() {
+            return player;
+        }
+
+        @Override
+        public List<Client> clients() {
+            return clientPool.clients();
+        }
+
+        @Override
+        public void sendMessage(Message message) {
+            SocketClient.this.sendMessage(message);
+        }
+
+        @Override
+        public void close() {
+            SocketClient.this.close();
+        }
+
+        @Override
+        public void run() {
+            SocketClient.this.run();
+        }
+
+        @Override
+        public void sendLook() {
+            if (!authenticated || player == null) {
+                writeLineWithPrompt("You must be logged in to look around.");
+                return;
+            }
+            RoomService.LookResult result = roomService.look(player.getUsername());
+            writeLinesWithPrompt(result.lines());
+        }
+
+        @Override
+        public void sendMove(io.taanielo.jmud.core.world.Direction direction) {
+            if (!authenticated || player == null) {
+                writeLineWithPrompt("You must be logged in to move.");
+                return;
+            }
+            RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
+            writeLinesWithPrompt(result.lines());
+        }
+
+        @Override
+        public void useAbility(String args) {
+            handleAbilityCommand(args);
+        }
+
+        @Override
+        public void updateAnsi(String args) {
+            handleAnsiCommand(args);
+        }
+
+        @Override
+        public void writeLineWithPrompt(String message) {
+            SocketClient.this.writeLineWithPrompt(message);
+        }
+
+        @Override
+        public void writeLineSafe(String message) {
+            SocketClient.this.writeLineSafe(message);
+        }
+
+        @Override
+        public void sendToUsername(Username username, String message) {
+            new SocketAbilityMessageSink().sendToUsername(username, message);
+        }
+
+        @Override
+        public void sendPrompt() {
+            SocketClient.this.sendPrompt();
+        }
+
     }
 
     private void registerEffects() {
