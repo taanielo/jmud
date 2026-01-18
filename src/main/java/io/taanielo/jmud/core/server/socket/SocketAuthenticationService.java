@@ -28,6 +28,7 @@ public class SocketAuthenticationService implements AuthenticationService {
 
     private Username username;
     private User authenticationUser;
+    private boolean creatingUser;
 
     public SocketAuthenticationService(Socket clientSocket, UserRegistry userRegistry, MessageWriter messageWriter) {
         this.clientSocket = clientSocket;
@@ -39,6 +40,8 @@ public class SocketAuthenticationService implements AuthenticationService {
     public void authenticate(String input, SuccessHandler successHandler) throws IOException {
         if (username == null) {
             findUser(input);
+        } else if (creatingUser) {
+            createUser(input, successHandler);
         } else {
             matchPassword(input, successHandler);
         }
@@ -75,10 +78,22 @@ public class SocketAuthenticationService implements AuthenticationService {
             messageWriter.write("Enter password: ");
         } else {
             log.debug("User not found");
-            username = null;
-            // TODO taanielo 2022-06-22 create user
-            messageWriter.writeLine("User not found!");
-            messageWriter.write("Enter username: ");
+            creatingUser = true;
+            messageWriter.writeLine("User not found. Creating new user.");
+            SocketCommand.disableEcho(clientSocket.getOutputStream());
+            messageWriter.write("Enter password: ");
         }
+    }
+
+    private void createUser(String input, SuccessHandler successHandler) throws IOException {
+        log.debug("Creating new user");
+        Password password = Password.of(input);
+        authenticationUser = User.of(username, password);
+        userRegistry.register(authenticationUser);
+        creatingUser = false;
+        messageWriter.writeLine();
+        messageWriter.writeLine("Login successful!");
+        SocketCommand.enableEcho(clientSocket.getOutputStream());
+        successHandler.handle(authenticationUser);
     }
 }

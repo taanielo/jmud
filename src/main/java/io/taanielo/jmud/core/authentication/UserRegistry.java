@@ -4,4 +4,5 @@ import java.util.Optional;
 
 public interface UserRegistry {
     Optional<User> findByUsername(Username username);
+    void register(User user);
 }
