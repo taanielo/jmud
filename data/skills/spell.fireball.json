@@ -19,5 +19,10 @@
       "operation": "DECREASE",
       "amount": 6
     }
-  ]
+  ],
+  "messages": {
+    "self": "You cast {ability} at {target}.",
+    "target": "{source} casts {ability} at you.",
+    "room": "{source} casts {ability} at {target}."
+  }
 }

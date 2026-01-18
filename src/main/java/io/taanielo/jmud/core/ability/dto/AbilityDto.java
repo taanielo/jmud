@@ -15,6 +15,7 @@ public record AbilityDto(
     AbilityCooldownDto cooldown,
     AbilityTargeting targeting,
     List<String> aliases,
-    List<AbilityEffectDto> effects
+    List<AbilityEffectDto> effects,
+    AbilityMessagesDto messages
 ) {
 }

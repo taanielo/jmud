@@ -19,5 +19,10 @@
       "operation": "DECREASE",
       "amount": 4
     }
-  ]
+  ],
+  "messages": {
+    "self": "You bash {target}.",
+    "target": "{source} bashes you.",
+    "room": "{source} bashes {target}."
+  }
 }

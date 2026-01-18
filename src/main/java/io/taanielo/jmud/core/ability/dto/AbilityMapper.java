@@ -10,6 +10,7 @@ import io.taanielo.jmud.core.ability.AbilityDefinition;
 import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
 import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.ability.AbilityMessages;
 
 public class AbilityMapper {
 
@@ -34,7 +35,14 @@ public class AbilityMapper {
             new AbilityCooldownDto(ability.cooldown().ticks()),
             ability.targeting(),
             ability.aliases(),
-            effects
+            effects,
+            ability.messages() == null
+                ? null
+                : new AbilityMessagesDto(
+                    ability.messages().self(),
+                    ability.messages().target(),
+                    ability.messages().room()
+                )
         );
     }
 
@@ -65,7 +73,10 @@ public class AbilityMapper {
             new AbilityCooldown(cooldownDto.ticks()),
             dto.targeting(),
             dto.aliases(),
-            effects
+            effects,
+            dto.messages() == null
+                ? null
+                : new AbilityMessages(dto.messages().self(), dto.messages().target(), dto.messages().room())
         );
     }
 

@@ -19,5 +19,10 @@
       "operation": "INCREASE",
       "amount": 6
     }
-  ]
+  ],
+  "messages": {
+    "self": "You cast {ability} on {target}.",
+    "target": "{source} casts {ability} on you.",
+    "room": "{source} casts {ability} on {target}."
+  }
 }

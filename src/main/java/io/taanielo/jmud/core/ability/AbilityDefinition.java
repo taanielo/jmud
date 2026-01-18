@@ -13,6 +13,7 @@ public class AbilityDefinition implements Ability {
     private final AbilityTargeting targeting;
     private final List<String> aliases;
     private final List<AbilityEffect> effects;
+    private final AbilityMessages messages;
 
     public AbilityDefinition(
         AbilityId id,
@@ -23,7 +24,8 @@ public class AbilityDefinition implements Ability {
         AbilityCooldown cooldown,
         AbilityTargeting targeting,
         List<String> aliases,
-        List<AbilityEffect> effects
+        List<AbilityEffect> effects,
+        AbilityMessages messages
     ) {
         this.id = Objects.requireNonNull(id, "Ability id is required");
         this.name = validateText(name, "Ability name");
@@ -37,6 +39,7 @@ public class AbilityDefinition implements Ability {
         this.targeting = Objects.requireNonNull(targeting, "Ability targeting is required");
         this.aliases = List.copyOf(Objects.requireNonNullElse(aliases, List.of()));
         this.effects = List.copyOf(Objects.requireNonNullElse(effects, List.of()));
+        this.messages = messages;
         if (this.effects.isEmpty()) {
             throw new IllegalArgumentException("Ability must define at least one effect");
         }
@@ -85,6 +88,11 @@ public class AbilityDefinition implements Ability {
     @Override
     public List<AbilityEffect> effects() {
         return effects;
+    }
+
+    @Override
+    public AbilityMessages messages() {
+        return messages;
     }
 
     private String validateText(String value, String label) {
