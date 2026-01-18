@@ -6,11 +6,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class TickRegistry {
     private final CopyOnWriteArrayList<Tickable> tickables = new CopyOnWriteArrayList<>();
 
-    public void register(Tickable tickable) {
+    public TickSubscription register(Tickable tickable) {
         if (tickable == null) {
             throw new IllegalArgumentException("Tickable is required");
         }
         tickables.addIfAbsent(tickable);
+        return () -> tickables.remove(tickable);
     }
 
     public void unregister(Tickable tickable) {

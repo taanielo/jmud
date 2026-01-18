@@ -21,6 +21,17 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
+import java.util.ArrayList;
+import java.util.List;
+
+import io.taanielo.jmud.core.effects.EffectEngine;
+import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.effects.EffectSettings;
+import io.taanielo.jmud.core.effects.PlayerEffectTicker;
+import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
+import io.taanielo.jmud.core.tick.TickRegistry;
+import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -34,6 +45,8 @@ public class SocketClient implements Client {
     private final PlayerRepository playerRepository;
     private final RoomService roomService;
     private final ClientPool clientPool;
+    private final TickRegistry tickRegistry;
+    private final Object writeLock = new Object();
 
     private OutputStream output;
     private InputStream input;
@@ -41,6 +54,8 @@ public class SocketClient implements Client {
 
     private boolean authenticated;
     private Player player;
+    private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
+    private boolean effectsInitialized;
 
     public SocketClient(
         Socket clientSocket,
@@ -48,6 +63,7 @@ public class SocketClient implements Client {
         UserRegistry userRegistry,
         PlayerRepository playerRepository,
         RoomService roomService,
+        TickRegistry tickRegistry,
         ClientPool clientPool
     ) throws IOException {
         this.clientSocket = clientSocket;
@@ -57,6 +73,7 @@ public class SocketClient implements Client {
         this.playerRepository = playerRepository;
         this.roomService = roomService;
         this.clientPool = clientPool;
+        this.tickRegistry = tickRegistry;
         init();
     }
 
@@ -109,6 +126,7 @@ public class SocketClient implements Client {
                                 return newPlayer;
                             });
                         roomService.ensurePlayerLocation(player.getUsername());
+                        registerEffects();
                         sendLook();
                     });
                 } else {
@@ -125,7 +143,9 @@ public class SocketClient implements Client {
     @Override
     public void sendMessage(Message message) {
         try {
-            message.send(messageWriter);
+            synchronized (writeLock) {
+                message.send(messageWriter);
+            }
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
@@ -136,7 +156,9 @@ public class SocketClient implements Client {
             return;
         }
         try {
-            message.send(messageWriter);
+            synchronized (writeLock) {
+                message.send(messageWriter);
+            }
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
@@ -146,6 +168,7 @@ public class SocketClient implements Client {
     public void close() {
         log.debug("Closing connection ..");
         connected = false;
+        clearEffects();
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
@@ -196,13 +219,13 @@ public class SocketClient implements Client {
                 return;
             case "SAY":
                 if (args.isEmpty()) {
-                    messageWriter.writeLine("Say what?");
+                    writeLineSafe("Say what?");
                 } else {
                     CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
                 }
                 return;
             default:
-                messageWriter.writeLine("Unknown command");
+                writeLineSafe("Unknown command");
         }
     }
 
@@ -224,19 +247,52 @@ public class SocketClient implements Client {
     private void sendLook() {
         RoomService.LookResult result = roomService.look(player.getUsername());
         for (String line : result.lines()) {
+            writeLineSafe(line);
+        }
+    }
+
+    private void sendMove(Direction direction) {
+        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
+        for (String line : result.lines()) {
+            writeLineSafe(line);
+        }
+    }
+
+    private void writeLineSafe(String message) {
+        synchronized (writeLock) {
             try {
-                messageWriter.writeLine(line);
+                messageWriter.writeLine(message);
             } catch (IOException e) {
-                log.error("Error sending room look", e);
-                return;
+                log.error("Error writing message", e);
             }
         }
     }
 
-    private void sendMove(Direction direction) throws IOException {
-        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
-        for (String line : result.lines()) {
-            messageWriter.writeLine(line);
+    private void registerEffects() {
+        if (!EffectSettings.enabled() || effectsInitialized) {
+            return;
         }
+        try {
+            EffectEngine engine = new EffectEngine(new JsonEffectRepository());
+            EffectMessageSink sink = new EffectMessageSink() {
+                @Override
+                public void sendToTarget(String message) {
+                    writeLineSafe(message);
+                }
+            };
+            effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, engine, sink)));
+        } catch (EffectRepositoryException e) {
+            log.error("Failed to initialize effects", e);
+            return;
+        }
+        effectsInitialized = true;
+    }
+
+    private void clearEffects() {
+        for (TickSubscription subscription : effectSubscriptions) {
+            subscription.unsubscribe();
+        }
+        effectSubscriptions.clear();
+        effectsInitialized = false;
     }
 }

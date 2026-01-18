@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.world.repository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
@@ -46,15 +47,25 @@ public class InMemoryRoomRepository implements RoomRepository {
             List.of()
         );
 
-        this.rooms = Map.of(
-            trainingYardId, trainingYard,
-            armoryId, armory,
-            courtyardId, courtyard
-        );
+        this.rooms = new ConcurrentHashMap<>();
+        this.rooms.put(trainingYardId, trainingYard);
+        this.rooms.put(armoryId, armory);
+        this.rooms.put(courtyardId, courtyard);
     }
 
     @Override
-    public Optional<Room> findById(RoomId id) {
+    public void save(Room room) throws RepositoryException {
+        if (room == null) {
+            throw new RepositoryException("Room is required");
+        }
+        rooms.put(room.getId(), room);
+    }
+
+    @Override
+    public Optional<Room> findById(RoomId id) throws RepositoryException {
+        if (id == null) {
+            throw new RepositoryException("Room id is required");
+        }
         return Optional.ofNullable(rooms.get(id));
     }
 }

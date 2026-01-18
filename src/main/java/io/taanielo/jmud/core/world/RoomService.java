@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 public class RoomService {
@@ -53,7 +55,7 @@ public class RoomService {
         if (destinationId == null) {
             return new MoveResult(false, List.of("You cannot go " + direction.label() + "."), room);
         }
-        Room destination = roomRepository.findById(destinationId).orElse(null);
+        Room destination = findRoom(destinationId).orElse(null);
         if (destination == null) {
             return new MoveResult(false, List.of("The way " + direction.label() + " is blocked."), room);
         }
@@ -67,7 +69,15 @@ public class RoomService {
 
     private Room loadRoomForPlayer(Username username) {
         RoomId roomId = ensurePlayerLocation(username);
-        return roomRepository.findById(roomId).orElse(null);
+        return findRoom(roomId).orElse(null);
+    }
+
+    private Optional<Room> findRoom(RoomId roomId) {
+        try {
+            return roomRepository.findById(roomId);
+        } catch (RepositoryException e) {
+            return Optional.empty();
+        }
     }
 
     private Room withOccupants(Room room) {

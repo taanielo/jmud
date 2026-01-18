@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,9 @@ class JsonRoomRepositoryTest {
             RoomId.of("sparring-ring"),
             "Sparring Ring",
             "A chalked ring surrounded by straw dummies.",
-            List.of(sword, potion)
+            Map.of(),
+            List.of(sword, potion),
+            List.of()
         );
         roomRepository.save(room);
 

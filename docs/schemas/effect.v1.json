@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:effect:v1",
+  "title": "Effect (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "duration_ticks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tick_interval": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "stacking": {
+      "type": "string",
+      "enum": [
+        "refresh",
+        "stack",
+        "ignore",
+        "replace"
+      ]
+    },
+    "modifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "stat",
+          "op",
+          "amount"
+        ],
+        "properties": {
+          "stat": {
+            "type": "string",
+            "minLength": 1
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "add",
+              "multiply"
+            ]
+          },
+          "amount": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "apply_self": {
+          "type": "string"
+        },
+        "apply_room": {
+          "type": "string"
+        },
+        "expire_self": {
+          "type": "string"
+        },
+        "expire_room": {
+          "type": "string"
+        },
+        "examine": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
