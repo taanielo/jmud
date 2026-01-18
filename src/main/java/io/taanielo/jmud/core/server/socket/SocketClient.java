@@ -12,7 +12,18 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.command.CommandRegistry;
+import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
+import io.taanielo.jmud.core.ability.AbilityCostResolver;
+import io.taanielo.jmud.core.ability.AbilityEngine;
+import io.taanielo.jmud.core.ability.AbilityRegistry;
+import io.taanielo.jmud.core.ability.AbilityTargetResolver;
+import io.taanielo.jmud.core.ability.AbilityUseResult;
+import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
+import io.taanielo.jmud.core.ability.CooldownTracker;
+import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
+import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
+import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
@@ -36,6 +47,7 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
+import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -50,9 +62,16 @@ public class SocketClient implements Client {
     private final RoomService roomService;
     private final ClientPool clientPool;
     private final TickRegistry tickRegistry;
+    private final AbilityRegistry abilityRegistry;
     private final Object writeLock = new Object();
     private final PromptRenderer promptRenderer = new PromptRenderer();
     private TextStyler textStyler;
+    private final AbilityTargetResolver abilityTargetResolver;
+    private final CooldownSystem abilityCooldowns = new CooldownSystem();
+    private final AbilityCooldownTracker cooldownTracker = new CooldownTracker(abilityCooldowns);
+    private final AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
+    private final AbilityEngine abilityEngine;
+    private TickSubscription cooldownSubscription;
 
     private OutputStream output;
     private InputStream input;
@@ -70,7 +89,8 @@ public class SocketClient implements Client {
         PlayerRepository playerRepository,
         RoomService roomService,
         TickRegistry tickRegistry,
-        ClientPool clientPool
+        ClientPool clientPool,
+        AbilityRegistry abilityRegistry
     ) throws IOException {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
@@ -80,7 +100,20 @@ public class SocketClient implements Client {
         this.roomService = roomService;
         this.clientPool = clientPool;
         this.tickRegistry = tickRegistry;
+        this.abilityRegistry = abilityRegistry;
+        this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
+        this.abilityEngine = createAbilityEngine(abilityRegistry);
         init();
+    }
+
+    private AbilityEngine createAbilityEngine(AbilityRegistry registry) {
+        try {
+            EffectEngine engine = new EffectEngine(new JsonEffectRepository());
+            DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(engine, new NoOpEffectMessageSink());
+            return new AbilityEngine(registry, abilityCostResolver, resolver);
+        } catch (EffectRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize ability effects: " + e.getMessage(), e);
+        }
     }
 
     private void init() {
@@ -98,6 +131,7 @@ public class SocketClient implements Client {
             log.error("Error connecting client", e);
         }
         textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
+        cooldownSubscription = tickRegistry.register(abilityCooldowns);
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);
         sendMessage(WelcomeMessage.of(textStyler, onlineCount));
         authenticated = false;
@@ -130,10 +164,19 @@ public class SocketClient implements Client {
                             .loadPlayer(authenticatedUser.getUsername())
                             .orElseGet(() -> {
                                 boolean ansiEnabled = OutputStyleSettings.ansiEnabledByDefault();
-                                Player newPlayer = Player.of(authenticatedUser, PromptSettings.defaultFormat(), ansiEnabled);
+                                Player newPlayer = Player.of(
+                                    authenticatedUser,
+                                    PromptSettings.defaultFormat(),
+                                    ansiEnabled,
+                                    abilityRegistry.abilityIds()
+                                );
                                 playerRepository.savePlayer(newPlayer);
                                 return newPlayer;
                             });
+                        if (player.getLearnedAbilities().isEmpty()) {
+                            player = player.withLearnedAbilities(abilityRegistry.abilityIds());
+                            playerRepository.savePlayer(player);
+                        }
                         textStyler = TextStylers.forEnabled(player.isAnsiEnabled());
                         roomService.ensurePlayerLocation(player.getUsername());
                         registerEffects();
@@ -181,6 +224,9 @@ public class SocketClient implements Client {
         log.debug("Closing connection ..");
         connected = false;
         clearEffects();
+        if (cooldownSubscription != null) {
+            cooldownSubscription.unsubscribe();
+        }
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
@@ -237,6 +283,10 @@ public class SocketClient implements Client {
                     CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
                     sendPrompt();
                 }
+                return;
+            case "CAST":
+            case "USE":
+                handleAbilityCommand(args);
                 return;
             case "ANSI":
                 handleAnsiCommand(args);
@@ -323,10 +373,69 @@ public class SocketClient implements Client {
             writeLineWithPrompt("ANSI is already " + (enabled ? "ON" : "OFF"));
             return;
         }
-        player = player.withAnsiEnabled(enabled);
-        playerRepository.savePlayer(player);
-        textStyler = TextStylers.forEnabled(enabled);
+        replacePlayer(player.withAnsiEnabled(enabled));
+        textStyler = TextStylers.forEnabled(player.isAnsiEnabled());
         writeLineWithPrompt("ANSI is now " + (enabled ? "ON" : "OFF"));
+    }
+
+    private void handleAbilityCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to use abilities.");
+            return;
+        }
+        AbilityUseResult result = abilityEngine.use(
+            player,
+            args,
+            player.getLearnedAbilities(),
+            abilityTargetResolver,
+            cooldownTracker
+        );
+        replacePlayer(result.source());
+        if (!result.target().getUsername().equals(player.getUsername())) {
+            updateTarget(result.target());
+        }
+        for (String message : result.messages()) {
+            writeLineSafe(message);
+        }
+        sendPrompt();
+    }
+
+    private void replacePlayer(Player updated) {
+        player = updated;
+        playerRepository.savePlayer(player);
+        if (effectsInitialized) {
+            clearEffects();
+            registerEffects();
+        }
+    }
+
+    private void updateTarget(Player updatedTarget) {
+        playerRepository.savePlayer(updatedTarget);
+        for (Client client : clientPool.clients()) {
+            if (client instanceof SocketClient socketClient) {
+                if (socketClient.isAuthenticatedUser(updatedTarget.getUsername())) {
+                    socketClient.applyExternalPlayerUpdate(updatedTarget);
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean isAuthenticatedUser(Username username) {
+        return authenticated && player != null && player.getUsername().equals(username);
+    }
+
+    private void applyExternalPlayerUpdate(Player updated) {
+        if (!isAuthenticatedUser(updated.getUsername())) {
+            return;
+        }
+        replacePlayer(updated);
+    }
+
+    private static class NoOpEffectMessageSink implements EffectMessageSink {
+        @Override
+        public void sendToTarget(String message) {
+        }
     }
 
     private void registerEffects() {

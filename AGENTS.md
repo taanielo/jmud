@@ -12,6 +12,7 @@ The goal is to ensure **correctness under concurrency**, **predictable game beha
 * Game rules must be **deterministic** and **server-authoritative**
 * Concurrency must be **explicitly designed**, never accidental
 * Modern Java features are preferred when they improve clarity and safety
+* Prefer **value objects** over primitives for domain concepts; use primitives sparingly
 
 Agents must behave like a cautious backend engineer operating a real-time multiplayer system.
 
@@ -199,6 +200,7 @@ Agents must:
 * Make one logical change per PR
 * Avoid cross-cutting refactors without confirmation
 * Preserve save-game compatibility unless explicitly approved
+* Keep game data (abilities, spells, items, rooms, effects, etc.) in JSON under `data/` with versioned schemas
 
 Breaking changes to game rules must be clearly documented.
 

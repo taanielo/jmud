@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "spell.fireball.greater",
+  "name": "greater fireball",
+  "type": "SPELL",
+  "level": 2,
+  "cost": {
+    "mana": 5
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["fireball"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 9
+    }
+  ]
+}

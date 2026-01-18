@@ -18,6 +18,7 @@ Each JSON file includes a `schema_version` field. Versioned JSON schemas live un
 
 - Items: `docs/schemas/item.v1.json`
 - Rooms: `docs/schemas/room.v1.json`
+- Abilities (skills/spells): `docs/schemas/ability.v1.json`
 
 ## Examples
 
@@ -50,6 +51,34 @@ Room example (`data/rooms/training-yard.json`):
   "item_ids": [
     "iron-sword",
     "health-potion"
+  ]
+}
+```
+
+Ability example (`data/skills/spell.heal.json`):
+
+```json
+{
+  "schema_version": 1,
+  "id": "spell.heal",
+  "name": "heal",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 4
+  },
+  "cooldown": {
+    "ticks": 3
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["healing"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "INCREASE",
+      "amount": 6
+    }
   ]
 }
 ```

@@ -28,6 +28,11 @@ public class CooldownSystem implements Tickable {
         return remaining != null && remaining.get() > 0;
     }
 
+    public int remainingTicks(String key) {
+        AtomicInteger remaining = cooldowns.get(key);
+        return remaining == null ? 0 : remaining.get();
+    }
+
     @Override
     public void tick() {
         for (Map.Entry<String, AtomicInteger> entry : cooldowns.entrySet()) {

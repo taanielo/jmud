@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "skill.bash",
+  "name": "bash",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {
+    "move": 3
+  },
+  "cooldown": {
+    "ticks": 3
+  },
+  "targeting": "HARMFUL",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 4
+    }
+  ]
+}

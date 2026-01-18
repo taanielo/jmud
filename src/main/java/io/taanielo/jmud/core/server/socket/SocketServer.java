@@ -8,6 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistryImpl;
+import io.taanielo.jmud.core.ability.AbilityRegistry;
+import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
+import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
@@ -33,6 +36,7 @@ public class SocketServer implements Server {
     private final RoomService roomService;
     private final TickRegistry tickRegistry;
     private final FixedRateTickScheduler tickScheduler;
+    private final AbilityRegistry abilityRegistry;
 
     public SocketServer(int port, ClientPool clientPool) {
         this.port = port;
@@ -44,6 +48,7 @@ public class SocketServer implements Server {
         this.roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
         this.tickRegistry = new TickRegistry();
         this.tickScheduler = new FixedRateTickScheduler(tickRegistry);
+        this.abilityRegistry = loadAbilities();
     }
 
     @Override
@@ -63,7 +68,8 @@ public class SocketServer implements Server {
                         playerRepository,
                         roomService,
                         tickRegistry,
-                        clientPool
+                        clientPool,
+                        abilityRegistry
                     );
                     clientPool.add(client);
                 } catch (IOException e) {
@@ -77,5 +83,13 @@ public class SocketServer implements Server {
             tickRegistry.clear();
         }
 
+    }
+
+    private AbilityRegistry loadAbilities() {
+        try {
+            return new AbilityRegistry(new JsonAbilityRepository().findAll());
+        } catch (AbilityRepositoryException e) {
+            throw new IllegalStateException("Failed to load abilities: " + e.getMessage(), e);
+        }
     }
 }
