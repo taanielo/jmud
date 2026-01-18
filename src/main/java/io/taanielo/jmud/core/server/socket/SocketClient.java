@@ -93,7 +93,7 @@ public class SocketClient implements Client {
         } catch (IOException e) {
             log.error("Error connecting client", e);
         }
-        int onlineCount = clientPool.clients().size();
+        int onlineCount = Math.max(0, clientPool.clients().size() - 1);
         sendMessage(WelcomeMessage.of(onlineCount));
         authenticated = false;
 
