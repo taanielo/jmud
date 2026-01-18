@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
@@ -30,8 +31,22 @@ class JsonRoomRepositoryTest {
         JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
         JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
 
-        Item sword = new Item(ItemId.of("practice-sword"), "Practice Sword", "A blunted sword for sparring.");
-        Item potion = new Item(ItemId.of("minor-potion"), "Minor Potion", "A small vial for quick recovery.");
+        Item sword = new Item(
+            ItemId.of("practice-sword"),
+            "Practice Sword",
+            "A blunted sword for sparring.",
+            ItemAttributes.empty(),
+            List.of(),
+            12
+        );
+        Item potion = new Item(
+            ItemId.of("minor-potion"),
+            "Minor Potion",
+            "A small vial for quick recovery.",
+            ItemAttributes.empty(),
+            List.of(),
+            8
+        );
         itemRepository.save(sword);
         itemRepository.save(potion);
 

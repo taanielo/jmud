@@ -70,7 +70,14 @@ class RoomServiceTest {
     @Test
     void lookShowsExitsItemsAndOccupants() {
         RoomId roomAId = RoomId.of("a");
-        Item item = new Item(ItemId.of("torch"), "Torch", "A warm torch.");
+        Item item = new Item(
+            ItemId.of("torch"),
+            "Torch",
+            "A warm torch.",
+            ItemAttributes.empty(),
+            List.of(),
+            5
+        );
         Room roomA = new Room(
             roomAId,
             "Room A",

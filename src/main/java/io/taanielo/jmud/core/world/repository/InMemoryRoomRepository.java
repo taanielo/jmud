@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
@@ -25,7 +26,14 @@ public class InMemoryRoomRepository implements RoomRepository {
             "Training Yard",
             "A dusty yard with practice dummies and scattered weapons.",
             Map.of(Direction.NORTH, armoryId, Direction.EAST, courtyardId),
-            List.of(new Item(ItemId.of("iron-sword"), "Iron Sword", "A plain iron sword with a worn leather grip.")),
+            List.of(new Item(
+                ItemId.of("iron-sword"),
+                "Iron Sword",
+                "A plain iron sword with a worn leather grip.",
+                ItemAttributes.empty(),
+                List.of(),
+                25
+            )),
             List.of()
         );
 
@@ -34,7 +42,14 @@ public class InMemoryRoomRepository implements RoomRepository {
             "Armory",
             "A compact room lined with weapon racks and oiled leather armor.",
             Map.of(Direction.SOUTH, trainingYardId),
-            List.of(new Item(ItemId.of("training-shield"), "Training Shield", "A wooden shield used for drills.")),
+            List.of(new Item(
+                ItemId.of("training-shield"),
+                "Training Shield",
+                "A wooden shield used for drills.",
+                ItemAttributes.empty(),
+                List.of(),
+                15
+            )),
             List.of()
         );
 

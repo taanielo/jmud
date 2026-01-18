@@ -7,11 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -25,7 +27,14 @@ class JsonItemRepositoryTest {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);
 
-        Item item = new Item(ItemId.of("rusty-dagger"), "Rusty Dagger", "A dull blade with a chipped edge.");
+        Item item = new Item(
+            ItemId.of("rusty-dagger"),
+            "Rusty Dagger",
+            "A dull blade with a chipped edge.",
+            ItemAttributes.empty(),
+            List.of(),
+            3
+        );
         repository.save(item);
 
         Optional<Item> loaded = repository.findById(ItemId.of("rusty-dagger"));
