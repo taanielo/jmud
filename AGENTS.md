@@ -51,6 +51,26 @@ Infrastructure (networking, persistence, scheduling) must not leak into domain l
 
 ---
 
+### 3.2 Clean Architecture Guide
+
+* Layers (from inner to outer): **Domain** → **Application/Use Cases** → **Interface/Adapters** → **Infrastructure**
+* Dependency rule: outer layers depend on inner layers only; never the reverse
+* Domain layer: entities, value objects, domain services, domain exceptions
+* Application layer: orchestration/use cases; coordinates repositories and domain services
+* Interface/Adapters: controllers, command parsing, socket adapters, DTO mapping
+* Infrastructure: persistence, networking, scheduling, file I/O, JSON repositories
+* Repository interfaces live in the domain; implementations live in infrastructure
+* Anti-patterns:
+  * Framework annotations or I/O in domain models
+  * Domain code calling JSON mappers or socket APIs directly
+
+Examples (current packages):
+* `io.taanielo.jmud.core.player`, `io.taanielo.jmud.core.combat` → Domain
+* `io.taanielo.jmud.core.server.socket` → Interface/Adapters
+* `io.taanielo.jmud.core.*.repository.json` → Infrastructure
+
+---
+
 ## 4. Concurrency & Thread Safety (Critical)
 
 This is a multi-user, concurrent system. Thread safety is not optional.
