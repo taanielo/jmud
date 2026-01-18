@@ -8,6 +8,7 @@ public class PlayerVitals {
 
     private final int hp;
     private final int maxHp;
+    private final int baseMaxHp;
     private final int mana;
     private final int maxMana;
     private final int move;
@@ -17,20 +18,35 @@ public class PlayerVitals {
         return new PlayerVitals(DEFAULT_MAX, DEFAULT_MAX, DEFAULT_MAX, DEFAULT_MAX, DEFAULT_MAX, DEFAULT_MAX);
     }
 
+    public PlayerVitals(
+        int hp,
+        int maxHp,
+        int mana,
+        int maxMana,
+        int move,
+        int maxMove
+    ) {
+        this(hp, maxHp, maxHp, mana, maxMana, move, maxMove);
+    }
+
     @JsonCreator
     public PlayerVitals(
         @JsonProperty("hp") int hp,
         @JsonProperty("maxHp") int maxHp,
+        @JsonProperty("baseMaxHp") Integer baseMaxHp,
         @JsonProperty("mana") int mana,
         @JsonProperty("maxMana") int maxMana,
         @JsonProperty("move") int move,
         @JsonProperty("maxMove") int maxMove
     ) {
+        int resolvedBaseMaxHp = baseMaxHp == null || baseMaxHp <= 0 ? maxHp : baseMaxHp;
         validate(hp, maxHp, "hp");
+        validateMax(resolvedBaseMaxHp, "base max hp");
         validate(mana, maxMana, "mana");
         validate(move, maxMove, "move");
         this.hp = hp;
         this.maxHp = maxHp;
+        this.baseMaxHp = resolvedBaseMaxHp;
         this.mana = mana;
         this.maxMana = maxMana;
         this.move = move;
@@ -38,14 +54,18 @@ public class PlayerVitals {
     }
 
     private static void validate(int value, int max, String label) {
-        if (max <= 0) {
-            throw new IllegalArgumentException("Max " + label + " must be positive");
-        }
+        validateMax(max, "max " + label);
         if (value < 0) {
             throw new IllegalArgumentException(label + " must be non-negative");
         }
         if (value > max) {
             throw new IllegalArgumentException(label + " cannot exceed max " + label);
+        }
+    }
+
+    private static void validateMax(int max, String label) {
+        if (max <= 0) {
+            throw new IllegalArgumentException(label + " must be positive");
         }
     }
 
@@ -63,6 +83,14 @@ public class PlayerVitals {
 
     public int getMaxHp() {
         return maxHp;
+    }
+
+    public int baseMaxHp() {
+        return baseMaxHp;
+    }
+
+    public int getBaseMaxHp() {
+        return baseMaxHp;
     }
 
     public int mana() {
@@ -100,37 +128,43 @@ public class PlayerVitals {
     public PlayerVitals damage(int amount) {
         validateAmount(amount, "Damage");
         int nextHp = Math.max(0, hp - amount);
-        return new PlayerVitals(nextHp, maxHp, mana, maxMana, move, maxMove);
+        return new PlayerVitals(nextHp, maxHp, baseMaxHp, mana, maxMana, move, maxMove);
     }
 
     public PlayerVitals heal(int amount) {
         validateAmount(amount, "Heal");
         int nextHp = Math.min(maxHp, hp + amount);
-        return new PlayerVitals(nextHp, maxHp, mana, maxMana, move, maxMove);
+        return new PlayerVitals(nextHp, maxHp, baseMaxHp, mana, maxMana, move, maxMove);
+    }
+
+    public PlayerVitals withMaxHp(int maxHp) {
+        validateMax(maxHp, "max hp");
+        int nextHp = Math.min(hp, maxHp);
+        return new PlayerVitals(nextHp, maxHp, baseMaxHp, mana, maxMana, move, maxMove);
     }
 
     public PlayerVitals consumeMana(int amount) {
         validateAmount(amount, "Mana consumption");
         int nextMana = Math.max(0, mana - amount);
-        return new PlayerVitals(hp, maxHp, nextMana, maxMana, move, maxMove);
+        return new PlayerVitals(hp, maxHp, baseMaxHp, nextMana, maxMana, move, maxMove);
     }
 
     public PlayerVitals restoreMana(int amount) {
         validateAmount(amount, "Mana restoration");
         int nextMana = Math.min(maxMana, mana + amount);
-        return new PlayerVitals(hp, maxHp, nextMana, maxMana, move, maxMove);
+        return new PlayerVitals(hp, maxHp, baseMaxHp, nextMana, maxMana, move, maxMove);
     }
 
     public PlayerVitals consumeMove(int amount) {
         validateAmount(amount, "Move consumption");
         int nextMove = Math.max(0, move - amount);
-        return new PlayerVitals(hp, maxHp, mana, maxMana, nextMove, maxMove);
+        return new PlayerVitals(hp, maxHp, baseMaxHp, mana, maxMana, nextMove, maxMove);
     }
 
     public PlayerVitals restoreMove(int amount) {
         validateAmount(amount, "Move restoration");
         int nextMove = Math.min(maxMove, move + amount);
-        return new PlayerVitals(hp, maxHp, mana, maxMana, nextMove, maxMove);
+        return new PlayerVitals(hp, maxHp, baseMaxHp, mana, maxMana, nextMove, maxMove);
     }
 
     private void validateAmount(int amount, String label) {

@@ -43,6 +43,9 @@ import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.EffectSettings;
 import io.taanielo.jmud.core.effects.PlayerEffectTicker;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
+import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.healing.HealingSettings;
+import io.taanielo.jmud.core.healing.PlayerHealingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
@@ -72,6 +75,7 @@ public class SocketClient implements Client {
     private final AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
     private final AbilityEngine abilityEngine;
     private TickSubscription cooldownSubscription;
+    private TickSubscription healingSubscription;
 
     private OutputStream output;
     private InputStream input;
@@ -81,6 +85,7 @@ public class SocketClient implements Client {
     private Player player;
     private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
     private boolean effectsInitialized;
+    private boolean healingInitialized;
 
     public SocketClient(
         Socket clientSocket,
@@ -180,6 +185,7 @@ public class SocketClient implements Client {
                         textStyler = TextStylers.forEnabled(player.isAnsiEnabled());
                         roomService.ensurePlayerLocation(player.getUsername());
                         registerEffects();
+                        registerHealing();
                         sendLook();
                     });
                 } else {
@@ -224,6 +230,7 @@ public class SocketClient implements Client {
         log.debug("Closing connection ..");
         connected = false;
         clearEffects();
+        clearHealing();
         if (cooldownSubscription != null) {
             cooldownSubscription.unsubscribe();
         }
@@ -409,6 +416,11 @@ public class SocketClient implements Client {
         }
     }
 
+    private void applyHealingUpdate(Player updated) {
+        player = updated;
+        playerRepository.savePlayer(player);
+    }
+
     private void updateTarget(Player updatedTarget) {
         playerRepository.savePlayer(updatedTarget);
         for (Client client : clientPool.clients()) {
@@ -459,12 +471,37 @@ public class SocketClient implements Client {
         effectsInitialized = true;
     }
 
+    private void registerHealing() {
+        if (!HealingSettings.enabled() || healingInitialized) {
+            return;
+        }
+        try {
+            HealingEngine engine = new HealingEngine(new JsonEffectRepository());
+            int baseHeal = HealingSettings.baseHpPerTick();
+            healingSubscription = tickRegistry.register(
+                new PlayerHealingTicker(() -> player, this::applyHealingUpdate, engine, baseHeal)
+            );
+        } catch (EffectRepositoryException e) {
+            log.error("Failed to initialize healing", e);
+            return;
+        }
+        healingInitialized = true;
+    }
+
     private void clearEffects() {
         for (TickSubscription subscription : effectSubscriptions) {
             subscription.unsubscribe();
         }
         effectSubscriptions.clear();
         effectsInitialized = false;
+    }
+
+    private void clearHealing() {
+        if (healingSubscription != null) {
+            healingSubscription.unsubscribe();
+            healingSubscription = null;
+        }
+        healingInitialized = false;
     }
 
     private void sendPrompt() {
