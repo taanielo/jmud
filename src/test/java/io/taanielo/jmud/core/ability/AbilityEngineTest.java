@@ -54,7 +54,9 @@ class AbilityEngineTest {
             java.util.List.of(),
             "prompt",
             false,
-            List.of(AbilityId.of("spell.heal"))
+            List.of(AbilityId.of("spell.heal")),
+            null,
+            null
         );
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
@@ -104,7 +106,9 @@ class AbilityEngineTest {
             java.util.List.of(),
             "prompt",
             false,
-            List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"))
+            List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater")),
+            null,
+            null
         );
         Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
@@ -130,7 +134,9 @@ class AbilityEngineTest {
             java.util.List.of(),
             "prompt",
             false,
-            List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"))
+            List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater")),
+            null,
+            null
         );
         Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);

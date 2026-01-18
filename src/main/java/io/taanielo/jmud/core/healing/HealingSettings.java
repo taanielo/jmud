@@ -22,4 +22,5 @@ public final class HealingSettings {
         }
         return base;
     }
+
 }

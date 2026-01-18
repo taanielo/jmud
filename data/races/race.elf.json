@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "elf",
+  "name": "Elf",
+  "healing": {
+    "base_modifier": -2
+  }
+}
