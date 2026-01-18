@@ -18,14 +18,17 @@ import io.taanielo.jmud.core.player.PlayerVitals;
 
 class AbilityEngineTest {
 
+    private final TestAbilityMessageSink messageSink = new TestAbilityMessageSink();
     private final AbilityEngine engine = new AbilityEngine(
         testRegistry(),
         new BasicAbilityCostResolver(),
-        new TestAbilityEffectResolver()
+        new TestAbilityEffectResolver(),
+        messageSink
     );
 
     @Test
     void usesHigherLevelAbilityWhenAliasesOverlap() {
+        messageSink.clear();
         Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
         Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
@@ -36,11 +39,12 @@ class AbilityEngineTest {
 
         assertEquals("bob", result.target().getUsername().getValue());
         assertEquals(11, result.target().getVitals().hp());
-        assertTrue(result.messages().getFirst().contains("greater fireball"));
+        assertTrue(messageSink.sourceMessages.getFirst().contains("greater fireball"));
     }
 
     @Test
     void defaultsBeneficialAbilityToSelf() {
+        messageSink.clear();
         PlayerVitals vitals = new PlayerVitals(10, 20, 20, 20, 20, 20);
         Player source = new Player(
             User.of(Username.of("healer"), Password.of("pw")),
@@ -64,6 +68,7 @@ class AbilityEngineTest {
 
     @Test
     void requiresTargetForHarmfulAbilities() {
+        messageSink.clear();
         Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
@@ -76,6 +81,7 @@ class AbilityEngineTest {
 
     @Test
     void rejectsUnlearnedAbility() {
+        messageSink.clear();
         Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
@@ -88,6 +94,7 @@ class AbilityEngineTest {
 
     @Test
     void enforcesCooldownsAndCosts() {
+        messageSink.clear();
         PlayerVitals vitals = new PlayerVitals(20, 20, 10, 20, 20, 20);
         Player source = new Player(
             User.of(Username.of("alice"), Password.of("pw")),
@@ -107,12 +114,13 @@ class AbilityEngineTest {
         AbilityUseResult first = engine.use(source, "fireball bob", learned, resolver, cooldowns);
         AbilityUseResult second = engine.use(first.source(), "fireball bob", learned, resolver, cooldowns);
 
-        assertTrue(first.messages().getFirst().contains("greater fireball"));
+        assertTrue(messageSink.sourceMessages.getFirst().contains("greater fireball"));
         assertTrue(second.messages().getFirst().contains("cooldown"));
     }
 
     @Test
     void rejectsUseWhenResourcesAreLow() {
+        messageSink.clear();
         PlayerVitals vitals = new PlayerVitals(20, 20, 0, 20, 20, 20);
         Player source = new Player(
             User.of(Username.of("alice"), Password.of("pw")),
@@ -144,7 +152,8 @@ class AbilityEngineTest {
             new AbilityCooldown(3),
             AbilityTargeting.HARMFUL,
             List.of(),
-            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 4, null))
+            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 4, null)),
+            null
         );
         Ability fireball = new AbilityDefinition(
             AbilityId.of("spell.fireball"),
@@ -155,7 +164,8 @@ class AbilityEngineTest {
             new AbilityCooldown(4),
             AbilityTargeting.HARMFUL,
             List.of(),
-            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 6, null))
+            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 6, null)),
+            null
         );
         Ability greaterFireball = new AbilityDefinition(
             AbilityId.of("spell.fireball.greater"),
@@ -166,7 +176,8 @@ class AbilityEngineTest {
             new AbilityCooldown(5),
             AbilityTargeting.HARMFUL,
             List.of("fireball"),
-            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 9, null))
+            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 9, null)),
+            null
         );
         Ability heal = new AbilityDefinition(
             AbilityId.of("spell.heal"),
@@ -177,7 +188,8 @@ class AbilityEngineTest {
             new AbilityCooldown(3),
             AbilityTargeting.BENEFICIAL,
             List.of("healing"),
-            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.INCREASE, 6, null))
+            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.INCREASE, 6, null)),
+            null
         );
         return new AbilityRegistry(List.of(bash, fireball, greaterFireball, heal));
     }
@@ -199,6 +211,33 @@ class AbilityEngineTest {
         @Override
         public void startCooldown(AbilityId abilityId, int ticks) {
             cooldowns.put(abilityId, ticks);
+        }
+    }
+
+    private static class TestAbilityMessageSink implements AbilityMessageSink {
+        private final List<String> sourceMessages = new java.util.ArrayList<>();
+        private final List<String> targetMessages = new java.util.ArrayList<>();
+        private final List<String> roomMessages = new java.util.ArrayList<>();
+
+        @Override
+        public void sendToSource(Player source, String message) {
+            sourceMessages.add(message);
+        }
+
+        @Override
+        public void sendToTarget(Player target, String message) {
+            targetMessages.add(message);
+        }
+
+        @Override
+        public void sendToRoom(Player source, Player target, String message) {
+            roomMessages.add(message);
+        }
+
+        private void clear() {
+            sourceMessages.clear();
+            targetMessages.clear();
+            roomMessages.clear();
         }
     }
 

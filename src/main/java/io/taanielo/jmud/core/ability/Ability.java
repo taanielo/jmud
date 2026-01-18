@@ -21,6 +21,8 @@ public interface Ability {
 
     List<AbilityEffect> effects();
 
+    AbilityMessages messages();
+
     default boolean canUse(AbilityContext context) {
         return true;
     }

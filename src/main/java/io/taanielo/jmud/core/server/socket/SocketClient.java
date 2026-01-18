@@ -15,6 +15,7 @@ import io.taanielo.jmud.command.CommandRegistry;
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityEngine;
+import io.taanielo.jmud.core.ability.AbilityMessageSink;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityUseResult;
@@ -52,6 +53,7 @@ import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
 @Slf4j
@@ -75,6 +77,7 @@ public class SocketClient implements Client {
     private final AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
     private final AbilityEngine abilityEngine;
     private TickSubscription cooldownSubscription;
+    private final AbilityMessageSink abilityMessageSink;
     private TickSubscription healingSubscription;
 
     private OutputStream output;
@@ -107,6 +110,7 @@ public class SocketClient implements Client {
         this.tickRegistry = tickRegistry;
         this.abilityRegistry = abilityRegistry;
         this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
+        this.abilityMessageSink = new SocketAbilityMessageSink();
         this.abilityEngine = createAbilityEngine(abilityRegistry);
         init();
     }
@@ -115,7 +119,7 @@ public class SocketClient implements Client {
         try {
             EffectEngine engine = new EffectEngine(new JsonEffectRepository());
             DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(engine, new NoOpEffectMessageSink());
-            return new AbilityEngine(registry, abilityCostResolver, resolver);
+            return new AbilityEngine(registry, abilityCostResolver, resolver, abilityMessageSink);
         } catch (EffectRepositoryException e) {
             throw new IllegalStateException("Failed to initialize ability effects: " + e.getMessage(), e);
         }
@@ -447,6 +451,57 @@ public class SocketClient implements Client {
     private static class NoOpEffectMessageSink implements EffectMessageSink {
         @Override
         public void sendToTarget(String message) {
+        }
+    }
+
+    private class SocketAbilityMessageSink implements AbilityMessageSink {
+        @Override
+        public void sendToSource(Player source, String message) {
+            if (message == null || message.isBlank()) {
+                return;
+            }
+            writeLineSafe(message);
+        }
+
+        @Override
+        public void sendToTarget(Player target, String message) {
+            if (message == null || message.isBlank()) {
+                return;
+            }
+            sendToPlayer(target, message);
+        }
+
+        @Override
+        public void sendToRoom(Player source, Player target, String message) {
+            if (message == null || message.isBlank()) {
+                return;
+            }
+            RoomService.LookResult look = roomService.look(source.getUsername());
+            Room room = look.room();
+            if (room == null || room.getOccupants().isEmpty()) {
+                return;
+            }
+            for (Username occupant : room.getOccupants()) {
+                if (occupant.equals(source.getUsername()) || occupant.equals(target.getUsername())) {
+                    continue;
+                }
+                sendToUsername(occupant, message);
+            }
+        }
+
+        private void sendToPlayer(Player target, String message) {
+            sendToUsername(target.getUsername(), message);
+        }
+
+        private void sendToUsername(Username username, String message) {
+            for (Client client : clientPool.clients()) {
+                if (client instanceof SocketClient socketClient) {
+                    if (socketClient.isAuthenticatedUser(username)) {
+                        socketClient.writeLineSafe(message);
+                        return;
+                    }
+                }
+            }
         }
     }
 

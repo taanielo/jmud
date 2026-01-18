@@ -11,11 +11,18 @@ public class AbilityEngine {
     private final AbilityRegistry registry;
     private final AbilityCostResolver costResolver;
     private final AbilityEffectResolver effectResolver;
+    private final AbilityMessageSink messageSink;
 
-    public AbilityEngine(AbilityRegistry registry, AbilityCostResolver costResolver, AbilityEffectResolver effectResolver) {
+    public AbilityEngine(
+        AbilityRegistry registry,
+        AbilityCostResolver costResolver,
+        AbilityEffectResolver effectResolver,
+        AbilityMessageSink messageSink
+    ) {
         this.registry = Objects.requireNonNull(registry, "Ability registry is required");
         this.costResolver = Objects.requireNonNull(costResolver, "Ability cost resolver is required");
         this.effectResolver = Objects.requireNonNull(effectResolver, "Ability effect resolver is required");
+        this.messageSink = Objects.requireNonNull(messageSink, "Ability message sink is required");
     }
 
     public AbilityUseResult use(
@@ -70,13 +77,14 @@ public class AbilityEngine {
             cooldowns.startCooldown(ability.id(), ability.cooldown().ticks());
         }
 
-        List<String> messages = new ArrayList<>();
-        String abilityName = ability.name();
-        if (context.source().getUsername().equals(context.target().getUsername())) {
-            messages.add("You use " + abilityName + " on yourself.");
-        } else {
-            messages.add("You use " + abilityName + " on " + context.target().getUsername().getValue() + ".");
+        AbilityMessages resolved = resolveMessages(ability, context);
+        messageSink.sendToSource(context.source(), resolved.self());
+        if (!context.source().getUsername().equals(context.target().getUsername())) {
+            messageSink.sendToTarget(context.target(), resolved.target());
         }
+        messageSink.sendToRoom(context.source(), context.target(), resolved.room());
+
+        List<String> messages = new ArrayList<>();
         for (AbilityEffect effect : ability.effects()) {
             messages.add(formatEffect(effect, context.target()));
         }
@@ -105,5 +113,52 @@ public class AbilityEngine {
             }
             case EFFECT -> target.getUsername().getValue() + " is affected by " + effect.effectId() + ".";
         };
+    }
+
+    private AbilityMessages resolveMessages(Ability ability, AbilityContext context) {
+        AbilityMessages messages = ability.messages();
+        String sourceName = context.source().getUsername().getValue();
+        String targetName = context.target().getUsername().getValue();
+        String abilityName = ability.name();
+
+        String selfTemplate;
+        String targetTemplate;
+        String roomTemplate;
+
+        if (messages == null) {
+            if (sourceName.equals(targetName)) {
+                selfTemplate = "You use {ability} on yourself.";
+                targetTemplate = "{source} uses {ability} on themselves.";
+                roomTemplate = "{source} uses {ability} on themselves.";
+            } else {
+                selfTemplate = "You use {ability} on {target}.";
+                targetTemplate = "{source} uses {ability} on you.";
+                roomTemplate = "{source} uses {ability} on {target}.";
+            }
+        } else {
+            selfTemplate = normalize(messages.self(), "You use {ability} on {target}.");
+            targetTemplate = normalize(messages.target(), "{source} uses {ability} on you.");
+            roomTemplate = normalize(messages.room(), "{source} uses {ability} on {target}.");
+        }
+
+        return new AbilityMessages(
+            format(selfTemplate, sourceName, targetName, abilityName),
+            format(targetTemplate, sourceName, targetName, abilityName),
+            format(roomTemplate, sourceName, targetName, abilityName)
+        );
+    }
+
+    private String normalize(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return value.trim();
+    }
+
+    private String format(String template, String sourceName, String targetName, String abilityName) {
+        return template
+            .replace("{source}", sourceName)
+            .replace("{target}", targetName)
+            .replace("{ability}", abilityName);
     }
 }

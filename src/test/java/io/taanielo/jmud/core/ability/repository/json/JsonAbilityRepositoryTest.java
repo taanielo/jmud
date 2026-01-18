@@ -42,7 +42,12 @@ class JsonAbilityRepositoryTest {
               \"aliases\": [\"healing\"],
               \"effects\": [
                 {\"kind\": \"VITALS\", \"stat\": \"HP\", \"operation\": \"INCREASE\", \"amount\": 6}
-              ]
+              ],
+              \"messages\": {
+                \"self\": \"You cast {ability} on {target}.\",
+                \"target\": \"{source} casts {ability} on you.\",
+                \"room\": \"{source} casts {ability} on {target}.\"
+              }
             }
             """);
 
@@ -55,6 +60,7 @@ class JsonAbilityRepositoryTest {
         assertEquals(AbilityType.SPELL, ability.type());
         assertEquals(AbilityTargeting.BENEFICIAL, ability.targeting());
         assertEquals(1, ability.effects().size());
+        assertEquals("You cast {ability} on {target}.", ability.messages().self());
         assertEquals(AbilityEffectKind.VITALS, ability.effects().getFirst().kind());
         assertEquals(AbilityStat.HP, ability.effects().getFirst().stat());
         assertEquals(AbilityOperation.INCREASE, ability.effects().getFirst().operation());

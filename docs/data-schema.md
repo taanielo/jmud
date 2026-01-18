@@ -79,6 +79,13 @@ Ability example (`data/skills/spell.heal.json`):
       "operation": "INCREASE",
       "amount": 6
     }
-  ]
+  ],
+  "messages": {
+    "self": "You cast {ability} on {target}.",
+    "target": "{source} casts {ability} on you.",
+    "room": "{source} casts {ability} on {target}."
+  }
 }
 ```
+
+Message templates support `{source}`, `{target}`, and `{ability}` placeholders.
