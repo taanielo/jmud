@@ -4,8 +4,11 @@ import java.io.IOException;
 
 import lombok.Value;
 
+import io.taanielo.jmud.core.output.TextStyler;
+
 @Value(staticConstructor = "of")
 public class WelcomeMessage implements Message {
+    TextStyler textStyler;
     int onlineCount;
 
     private static final String[] BANNER = {
@@ -25,15 +28,15 @@ public class WelcomeMessage implements Message {
         messageWriter.writeLine();
         messageWriter.writeLine();
         for (String line : BANNER) {
-            messageWriter.writeLine(line);
+            messageWriter.writeLine(textStyler.banner(line));
         }
         messageWriter.writeLine();
-        messageWriter.writeLine("Welcome to Xolo MUD!");
+        messageWriter.writeLine(textStyler.title("Welcome to Xolo MUD!"));
         for (String line : DESCRIPTION) {
-            messageWriter.writeLine(line);
+            messageWriter.writeLine(textStyler.info(line));
         }
         messageWriter.writeLine();
-        messageWriter.writeLine("Players online: " + onlineCount);
+        messageWriter.writeLine(textStyler.info("Players online: " + onlineCount));
         messageWriter.writeLine();
         messageWriter.write("Please enter your name: ");
     }

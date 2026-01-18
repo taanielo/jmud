@@ -36,7 +36,8 @@ class EffectEngineTest {
             0,
             PlayerVitals.defaults(),
             new ArrayList<>(List.of(new EffectInstance(id, 1, 1))),
-            "HP {hp}/{maxHp}"
+            "HP {hp}/{maxHp}",
+            false
         );
 
         engine.apply(player, id, new RecordingSink());
@@ -64,7 +65,8 @@ class EffectEngineTest {
             0,
             PlayerVitals.defaults(),
             new ArrayList<>(List.of(new EffectInstance(id, 1, 1))),
-            "HP {hp}/{maxHp}"
+            "HP {hp}/{maxHp}",
+            false
         );
         RecordingSink sink = new RecordingSink();
 

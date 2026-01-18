@@ -19,6 +19,9 @@ import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageWriter;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
+import io.taanielo.jmud.core.output.OutputStyleSettings;
+import io.taanielo.jmud.core.output.TextStyler;
+import io.taanielo.jmud.core.output.TextStylers;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
@@ -49,6 +52,7 @@ public class SocketClient implements Client {
     private final TickRegistry tickRegistry;
     private final Object writeLock = new Object();
     private final PromptRenderer promptRenderer = new PromptRenderer();
+    private TextStyler textStyler;
 
     private OutputStream output;
     private InputStream input;
@@ -93,8 +97,9 @@ public class SocketClient implements Client {
         } catch (IOException e) {
             log.error("Error connecting client", e);
         }
+        textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);
-        sendMessage(WelcomeMessage.of(onlineCount));
+        sendMessage(WelcomeMessage.of(textStyler, onlineCount));
         authenticated = false;
 
 
@@ -124,10 +129,12 @@ public class SocketClient implements Client {
                         player = playerRepository
                             .loadPlayer(authenticatedUser.getUsername())
                             .orElseGet(() -> {
-                                Player newPlayer = Player.of(authenticatedUser, PromptSettings.defaultFormat());
+                                boolean ansiEnabled = OutputStyleSettings.ansiEnabledByDefault();
+                                Player newPlayer = Player.of(authenticatedUser, PromptSettings.defaultFormat(), ansiEnabled);
                                 playerRepository.savePlayer(newPlayer);
                                 return newPlayer;
                             });
+                        textStyler = TextStylers.forEnabled(player.isAnsiEnabled());
                         roomService.ensurePlayerLocation(player.getUsername());
                         registerEffects();
                         sendLook();
@@ -231,6 +238,9 @@ public class SocketClient implements Client {
                     sendPrompt();
                 }
                 return;
+            case "ANSI":
+                handleAnsiCommand(args);
+                return;
             default:
                 writeLineWithPrompt("Unknown command");
         }
@@ -281,6 +291,42 @@ public class SocketClient implements Client {
                 log.error("Error writing message", e);
             }
         }
+    }
+
+    private void handleAnsiCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to change ANSI settings.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.equals("STATUS")) {
+            writeLineWithPrompt("ANSI is " + (player.isAnsiEnabled() ? "ON" : "OFF"));
+            return;
+        }
+        switch (normalized) {
+            case "ON":
+                setAnsiEnabled(true);
+                return;
+            case "OFF":
+                setAnsiEnabled(false);
+                return;
+            case "TOGGLE":
+                setAnsiEnabled(!player.isAnsiEnabled());
+                return;
+            default:
+                writeLineWithPrompt("Usage: ANSI [on|off|toggle|status]");
+        }
+    }
+
+    private void setAnsiEnabled(boolean enabled) {
+        if (player.isAnsiEnabled() == enabled) {
+            writeLineWithPrompt("ANSI is already " + (enabled ? "ON" : "OFF"));
+            return;
+        }
+        player = player.withAnsiEnabled(enabled);
+        playerRepository.savePlayer(player);
+        textStyler = TextStylers.forEnabled(enabled);
+        writeLineWithPrompt("ANSI is now " + (enabled ? "ON" : "OFF"));
     }
 
     private void registerEffects() {
