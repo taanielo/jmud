@@ -76,7 +76,8 @@ public class SocketClient implements Client {
     private TickSubscription cooldownSubscription;
     private final AbilityMessageSink abilityMessageSink;
     private TickSubscription healingSubscription;
-    private final SocketCommandDispatcher commandDispatcher = new SocketCommandDispatcher();
+    private final SocketCommandRegistry commandRegistry = new SocketCommandRegistry();
+    private final SocketCommandDispatcher commandDispatcher = new SocketCommandDispatcher(commandRegistry);
 
     private OutputStream output;
     private InputStream input;
@@ -110,7 +111,17 @@ public class SocketClient implements Client {
         this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
         this.abilityMessageSink = new SocketAbilityMessageSink();
         this.abilityEngine = createAbilityEngine(abilityRegistry);
+        registerCommands();
         init();
+    }
+
+    private void registerCommands() {
+        new LookCommand(commandRegistry);
+        new MoveCommand(commandRegistry);
+        new SayCommand(commandRegistry);
+        new AbilityCommand(commandRegistry);
+        new AnsiCommand(commandRegistry);
+        new QuitCommand(commandRegistry);
     }
 
     private AbilityEngine createAbilityEngine(AbilityRegistry registry) {
