@@ -316,13 +316,13 @@ public class SocketClient implements Client {
             return;
         }
         String format = player.getPromptFormat();
-        if (format == null || format.isBlank()) {
+        if (format == null || format.isBlank() || format.equals(PromptSettings.LEGACY_FORMAT)) {
             format = PromptSettings.defaultFormat();
         }
         String promptLine = promptRenderer.render(format, player);
         synchronized (writeLock) {
             try {
-                messageWriter.write(promptLine + " ");
+                messageWriter.write(promptLine + "> ");
             } catch (IOException e) {
                 log.error("Error writing prompt", e);
             }

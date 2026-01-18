@@ -5,6 +5,8 @@ import io.taanielo.jmud.core.settings.ApplicationSettings;
 public final class PromptSettings {
     public static final String DEFAULT_FORMAT =
         "[{hp}/{maxHp}hp {mana}/{maxMana}mn {move}/{maxMove}mv {exp}xp]";
+    public static final String LEGACY_FORMAT =
+        "HP {hp}/{maxHp}  Mana {mana}/{maxMana}  Move {move}/{maxMove}  Exp {exp}";
 
     private PromptSettings() {
     }
