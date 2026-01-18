@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -21,15 +23,14 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
-import java.util.ArrayList;
-import java.util.List;
-
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.EffectSettings;
 import io.taanielo.jmud.core.effects.PlayerEffectTicker;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
+import io.taanielo.jmud.core.prompt.PromptRenderer;
+import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.world.Direction;
@@ -47,6 +48,7 @@ public class SocketClient implements Client {
     private final ClientPool clientPool;
     private final TickRegistry tickRegistry;
     private final Object writeLock = new Object();
+    private final PromptRenderer promptRenderer = new PromptRenderer();
 
     private OutputStream output;
     private InputStream input;
@@ -121,7 +123,7 @@ public class SocketClient implements Client {
                         player = playerRepository
                             .loadPlayer(authenticatedUser.getUsername())
                             .orElseGet(() -> {
-                                Player newPlayer = Player.of(authenticatedUser);
+                                Player newPlayer = Player.of(authenticatedUser, PromptSettings.defaultFormat());
                                 playerRepository.savePlayer(newPlayer);
                                 return newPlayer;
                             });
@@ -149,6 +151,7 @@ public class SocketClient implements Client {
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
+        sendPrompt();
     }
 
     public void sendMessage(UserSayMessage message) {
@@ -162,6 +165,7 @@ public class SocketClient implements Client {
         } catch (IOException e) {
             log.error("Error sending message", e);
         }
+        sendPrompt();
     }
 
     @Override
@@ -196,6 +200,7 @@ public class SocketClient implements Client {
     private void handleCommand(String clientInput) throws IOException {
         String trimmed = clientInput.trim();
         if (trimmed.isEmpty()) {
+            sendPrompt();
             return;
         }
         String[] parts = trimmed.split("\\s+", 2);
@@ -219,13 +224,14 @@ public class SocketClient implements Client {
                 return;
             case "SAY":
                 if (args.isEmpty()) {
-                    writeLineSafe("Say what?");
+                    writeLineWithPrompt("Say what?");
                 } else {
                     CommandRegistry.SAY.act().message(player.getUsername(), args, clientPool.clients());
+                    sendPrompt();
                 }
                 return;
             default:
-                writeLineSafe("Unknown command");
+                writeLineWithPrompt("Unknown command");
         }
     }
 
@@ -246,16 +252,24 @@ public class SocketClient implements Client {
 
     private void sendLook() {
         RoomService.LookResult result = roomService.look(player.getUsername());
-        for (String line : result.lines()) {
-            writeLineSafe(line);
-        }
+        writeLinesWithPrompt(result.lines());
     }
 
     private void sendMove(Direction direction) {
         RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
-        for (String line : result.lines()) {
+        writeLinesWithPrompt(result.lines());
+    }
+
+    private void writeLinesWithPrompt(List<String> lines) {
+        for (String line : lines) {
             writeLineSafe(line);
         }
+        sendPrompt();
+    }
+
+    private void writeLineWithPrompt(String message) {
+        writeLineSafe(message);
+        sendPrompt();
     }
 
     private void writeLineSafe(String message) {
@@ -278,6 +292,7 @@ public class SocketClient implements Client {
                 @Override
                 public void sendToTarget(String message) {
                     writeLineSafe(message);
+                    sendPrompt();
                 }
             };
             effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, engine, sink)));
@@ -294,5 +309,23 @@ public class SocketClient implements Client {
         }
         effectSubscriptions.clear();
         effectsInitialized = false;
+    }
+
+    private void sendPrompt() {
+        if (!authenticated || player == null) {
+            return;
+        }
+        String format = player.getPromptFormat();
+        if (format == null || format.isBlank()) {
+            format = PromptSettings.defaultFormat();
+        }
+        String promptLine = promptRenderer.render(format, player);
+        synchronized (writeLock) {
+            try {
+                messageWriter.write(promptLine + "> ");
+            } catch (IOException e) {
+                log.error("Error writing prompt", e);
+            }
+        }
     }
 }
