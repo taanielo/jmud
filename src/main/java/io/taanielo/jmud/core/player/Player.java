@@ -23,9 +23,14 @@ public class Player implements EffectTarget {
     private final PlayerVitals vitals;
     private final List<EffectInstance> effects;
     private final String promptFormat;
+    private final boolean ansiEnabled;
 
     public static Player of(User user, String promptFormat) {
-        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat);
+        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false);
+    }
+
+    public static Player of(User user, String promptFormat, boolean ansiEnabled) {
+        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, ansiEnabled);
     }
 
     @JsonCreator
@@ -35,7 +40,8 @@ public class Player implements EffectTarget {
         @JsonProperty("experience") long experience,
         @JsonProperty("vitals") PlayerVitals vitals,
         @JsonProperty("effects") List<EffectInstance> effects,
-        @JsonProperty("promptFormat") String promptFormat
+        @JsonProperty("promptFormat") String promptFormat,
+        @JsonProperty("ansiEnabled") Boolean ansiEnabled
     ) {
         this.user = Objects.requireNonNull(user, "User is required");
         this.level = level;
@@ -43,6 +49,7 @@ public class Player implements EffectTarget {
         this.vitals = Objects.requireNonNull(vitals, "Vitals are required");
         this.effects = new ArrayList<>(Objects.requireNonNullElse(effects, List.of()));
         this.promptFormat = Objects.requireNonNull(promptFormat, "Prompt format is required");
+        this.ansiEnabled = Objects.requireNonNullElse(ansiEnabled, false);
     }
 
     @JsonIgnore
@@ -57,5 +64,9 @@ public class Player implements EffectTarget {
 
     public List<EffectInstance> effects() {
         return effects;
+    }
+
+    public Player withAnsiEnabled(boolean enabled) {
+        return new Player(user, level, experience, vitals, effects, promptFormat, enabled);
     }
 }

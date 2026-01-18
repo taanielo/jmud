@@ -60,6 +60,9 @@ Available keys:
 - `jmud.prompt.format`
 - `jmud.effects.enabled`
 - `jmud.tick.interval.ms`
+- `jmud.output.ansi.enabled` (default ANSI colors for new players)
+
+Players can toggle ANSI output in-game with `ANSI on|off|toggle|status`.
 
 ## Basics of Java Telnet Socket Connection
 
