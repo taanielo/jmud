@@ -12,11 +12,20 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
+/**
+ * Domain service for resolving player room state, movement, and room descriptions.
+ */
 public class RoomService {
 
+    /**
+     * Result of a look action, including rendered lines and the resolved room.
+     */
     public record LookResult(List<String> lines, Room room) {
     }
 
+    /**
+     * Result of a move action, including whether movement succeeded, output lines, and the resolved room.
+     */
     public record MoveResult(boolean moved, List<String> lines, Room room) {
     }
 
@@ -24,16 +33,25 @@ public class RoomService {
     private final RoomId startingRoomId;
     private final ConcurrentHashMap<Username, RoomId> playerLocations = new ConcurrentHashMap<>();
 
+    /**
+     * Creates a room service with the provided repository and starting room id.
+     */
     public RoomService(RoomRepository roomRepository, RoomId startingRoomId) {
         this.roomRepository = Objects.requireNonNull(roomRepository, "Room repository is required");
         this.startingRoomId = Objects.requireNonNull(startingRoomId, "Starting room id is required");
     }
 
+    /**
+     * Ensures a player has a location, defaulting to the starting room if missing.
+     */
     public RoomId ensurePlayerLocation(Username username) {
         Objects.requireNonNull(username, "Username is required");
         return playerLocations.computeIfAbsent(username, ignored -> startingRoomId);
     }
 
+    /**
+     * Produces a look description for the player's current room.
+     */
     public LookResult look(Username username) {
         Objects.requireNonNull(username, "Username is required");
         Room room = loadRoomForPlayer(username);
@@ -44,6 +62,9 @@ public class RoomService {
         return new LookResult(describeRoom(roomWithOccupants, username), roomWithOccupants);
     }
 
+    /**
+     * Attempts to move the player in the provided direction.
+     */
     public MoveResult move(Username username, Direction direction) {
         Objects.requireNonNull(username, "Username is required");
         Objects.requireNonNull(direction, "Direction is required");
