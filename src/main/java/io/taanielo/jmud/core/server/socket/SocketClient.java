@@ -316,7 +316,7 @@ public class SocketClient implements Client {
             return;
         }
         String format = player.getPromptFormat();
-        if (format == null || format.isBlank() || format.equals(PromptSettings.LEGACY_FORMAT)) {
+        if (format == null || format.isBlank()) {
             format = PromptSettings.defaultFormat();
         }
         String promptLine = promptRenderer.render(format, player);
