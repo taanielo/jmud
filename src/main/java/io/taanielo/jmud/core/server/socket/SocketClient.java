@@ -24,10 +24,12 @@ import io.taanielo.jmud.core.server.ClientPool;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.taanielo.jmud.core.effects.EffectEngine;
+import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.EffectSettings;
-import io.taanielo.jmud.core.effects.HungerEffect;
-import io.taanielo.jmud.core.effects.MessageSink;
-import io.taanielo.jmud.core.effects.ThirstEffect;
+import io.taanielo.jmud.core.effects.PlayerEffectTicker;
+import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.world.Direction;
@@ -270,9 +272,19 @@ public class SocketClient implements Client {
         if (!EffectSettings.enabled() || effectsInitialized) {
             return;
         }
-        MessageSink sink = this::writeLineSafe;
-        effectSubscriptions.add(tickRegistry.register(HungerEffect.defaultEffect(player, sink)));
-        effectSubscriptions.add(tickRegistry.register(ThirstEffect.defaultEffect(player, sink)));
+        try {
+            EffectEngine engine = new EffectEngine(new JsonEffectRepository());
+            EffectMessageSink sink = new EffectMessageSink() {
+                @Override
+                public void sendToTarget(String message) {
+                    writeLineSafe(message);
+                }
+            };
+            effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, engine, sink)));
+        } catch (EffectRepositoryException e) {
+            log.error("Failed to initialize effects", e);
+            return;
+        }
         effectsInitialized = true;
     }
 

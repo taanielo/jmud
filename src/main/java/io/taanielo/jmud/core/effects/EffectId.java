@@ -1,5 +1,7 @@
 package io.taanielo.jmud.core.effects;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Value;
 
 @Value
@@ -16,7 +18,13 @@ public class EffectId {
         this.value = value;
     }
 
+    @JsonCreator
     public static EffectId of(String value) {
         return new EffectId(value);
+    }
+
+    @JsonValue
+    public String jsonValue() {
+        return value;
     }
 }

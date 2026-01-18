@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "stoneskin",
+  "name": "Stoneskin",
+  "duration_ticks": 120,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "armor",
+      "op": "add",
+      "amount": 10
+    }
+  ],
+  "messages": {
+    "apply_self": "Your skin hardens.",
+    "apply_room": "{name}'s skin darkens.",
+    "expire_self": "Your skin softens.",
+    "expire_room": "{name}'s skin returns to normal.",
+    "examine": "{name} has stone-like skin."
+  }
+}
