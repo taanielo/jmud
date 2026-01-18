@@ -6,5 +6,6 @@ Layout:
 - characters/ (character definitions)
 - skills/ (skills and spells)
 - races/ (race definitions)
+- classes/ (class definitions)
 
 See docs/data-schema.md for schema details and examples.

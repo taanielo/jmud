@@ -23,23 +23,4 @@ public final class HealingSettings {
         return base;
     }
 
-    public static int classModifier(io.taanielo.jmud.core.character.ClassId classId) {
-        String key = "jmud.healing.class." + normalize(classId) + ".modifier";
-        return CONFIG.getInt(key, 0);
-    }
-
-    private static String normalize(Object id) {
-        if (id == null) {
-            return "unknown";
-        }
-        String value = switch (id) {
-            case io.taanielo.jmud.core.character.ClassId clazz -> clazz.getValue();
-            default -> String.valueOf(id);
-        };
-        if (value == null || value.isBlank()) {
-            return "unknown";
-        }
-        return value.trim().toLowerCase();
-    }
-
 }

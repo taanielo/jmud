@@ -102,3 +102,16 @@ Race example (`data/races/race.elf.json`):
   }
 }
 ```
+
+Class example (`data/classes/class.mage.json`):
+
+```json
+{
+  "schema_version": 1,
+  "id": "mage",
+  "name": "Mage",
+  "healing": {
+    "base_modifier": -1
+  }
+}
+```

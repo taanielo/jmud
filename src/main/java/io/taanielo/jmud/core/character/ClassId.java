@@ -24,4 +24,9 @@ public class ClassId {
     public String jsonValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return value;
+    }
 }
