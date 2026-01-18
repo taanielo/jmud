@@ -59,6 +59,7 @@ public class SocketAuthenticationService implements AuthenticationService {
         } else {
             log.debug("Password doesn't match, login unsuccessful");
             username = null;
+            creatingUser = false;
             messageWriter.writeLine();
             messageWriter.writeLine("Incorrect password!");
             messageWriter.write("Enter username: ");
@@ -73,6 +74,7 @@ public class SocketAuthenticationService implements AuthenticationService {
         Optional<User> existingUser = userRegistry.findByUsername(username);
         if (existingUser.isPresent()) {
             authenticationUser = existingUser.get();
+            creatingUser = false;
             log.debug("User exists: {}", authenticationUser.getUsername().getValue());
             SocketCommand.disableEcho(clientSocket.getOutputStream());
             messageWriter.write("Enter password: ");

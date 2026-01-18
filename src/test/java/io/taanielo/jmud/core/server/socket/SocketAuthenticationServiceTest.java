@@ -37,6 +37,22 @@ class SocketAuthenticationServiceTest {
         assertTrue(writer.lines.stream().anyMatch(line -> line.contains("Login successful")));
     }
 
+    @Test
+    void doesNotCreateUserAfterBadPassword() throws IOException {
+        RecordingUserRegistry registry = new RecordingUserRegistry();
+        registry.register(User.of(Username.of("sparky"), Password.of("qwerty")));
+        RecordingWriter writer = new RecordingWriter();
+        SocketAuthenticationService service = new SocketAuthenticationService(new DummySocket(), registry, writer);
+
+        service.authenticate("sparky", user -> {
+        });
+        service.authenticate("wrong", user -> {
+        });
+
+        assertTrue(writer.lines.stream().anyMatch(line -> line.contains("Incorrect password")));
+        assertTrue(writer.lines.stream().noneMatch(line -> line.contains("Creating new user")));
+    }
+
     private static class RecordingUserRegistry implements UserRegistry {
         private final List<User> users = new ArrayList<>();
 
