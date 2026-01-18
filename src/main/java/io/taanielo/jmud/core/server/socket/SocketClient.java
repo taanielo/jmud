@@ -322,8 +322,7 @@ public class SocketClient implements Client {
         String promptLine = promptRenderer.render(format, player);
         synchronized (writeLock) {
             try {
-                messageWriter.writeLine(promptLine);
-                messageWriter.write("> ");
+                messageWriter.write(promptLine + " ");
             } catch (IOException e) {
                 log.error("Error writing prompt", e);
             }
