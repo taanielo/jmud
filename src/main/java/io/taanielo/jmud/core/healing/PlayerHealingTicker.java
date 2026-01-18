@@ -12,18 +12,18 @@ public class PlayerHealingTicker implements Tickable {
     private final Supplier<Player> playerSupplier;
     private final Consumer<Player> playerUpdater;
     private final HealingEngine engine;
-    private final int baseHealPerTick;
+    private final HealingBaseResolver baseResolver;
 
     public PlayerHealingTicker(
         Supplier<Player> playerSupplier,
         Consumer<Player> playerUpdater,
         HealingEngine engine,
-        int baseHealPerTick
+        HealingBaseResolver baseResolver
     ) {
         this.playerSupplier = Objects.requireNonNull(playerSupplier, "Player supplier is required");
         this.playerUpdater = Objects.requireNonNull(playerUpdater, "Player updater is required");
         this.engine = Objects.requireNonNull(engine, "Healing engine is required");
-        this.baseHealPerTick = baseHealPerTick;
+        this.baseResolver = Objects.requireNonNull(baseResolver, "Base resolver is required");
     }
 
     @Override
@@ -33,6 +33,7 @@ public class PlayerHealingTicker implements Tickable {
             return;
         }
         try {
+            int baseHealPerTick = baseResolver.baseHpPerTick(player);
             Player updated = engine.apply(player, baseHealPerTick);
             if (updated != player) {
                 playerUpdater.accept(updated);

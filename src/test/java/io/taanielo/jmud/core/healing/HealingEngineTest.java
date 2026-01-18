@@ -36,7 +36,9 @@ class HealingEngineTest {
             new ArrayList<>(),
             "prompt",
             false,
-            List.of()
+            List.of(),
+            null,
+            null
         );
         HealingEngine engine = new HealingEngine(new StubEffectRepository(Map.of()));
 
@@ -70,7 +72,9 @@ class HealingEngineTest {
             effects,
             "prompt",
             false,
-            List.of()
+            List.of(),
+            null,
+            null
         );
         HealingEngine engine = new HealingEngine(new StubEffectRepository(Map.of(regenId, regen)));
 
@@ -102,7 +106,9 @@ class HealingEngineTest {
             effects,
             "prompt",
             false,
-            List.of()
+            List.of(),
+            null,
+            null
         );
         HealingEngine engine = new HealingEngine(new StubEffectRepository(Map.of(fortifyId, fortify)));
 
@@ -143,7 +149,9 @@ class HealingEngineTest {
             effects,
             "prompt",
             false,
-            List.of()
+            List.of(),
+            null,
+            null
         );
         HealingEngine engine = new HealingEngine(new StubEffectRepository(Map.of(regenId, regen)));
 

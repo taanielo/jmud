@@ -14,6 +14,8 @@ import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.character.ClassId;
+import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
 
@@ -36,7 +38,9 @@ class JsonPlayerRepositoryTest {
             effects,
             "HP {hp}/{maxHp} Exp {exp}",
             true,
-            List.of(AbilityId.of("spell.heal"))
+            List.of(AbilityId.of("spell.heal")),
+            RaceId.of("troll"),
+            ClassId.of("warrior")
         );
 
         repository.savePlayer(player);
@@ -51,6 +55,8 @@ class JsonPlayerRepositoryTest {
         assertEquals("HP {hp}/{maxHp} Exp {exp}", loaded.get().getPromptFormat());
         assertTrue(loaded.get().isAnsiEnabled());
         assertEquals(List.of(AbilityId.of("spell.heal")), loaded.get().getLearnedAbilities());
+        assertEquals("troll", loaded.get().getRace().getValue());
+        assertEquals("warrior", loaded.get().getClassId().getValue());
         assertEquals(1, loaded.get().effects().size());
         assertEquals("stoneskin", loaded.get().effects().get(0).id().getValue());
     }
