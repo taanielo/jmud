@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "spell.fireball",
+  "name": "fireball",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 3,
+    "move": 0
+  },
+  "cooldown": {
+    "ticks": 4
+  },
+  "targeting": "HARMFUL",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 6
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:ability:v1",
+  "title": "Ability (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "type",
+    "level",
+    "cost",
+    "cooldown",
+    "targeting",
+    "effects"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "type": "string",
+      "enum": ["SKILL", "SPELL"]
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mana", "move"],
+      "properties": {
+        "mana": {"type": "integer", "minimum": 0},
+        "move": {"type": "integer", "minimum": 0}
+      }
+    },
+    "cooldown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ticks"],
+      "properties": {
+        "ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "targeting": {
+      "type": "string",
+      "enum": ["HARMFUL", "BENEFICIAL"]
+    },
+    "aliases": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "effects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["VITALS", "EFFECT"]
+          },
+          "stat": {
+            "type": "string",
+            "enum": ["HP", "MANA", "MOVE"]
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["INCREASE", "DECREASE"]
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "effect_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9._-]+$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"kind": {"const": "VITALS"}}},
+            "then": {"required": ["stat", "operation", "amount"]}
+          },
+          {
+            "if": {"properties": {"kind": {"const": "EFFECT"}}},
+            "then": {"required": ["effect_id"]}
+          }
+        ]
+      }
+    }
+  }
+}

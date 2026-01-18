@@ -199,6 +199,7 @@ Agents must:
 * Make one logical change per PR
 * Avoid cross-cutting refactors without confirmation
 * Preserve save-game compatibility unless explicitly approved
+* Keep game data (abilities, spells, items, rooms, effects, etc.) in JSON under `data/` with versioned schemas
 
 Breaking changes to game rules must be clearly documented.
 

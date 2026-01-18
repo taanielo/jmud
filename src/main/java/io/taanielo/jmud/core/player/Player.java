@@ -24,13 +24,18 @@ public class Player implements EffectTarget {
     private final List<EffectInstance> effects;
     private final String promptFormat;
     private final boolean ansiEnabled;
+    private final List<String> learnedAbilities;
 
     public static Player of(User user, String promptFormat) {
-        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false);
+        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of());
     }
 
     public static Player of(User user, String promptFormat, boolean ansiEnabled) {
-        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, ansiEnabled);
+        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, ansiEnabled, List.of());
+    }
+
+    public static Player of(User user, String promptFormat, boolean ansiEnabled, List<String> learnedAbilities) {
+        return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, ansiEnabled, learnedAbilities);
     }
 
     @JsonCreator
@@ -41,7 +46,8 @@ public class Player implements EffectTarget {
         @JsonProperty("vitals") PlayerVitals vitals,
         @JsonProperty("effects") List<EffectInstance> effects,
         @JsonProperty("promptFormat") String promptFormat,
-        @JsonProperty("ansiEnabled") Boolean ansiEnabled
+        @JsonProperty("ansiEnabled") Boolean ansiEnabled,
+        @JsonProperty("learnedAbilities") List<String> learnedAbilities
     ) {
         this.user = Objects.requireNonNull(user, "User is required");
         this.level = level;
@@ -50,6 +56,7 @@ public class Player implements EffectTarget {
         this.effects = new ArrayList<>(Objects.requireNonNullElse(effects, List.of()));
         this.promptFormat = Objects.requireNonNull(promptFormat, "Prompt format is required");
         this.ansiEnabled = Objects.requireNonNullElse(ansiEnabled, false);
+        this.learnedAbilities = List.copyOf(Objects.requireNonNullElse(learnedAbilities, List.of()));
     }
 
     @JsonIgnore
@@ -67,10 +74,14 @@ public class Player implements EffectTarget {
     }
 
     public Player withAnsiEnabled(boolean enabled) {
-        return new Player(user, level, experience, vitals, effects, promptFormat, enabled);
+        return new Player(user, level, experience, vitals, effects, promptFormat, enabled, learnedAbilities);
     }
 
     public Player withVitals(PlayerVitals updatedVitals) {
-        return new Player(user, level, experience, updatedVitals, effects, promptFormat, ansiEnabled);
+        return new Player(user, level, experience, updatedVitals, effects, promptFormat, ansiEnabled, learnedAbilities);
+    }
+
+    public Player withLearnedAbilities(List<String> abilities) {
+        return new Player(user, level, experience, vitals, effects, promptFormat, ansiEnabled, abilities);
     }
 }

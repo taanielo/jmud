@@ -6,18 +6,22 @@ import java.util.Objects;
 import java.util.Optional;
 
 import io.taanielo.jmud.core.player.Player;
-import io.taanielo.jmud.core.player.PlayerVitals;
 
 public class AbilityEngine {
     private final AbilityRegistry registry;
+    private final AbilityCostResolver costResolver;
+    private final AbilityEffectResolver effectResolver;
 
-    public AbilityEngine(AbilityRegistry registry) {
+    public AbilityEngine(AbilityRegistry registry, AbilityCostResolver costResolver, AbilityEffectResolver effectResolver) {
         this.registry = Objects.requireNonNull(registry, "Ability registry is required");
+        this.costResolver = Objects.requireNonNull(costResolver, "Ability cost resolver is required");
+        this.effectResolver = Objects.requireNonNull(effectResolver, "Ability effect resolver is required");
     }
 
     public AbilityUseResult use(
         Player source,
         String input,
+        List<String> learnedAbilityIds,
         AbilityTargetResolver targetResolver,
         AbilityCooldownTracker cooldowns
     ) {
@@ -25,7 +29,7 @@ public class AbilityEngine {
         Objects.requireNonNull(targetResolver, "Target resolver is required");
         Objects.requireNonNull(cooldowns, "Cooldown tracker is required");
 
-        Optional<AbilityMatch> match = registry.findBestMatch(input);
+        Optional<AbilityMatch> match = registry.findBestMatch(input, learnedAbilityIds);
         if (match.isEmpty()) {
             return new AbilityUseResult(source, source, List.of("You don't know that ability."));
         }
@@ -45,7 +49,7 @@ public class AbilityEngine {
             return new AbilityUseResult(source, source, List.of("Ability is on cooldown (" + remaining + " ticks remaining)."));
         }
 
-        if (!ability.cost().canAfford(source.getVitals())) {
+        if (!costResolver.canAfford(source, ability.cost())) {
             return new AbilityUseResult(source, source, List.of("You lack the resources to use that ability."));
         }
 
@@ -54,20 +58,13 @@ public class AbilityEngine {
             return new AbilityUseResult(source, source, List.of("You cannot use that ability right now."));
         }
 
-        PlayerVitals spent = ability.cost().apply(source.getVitals());
-        context.updateSource(source.withVitals(spent));
+        Player updatedSource = costResolver.applyCost(source, ability.cost());
+        context.updateSource(updatedSource);
+        if (source.getUsername().equals(target.getUsername())) {
+            context.updateTarget(updatedSource);
+        }
 
-        AbilityEffectResolver resolver = (effect, ctx) -> {
-            Player currentTarget = ctx.target();
-            PlayerVitals vitals = currentTarget.getVitals();
-            PlayerVitals updated = switch (effect.type()) {
-                case DAMAGE -> vitals.damage(effect.amount());
-                case HEAL -> vitals.heal(effect.amount());
-            };
-            ctx.updateTarget(currentTarget.withVitals(updated));
-        };
-
-        ability.use(context, resolver);
+        ability.use(context, effectResolver);
 
         if (ability.cooldown().ticks() > 0) {
             cooldowns.startCooldown(ability.id(), ability.cooldown().ticks());
@@ -100,9 +97,13 @@ public class AbilityEngine {
     }
 
     private String formatEffect(AbilityEffect effect, Player target) {
-        return switch (effect.type()) {
-            case DAMAGE -> target.getUsername().getValue() + " takes " + effect.amount() + " damage.";
-            case HEAL -> target.getUsername().getValue() + " heals " + effect.amount() + " health.";
+        return switch (effect.kind()) {
+            case VITALS -> {
+                String stat = effect.stat().name().toLowerCase();
+                String verb = effect.operation() == AbilityOperation.INCREASE ? "gains" : "loses";
+                yield target.getUsername().getValue() + " " + verb + " " + effect.amount() + " " + stat + ".";
+            }
+            case EFFECT -> target.getUsername().getValue() + " is affected by " + effect.effectId() + ".";
         };
     }
 }

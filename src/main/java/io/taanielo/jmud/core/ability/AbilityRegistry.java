@@ -2,26 +2,41 @@ package io.taanielo.jmud.core.ability;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 public class AbilityRegistry {
     private final List<Ability> abilities;
+    private final Map<String, Ability> abilityById;
 
     public AbilityRegistry(List<Ability> abilities) {
         this.abilities = List.copyOf(abilities);
+        Map<String, Ability> map = new HashMap<>();
+        for (Ability ability : this.abilities) {
+            map.put(ability.id(), ability);
+        }
+        this.abilityById = Map.copyOf(map);
     }
 
-    public Optional<AbilityMatch> findBestMatch(String input) {
+    public Optional<AbilityMatch> findBestMatch(String input, List<String> allowedAbilityIds) {
         if (input == null || input.isBlank()) {
+            return Optional.empty();
+        }
+        if (allowedAbilityIds == null || allowedAbilityIds.isEmpty()) {
             return Optional.empty();
         }
         String trimmed = input.trim();
         String[] tokens = trimmed.split("\\s+");
 
         List<Candidate> candidates = new ArrayList<>();
-        for (Ability ability : abilities) {
+        for (String abilityId : allowedAbilityIds) {
+            Ability ability = abilityById.get(abilityId);
+            if (ability == null) {
+                continue;
+            }
             List<String> aliases = new ArrayList<>();
             aliases.add(ability.name());
             aliases.addAll(ability.aliases());
@@ -47,6 +62,12 @@ public class AbilityRegistry {
                 .thenComparingInt(candidate -> candidate.matchLength)
             )
             .map(candidate -> new AbilityMatch(candidate.ability, candidate.remainingTarget.trim()));
+    }
+
+    public List<String> abilityIds() {
+        return abilities.stream()
+            .map(Ability::id)
+            .toList();
     }
 
     private static class Candidate {

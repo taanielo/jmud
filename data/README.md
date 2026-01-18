@@ -4,6 +4,6 @@ Layout:
 - rooms/ (room definitions)
 - items/ (item definitions)
 - characters/ (character definitions)
-- skills/ (skill definitions)
+- skills/ (skills and spells)
 
 See docs/data-schema.md for schema details and examples.
