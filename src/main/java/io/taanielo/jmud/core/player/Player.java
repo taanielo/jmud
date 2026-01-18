@@ -15,11 +15,12 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.combat.Combatant;
 import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.effects.EffectTarget;
 
 @Getter
-public class Player implements EffectTarget {
+public class Player implements EffectTarget, Combatant {
     private final User user;
     private final int level;
     private final long experience;

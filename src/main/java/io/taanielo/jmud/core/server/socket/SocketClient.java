@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +25,13 @@ import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.authentication.UserRegistry;
+import io.taanielo.jmud.core.combat.CombatEngine;
+import io.taanielo.jmud.core.combat.CombatModifierResolver;
+import io.taanielo.jmud.core.combat.CombatResult;
+import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.DefaultCombatRandom;
+import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
+import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageWriter;
@@ -78,6 +86,7 @@ public class SocketClient implements Client {
     private final AbilityCooldownTracker cooldownTracker = new CooldownTracker(abilityCooldowns);
     private final AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
     private final AbilityEngine abilityEngine;
+    private final CombatEngine combatEngine;
     private TickSubscription cooldownSubscription;
     private final AbilityMessageSink abilityMessageSink;
     private TickSubscription healingSubscription;
@@ -116,6 +125,7 @@ public class SocketClient implements Client {
         this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
         this.abilityMessageSink = new SocketAbilityMessageSink();
         this.abilityEngine = createAbilityEngine(abilityRegistry);
+        this.combatEngine = createCombatEngine();
         registerCommands();
         init();
     }
@@ -125,6 +135,7 @@ public class SocketClient implements Client {
         new MoveCommand(commandRegistry);
         new SayCommand(commandRegistry);
         new AbilityCommand(commandRegistry);
+        new AttackCommand(commandRegistry);
         new AnsiCommand(commandRegistry);
         new QuitCommand(commandRegistry);
     }
@@ -136,6 +147,16 @@ public class SocketClient implements Client {
             return new AbilityEngine(registry, abilityCostResolver, resolver, abilityMessageSink);
         } catch (EffectRepositoryException e) {
             throw new IllegalStateException("Failed to initialize ability effects: " + e.getMessage(), e);
+        }
+    }
+
+    private CombatEngine createCombatEngine() {
+        try {
+            JsonEffectRepository effectRepository = new JsonEffectRepository();
+            CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
+            return new CombatEngine(new JsonAttackRepository(), resolver, new DefaultCombatRandom());
+        } catch (AttackRepositoryException | EffectRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize combat: " + e.getMessage(), e);
         }
     }
 
@@ -359,6 +380,48 @@ public class SocketClient implements Client {
         sendPrompt();
     }
 
+    private void handleAttackCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to attack.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            writeLineWithPrompt("Usage: attack <target>");
+            return;
+        }
+        Optional<Player> targetMatch = resolveTarget(player, normalized);
+        if (targetMatch.isEmpty()) {
+            writeLineWithPrompt("No such target to attack.");
+            return;
+        }
+        Player target = targetMatch.get();
+        if (target.getUsername().equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot attack yourself.");
+            return;
+        }
+        try {
+            CombatResult result = combatEngine.resolve(player, target, CombatSettings.defaultAttackId());
+            if (result.sourceMessage() != null && !result.sourceMessage().isBlank()) {
+                writeLineSafe(result.sourceMessage());
+            }
+            if (result.targetMessage() != null && !result.targetMessage().isBlank()) {
+                sendToUsername(target.getUsername(), result.targetMessage());
+            }
+            if (result.roomMessage() != null && !result.roomMessage().isBlank()) {
+                sendToRoom(player, target, result.roomMessage());
+            }
+            if (!result.target().getUsername().equals(player.getUsername())) {
+                updateTarget(result.target());
+            }
+        } catch (AttackRepositoryException | EffectRepositoryException e) {
+            log.error("Failed to resolve attack", e);
+            writeLineWithPrompt("Combat failed: " + e.getMessage());
+            return;
+        }
+        sendPrompt();
+    }
+
     private void replacePlayer(Player updated) {
         player = updated;
         playerRepository.savePlayer(player);
@@ -416,7 +479,7 @@ public class SocketClient implements Client {
             if (message == null || message.isBlank()) {
                 return;
             }
-            sendToPlayer(target, message);
+            sendToUsername(target.getUsername(), message);
         }
 
         @Override
@@ -433,22 +496,7 @@ public class SocketClient implements Client {
                 if (occupant.equals(source.getUsername()) || occupant.equals(target.getUsername())) {
                     continue;
                 }
-                sendToUsername(occupant, message);
-            }
-        }
-
-        private void sendToPlayer(Player target, String message) {
-            sendToUsername(target.getUsername(), message);
-        }
-
-        private void sendToUsername(Username username, String message) {
-            for (Client client : clientPool.clients()) {
-                if (client instanceof SocketClient socketClient) {
-                    if (socketClient.isAuthenticatedUser(username)) {
-                        socketClient.writeLineSafe(message);
-                        return;
-                    }
-                }
+                SocketClient.this.sendToUsername(occupant, message);
             }
         }
     }
@@ -526,7 +574,7 @@ public class SocketClient implements Client {
 
         @Override
         public void sendToUsername(Username username, String message) {
-            new SocketAbilityMessageSink().sendToUsername(username, message);
+            SocketClient.this.sendToUsername(username, message);
         }
 
         @Override
@@ -534,6 +582,56 @@ public class SocketClient implements Client {
             SocketClient.this.sendPrompt();
         }
 
+        @Override
+        public void sendToRoom(Player source, Player target, String message) {
+            SocketClient.this.sendToRoom(source, target, message);
+        }
+
+        @Override
+        public Optional<Player> resolveTarget(Player source, String input) {
+            return SocketClient.this.resolveTarget(source, input);
+        }
+
+        @Override
+        public void executeAttack(String args) {
+            handleAttackCommand(args);
+        }
+
+    }
+
+    private Optional<Player> resolveTarget(Player source, String input) {
+        return abilityTargetResolver.resolve(source, input);
+    }
+
+    private void sendToRoom(Player source, Player target, String message) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        RoomService.LookResult look = roomService.look(source.getUsername());
+        Room room = look.room();
+        if (room == null || room.getOccupants().isEmpty()) {
+            return;
+        }
+        for (Username occupant : room.getOccupants()) {
+            if (occupant.equals(source.getUsername()) || occupant.equals(target.getUsername())) {
+                continue;
+            }
+            sendToUsername(occupant, message);
+        }
+    }
+
+    private void sendToUsername(Username username, String message) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        for (Client client : clientPool.clients()) {
+            if (client instanceof SocketClient socketClient) {
+                if (socketClient.isAuthenticatedUser(username)) {
+                    socketClient.writeLineSafe(message);
+                    return;
+                }
+            }
+        }
     }
 
     private void registerEffects() {
