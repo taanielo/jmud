@@ -1,17 +1,14 @@
 [core]
-\tautocrlf = input
-\teol = lf
+    autocrlf = input
+    eol = lf
+    whitespace = trailing-space,space-before-tab
+    commentChar = #
+
 [commit]
-\tcleanup = strip
+    cleanup = strip
+
 [apply]
-\twhitespace = nowarn
-[core]
-\twhitespace = trailing-space,space-before-tab
+    whitespace = nowarn
+
 [diff]
-\twsErrorHighlight = all
-
-[alias]
-\tprbody = !f() { gh pr edit "" --body """"; }; f
-
-[core]
-\tcommentChar = #
+    wsErrorHighlight = all
