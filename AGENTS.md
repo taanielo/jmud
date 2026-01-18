@@ -202,6 +202,7 @@ Agents must:
 * Avoid cross-cutting refactors without confirmation
 * Preserve save-game compatibility unless explicitly approved
 * Keep game data (abilities, spells, items, rooms, effects, etc.) in JSON under `data/` with versioned schemas
+* Store non-generic domain data in `data/*` JSON (e.g., races in `data/races/`)
 
 Breaking changes to game rules must be clearly documented.
 
