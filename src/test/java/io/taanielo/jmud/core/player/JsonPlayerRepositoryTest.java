@@ -26,7 +26,8 @@ class JsonPlayerRepositoryTest {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("sparky"), Password.of("qwerty"));
         List<EffectInstance> effects = List.of(new EffectInstance(EffectId.of("stoneskin"), 5, 1));
-        Player player = new Player(user, 3, 42, effects);
+        PlayerVitals vitals = new PlayerVitals(12, 20, 6, 10, 8, 15);
+        Player player = new Player(user, 3, 42, vitals, effects, "HP {hp}/{maxHp} Exp {exp}");
 
         repository.savePlayer(player);
 
@@ -35,6 +36,9 @@ class JsonPlayerRepositoryTest {
         assertEquals("sparky", loaded.get().getUsername().getValue());
         assertEquals(3, loaded.get().getLevel());
         assertEquals(42, loaded.get().getExperience());
+        assertEquals(12, loaded.get().getVitals().hp());
+        assertEquals(20, loaded.get().getVitals().maxHp());
+        assertEquals("HP {hp}/{maxHp} Exp {exp}", loaded.get().getPromptFormat());
         assertEquals(1, loaded.get().effects().size());
         assertEquals("stoneskin", loaded.get().effects().get(0).id().getValue());
     }

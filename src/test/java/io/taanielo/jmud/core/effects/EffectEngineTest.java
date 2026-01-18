@@ -13,6 +13,7 @@ import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerVitals;
 
 class EffectEngineTest {
 
@@ -33,7 +34,9 @@ class EffectEngineTest {
             User.of(Username.of("bob"), Password.of("pw")),
             1,
             0,
-            new ArrayList<>(List.of(new EffectInstance(id, 1, 1)))
+            PlayerVitals.defaults(),
+            new ArrayList<>(List.of(new EffectInstance(id, 1, 1))),
+            "HP {hp}/{maxHp}"
         );
 
         engine.apply(player, id, new RecordingSink());
@@ -59,7 +62,9 @@ class EffectEngineTest {
             User.of(Username.of("ana"), Password.of("pw")),
             1,
             0,
-            new ArrayList<>(List.of(new EffectInstance(id, 1, 1)))
+            PlayerVitals.defaults(),
+            new ArrayList<>(List.of(new EffectInstance(id, 1, 1))),
+            "HP {hp}/{maxHp}"
         );
         RecordingSink sink = new RecordingSink();
 
