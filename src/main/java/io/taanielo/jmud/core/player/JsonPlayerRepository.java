@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,8 +21,13 @@ public class JsonPlayerRepository implements PlayerRepository {
     private final Path playersDirPath;
 
     public JsonPlayerRepository() {
+        this(Path.of("."));
+    }
+
+    public JsonPlayerRepository(Path dataRoot) {
         this.objectMapper = new ObjectMapper();
-        this.playersDirPath = Path.of(PLAYERS_DIR);
+        this.objectMapper.findAndRegisterModules();
+        this.playersDirPath = Objects.requireNonNull(dataRoot, "Data root is required").resolve(PLAYERS_DIR);
         if (!Files.exists(playersDirPath)) {
             try {
                 Files.createDirectories(playersDirPath);

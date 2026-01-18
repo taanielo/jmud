@@ -1,0 +1,14 @@
+[core]
+    autocrlf = input
+    eol = lf
+    whitespace = trailing-space,space-before-tab
+    commentChar = #
+
+[commit]
+    cleanup = strip
+
+[apply]
+    whitespace = nowarn
+
+[diff]
+    wsErrorHighlight = all

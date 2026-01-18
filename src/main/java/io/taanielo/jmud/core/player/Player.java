@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
@@ -38,10 +39,12 @@ public class Player implements EffectTarget {
         this.effects = new ArrayList<>(Objects.requireNonNullElse(effects, List.of()));
     }
 
+    @JsonIgnore
     public Username getUsername() {
         return user.getUsername();
     }
 
+    @JsonIgnore
     public Password getPassword() {
         return user.getPassword();
     }

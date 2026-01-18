@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.authentication;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AccessLevel;
 import lombok.Getter;
 
@@ -31,7 +33,13 @@ public class Password {
         return Arrays.hashCode(value);
     }
 
+    @JsonCreator
     public static Password of(String value) {
         return new Password(StringUtils.getBytes(value, StandardCharsets.UTF_8));
+    }
+
+    @JsonValue
+    public String jsonValue() {
+        return new String(value, StandardCharsets.UTF_8);
     }
 }
