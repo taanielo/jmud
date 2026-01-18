@@ -5,7 +5,6 @@
   "type": "SKILL",
   "level": 1,
   "cost": {
-    "mana": 0,
     "move": 3
   },
   "cooldown": {

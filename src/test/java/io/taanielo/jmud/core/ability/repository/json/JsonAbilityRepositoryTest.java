@@ -35,7 +35,7 @@ class JsonAbilityRepositoryTest {
               \"name\": \"heal\",
               \"type\": \"SPELL\",
               \"level\": 1,
-              \"cost\": {\"mana\": 4, \"move\": 0},
+              \"cost\": {\"mana\": 4},
               \"cooldown\": {\"ticks\": 3},
               \"targeting\": \"BENEFICIAL\",
               \"aliases\": [\"healing\"],
@@ -72,7 +72,7 @@ class JsonAbilityRepositoryTest {
               \"name\": \"bad\",
               \"type\": \"SPELL\",
               \"level\": 1,
-              \"cost\": {\"mana\": 0, \"move\": 0},
+              \"cost\": {\"mana\": 0},
               \"cooldown\": {\"ticks\": 0},
               \"targeting\": \"BENEFICIAL\",
               \"effects\": [

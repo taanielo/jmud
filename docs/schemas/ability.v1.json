@@ -10,7 +10,6 @@
     "name",
     "type",
     "level",
-    "cost",
     "cooldown",
     "targeting",
     "effects"
@@ -39,7 +38,7 @@
     "cost": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mana", "move"],
+      "minProperties": 1,
       "properties": {
         "mana": {"type": "integer", "minimum": 0},
         "move": {"type": "integer", "minimum": 0}

@@ -5,8 +5,7 @@
   "type": "SPELL",
   "level": 1,
   "cost": {
-    "mana": 3,
-    "move": 0
+    "mana": 3
   },
   "cooldown": {
     "ticks": 4

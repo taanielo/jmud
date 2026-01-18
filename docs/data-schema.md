@@ -65,8 +65,7 @@ Ability example (`data/skills/spell.heal.json`):
   "type": "SPELL",
   "level": 1,
   "cost": {
-    "mana": 4,
-    "move": 0
+    "mana": 4
   },
   "cooldown": {
     "ticks": 3

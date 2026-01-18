@@ -39,18 +39,28 @@ public class AbilityMapper {
 
     public Ability toDomain(AbilityDto dto) {
         Objects.requireNonNull(dto, "Ability DTO is required");
-        AbilityCostDto costDto = Objects.requireNonNull(dto.cost(), "Ability cost is required");
+        AbilityCostDto costDto = dto.cost();
         AbilityCooldownDto cooldownDto = Objects.requireNonNull(dto.cooldown(), "Ability cooldown is required");
         List<AbilityEffectDto> effectDtos = Objects.requireNonNull(dto.effects(), "Ability effects are required");
         List<AbilityEffect> effects = effectDtos.stream()
             .map(this::mapEffect)
             .toList();
+        int manaCost = 0;
+        int moveCost = 0;
+        if (costDto != null) {
+            if (costDto.mana() != null) {
+                manaCost = costDto.mana();
+            }
+            if (costDto.move() != null) {
+                moveCost = costDto.move();
+            }
+        }
         return new AbilityDefinition(
             dto.id(),
             dto.name(),
             dto.type(),
             dto.level(),
-            new AbilityCost(costDto.mana(), costDto.move()),
+            new AbilityCost(manaCost, moveCost),
             new AbilityCooldown(cooldownDto.ticks()),
             dto.targeting(),
             dto.aliases(),
