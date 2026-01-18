@@ -22,7 +22,7 @@ Game data is stored as JSON under `data/`. See `docs/data-schema.md` for the cur
 
 ### Prerequisites
 
-- Java SDK 17 or higher
+- Java SDK 25 or higher
 - A telnet client (most operating systems include a built-in telnet client)
 
 ### Connecting to the Server
