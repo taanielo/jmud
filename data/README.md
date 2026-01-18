@@ -5,6 +5,7 @@ Layout:
 - items/ (item definitions)
 - characters/ (character definitions)
 - skills/ (skills and spells)
+- attacks/ (attack definitions)
 - races/ (race definitions)
 - classes/ (class definitions)
 

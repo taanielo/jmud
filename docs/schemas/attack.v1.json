@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:attack:v1",
+  "title": "Attack (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "min_damage",
+    "max_damage",
+    "hit_bonus",
+    "crit_bonus",
+    "damage_bonus"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "min_damage": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_damage": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hit_bonus": {
+      "type": "integer"
+    },
+    "crit_bonus": {
+      "type": "integer"
+    },
+    "damage_bonus": {
+      "type": "integer"
+    }
+  }
+}

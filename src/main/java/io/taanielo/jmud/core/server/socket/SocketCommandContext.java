@@ -67,4 +67,19 @@ public interface SocketCommandContext extends Client {
      */
     void sendToUsername(Username username, String message);
 
+    /**
+     * Sends a message to other occupants in the room.
+     */
+    void sendToRoom(Player source, Player target, String message);
+
+    /**
+     * Resolves a target in the same room by input.
+     */
+    java.util.Optional<Player> resolveTarget(Player source, String input);
+
+    /**
+     * Executes an attack command with the provided arguments.
+     */
+    void executeAttack(String args);
+
 }

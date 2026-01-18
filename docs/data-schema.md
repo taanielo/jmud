@@ -10,6 +10,9 @@ data/
   items/
   characters/
   skills/
+  attacks/
+  races/
+  classes/
 ```
 
 Each JSON file includes a `schema_version` field. Versioned JSON schemas live under `docs/schemas/`.
@@ -19,6 +22,9 @@ Each JSON file includes a `schema_version` field. Versioned JSON schemas live un
 - Items: `docs/schemas/item.v1.json`
 - Rooms: `docs/schemas/room.v1.json`
 - Abilities (skills/spells): `docs/schemas/ability.v1.json`
+- Attacks: `docs/schemas/attack.v1.json`
+- Races: `docs/schemas/race.v1.json`
+- Classes: `docs/schemas/class.v1.json`
 
 ## Examples
 
@@ -89,6 +95,21 @@ Ability example (`data/skills/spell.heal.json`):
 ```
 
 Message templates support `{source}`, `{target}`, and `{ability}` placeholders.
+
+Attack example (`data/attacks/attack.unarmed.json`):
+
+```json
+{
+  "schema_version": 1,
+  "id": "attack.unarmed",
+  "name": "unarmed",
+  "min_damage": 1,
+  "max_damage": 3,
+  "hit_bonus": 0,
+  "crit_bonus": 0,
+  "damage_bonus": 0
+}
+```
 
 Race example (`data/races/race.elf.json`):
 
