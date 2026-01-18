@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.authentication;
 
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 import org.apache.commons.lang3.StringUtils;
@@ -32,7 +34,13 @@ public class Username {
         return Objects.hash(lowercaseValue);
     }
 
+    @JsonCreator
     public static Username of(String value) {
         return new Username(value, StringUtils.lowerCase(value));
+    }
+
+    @JsonValue
+    public String jsonValue() {
+        return value;
     }
 }
