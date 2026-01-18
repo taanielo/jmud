@@ -53,7 +53,15 @@ public class PlayerVitals {
         return hp;
     }
 
+    public int getHp() {
+        return hp;
+    }
+
     public int maxHp() {
+        return maxHp;
+    }
+
+    public int getMaxHp() {
         return maxHp;
     }
 
@@ -61,7 +69,15 @@ public class PlayerVitals {
         return mana;
     }
 
+    public int getMana() {
+        return mana;
+    }
+
     public int maxMana() {
+        return maxMana;
+    }
+
+    public int getMaxMana() {
         return maxMana;
     }
 
@@ -69,7 +85,15 @@ public class PlayerVitals {
         return move;
     }
 
+    public int getMove() {
+        return move;
+    }
+
     public int maxMove() {
+        return maxMove;
+    }
+
+    public int getMaxMove() {
         return maxMove;
     }
 }
