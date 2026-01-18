@@ -28,7 +28,14 @@ Item example (`data/items/iron-sword.json`):
   "schema_version": 1,
   "id": "iron-sword",
   "name": "Iron Sword",
-  "description": "A plain iron sword with a worn leather grip."
+  "description": "A plain iron sword with a worn leather grip.",
+  "attributes": {
+    "stats": {
+      "strength": 1
+    }
+  },
+  "effects": [],
+  "value": 25
 }
 ```
 
