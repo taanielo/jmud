@@ -11,9 +11,7 @@ public class UserRegistryImpl implements UserRegistry {
 
     private final Set<User> users = new LinkedHashSet<>(
         Set.of(
-            User.of(Username.of("sparky"), Password.of("qwerty")),
-            User.of(Username.of("bob"), Password.of("123456")),
-            User.of(Username.of("MudGod"), Password.of("pasSWord"))
+            User.of(Username.of("sparky"), Password.of("qwerty"))
         )
     );
 
