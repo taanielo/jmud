@@ -51,6 +51,16 @@ Run the server:
 gradle run
 ```
 
+## Configuration
+
+Game configuration lives in `src/main/resources/jmud.properties`. You can override any key with a JVM system property (for example `-Djmud.tick.interval.ms=250`).
+
+Available keys:
+
+- `jmud.prompt.format`
+- `jmud.effects.enabled`
+- `jmud.tick.interval.ms`
+
 ## Basics of Java Telnet Socket Connection
 
 In this game, telnet is used as a simple protocol to handle text-based user interactions. The `ServerSocket` class in Java is used to create a server socket that listens on a specified port. When a client connects, a new `Socket` instance is created to handle the connection.
