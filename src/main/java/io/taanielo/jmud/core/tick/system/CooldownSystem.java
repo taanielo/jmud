@@ -33,6 +33,10 @@ public class CooldownSystem implements Tickable {
         return remaining == null ? 0 : remaining.get();
     }
 
+    public void clear() {
+        cooldowns.clear();
+    }
+
     @Override
     public void tick() {
         for (Map.Entry<String, AtomicInteger> entry : cooldowns.entrySet()) {

@@ -167,9 +167,25 @@ public class PlayerVitals {
         return new PlayerVitals(hp, maxHp, baseMaxHp, mana, maxMana, nextMove, maxMove);
     }
 
+    public PlayerVitals respawnHalf() {
+        return new PlayerVitals(
+            halfOf(maxHp),
+            maxHp,
+            baseMaxHp,
+            halfOf(maxMana),
+            maxMana,
+            halfOf(maxMove),
+            maxMove
+        );
+    }
+
     private void validateAmount(int amount, String label) {
         if (amount < 0) {
             throw new IllegalArgumentException(label + " amount must be non-negative");
         }
+    }
+
+    private int halfOf(int max) {
+        return Math.max(1, max / 2);
     }
 }

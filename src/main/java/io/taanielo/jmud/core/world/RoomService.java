@@ -2,10 +2,12 @@ package io.taanielo.jmud.core.world;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import io.taanielo.jmud.core.authentication.Username;
@@ -32,6 +34,8 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final RoomId startingRoomId;
     private final ConcurrentHashMap<Username, RoomId> playerLocations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RoomId, List<Item>> transientItems = new ConcurrentHashMap<>();
+    private final AtomicLong corpseCounter = new AtomicLong();
 
     /**
      * Creates a room service with the provided repository and starting room id.
@@ -47,6 +51,55 @@ public class RoomService {
     public RoomId ensurePlayerLocation(Username username) {
         Objects.requireNonNull(username, "Username is required");
         return playerLocations.computeIfAbsent(username, ignored -> startingRoomId);
+    }
+
+    /**
+     * Returns the current player location, if any.
+     */
+    public Optional<RoomId> findPlayerLocation(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        return Optional.ofNullable(playerLocations.get(username));
+    }
+
+    /**
+     * Removes a player from the room tracking map.
+     */
+    public void clearPlayerLocation(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        playerLocations.remove(username);
+    }
+
+    /**
+     * Respawns a player at the starting room.
+     */
+    public RoomId respawnPlayer(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        playerLocations.put(username, startingRoomId);
+        return startingRoomId;
+    }
+
+    /**
+     * Adds a transient item to the specified room.
+     */
+    public void addItem(RoomId roomId, Item item) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        Objects.requireNonNull(item, "Item is required");
+        transientItems.compute(roomId, (id, existing) -> {
+            List<Item> items = new ArrayList<>(existing == null ? List.of() : existing);
+            items.add(item);
+            return List.copyOf(items);
+        });
+    }
+
+    /**
+     * Spawns a corpse item in the specified room.
+     */
+    public Item spawnCorpse(Username username, RoomId roomId) {
+        Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        Item corpse = createCorpse(username);
+        addItem(roomId, corpse);
+        return corpse;
     }
 
     /**
@@ -106,12 +159,13 @@ public class RoomService {
             .filter(entry -> entry.getValue().equals(room.getId()))
             .map(Entry::getKey)
             .toList();
+        List<Item> items = mergeItems(room);
         return new Room(
             room.getId(),
             room.getName(),
             room.getDescription(),
             room.getExits(),
-            room.getItems(),
+            items,
             occupants
         );
     }
@@ -154,5 +208,28 @@ public class RoomService {
             return "none";
         }
         return String.join(", ", names);
+    }
+
+    private List<Item> mergeItems(Room room) {
+        List<Item> extras = transientItems.get(room.getId());
+        if (extras == null || extras.isEmpty()) {
+            return room.getItems();
+        }
+        List<Item> merged = new ArrayList<>(room.getItems());
+        merged.addAll(extras);
+        return List.copyOf(merged);
+    }
+
+    private Item createCorpse(Username username) {
+        String owner = username.getValue();
+        String id = "corpse-" + owner.toLowerCase(Locale.ROOT) + "-" + corpseCounter.incrementAndGet();
+        return new Item(
+            ItemId.of(id),
+            "Corpse of " + owner,
+            "The corpse of " + owner + " lies here.",
+            ItemAttributes.empty(),
+            List.of(),
+            0
+        );
     }
 }

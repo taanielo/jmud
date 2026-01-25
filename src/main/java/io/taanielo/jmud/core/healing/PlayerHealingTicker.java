@@ -32,6 +32,9 @@ public class PlayerHealingTicker implements Tickable {
         if (player == null) {
             return;
         }
+        if (player.isDead()) {
+            return;
+        }
         try {
             int baseHealPerTick = baseResolver.baseHpPerTick(player);
             Player updated = engine.apply(player, baseHealPerTick);

@@ -101,6 +101,29 @@ class RoomServiceTest {
         assertTrue(output.contains("Occupants: Alice"));
     }
 
+    @Test
+    void spawnCorpseAddsItemToRoom() {
+        RoomId roomAId = RoomId.of("a");
+        Room roomA = new Room(
+            roomAId,
+            "Room A",
+            "A quiet room.",
+            Map.of(),
+            List.of(),
+            List.of()
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA)), roomAId);
+
+        Username victim = Username.of("Bob");
+        service.ensurePlayerLocation(victim);
+        service.spawnCorpse(victim, roomAId);
+
+        RoomService.LookResult lookResult = service.look(Username.of("Alice"));
+        String output = String.join("\n", lookResult.lines());
+
+        assertTrue(output.contains("Corpse of Bob"));
+    }
+
     private record TestRoomRepository(Map<RoomId, Room> rooms) implements RoomRepository {
         private TestRoomRepository(Map<RoomId, Room> rooms) {
             this.rooms = new ConcurrentHashMap<>(rooms);

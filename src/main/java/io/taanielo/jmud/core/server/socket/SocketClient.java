@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +41,10 @@ import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.output.OutputStyleSettings;
 import io.taanielo.jmud.core.output.TextStyler;
 import io.taanielo.jmud.core.output.TextStylers;
+import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.player.PlayerRespawnTicker;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.effects.EffectEngine;
@@ -90,6 +93,8 @@ public class SocketClient implements Client {
     private TickSubscription cooldownSubscription;
     private final AbilityMessageSink abilityMessageSink;
     private TickSubscription healingSubscription;
+    private final PlayerRespawnTicker respawnTicker;
+    private TickSubscription respawnSubscription;
     private final SocketCommandRegistry commandRegistry = new SocketCommandRegistry();
     private final SocketCommandDispatcher commandDispatcher = new SocketCommandDispatcher(commandRegistry);
 
@@ -126,6 +131,7 @@ public class SocketClient implements Client {
         this.abilityMessageSink = new SocketAbilityMessageSink();
         this.abilityEngine = createAbilityEngine(abilityRegistry);
         this.combatEngine = createCombatEngine();
+        this.respawnTicker = new PlayerRespawnTicker(() -> player, this::applyRespawnUpdate, roomService, DeathSettings.respawnTicks());
         registerCommands();
         init();
     }
@@ -176,6 +182,7 @@ public class SocketClient implements Client {
         }
         textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
         cooldownSubscription = tickRegistry.register(abilityCooldowns);
+        respawnSubscription = tickRegistry.register(respawnTicker);
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);
         sendMessage(WelcomeMessage.of(textStyler, onlineCount));
         authenticated = false;
@@ -222,9 +229,14 @@ public class SocketClient implements Client {
                             playerRepository.savePlayer(player);
                         }
                         textStyler = TextStylers.forEnabled(player.isAnsiEnabled());
-                        roomService.ensurePlayerLocation(player.getUsername());
+                        if (player.isDead()) {
+                            roomService.clearPlayerLocation(player.getUsername());
+                        } else {
+                            roomService.ensurePlayerLocation(player.getUsername());
+                        }
                         registerEffects();
                         registerHealing();
+                        handleDeathState();
                         commandDispatcher.dispatch(new SocketCommandContextImpl(), "look");
                     });
                 } else {
@@ -272,6 +284,9 @@ public class SocketClient implements Client {
         clearHealing();
         if (cooldownSubscription != null) {
             cooldownSubscription.unsubscribe();
+        }
+        if (respawnSubscription != null) {
+            respawnSubscription.unsubscribe();
         }
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
@@ -370,9 +385,14 @@ public class SocketClient implements Client {
             abilityTargetResolver,
             cooldownTracker
         );
-        replacePlayer(result.source());
-        if (!result.target().getUsername().equals(player.getUsername())) {
-            updateTarget(result.target());
+        Player updatedSource = result.source();
+        Player updatedTarget = resolveDeathIfNeeded(result.target(), updatedSource);
+        if (updatedTarget.getUsername().equals(updatedSource.getUsername())) {
+            updatedSource = updatedTarget;
+        }
+        replacePlayer(updatedSource);
+        if (!updatedTarget.getUsername().equals(player.getUsername())) {
+            updateTarget(updatedTarget);
         }
         for (String message : result.messages()) {
             writeLineSafe(message);
@@ -411,8 +431,9 @@ public class SocketClient implements Client {
             if (result.roomMessage() != null && !result.roomMessage().isBlank()) {
                 sendToRoom(player, target, result.roomMessage());
             }
-            if (!result.target().getUsername().equals(player.getUsername())) {
-                updateTarget(result.target());
+            Player updatedTarget = resolveDeathIfNeeded(result.target(), player);
+            if (!updatedTarget.getUsername().equals(player.getUsername())) {
+                updateTarget(updatedTarget);
             }
         } catch (AttackRepositoryException | EffectRepositoryException e) {
             log.error("Failed to resolve attack", e);
@@ -427,13 +448,31 @@ public class SocketClient implements Client {
         playerRepository.savePlayer(player);
         if (effectsInitialized) {
             clearEffects();
-            registerEffects();
+            if (!player.isDead()) {
+                registerEffects();
+            }
         }
+        handleDeathState();
     }
 
     private void applyHealingUpdate(Player updated) {
         player = updated;
         playerRepository.savePlayer(player);
+    }
+
+    private void applyRespawnUpdate(Player updated) {
+        replacePlayer(updated);
+    }
+
+    private void handleDeathState() {
+        if (player == null || !player.isDead()) {
+            return;
+        }
+        if (respawnTicker.isScheduled()) {
+            return;
+        }
+        abilityCooldowns.clear();
+        respawnTicker.schedule();
     }
 
     private void updateTarget(Player updatedTarget) {
@@ -446,6 +485,38 @@ public class SocketClient implements Client {
                 }
             }
         }
+    }
+
+    private Player resolveDeathIfNeeded(Player target, Player attacker) {
+        Objects.requireNonNull(target, "Target is required");
+        if (target.isDead() || target.getVitals().hp() > 0) {
+            return target;
+        }
+        RoomService.LookResult look = roomService.look(target.getUsername());
+        Room room = look.room();
+        Player deadTarget = target.die();
+        sendDeathMessages(attacker, deadTarget);
+        if (room != null) {
+            roomService.spawnCorpse(deadTarget.getUsername(), room.getId());
+        }
+        roomService.clearPlayerLocation(deadTarget.getUsername());
+        return deadTarget;
+    }
+
+    private void sendDeathMessages(Player attacker, Player target) {
+        String targetName = target.getUsername().getValue();
+        sendToUsername(target.getUsername(), "You have died.");
+        if (attacker == null) {
+            sendToRoom(target, target, targetName + " has died.");
+            return;
+        }
+        if (!attacker.getUsername().equals(target.getUsername())) {
+            sendToUsername(attacker.getUsername(), "You have slain " + targetName + ".");
+        }
+        String roomMessage = attacker.getUsername().equals(target.getUsername())
+            ? targetName + " has died."
+            : targetName + " has been slain by " + attacker.getUsername().getValue() + ".";
+        sendToRoom(attacker, target, roomMessage);
     }
 
     private boolean isAuthenticatedUser(Username username) {
@@ -635,7 +706,7 @@ public class SocketClient implements Client {
     }
 
     private void registerEffects() {
-        if (!EffectSettings.enabled() || effectsInitialized) {
+        if (!EffectSettings.enabled() || effectsInitialized || player == null || player.isDead()) {
             return;
         }
         try {
