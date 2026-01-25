@@ -20,11 +20,11 @@ public class AuditService {
     public static AuditService create(LongSupplier tickSupplier) {
         Clock clock = Clock.systemDefaultZone();
         if (!AuditSettings.enabled()) {
-            return new AuditService(new NoOpAuditSink(), clock, tickSupplier, AuditService::newCorrelationId);
+            return new AuditService(new NoOpAuditSink(), clock, tickSupplier, AuditService::generateCorrelationId);
         }
         AuditSink fileSink = new JsonlFileAuditSink(Path.of(AuditSettings.path()), clock);
         AuditSink asyncSink = new AsyncAuditSink(fileSink, AuditSettings.queueSize());
-        return new AuditService(asyncSink, clock, tickSupplier, AuditService::newCorrelationId);
+        return new AuditService(asyncSink, clock, tickSupplier, AuditService::generateCorrelationId);
     }
 
     public AuditService(
@@ -87,7 +87,7 @@ public class AuditService {
         return cleaned.isEmpty() ? Map.of() : Map.copyOf(cleaned);
     }
 
-    private static String newCorrelationId() {
+    private static String generateCorrelationId() {
         return UUID.randomUUID().toString();
     }
 }
