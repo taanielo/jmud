@@ -6,6 +6,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,6 +17,7 @@ public class FixedRateTickScheduler {
     private final ScheduledExecutorService executor;
     private final long intervalMillis;
     private final AtomicBoolean started = new AtomicBoolean(false);
+    private final AtomicLong tickCounter = new AtomicLong();
     private ScheduledFuture<?> task;
 
     public FixedRateTickScheduler(TickRegistry tickRegistry) {
@@ -63,7 +65,10 @@ public class FixedRateTickScheduler {
     }
 
     private void runTick() {
-        for (Tickable tickable : tickRegistry.snapshot()) {
+        long tick = tickCounter.incrementAndGet();
+        java.util.List<Tickable> snapshot = tickRegistry.snapshot();
+        log.debug("Tick {} start ({} tickables)", tick, snapshot.size());
+        for (Tickable tickable : snapshot) {
             try {
                 tickable.tick();
             } catch (Exception e) {
