@@ -71,7 +71,7 @@ public class PlayerRespawnTicker implements Tickable {
 
     private void respawn(Player player) {
         Player respawned = player.respawn();
-        playerUpdater.accept(respawned);
         roomService.respawnPlayer(respawned.getUsername());
+        playerUpdater.accept(respawned);
     }
 }
