@@ -47,6 +47,13 @@ public class SocketCommandDispatcher {
             context.writeLineWithPrompt("Ambiguous command. Specify: " + options);
             return;
         }
-        matches.getFirst().execute(context);
+        SocketCommandMatch match = matches.getFirst();
+        if (context.getPlayer() != null && context.getPlayer().isDead()) {
+            if (!"quit".equalsIgnoreCase(match.command().name())) {
+                context.writeLineWithPrompt("You cannot act while dead.");
+                return;
+            }
+        }
+        match.execute(context);
     }
 }
