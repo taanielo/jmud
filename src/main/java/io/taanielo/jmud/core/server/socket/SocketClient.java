@@ -549,6 +549,9 @@ public class SocketClient implements Client {
 
     private void applyRespawnUpdate(Player updated) {
         replacePlayer(updated);
+        writeLineSafe("You awaken in the starting room.");
+        RoomService.LookResult result = roomService.look(player.getUsername());
+        writeLinesWithPrompt(result.lines());
     }
 
     private void handleDeathState() {
