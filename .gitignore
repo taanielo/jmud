@@ -37,3 +37,4 @@ build/
 jmud.log
 players/
 .gradle/
+logs/
