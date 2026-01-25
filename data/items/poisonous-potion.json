@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "poisonous-potion",
+  "name": "Poisonous Potion",
+  "description": "A cloudy green vial that smells faintly of rot.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [
+    {
+      "effect_id": "poison",
+      "duration_ticks": 10
+    }
+  ],
+  "value": 5
+}

@@ -5,6 +5,7 @@
   "description": "A dusty yard with practice dummies and scattered weapons.",
   "item_ids": [
     "iron-sword",
-    "health-potion"
+    "health-potion",
+    "poisonous-potion"
   ]
 }

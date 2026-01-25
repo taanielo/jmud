@@ -66,6 +66,8 @@ import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -139,6 +141,9 @@ public class SocketClient implements Client {
     private void registerCommands() {
         new LookCommand(commandRegistry);
         new MoveCommand(commandRegistry);
+        new GetCommand(commandRegistry);
+        new DropCommand(commandRegistry);
+        new QuaffCommand(commandRegistry);
         new SayCommand(commandRegistry);
         new AbilityCommand(commandRegistry);
         new AttackCommand(commandRegistry);
@@ -443,6 +448,83 @@ public class SocketClient implements Client {
         sendPrompt();
     }
 
+    private void handleGetCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to get items.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            writeLineWithPrompt("Get what?");
+            return;
+        }
+        RoomService.LookResult look = roomService.look(player.getUsername());
+        Room room = look.room();
+        if (room == null) {
+            writeLineWithPrompt("You cannot get items here.");
+            return;
+        }
+        java.util.Optional<Item> item = roomService.takeItem(player.getUsername(), normalized);
+        if (item.isEmpty()) {
+            writeLineWithPrompt("You don't see that here.");
+            return;
+        }
+        replacePlayer(player.addItem(item.get()));
+        writeLineWithPrompt("You pick up " + item.get().getName() + ".");
+    }
+
+    private void handleDropCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to drop items.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            writeLineWithPrompt("Drop what?");
+            return;
+        }
+        Item item = findInventoryItem(normalized);
+        if (item == null) {
+            writeLineWithPrompt("You aren't carrying that.");
+            return;
+        }
+        roomService.dropItem(player.getUsername(), item);
+        replacePlayer(player.removeItem(item));
+        writeLineWithPrompt("You drop " + item.getName() + ".");
+    }
+
+    private void handleQuaffCommand(String args) {
+        if (!authenticated || player == null) {
+            writeLineWithPrompt("You must be logged in to quaff.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            writeLineWithPrompt("Quaff what?");
+            return;
+        }
+        Item item = findInventoryItem(normalized);
+        if (item == null) {
+            writeLineWithPrompt("You aren't carrying that.");
+            return;
+        }
+        if (item.getEffects().isEmpty()) {
+            writeLineWithPrompt("Nothing happens.");
+            return;
+        }
+        try {
+            EffectEngine engine = new EffectEngine(new JsonEffectRepository());
+            for (ItemEffect effect : item.getEffects()) {
+                engine.apply(player, effect.id(), new NoOpEffectMessageSink());
+            }
+        } catch (EffectRepositoryException e) {
+            writeLineWithPrompt("You cannot use that item right now.");
+            return;
+        }
+        replacePlayer(player.removeItem(item));
+        writeLineWithPrompt("You quaff " + item.getName() + ".");
+    }
+
     private void replacePlayer(Player updated) {
         player = updated;
         playerRepository.savePlayer(player);
@@ -456,6 +538,11 @@ public class SocketClient implements Client {
     }
 
     private void applyHealingUpdate(Player updated) {
+        if (updated.getVitals().hp() <= 0 && !updated.isDead()) {
+            Player resolved = resolveDeathIfNeeded(updated, null);
+            replacePlayer(resolved);
+            return;
+        }
         player = updated;
         playerRepository.savePlayer(player);
     }
@@ -517,6 +604,21 @@ public class SocketClient implements Client {
             ? targetName + " has died."
             : targetName + " has been slain by " + attacker.getUsername().getValue() + ".";
         sendToRoom(attacker, target, roomMessage);
+    }
+
+    private Item findInventoryItem(String input) {
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+        for (Item item : player.getInventory()) {
+            String name = item.getName().toLowerCase(Locale.ROOT);
+            if (name.equals(normalized) || name.startsWith(normalized)) {
+                return item;
+            }
+            String id = item.getId().getValue().toLowerCase(Locale.ROOT);
+            if (id.equals(normalized) || id.startsWith(normalized)) {
+                return item;
+            }
+        }
+        return null;
     }
 
     private boolean isAuthenticatedUser(Username username) {
@@ -666,6 +768,21 @@ public class SocketClient implements Client {
         @Override
         public void executeAttack(String args) {
             handleAttackCommand(args);
+        }
+
+        @Override
+        public void getItem(String args) {
+            handleGetCommand(args);
+        }
+
+        @Override
+        public void dropItem(String args) {
+            handleDropCommand(args);
+        }
+
+        @Override
+        public void quaffItem(String args) {
+            handleQuaffCommand(args);
         }
 
     }

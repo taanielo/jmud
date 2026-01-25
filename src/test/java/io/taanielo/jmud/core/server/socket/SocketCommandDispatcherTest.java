@@ -166,6 +166,18 @@ class SocketCommandDispatcherTest {
         }
 
         @Override
+        public void getItem(String args) {
+        }
+
+        @Override
+        public void dropItem(String args) {
+        }
+
+        @Override
+        public void quaffItem(String args) {
+        }
+
+        @Override
         public void sendMessage(io.taanielo.jmud.core.messaging.Message message) {
         }
 

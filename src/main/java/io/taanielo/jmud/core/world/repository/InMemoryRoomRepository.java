@@ -8,9 +8,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
+import io.taanielo.jmud.core.effects.EffectId;
 
 public class InMemoryRoomRepository implements RoomRepository {
 
@@ -33,6 +35,13 @@ public class InMemoryRoomRepository implements RoomRepository {
                 ItemAttributes.empty(),
                 List.of(),
                 25
+            ), new Item(
+                ItemId.of("poisonous-potion"),
+                "Poisonous Potion",
+                "A cloudy green vial that smells faintly of rot.",
+                ItemAttributes.empty(),
+                List.of(new ItemEffect(EffectId.of("poison"), 10)),
+                5
             )),
             List.of()
         );

@@ -37,6 +37,11 @@ public class HealingEngine {
             updatedVitals = updatedVitals.heal(healing);
         }
 
+        int damage = applyModifiers(0, player.effects(), HealingModifierKeys.DAMAGE_PER_TICK);
+        if (damage > 0) {
+            updatedVitals = updatedVitals.damage(damage);
+        }
+
         if (updatedVitals == vitals) {
             return player;
         }
