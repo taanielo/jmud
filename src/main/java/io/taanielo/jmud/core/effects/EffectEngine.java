@@ -12,7 +12,7 @@ public class EffectEngine {
         this.repository = Objects.requireNonNull(repository, "Effect repository is required");
     }
 
-    public void apply(EffectTarget target, EffectId id, EffectMessageSink sink) throws EffectRepositoryException {
+    public boolean apply(EffectTarget target, EffectId id, EffectMessageSink sink) throws EffectRepositoryException {
         Objects.requireNonNull(target, "Effect target is required");
         Objects.requireNonNull(id, "Effect id is required");
         Objects.requireNonNull(sink, "Effect message sink is required");
@@ -31,6 +31,7 @@ public class EffectEngine {
         if (applied) {
             sendApplyMessages(definition, sink);
         }
+        return applied;
     }
 
     public void tick(EffectTarget target, EffectMessageSink sink) throws EffectRepositoryException {

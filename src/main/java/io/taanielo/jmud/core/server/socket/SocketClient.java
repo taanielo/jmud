@@ -5,16 +5,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
+import io.taanielo.jmud.core.ability.AbilityEffect;
+import io.taanielo.jmud.core.ability.AbilityEffectKind;
+import io.taanielo.jmud.core.ability.AbilityEffectListener;
 import io.taanielo.jmud.core.ability.AbilityEngine;
+import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityMessageSink;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
@@ -23,6 +30,9 @@ import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
 import io.taanielo.jmud.core.ability.CooldownTracker;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
 import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
+import io.taanielo.jmud.core.audit.AuditEvent;
+import io.taanielo.jmud.core.audit.AuditService;
+import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.authentication.UserRegistry;
@@ -83,6 +93,7 @@ public class SocketClient implements Client {
     private final ClientPool clientPool;
     private final TickRegistry tickRegistry;
     private final AbilityRegistry abilityRegistry;
+    private final AuditService auditService;
     private final Object writeLock = new Object();
     private final PromptRenderer promptRenderer = new PromptRenderer();
     private TextStyler textStyler;
@@ -92,13 +103,14 @@ public class SocketClient implements Client {
     private final AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
     private final AbilityEngine abilityEngine;
     private final CombatEngine combatEngine;
+    private final AbilityEffectListener abilityEffectListener;
     private TickSubscription cooldownSubscription;
     private final AbilityMessageSink abilityMessageSink;
     private TickSubscription healingSubscription;
     private final PlayerRespawnTicker respawnTicker;
     private TickSubscription respawnSubscription;
     private final SocketCommandRegistry commandRegistry = new SocketCommandRegistry();
-    private final SocketCommandDispatcher commandDispatcher = new SocketCommandDispatcher(commandRegistry);
+    private final SocketCommandDispatcher commandDispatcher;
 
     private OutputStream output;
     private InputStream input;
@@ -109,6 +121,8 @@ public class SocketClient implements Client {
     private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
     private boolean effectsInitialized;
     private boolean healingInitialized;
+    private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
+    private boolean quitRequested;
 
     public SocketClient(
         Socket clientSocket,
@@ -118,7 +132,8 @@ public class SocketClient implements Client {
         RoomService roomService,
         TickRegistry tickRegistry,
         ClientPool clientPool,
-        AbilityRegistry abilityRegistry
+        AbilityRegistry abilityRegistry,
+        AuditService auditService
     ) throws IOException {
         this.clientSocket = clientSocket;
         this.messageBroadcaster = messageBroadcaster;
@@ -129,11 +144,14 @@ public class SocketClient implements Client {
         this.clientPool = clientPool;
         this.tickRegistry = tickRegistry;
         this.abilityRegistry = abilityRegistry;
+        this.auditService = Objects.requireNonNull(auditService, "Audit service is required");
         this.abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
         this.abilityMessageSink = new SocketAbilityMessageSink();
+        this.abilityEffectListener = new SocketAbilityEffectListener();
         this.abilityEngine = createAbilityEngine(abilityRegistry);
         this.combatEngine = createCombatEngine();
         this.respawnTicker = new PlayerRespawnTicker(() -> player, this::applyRespawnUpdate, roomService, DeathSettings.respawnTicks());
+        this.commandDispatcher = new SocketCommandDispatcher(commandRegistry, auditService);
         registerCommands();
         init();
     }
@@ -154,7 +172,11 @@ public class SocketClient implements Client {
     private AbilityEngine createAbilityEngine(AbilityRegistry registry) {
         try {
             EffectEngine engine = new EffectEngine(new JsonEffectRepository());
-            DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(engine, new NoOpEffectMessageSink());
+            DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(
+                engine,
+                new NoOpEffectMessageSink(),
+                abilityEffectListener
+            );
             return new AbilityEngine(registry, abilityCostResolver, resolver, abilityMessageSink);
         } catch (EffectRepositoryException e) {
             throw new IllegalStateException("Failed to initialize ability effects: " + e.getMessage(), e);
@@ -216,6 +238,7 @@ public class SocketClient implements Client {
                 if (!authenticated) {
                     authenticationService.authenticate(clientInput, authenticatedUser -> {
                         authenticated = true;
+                        AtomicBoolean isNewPlayer = new AtomicBoolean(false);
                         player = playerRepository
                             .loadPlayer(authenticatedUser.getUsername())
                             .orElseGet(() -> {
@@ -226,6 +249,7 @@ public class SocketClient implements Client {
                                     ansiEnabled,
                                     abilityRegistry.abilityIds()
                                 );
+                                isNewPlayer.set(true);
                                 playerRepository.savePlayer(newPlayer);
                                 return newPlayer;
                             });
@@ -242,7 +266,16 @@ public class SocketClient implements Client {
                         registerEffects();
                         registerHealing();
                         handleDeathState();
-                        commandDispatcher.dispatch(new SocketCommandContextImpl(), "look");
+                        emitAudit(
+                            "player.login",
+                            AuditSubject.player(player.getUsername()),
+                            null,
+                            resolveRoomId(player),
+                            "success",
+                            Map.of("newPlayer", isNewPlayer.get())
+                        );
+                        String correlationId = auditService.newCorrelationId();
+                        commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
                     });
                 } else {
                     handleCommand(clientInput);
@@ -294,6 +327,15 @@ public class SocketClient implements Client {
             respawnSubscription.unsubscribe();
         }
         if (authenticated && player != null) {
+            Map<String, Object> metadata = Map.of("reason", quitRequested ? "quit" : "disconnect");
+            emitAudit(
+                "player.logout",
+                AuditSubject.player(player.getUsername()),
+                null,
+                resolveRoomId(player),
+                "success",
+                metadata
+            );
             playerRepository.savePlayer(player);
             log.info("Player {} data saved on disconnect.", player.getUsername());
         }
@@ -318,7 +360,13 @@ public class SocketClient implements Client {
     }
 
     private void handleCommand(String clientInput) {
-        commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput);
+        String correlationId = auditService.newCorrelationId();
+        currentCorrelationId.set(correlationId);
+        try {
+            commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput, correlationId);
+        } finally {
+            currentCorrelationId.remove();
+        }
     }
 
     private void writeLinesWithPrompt(List<String> lines) {
@@ -383,6 +431,7 @@ public class SocketClient implements Client {
             writeLineWithPrompt("You must be logged in to use abilities.");
             return;
         }
+        AbilityMatch match = abilityRegistry.findBestMatch(args, player.getLearnedAbilities()).orElse(null);
         AbilityUseResult result = abilityEngine.use(
             player,
             args,
@@ -390,6 +439,7 @@ public class SocketClient implements Client {
             abilityTargetResolver,
             cooldownTracker
         );
+        auditAbilityUse(match, result, args);
         Player updatedSource = result.source();
         Player updatedTarget = resolveDeathIfNeeded(result.target(), updatedSource);
         if (updatedTarget.getUsername().equals(updatedSource.getUsername())) {
@@ -436,6 +486,19 @@ public class SocketClient implements Client {
             if (result.roomMessage() != null && !result.roomMessage().isBlank()) {
                 sendToRoom(player, target, result.roomMessage());
             }
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("attackId", CombatSettings.defaultAttackId().getValue());
+            metadata.put("hit", result.hit());
+            metadata.put("crit", result.crit());
+            metadata.put("damage", result.damage());
+            emitAudit(
+                "combat.attack",
+                AuditSubject.player(player.getUsername()),
+                AuditSubject.player(target.getUsername()),
+                resolveRoomId(player),
+                result.hit() ? "hit" : "miss",
+                metadata
+            );
             Player updatedTarget = resolveDeathIfNeeded(result.target(), player);
             if (!updatedTarget.getUsername().equals(player.getUsername())) {
                 updateTarget(updatedTarget);
@@ -470,6 +533,14 @@ public class SocketClient implements Client {
             return;
         }
         replacePlayer(player.addItem(item.get()));
+        emitAudit(
+            "item.get",
+            AuditSubject.player(player.getUsername()),
+            AuditSubject.item(item.get()),
+            room == null ? null : room.getId().getValue(),
+            "success",
+            Map.of("itemName", item.get().getName())
+        );
         writeLineWithPrompt("You pick up " + item.get().getName() + ".");
     }
 
@@ -490,6 +561,14 @@ public class SocketClient implements Client {
         }
         roomService.dropItem(player.getUsername(), item);
         replacePlayer(player.removeItem(item));
+        emitAudit(
+            "item.drop",
+            AuditSubject.player(player.getUsername()),
+            AuditSubject.item(item),
+            resolveRoomId(player),
+            "success",
+            Map.of("itemName", item.getName())
+        );
         writeLineWithPrompt("You drop " + item.getName() + ".");
     }
 
@@ -515,13 +594,24 @@ public class SocketClient implements Client {
         try {
             EffectEngine engine = new EffectEngine(new JsonEffectRepository());
             for (ItemEffect effect : item.getEffects()) {
-                engine.apply(player, effect.id(), new NoOpEffectMessageSink());
+                boolean applied = engine.apply(player, effect.id(), new NoOpEffectMessageSink());
+                if (applied) {
+                    auditEffectApplied(effect.id().getValue(), "item", item.getId().getValue());
+                }
             }
         } catch (EffectRepositoryException e) {
             writeLineWithPrompt("You cannot use that item right now.");
             return;
         }
         replacePlayer(player.removeItem(item));
+        emitAudit(
+            "item.quaff",
+            AuditSubject.player(player.getUsername()),
+            AuditSubject.item(item),
+            resolveRoomId(player),
+            "success",
+            Map.of("itemName", item.getName())
+        );
         writeLineWithPrompt("You quaff " + item.getName() + ".");
     }
 
@@ -538,6 +628,26 @@ public class SocketClient implements Client {
     }
 
     private void applyHealingUpdate(Player updated) {
+        if (player != null) {
+            int beforeHp = player.getVitals().hp();
+            int afterHp = updated.getVitals().hp();
+            int delta = afterHp - beforeHp;
+            if (delta != 0) {
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("amount", Math.abs(delta));
+                metadata.put("hpBefore", beforeHp);
+                metadata.put("hpAfter", afterHp);
+                String eventType = delta > 0 ? "healing.tick" : "damage.tick";
+                emitAudit(
+                    eventType,
+                    AuditSubject.player(player.getUsername()),
+                    null,
+                    resolveRoomId(player),
+                    "success",
+                    metadata
+                );
+            }
+        }
         if (updated.getVitals().hp() <= 0 && !updated.isDead()) {
             Player resolved = resolveDeathIfNeeded(updated, null);
             replacePlayer(resolved);
@@ -551,6 +661,14 @@ public class SocketClient implements Client {
         replacePlayer(updated);
         writeLineSafe("You awaken in the starting room.");
         RoomService.LookResult result = roomService.look(player.getUsername());
+        emitAudit(
+            "player.respawn",
+            AuditSubject.player(player.getUsername()),
+            null,
+            result.room() == null ? null : result.room().getId().getValue(),
+            "success",
+            Map.of()
+        );
         writeLinesWithPrompt(result.lines());
     }
 
@@ -586,8 +704,29 @@ public class SocketClient implements Client {
         Room room = look.room();
         Player deadTarget = target.die();
         sendDeathMessages(attacker, deadTarget);
+        AuditSubject actor = attacker == null
+            ? AuditSubject.system("environment")
+            : AuditSubject.player(attacker.getUsername());
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("cause", attacker == null ? "effect" : "combat");
+        emitAudit(
+            "player.death",
+            actor,
+            AuditSubject.player(deadTarget.getUsername()),
+            room == null ? null : room.getId().getValue(),
+            "success",
+            metadata
+        );
         if (room != null) {
-            roomService.spawnCorpse(deadTarget.getUsername(), room.getId());
+            Item corpse = roomService.spawnCorpse(deadTarget.getUsername(), room.getId());
+            emitAudit(
+                "loot.corpse.spawned",
+                AuditSubject.system("environment"),
+                AuditSubject.item(corpse),
+                room.getId().getValue(),
+                "success",
+                Map.of("owner", deadTarget.getUsername().getValue())
+            );
         }
         roomService.clearPlayerLocation(deadTarget.getUsername());
         return deadTarget;
@@ -624,6 +763,84 @@ public class SocketClient implements Client {
         return null;
     }
 
+    private void auditAbilityUse(AbilityMatch match, AbilityUseResult result, String input) {
+        if (player == null || result == null) {
+            return;
+        }
+        Map<String, Object> metadata = new HashMap<>();
+        if (input != null && !input.isBlank()) {
+            metadata.put("input", input.trim());
+        }
+        if (match != null) {
+            metadata.put("abilityId", match.ability().id().getValue());
+            metadata.put("abilityName", match.ability().name());
+            String remainingTarget = match.remainingTarget();
+            if (remainingTarget != null && !remainingTarget.isBlank()) {
+                metadata.put("targetInput", remainingTarget);
+            }
+        }
+        metadata.put("messages", result.messages());
+        AuditSubject target = result.target() == null
+            ? null
+            : AuditSubject.player(result.target().getUsername());
+        emitAudit(
+            "ability.use",
+            AuditSubject.player(player.getUsername()),
+            target,
+            resolveRoomId(player),
+            "attempted",
+            metadata
+        );
+    }
+
+    private void auditEffectApplied(String effectId, String originType, String originId) {
+        if (player == null) {
+            return;
+        }
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("effectId", effectId);
+        metadata.put("originType", originType);
+        metadata.put("originId", originId);
+        emitAudit(
+            "effect.apply",
+            AuditSubject.player(player.getUsername()),
+            AuditSubject.player(player.getUsername()),
+            resolveRoomId(player),
+            "success",
+            metadata
+        );
+    }
+
+    private void emitAudit(
+        String eventType,
+        AuditSubject actor,
+        AuditSubject target,
+        String roomId,
+        String result,
+        Map<String, Object> metadata
+    ) {
+        String correlationId = currentCorrelationId.get();
+        AuditEvent event = new AuditEvent(
+            eventType,
+            actor,
+            target,
+            roomId,
+            result,
+            correlationId == null ? auditService.newCorrelationId() : correlationId,
+            metadata
+        );
+        auditService.emit(event);
+    }
+
+    private String resolveRoomId(Player player) {
+        if (player == null) {
+            return null;
+        }
+        return roomService.findPlayerLocation(player.getUsername())
+            .map(roomId -> roomId.getValue())
+            .orElse(null);
+    }
+
     private boolean isAuthenticatedUser(Username username) {
         return authenticated && player != null && player.getUsername().equals(username);
     }
@@ -638,6 +855,33 @@ public class SocketClient implements Client {
     private static class NoOpEffectMessageSink implements EffectMessageSink {
         @Override
         public void sendToTarget(String message) {
+        }
+    }
+
+    private class SocketAbilityEffectListener implements AbilityEffectListener {
+        @Override
+        public void onApplied(AbilityEffect effect, io.taanielo.jmud.core.ability.AbilityContext context) {
+            if (effect == null || context == null) {
+                return;
+            }
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("originType", "ability");
+            metadata.put("kind", effect.kind().name().toLowerCase(Locale.ROOT));
+            if (effect.kind() == AbilityEffectKind.EFFECT) {
+                metadata.put("effectId", effect.effectId());
+            } else {
+                metadata.put("stat", effect.stat().name().toLowerCase(Locale.ROOT));
+                metadata.put("operation", effect.operation().name().toLowerCase(Locale.ROOT));
+                metadata.put("amount", effect.amount());
+            }
+            emitAudit(
+                "effect.apply",
+                AuditSubject.player(context.source().getUsername()),
+                AuditSubject.player(context.target().getUsername()),
+                resolveRoomId(context.source()),
+                "success",
+                metadata
+            );
         }
     }
 
@@ -700,6 +944,7 @@ public class SocketClient implements Client {
 
         @Override
         public void close() {
+            quitRequested = true;
             SocketClient.this.close();
         }
 
@@ -724,7 +969,20 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to move.");
                 return;
             }
+            String fromRoom = resolveRoomId(player);
             RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("direction", direction.label());
+            metadata.put("fromRoom", fromRoom);
+            metadata.put("toRoom", result.room() == null ? null : result.room().getId().getValue());
+            emitAudit(
+                "player.move",
+                AuditSubject.player(player.getUsername()),
+                null,
+                result.room() == null ? fromRoom : result.room().getId().getValue(),
+                result.moved() ? "success" : "blocked",
+                metadata
+            );
             writeLinesWithPrompt(result.lines());
         }
 

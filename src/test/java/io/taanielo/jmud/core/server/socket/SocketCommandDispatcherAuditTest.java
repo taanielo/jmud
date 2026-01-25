@@ -1,81 +1,69 @@
 package io.taanielo.jmud.core.server.socket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.audit.AuditEntry;
+import io.taanielo.jmud.core.audit.AuditService;
+import io.taanielo.jmud.core.audit.AuditSink;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
-import io.taanielo.jmud.core.audit.AuditService;
-import io.taanielo.jmud.core.audit.NoOpAuditSink;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
 
-class SocketCommandDispatcherTest {
+class SocketCommandDispatcherAuditTest {
 
     @Test
-    void blocksCommandsWhenDead() {
+    void logsCommandLifecycleWithCorrelationId() {
         AtomicBoolean executed = new AtomicBoolean(false);
         SocketCommandRegistry registry = new SocketCommandRegistry();
         registry.register(new TestCommand("look", executed));
-        AuditService auditService = new AuditService(new NoOpAuditSink(), Clock.systemUTC(), () -> 0L, () -> "test");
+        RecordingAuditSink sink = new RecordingAuditSink();
+        AuditService auditService = new AuditService(sink, Clock.systemUTC(), () -> 7L, () -> "corr-1");
         SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
 
-        Player deadPlayer = new Player(
+        Player player = new Player(
             User.of(Username.of("sparky"), Password.of("pw")),
             1,
             0,
-            new PlayerVitals(5, 20, 5, 20, 5, 20),
+            PlayerVitals.defaults(),
             List.of(),
             "prompt",
             false,
             List.of(),
             null,
             null
-        ).die();
-        TestContext context = new TestContext(deadPlayer);
+        );
+        TestContext context = new TestContext(player);
 
-        dispatcher.dispatch(context, "look", "corr-1");
-
-        assertFalse(executed.get());
-        assertEquals("You cannot act while dead.", context.lastMessage);
-    }
-
-    @Test
-    void allowsQuitWhenDead() {
-        AtomicBoolean executed = new AtomicBoolean(false);
-        SocketCommandRegistry registry = new SocketCommandRegistry();
-        registry.register(new TestCommand("quit", executed));
-        AuditService auditService = new AuditService(new NoOpAuditSink(), Clock.systemUTC(), () -> 0L, () -> "test");
-        SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
-
-        Player deadPlayer = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
-            1,
-            0,
-            new PlayerVitals(5, 20, 5, 20, 5, 20),
-            List.of(),
-            "prompt",
-            false,
-            List.of(),
-            null,
-            null
-        ).die();
-        TestContext context = new TestContext(deadPlayer);
-
-        dispatcher.dispatch(context, "quit", "corr-2");
+        dispatcher.dispatch(context, "look", "corr-123");
 
         assertTrue(executed.get());
+        assertEquals(2, sink.entries.size());
+        assertEquals("command.received", sink.entries.get(0).eventType());
+        assertEquals("command.execute", sink.entries.get(1).eventType());
+        assertEquals("corr-123", sink.entries.get(0).correlationId());
+        assertEquals("corr-123", sink.entries.get(1).correlationId());
+    }
+
+    private static class RecordingAuditSink implements AuditSink {
+        private final List<AuditEntry> entries = new CopyOnWriteArrayList<>();
+
+        @Override
+        public void write(AuditEntry entry) {
+            entries.add(entry);
+        }
     }
 
     private static class TestCommand implements SocketCommandHandler {
@@ -103,7 +91,6 @@ class SocketCommandDispatcherTest {
 
     private static class TestContext implements SocketCommandContext {
         private final Player player;
-        private String lastMessage;
 
         private TestContext(Player player) {
             this.player = player;
@@ -142,7 +129,6 @@ class SocketCommandDispatcherTest {
 
         @Override
         public void writeLineWithPrompt(String message) {
-            lastMessage = message;
         }
 
         @Override

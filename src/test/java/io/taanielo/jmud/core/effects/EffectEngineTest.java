@@ -43,9 +43,10 @@ class EffectEngineTest {
             null
         );
 
-        engine.apply(player, id, new RecordingSink());
+        boolean applied = engine.apply(player, id, new RecordingSink());
 
         assertEquals(5, player.effects().getFirst().remainingTicks());
+        assertTrue(applied);
     }
 
     @Test
