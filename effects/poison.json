@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "poison",
+  "name": "Poison",
+  "duration_ticks": 10,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": {
+    "apply_self": "Poison burns through your veins.",
+    "expire_self": "The poison leaves your body.",
+    "examine": "{name} looks sickly."
+  }
+}

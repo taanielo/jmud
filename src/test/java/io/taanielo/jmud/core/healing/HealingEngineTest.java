@@ -161,6 +161,40 @@ class HealingEngineTest {
         assertEquals(1, updated.effects().size());
     }
 
+    @Test
+    void appliesDamagePerTickModifiers() throws Exception {
+        EffectId poisonId = EffectId.of("poison");
+        EffectDefinition poison = new EffectDefinition(
+            poisonId,
+            "Poison",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(new EffectModifier(HealingModifierKeys.DAMAGE_PER_TICK, ModifierOperation.ADD, 5)),
+            null
+        );
+        PlayerVitals vitals = new PlayerVitals(12, 20, 10, 20, 10, 20);
+        List<EffectInstance> effects = new ArrayList<>();
+        effects.add(new EffectInstance(poisonId, 10, 1));
+        Player player = new Player(
+            User.of(Username.of("sparky"), Password.of("pw")),
+            1,
+            0,
+            vitals,
+            effects,
+            "prompt",
+            false,
+            List.of(),
+            null,
+            null
+        );
+        HealingEngine engine = new HealingEngine(new StubEffectRepository(Map.of(poisonId, poison)));
+
+        Player updated = engine.apply(player, 0);
+
+        assertEquals(7, updated.getVitals().hp());
+    }
+
     private static class StubEffectRepository implements EffectRepository {
         private final Map<EffectId, EffectDefinition> definitions;
 

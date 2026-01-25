@@ -82,4 +82,19 @@ public interface SocketCommandContext extends Client {
      */
     void executeAttack(String args);
 
+    /**
+     * Executes a get command with the provided arguments.
+     */
+    void getItem(String args);
+
+    /**
+     * Executes a drop command with the provided arguments.
+     */
+    void dropItem(String args);
+
+    /**
+     * Executes a quaff command with the provided arguments.
+     */
+    void quaffItem(String args);
+
 }

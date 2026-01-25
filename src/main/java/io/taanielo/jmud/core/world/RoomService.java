@@ -103,6 +103,46 @@ public class RoomService {
     }
 
     /**
+     * Removes an item from the player's current room.
+     */
+    public Optional<Item> takeItem(Username username, String input) {
+        Objects.requireNonNull(username, "Username is required");
+        if (input == null || input.isBlank()) {
+            return Optional.empty();
+        }
+        Room room = loadRoomForPlayer(username);
+        if (room == null) {
+            return Optional.empty();
+        }
+        Item match = matchItem(room.getItems(), input);
+        if (match != null) {
+            removeRoomItem(room, match);
+            return Optional.of(match);
+        }
+        List<Item> extras = transientItems.get(room.getId());
+        if (extras == null || extras.isEmpty()) {
+            return Optional.empty();
+        }
+        match = matchItem(extras, input);
+        if (match == null) {
+            return Optional.empty();
+        }
+        removeTransientItem(room.getId(), match);
+        return Optional.of(match);
+    }
+
+    /**
+     * Drops an item into the player's current room.
+     */
+    public boolean dropItem(Username username, Item item) {
+        Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(item, "Item is required");
+        RoomId roomId = ensurePlayerLocation(username);
+        addItem(roomId, item);
+        return true;
+    }
+
+    /**
      * Produces a look description for the player's current room.
      */
     public LookResult look(Username username) {
@@ -218,6 +258,50 @@ public class RoomService {
         List<Item> merged = new ArrayList<>(room.getItems());
         merged.addAll(extras);
         return List.copyOf(merged);
+    }
+
+    private Item matchItem(List<Item> items, String input) {
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+        for (Item item : items) {
+            String name = item.getName().toLowerCase(Locale.ROOT);
+            if (name.equals(normalized) || name.startsWith(normalized)) {
+                return item;
+            }
+            String id = item.getId().getValue().toLowerCase(Locale.ROOT);
+            if (id.equals(normalized) || id.startsWith(normalized)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private void removeRoomItem(Room room, Item match) {
+        List<Item> nextItems = new ArrayList<>(room.getItems());
+        nextItems.removeIf(item -> item.getId().equals(match.getId()));
+        Room updated = new Room(
+            room.getId(),
+            room.getName(),
+            room.getDescription(),
+            room.getExits(),
+            nextItems,
+            room.getOccupants()
+        );
+        try {
+            roomRepository.save(updated);
+        } catch (RepositoryException e) {
+            // fallback: no-op if room persistence fails
+        }
+    }
+
+    private void removeTransientItem(RoomId roomId, Item match) {
+        transientItems.computeIfPresent(roomId, (id, existing) -> {
+            List<Item> next = new ArrayList<>(existing);
+            next.removeIf(item -> item.getId().equals(match.getId()));
+            if (next.isEmpty()) {
+                return null;
+            }
+            return List.copyOf(next);
+        });
     }
 
     private Item createCorpse(Username username) {

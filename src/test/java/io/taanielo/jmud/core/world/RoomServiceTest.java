@@ -124,6 +124,68 @@ class RoomServiceTest {
         assertTrue(output.contains("Corpse of Bob"));
     }
 
+    @Test
+    void takeItemRemovesFromRoom() {
+        RoomId roomAId = RoomId.of("a");
+        Item torch = new Item(
+            ItemId.of("torch"),
+            "Torch",
+            "A warm torch.",
+            ItemAttributes.empty(),
+            List.of(),
+            5
+        );
+        Room roomA = new Room(
+            roomAId,
+            "Room A",
+            "A quiet room.",
+            Map.of(),
+            List.of(torch),
+            List.of()
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA)), roomAId);
+
+        Username bob = Username.of("Bob");
+        service.ensurePlayerLocation(bob);
+        assertTrue(service.takeItem(bob, "torch").isPresent());
+
+        RoomService.LookResult lookResult = service.look(bob);
+        String output = String.join("\n", lookResult.lines());
+
+        assertTrue(output.contains("Items: none"));
+    }
+
+    @Test
+    void dropItemAddsToRoom() {
+        RoomId roomAId = RoomId.of("a");
+        Room roomA = new Room(
+            roomAId,
+            "Room A",
+            "A quiet room.",
+            Map.of(),
+            List.of(),
+            List.of()
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA)), roomAId);
+
+        Username bob = Username.of("Bob");
+        service.ensurePlayerLocation(bob);
+        Item apple = new Item(
+            ItemId.of("apple"),
+            "Apple",
+            "A crisp apple.",
+            ItemAttributes.empty(),
+            List.of(),
+            1
+        );
+        service.dropItem(bob, apple);
+
+        RoomService.LookResult lookResult = service.look(bob);
+        String output = String.join("\n", lookResult.lines());
+
+        assertTrue(output.contains("Apple"));
+    }
+
     private record TestRoomRepository(Map<RoomId, Room> rooms) implements RoomRepository {
         private TestRoomRepository(Map<RoomId, Room> rooms) {
             this.rooms = new ConcurrentHashMap<>(rooms);
