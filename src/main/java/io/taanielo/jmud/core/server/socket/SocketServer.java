@@ -11,6 +11,7 @@ import io.taanielo.jmud.core.authentication.UserRegistryImpl;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
 import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
+import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
@@ -18,6 +19,7 @@ import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
+import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
@@ -35,8 +37,10 @@ public class SocketServer implements Server {
     private final RoomRepository roomRepository;
     private final RoomService roomService;
     private final TickRegistry tickRegistry;
+    private final TickClock tickClock;
     private final FixedRateTickScheduler tickScheduler;
     private final AbilityRegistry abilityRegistry;
+    private final AuditService auditService;
 
     public SocketServer(int port, ClientPool clientPool) {
         this.port = port;
@@ -47,8 +51,11 @@ public class SocketServer implements Server {
         this.roomRepository = new InMemoryRoomRepository();
         this.roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
         this.tickRegistry = new TickRegistry();
+        this.tickClock = new TickClock();
+        this.tickRegistry.register(tickClock);
         this.tickScheduler = new FixedRateTickScheduler(tickRegistry);
         this.abilityRegistry = loadAbilities();
+        this.auditService = AuditService.create(tickClock::currentTick);
     }
 
     @Override
@@ -69,7 +76,8 @@ public class SocketServer implements Server {
                         roomService,
                         tickRegistry,
                         clientPool,
-                        abilityRegistry
+                        abilityRegistry,
+                        auditService
                     );
                     clientPool.add(client);
                 } catch (IOException e) {

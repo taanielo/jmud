@@ -12,10 +12,16 @@ import io.taanielo.jmud.core.player.PlayerVitals;
 public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
     private final EffectEngine effectEngine;
     private final EffectMessageSink effectMessageSink;
+    private final AbilityEffectListener listener;
 
-    public DefaultAbilityEffectResolver(EffectEngine effectEngine, EffectMessageSink effectMessageSink) {
+    public DefaultAbilityEffectResolver(
+        EffectEngine effectEngine,
+        EffectMessageSink effectMessageSink,
+        AbilityEffectListener listener
+    ) {
         this.effectEngine = Objects.requireNonNull(effectEngine, "Effect engine is required");
         this.effectMessageSink = Objects.requireNonNull(effectMessageSink, "Effect message sink is required");
+        this.listener = AbilityEffectListener.require(listener);
     }
 
     @Override
@@ -24,9 +30,12 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
         Objects.requireNonNull(context, "Ability context is required");
         if (effect.kind() == AbilityEffectKind.VITALS) {
             applyVitals(effect, context);
+            listener.onApplied(effect, context);
             return;
         }
-        applyEffect(effect, context);
+        if (applyEffect(effect, context)) {
+            listener.onApplied(effect, context);
+        }
     }
 
     private void applyVitals(AbilityEffect effect, AbilityContext context) {
@@ -46,9 +55,9 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
         context.updateTarget(target.withVitals(updated));
     }
 
-    private void applyEffect(AbilityEffect effect, AbilityContext context) {
+    private boolean applyEffect(AbilityEffect effect, AbilityContext context) {
         try {
-            effectEngine.apply(context.target(), EffectId.of(effect.effectId()), effectMessageSink);
+            return effectEngine.apply(context.target(), EffectId.of(effect.effectId()), effectMessageSink);
         } catch (EffectRepositoryException e) {
             throw new IllegalStateException("Failed to apply effect " + effect.effectId() + ": " + e.getMessage(), e);
         }
