@@ -2,7 +2,7 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.util.Optional;
 
-import io.taanielo.jmud.command.CommandRegistry;
+import io.taanielo.jmud.core.player.Player;
 
 /**
  * Handles say commands.
@@ -36,7 +36,10 @@ public class SayCommand extends RegistrableCommand {
             context.writeLineWithPrompt("Say what?");
             return;
         }
-        CommandRegistry.SAY.act().message(context.getPlayer().getUsername(), message, context.clients());
+        Player player = context.getPlayer();
+        String roomMessage = player.getUsername().getValue() + " said \"" + message + "\"";
+        context.sendToRoom(player, roomMessage);
+        context.writeLineSafe("You say \"" + message + "\"");
         context.sendPrompt();
     }
 }

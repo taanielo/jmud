@@ -322,7 +322,7 @@ public class SocketClient implements Client {
                 );
             }
         }
-        if (updated.getVitals().hp() <= 0 && !updated.isDead()) {
+        if (updated.getVitals().hp() <= 0 && (current == null || !current.isDead())) {
             GameActionResult deathResult = gameActionService.resolveDeathIfNeeded(updated, null);
             deliverMessages(deathResult.messages());
             auditDeath(deathResult.updatedTarget(), null);
@@ -420,6 +420,21 @@ public class SocketClient implements Client {
         deliverRoomMessage(source.getUsername(), target.getUsername(), message);
     }
 
+    private void sendToRoom(Room room, Username exclude, String message) {
+        if (message == null || message.isBlank() || room == null) {
+            return;
+        }
+        if (room.getOccupants().isEmpty()) {
+            return;
+        }
+        for (Username occupant : room.getOccupants()) {
+            if (exclude != null && occupant.equals(exclude)) {
+                continue;
+            }
+            sendToUsername(occupant, message);
+        }
+    }
+
     private void deliverRoomMessage(Username sourceExclude, Username targetExclude, String message) {
         if (message == null || message.isBlank()) {
             return;
@@ -510,6 +525,13 @@ public class SocketClient implements Client {
         session.replacePlayer(updated);
     }
 
+    private String formatLookDescription(Player target) {
+        String name = target.getUsername().getValue();
+        String race = target.getRace().getValue();
+        String classId = target.getClassId().getValue();
+        return name + " the " + race + " " + classId + " (level " + target.getLevel() + ").";
+    }
+
     // ── Command context ────────────────────────────────────────────────
 
     private class SocketCommandContextImpl implements SocketCommandContext {
@@ -556,12 +578,42 @@ public class SocketClient implements Client {
         }
 
         @Override
+        public void sendLookAt(String targetInput) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to look around.");
+                return;
+            }
+            if (targetInput == null || targetInput.isBlank()) {
+                writeLineWithPrompt("Look at whom?");
+                return;
+            }
+            Player source = session.getPlayer();
+            Optional<Player> resolved = abilityTargetResolver.resolve(source, targetInput);
+            if (resolved.isEmpty()) {
+                writeLineWithPrompt("You don't see that here.");
+                return;
+            }
+            Player target = resolved.get();
+            String description = formatLookDescription(target);
+            connection.writeLine(description);
+            if (!target.getUsername().equals(source.getUsername())) {
+                String sourceName = source.getUsername().getValue();
+                sendToUsername(target.getUsername(), sourceName + " looks at you.");
+                String roomMessage = sourceName + " looks at " + target.getUsername().getValue() + ".";
+                deliverRoomMessage(source.getUsername(), target.getUsername(), roomMessage);
+            }
+            sendPrompt();
+        }
+
+        @Override
         public void sendMove(io.taanielo.jmud.core.world.Direction direction) {
             if (!session.isAuthenticated() || session.getPlayer() == null) {
                 writeLineWithPrompt("You must be logged in to move.");
                 return;
             }
             Player player = session.getPlayer();
+            RoomService.LookResult currentLook = roomService.look(player.getUsername());
+            Room oldRoom = currentLook.room();
             String fromRoom = resolveRoomId(player);
             RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
             Map<String, Object> metadata = new HashMap<>();
@@ -576,6 +628,15 @@ public class SocketClient implements Client {
                 result.moved() ? "success" : "blocked",
                 metadata
             );
+            if (result.moved()) {
+                if (oldRoom != null) {
+                    String leaveMessage = player.getUsername().getValue()
+                        + " leaves " + direction.label() + ".";
+                    SocketClient.this.sendToRoom(oldRoom, player.getUsername(), leaveMessage);
+                }
+                String arriveMessage = player.getUsername().getValue() + " arrives.";
+                deliverRoomMessage(player.getUsername(), null, arriveMessage);
+            }
             connection.writeLines(result.lines());
             sendPrompt();
         }
@@ -623,6 +684,14 @@ public class SocketClient implements Client {
         @Override
         public void sendToRoom(Player source, Player target, String message) {
             SocketClient.this.sendToRoom(source, target, message);
+        }
+
+        @Override
+        public void sendToRoom(Player source, String message) {
+            if (source == null) {
+                return;
+            }
+            deliverRoomMessage(source.getUsername(), null, message);
         }
 
         @Override

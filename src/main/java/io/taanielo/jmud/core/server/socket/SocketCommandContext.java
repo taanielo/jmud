@@ -33,6 +33,11 @@ public interface SocketCommandContext extends Client {
     void sendLook();
 
     /**
+     * Sends a look response for a target player in the same room.
+     */
+    void sendLookAt(String targetInput);
+
+    /**
      * Attempts to move the player in the given direction.
      */
     void sendMove(Direction direction);
@@ -71,6 +76,11 @@ public interface SocketCommandContext extends Client {
      * Sends a message to other occupants in the room.
      */
     void sendToRoom(Player source, Player target, String message);
+
+    /**
+     * Sends a message to other occupants in the room, excluding the source.
+     */
+    void sendToRoom(Player source, String message);
 
     /**
      * Resolves a target in the same room by input.

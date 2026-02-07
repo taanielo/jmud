@@ -116,6 +116,10 @@ class SocketCommandDispatcherAuditTest {
         }
 
         @Override
+        public void sendLookAt(String targetInput) {
+        }
+
+        @Override
         public void sendMove(Direction direction) {
         }
 
@@ -145,6 +149,10 @@ class SocketCommandDispatcherAuditTest {
 
         @Override
         public void sendToRoom(Player source, Player target, String message) {
+        }
+
+        @Override
+        public void sendToRoom(Player source, String message) {
         }
 
         @Override
