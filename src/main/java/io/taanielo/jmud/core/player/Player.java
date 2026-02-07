@@ -1,13 +1,11 @@
 package io.taanielo.jmud.core.player;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
 
 import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.authentication.Password;
@@ -20,22 +18,12 @@ import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.effects.EffectTarget;
 import io.taanielo.jmud.core.world.Item;
 
-@Getter
 public class Player implements EffectTarget, Combatant {
-    private final User user;
-    private final int level;
-    private final long experience;
-    private final PlayerVitals vitals;
-    private final List<EffectInstance> effects;
-    private final String promptFormat;
-    private final boolean ansiEnabled;
-    private final List<AbilityId> learnedAbilities;
-    @JsonProperty("race")
-    private final RaceId race;
-    @JsonProperty("class")
-    private final ClassId classId;
-    private final boolean dead;
-    private final List<Item> inventory;
+    private final PlayerIdentity identity;
+    private final PlayerCombatState combatState;
+    private final PlayerPreferences preferences;
+    private final PlayerAbilities abilities;
+    private final PlayerInventory inventory;
 
     public static Player of(User user, String promptFormat) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of(), null, null);
@@ -79,86 +67,164 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("dead") Boolean dead,
         @JsonProperty("inventory") List<Item> inventory
     ) {
-        this.user = Objects.requireNonNull(user, "User is required");
-        this.level = level;
-        this.experience = experience;
-        this.vitals = Objects.requireNonNull(vitals, "Vitals are required");
-        this.effects = new ArrayList<>(Objects.requireNonNullElse(effects, List.of()));
-        this.promptFormat = Objects.requireNonNull(promptFormat, "Prompt format is required");
-        this.ansiEnabled = Objects.requireNonNullElse(ansiEnabled, false);
-        this.learnedAbilities = List.copyOf(Objects.requireNonNullElse(learnedAbilities, List.of()));
-        this.race = Objects.requireNonNullElse(race, RaceId.of("human"));
-        this.classId = Objects.requireNonNullElse(classId, ClassId.of("adventurer"));
-        boolean resolvedDead = Objects.requireNonNullElse(dead, false) || vitals.hp() <= 0;
-        this.dead = resolvedDead;
-        this.inventory = List.copyOf(Objects.requireNonNullElse(inventory, List.of()));
+        this(
+            new PlayerIdentity(user, level, experience, race, classId),
+            new PlayerCombatState(vitals, effects, dead),
+            new PlayerPreferences(promptFormat, ansiEnabled),
+            new PlayerAbilities(learnedAbilities),
+            new PlayerInventory(inventory)
+        );
+    }
+
+    private Player(
+        PlayerIdentity identity,
+        PlayerCombatState combatState,
+        PlayerPreferences preferences,
+        PlayerAbilities abilities,
+        PlayerInventory inventory
+    ) {
+        this.identity = Objects.requireNonNull(identity, "Identity is required");
+        this.combatState = Objects.requireNonNull(combatState, "Combat state is required");
+        this.preferences = Objects.requireNonNull(preferences, "Preferences are required");
+        this.abilities = Objects.requireNonNull(abilities, "Abilities are required");
+        this.inventory = Objects.requireNonNull(inventory, "Inventory is required");
+    }
+
+    @JsonProperty("user")
+    public User getUser() {
+        return identity.user();
+    }
+
+    @JsonProperty("level")
+    public int getLevel() {
+        return identity.level();
+    }
+
+    @JsonProperty("experience")
+    public long getExperience() {
+        return identity.experience();
+    }
+
+    @JsonProperty("vitals")
+    public PlayerVitals getVitals() {
+        return combatState.vitals();
+    }
+
+    @JsonProperty("effects")
+    public List<EffectInstance> getEffects() {
+        return combatState.effects();
+    }
+
+    @JsonProperty("promptFormat")
+    public String getPromptFormat() {
+        return preferences.promptFormat();
+    }
+
+    @JsonProperty("ansiEnabled")
+    public boolean isAnsiEnabled() {
+        return preferences.ansiEnabled();
+    }
+
+    @JsonProperty("learnedAbilities")
+    public List<AbilityId> getLearnedAbilities() {
+        return abilities.learned();
+    }
+
+    @JsonProperty("race")
+    public RaceId getRace() {
+        return identity.race();
+    }
+
+    @JsonProperty("class")
+    public ClassId getClassId() {
+        return identity.classId();
+    }
+
+    @JsonProperty("dead")
+    public boolean isDead() {
+        return combatState.dead();
+    }
+
+    @JsonProperty("inventory")
+    public List<Item> getInventory() {
+        return inventory.items();
+    }
+
+    public PlayerIdentity identity() {
+        return identity;
+    }
+
+    public PlayerCombatState combatState() {
+        return combatState;
+    }
+
+    public PlayerPreferences preferences() {
+        return preferences;
+    }
+
+    public PlayerAbilities abilities() {
+        return abilities;
+    }
+
+    public PlayerInventory inventory() {
+        return inventory;
     }
 
     @JsonIgnore
     public Username getUsername() {
-        return user.getUsername();
+        return identity.user().getUsername();
     }
 
     @JsonIgnore
     public Password getPassword() {
-        return user.getPassword();
+        return identity.user().getPassword();
     }
 
+    @Override
     public List<EffectInstance> effects() {
-        return effects;
+        return combatState.effects();
     }
 
     public Player die() {
-        if (dead && vitals.hp() <= 0 && effects.isEmpty()) {
+        if (combatState.dead() && combatState.vitals().hp() <= 0 && combatState.effects().isEmpty()) {
             return this;
         }
-        PlayerVitals deadVitals = vitals.damage(vitals.hp());
-        return new Player(user, level, experience, deadVitals, List.of(), promptFormat, ansiEnabled, learnedAbilities, race, classId, true, inventory);
+        return new Player(identity, combatState.die(), preferences, abilities, inventory);
     }
 
     public Player respawn() {
-        PlayerVitals restored = vitals.respawnHalf();
-        return new Player(user, level, experience, restored, List.of(), promptFormat, ansiEnabled, learnedAbilities, race, classId, false, inventory);
+        return new Player(identity, combatState.respawn(), preferences, abilities, inventory);
     }
 
     public Player withoutEffects() {
-        return new Player(user, level, experience, vitals, List.of(), promptFormat, ansiEnabled, learnedAbilities, race, classId, dead, inventory);
+        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory);
     }
 
     public Player withAnsiEnabled(boolean enabled) {
-        return new Player(user, level, experience, vitals, effects, promptFormat, enabled, learnedAbilities, race, classId, dead, inventory);
+        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory);
     }
 
     public Player withVitals(PlayerVitals updatedVitals) {
-        return new Player(user, level, experience, updatedVitals, effects, promptFormat, ansiEnabled, learnedAbilities, race, classId, dead, inventory);
+        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory);
     }
 
     public Player withDead(boolean dead) {
-        return new Player(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities, race, classId, dead, inventory);
+        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory);
     }
 
-    public Player withLearnedAbilities(List<AbilityId> abilities) {
-        return new Player(user, level, experience, vitals, effects, promptFormat, ansiEnabled, abilities, race, classId, dead, inventory);
+    public Player withLearnedAbilities(List<AbilityId> learnedAbilities) {
+        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory);
     }
 
     public Player withInventory(List<Item> items) {
-        return new Player(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities, race, classId, dead, items);
+        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items));
     }
 
     public Player addItem(Item item) {
-        Objects.requireNonNull(item, "Item is required");
-        List<Item> next = new ArrayList<>(inventory);
-        next.add(item);
-        return withInventory(next);
+        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item));
     }
 
     public Player removeItem(Item item) {
-        Objects.requireNonNull(item, "Item is required");
-        List<Item> next = new ArrayList<>(inventory);
-        boolean removed = next.removeIf(existing -> existing.getId().equals(item.getId()));
-        if (!removed) {
-            return this;
-        }
-        return withInventory(next);
+        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item));
     }
 }
