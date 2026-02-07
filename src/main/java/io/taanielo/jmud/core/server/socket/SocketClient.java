@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -12,12 +13,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 
-import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
-import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
-import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
@@ -26,15 +24,6 @@ import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.Username;
-import io.taanielo.jmud.core.authentication.UserRegistry;
-import io.taanielo.jmud.core.combat.CombatEngine;
-import io.taanielo.jmud.core.combat.CombatModifierResolver;
-import io.taanielo.jmud.core.combat.DefaultCombatRandom;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
-import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
-import io.taanielo.jmud.core.effects.EffectEngine;
-import io.taanielo.jmud.core.effects.EffectRepositoryException;
-import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
@@ -46,7 +35,6 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
-import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -61,80 +49,50 @@ public class SocketClient implements Client {
     private final RoomService roomService;
     private final ClientPool clientPool;
     private final AbilityRegistry abilityRegistry;
+    private final AbilityTargetResolver abilityTargetResolver;
     private final AuditService auditService;
     private final PromptRenderer promptRenderer = new PromptRenderer();
-    private final SocketCommandRegistry commandRegistry = new SocketCommandRegistry();
     private final SocketCommandDispatcher commandDispatcher;
     private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
 
     public SocketClient(
         Socket clientSocket,
-        @SuppressWarnings("unused") io.taanielo.jmud.core.messaging.MessageBroadcaster messageBroadcaster,
-        UserRegistry userRegistry,
-        PlayerRepository playerRepository,
-        RoomService roomService,
-        TickRegistry tickRegistry,
-        ClientPool clientPool,
-        AbilityRegistry abilityRegistry,
-        AuditService auditService
+        GameContext context,
+        ClientPool clientPool
     ) throws IOException {
+        Objects.requireNonNull(context, "Game context is required");
         this.connection = new TelnetConnection(clientSocket);
-        this.playerRepository = playerRepository;
-        this.roomService = roomService;
+        this.playerRepository = context.playerRepository();
+        this.roomService = context.roomService();
         this.clientPool = clientPool;
-        this.abilityRegistry = abilityRegistry;
-        this.auditService = Objects.requireNonNull(auditService, "Audit service is required");
+        this.abilityRegistry = context.abilityRegistry();
+        this.abilityTargetResolver = context.abilityTargetResolver();
+        this.auditService = Objects.requireNonNull(context.auditService(), "Audit service is required");
         this.authenticationService = new SocketAuthenticationService(
-            clientSocket, userRegistry, connection.messageWriter()
+            clientSocket, context.userRegistry(), connection.messageWriter()
         );
 
         this.session = new PlayerSession(
-            tickRegistry, playerRepository, roomService, this::applyRespawnUpdate
+            context.tickRegistry(),
+            this.playerRepository,
+            this.roomService,
+            this::applyRespawnUpdate,
+            context.effectEngine(),
+            context.healingEngine(),
+            context.healingBaseResolver()
         );
-
-        AbilityTargetResolver targetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
-        AbilityCostResolver costResolver = new BasicAbilityCostResolver();
-        EffectEngine effectEngine = createEffectEngine();
-        CombatEngine combatEngine = createCombatEngine();
 
         this.gameActionService = new GameActionService(
-            abilityRegistry, costResolver, effectEngine, combatEngine,
-            roomService, targetResolver, session.getCooldownTracker()
+            abilityRegistry,
+            context.abilityCostResolver(),
+            context.effectEngine(),
+            context.combatEngine(),
+            roomService,
+            abilityTargetResolver,
+            session.getCooldownTracker()
         );
 
-        this.commandDispatcher = new SocketCommandDispatcher(commandRegistry, auditService);
-        registerCommands();
-    }
-
-    private void registerCommands() {
-        new LookCommand(commandRegistry);
-        new MoveCommand(commandRegistry);
-        new GetCommand(commandRegistry);
-        new DropCommand(commandRegistry);
-        new QuaffCommand(commandRegistry);
-        new SayCommand(commandRegistry);
-        new AbilityCommand(commandRegistry);
-        new AttackCommand(commandRegistry);
-        new AnsiCommand(commandRegistry);
-        new QuitCommand(commandRegistry);
-    }
-
-    private EffectEngine createEffectEngine() {
-        try {
-            return new EffectEngine(new JsonEffectRepository());
-        } catch (EffectRepositoryException e) {
-            throw new IllegalStateException("Failed to initialize effects: " + e.getMessage(), e);
-        }
-    }
-
-    private CombatEngine createCombatEngine() {
-        try {
-            JsonEffectRepository effectRepository = new JsonEffectRepository();
-            CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
-            return new CombatEngine(new JsonAttackRepository(), resolver, new DefaultCombatRandom());
-        } catch (AttackRepositoryException | EffectRepositoryException e) {
-            throw new IllegalStateException("Failed to initialize combat: " + e.getMessage(), e);
-        }
+        this.commandDispatcher = new SocketCommandDispatcher(context.commandRegistry(), auditService);
     }
 
     // ── Client interface ───────────────────────────────────────────────
@@ -177,7 +135,11 @@ public class SocketClient implements Client {
                 }
             }
         } catch (IOException e) {
-            log.error("Error receiving", e);
+            if (e instanceof SocketException && (!session.isConnected() || session.isQuitRequested())) {
+                log.debug("Client socket closed");
+            } else {
+                log.error("Error receiving", e);
+            }
         }
         log.info("Client disconnected");
         close();
@@ -665,7 +627,7 @@ public class SocketClient implements Client {
 
         @Override
         public Optional<Player> resolveTarget(Player source, String input) {
-            return new RoomAbilityTargetResolver(roomService, playerRepository).resolve(source, input);
+            return abilityTargetResolver.resolve(source, input);
         }
 
         @Override
