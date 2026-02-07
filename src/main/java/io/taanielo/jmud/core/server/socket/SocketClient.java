@@ -4,13 +4,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
@@ -84,6 +90,8 @@ import io.taanielo.jmud.core.world.RoomService;
 @Slf4j
 public class SocketClient implements Client {
 
+    private static final AtomicInteger SESSION_COUNTER = new AtomicInteger();
+
     private final Socket clientSocket;
     private final MessageBroadcaster messageBroadcaster;
     private final MessageWriter messageWriter;
@@ -104,23 +112,26 @@ public class SocketClient implements Client {
     private final AbilityEngine abilityEngine;
     private final CombatEngine combatEngine;
     private final AbilityEffectListener abilityEffectListener;
-    private TickSubscription cooldownSubscription;
     private final AbilityMessageSink abilityMessageSink;
-    private TickSubscription healingSubscription;
     private final PlayerRespawnTicker respawnTicker;
-    private TickSubscription respawnSubscription;
     private final SocketCommandRegistry commandRegistry = new SocketCommandRegistry();
     private final SocketCommandDispatcher commandDispatcher;
+    private final ExecutorService sessionExecutor;
+    private final AtomicReference<Thread> sessionThread = new AtomicReference<>();
+    private final SocketClientTickable sessionTickable;
+    private TickSubscription sessionTickSubscription;
+    private final AtomicBoolean closing = new AtomicBoolean(false);
 
     private OutputStream output;
     private InputStream input;
-    private boolean connected;
+    private volatile boolean connected;
 
-    private boolean authenticated;
-    private Player player;
-    private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
+    private volatile boolean authenticated;
+    private volatile Player player;
     private boolean effectsInitialized;
     private boolean healingInitialized;
+    private PlayerEffectTicker effectTicker;
+    private PlayerHealingTicker healingTicker;
     private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
     private boolean quitRequested;
 
@@ -152,6 +163,9 @@ public class SocketClient implements Client {
         this.combatEngine = createCombatEngine();
         this.respawnTicker = new PlayerRespawnTicker(() -> player, this::applyRespawnUpdate, roomService, DeathSettings.respawnTicks());
         this.commandDispatcher = new SocketCommandDispatcher(commandRegistry, auditService);
+        int sessionId = SESSION_COUNTER.getAndIncrement();
+        this.sessionExecutor = Executors.newSingleThreadExecutor(sessionThreadFactory(sessionId));
+        this.sessionTickable = new SocketClientTickable(this);
         registerCommands();
         init();
     }
@@ -208,8 +222,7 @@ public class SocketClient implements Client {
             log.error("Error connecting client", e);
         }
         textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
-        cooldownSubscription = tickRegistry.register(abilityCooldowns);
-        respawnSubscription = tickRegistry.register(respawnTicker);
+        sessionTickSubscription = tickRegistry.register(sessionTickable);
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);
         sendMessage(WelcomeMessage.of(textStyler, onlineCount));
         authenticated = false;
@@ -236,7 +249,7 @@ public class SocketClient implements Client {
                 log.debug("Received: \"{}\" [{}]", clientInput, bytes);
 
                 if (!authenticated) {
-                    authenticationService.authenticate(clientInput, authenticatedUser -> {
+                    authenticationService.authenticate(clientInput, authenticatedUser -> runOnSessionThread(() -> {
                         authenticated = true;
                         AtomicBoolean isNewPlayer = new AtomicBoolean(false);
                         player = playerRepository
@@ -276,7 +289,7 @@ public class SocketClient implements Client {
                         );
                         String correlationId = auditService.newCorrelationId();
                         commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
-                    });
+                    }));
                 } else {
                     handleCommand(clientInput);
                 }
@@ -290,54 +303,42 @@ public class SocketClient implements Client {
 
     @Override
     public void sendMessage(Message message) {
-        try {
-            synchronized (writeLock) {
-                message.send(messageWriter);
+        runOnSessionThreadAsync(() -> {
+            if (!connected) {
+                return;
             }
-        } catch (IOException e) {
-            log.error("Error sending message", e);
-        }
-        sendPrompt();
+            try {
+                synchronized (writeLock) {
+                    message.send(messageWriter);
+                }
+            } catch (IOException e) {
+                log.error("Error sending message", e);
+            }
+            sendPromptInternal();
+        });
     }
 
     public void sendMessage(UserSayMessage message) {
-        if (message.getUsername().equals(player.getUsername())) {
-            return;
-        }
-        try {
-            synchronized (writeLock) {
-                message.send(messageWriter);
+        runOnSessionThreadAsync(() -> {
+            if (!connected || player == null || message.getUsername().equals(player.getUsername())) {
+                return;
             }
-        } catch (IOException e) {
-            log.error("Error sending message", e);
-        }
-        sendPrompt();
+            try {
+                synchronized (writeLock) {
+                    message.send(messageWriter);
+                }
+            } catch (IOException e) {
+                log.error("Error sending message", e);
+            }
+            sendPromptInternal();
+        });
     }
 
     @Override
     public void close() {
-        log.debug("Closing connection ..");
-        connected = false;
-        clearEffects();
-        clearHealing();
-        if (cooldownSubscription != null) {
-            cooldownSubscription.unsubscribe();
-        }
-        if (respawnSubscription != null) {
-            respawnSubscription.unsubscribe();
-        }
-        if (authenticated && player != null) {
-            Map<String, Object> metadata = Map.of("reason", quitRequested ? "quit" : "disconnect");
-            emitAudit(
-                "player.logout",
-                AuditSubject.player(player.getUsername()),
-                null,
-                resolveRoomId(player),
-                "success",
-                metadata
-            );
-            playerRepository.savePlayer(player);
-            log.info("Player {} data saved on disconnect.", player.getUsername());
+        if (closing.compareAndSet(false, true)) {
+            runOnSessionThread(this::closeInternal);
+            shutdownExecutor();
         }
         try {
             input.close();
@@ -359,29 +360,154 @@ public class SocketClient implements Client {
         log.debug("Connection closed");
     }
 
+    private void closeInternal() {
+        log.debug("Closing connection ..");
+        connected = false;
+        clearEffects();
+        clearHealing();
+        if (sessionTickSubscription != null) {
+            sessionTickSubscription.unsubscribe();
+        }
+        if (authenticated && player != null) {
+            Map<String, Object> metadata = Map.of("reason", quitRequested ? "quit" : "disconnect");
+            emitAudit(
+                "player.logout",
+                AuditSubject.player(player.getUsername()),
+                null,
+                resolveRoomId(player),
+                "success",
+                metadata
+            );
+            playerRepository.savePlayer(player);
+            log.info("Player {} data saved on disconnect.", player.getUsername());
+        }
+    }
+
     private void handleCommand(String clientInput) {
         String correlationId = auditService.newCorrelationId();
-        currentCorrelationId.set(correlationId);
-        try {
-            commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput, correlationId);
-        } finally {
-            currentCorrelationId.remove();
+        runOnSessionThread(() -> {
+            currentCorrelationId.set(correlationId);
+            try {
+                commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput, correlationId);
+            } finally {
+                currentCorrelationId.remove();
+            }
+        });
+    }
+
+    void enqueueTick() {
+        if (closing.get() || sessionExecutor.isShutdown()) {
+            return;
         }
+        submitAction(this::runTickWork);
+    }
+
+    private CompletableFuture<Void> submitAction(Runnable action) {
+        Objects.requireNonNull(action, "Action is required");
+        if (sessionExecutor.isShutdown()) {
+            action.run();
+            return CompletableFuture.completedFuture(null);
+        }
+        return CompletableFuture.runAsync(action, sessionExecutor);
+    }
+
+    private void runOnSessionThread(Runnable action) {
+        Objects.requireNonNull(action, "Action is required");
+        if (isSessionThread() || sessionExecutor.isShutdown()) {
+            action.run();
+            return;
+        }
+        try {
+            submitAction(action).join();
+        } catch (CompletionException e) {
+            throw unwrapCompletionException(e);
+        }
+    }
+
+    private void runOnSessionThreadAsync(Runnable action) {
+        Objects.requireNonNull(action, "Action is required");
+        if (isSessionThread() || sessionExecutor.isShutdown()) {
+            action.run();
+            return;
+        }
+        submitAction(action);
+    }
+
+    private boolean isSessionThread() {
+        return Thread.currentThread() == sessionThread.get();
+    }
+
+    private void shutdownExecutor() {
+        sessionExecutor.shutdown();
+    }
+
+    private void runTickWork() {
+        try {
+            abilityCooldowns.tick();
+        } catch (Exception e) {
+            log.error("Failed to tick cooldowns", e);
+        }
+        try {
+            respawnTicker.tick();
+        } catch (Exception e) {
+            log.error("Failed to tick respawn", e);
+        }
+        if (effectsInitialized && effectTicker != null) {
+            try {
+                effectTicker.tick();
+            } catch (Exception e) {
+                log.error("Failed to tick effects", e);
+            }
+        }
+        if (healingInitialized && healingTicker != null) {
+            try {
+                healingTicker.tick();
+            } catch (Exception e) {
+                log.error("Failed to tick healing", e);
+            }
+        }
+    }
+
+    private ThreadFactory sessionThreadFactory(int sessionId) {
+        return runnable -> {
+            Thread thread = Thread.ofVirtual()
+                .name("player-session-" + sessionId)
+                .factory()
+                .newThread(runnable);
+            sessionThread.set(thread);
+            return thread;
+        };
+    }
+
+    private RuntimeException unwrapCompletionException(CompletionException e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof RuntimeException runtimeException) {
+            return runtimeException;
+        }
+        return new RuntimeException(cause);
     }
 
     private void writeLinesWithPrompt(List<String> lines) {
-        for (String line : lines) {
-            writeLineSafe(line);
-        }
-        sendPrompt();
+        runOnSessionThreadAsync(() -> {
+            for (String line : lines) {
+                writeLineInternal(line);
+            }
+            sendPromptInternal();
+        });
     }
 
     private void writeLineWithPrompt(String message) {
-        writeLineSafe(message);
-        sendPrompt();
+        runOnSessionThreadAsync(() -> {
+            writeLineInternal(message);
+            sendPromptInternal();
+        });
     }
 
     private void writeLineSafe(String message) {
+        runOnSessionThreadAsync(() -> writeLineInternal(message));
+    }
+
+    private void writeLineInternal(String message) {
         synchronized (writeLock) {
             try {
                 messageWriter.writeLine(message);
@@ -846,10 +972,12 @@ public class SocketClient implements Client {
     }
 
     private void applyExternalPlayerUpdate(Player updated) {
-        if (!isAuthenticatedUser(updated.getUsername())) {
-            return;
-        }
-        replacePlayer(updated);
+        runOnSessionThreadAsync(() -> {
+            if (!isAuthenticatedUser(updated.getUsername())) {
+                return;
+            }
+            replacePlayer(updated);
+        });
     }
 
     private static class NoOpEffectMessageSink implements EffectMessageSink {
@@ -1092,11 +1220,11 @@ public class SocketClient implements Client {
             EffectMessageSink sink = new EffectMessageSink() {
                 @Override
                 public void sendToTarget(String message) {
-                    writeLineSafe(message);
-                    sendPrompt();
+                    writeLineInternal(message);
+                    sendPromptInternal();
                 }
             };
-            effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, engine, sink)));
+            effectTicker = new PlayerEffectTicker(player, engine, sink);
         } catch (EffectRepositoryException e) {
             log.error("Failed to initialize effects", e);
             return;
@@ -1111,9 +1239,7 @@ public class SocketClient implements Client {
         try {
             HealingEngine engine = new HealingEngine(new JsonEffectRepository());
             HealingBaseResolver baseResolver = new HealingBaseResolver(new JsonRaceRepository(), new JsonClassRepository());
-            healingSubscription = tickRegistry.register(
-                new PlayerHealingTicker(() -> player, this::applyHealingUpdate, engine, baseResolver)
-            );
+            healingTicker = new PlayerHealingTicker(() -> player, this::applyHealingUpdate, engine, baseResolver);
         } catch (EffectRepositoryException | RaceRepositoryException | ClassRepositoryException e) {
             log.error("Failed to initialize healing", e);
             return;
@@ -1122,22 +1248,20 @@ public class SocketClient implements Client {
     }
 
     private void clearEffects() {
-        for (TickSubscription subscription : effectSubscriptions) {
-            subscription.unsubscribe();
-        }
-        effectSubscriptions.clear();
+        effectTicker = null;
         effectsInitialized = false;
     }
 
     private void clearHealing() {
-        if (healingSubscription != null) {
-            healingSubscription.unsubscribe();
-            healingSubscription = null;
-        }
+        healingTicker = null;
         healingInitialized = false;
     }
 
     private void sendPrompt() {
+        runOnSessionThreadAsync(this::sendPromptInternal);
+    }
+
+    private void sendPromptInternal() {
         if (!authenticated || player == null) {
             return;
         }
