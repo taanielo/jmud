@@ -264,7 +264,7 @@ public class SocketClient implements Client {
                 sendPrompt();
             });
             session.registerHealing(this::applyHealingUpdate);
-            session.handleDeathState();
+            session.enqueueCommand(session::handleDeathState);
             emitAudit(
                 "player.login",
                 AuditSubject.player(player.getUsername()),
@@ -274,7 +274,14 @@ public class SocketClient implements Client {
                 Map.of("newPlayer", isNewPlayer.get())
             );
             String correlationId = auditService.newCorrelationId();
-            commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
+            session.enqueueCommand(() -> {
+                currentCorrelationId.set(correlationId);
+                try {
+                    commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
+                } finally {
+                    currentCorrelationId.remove();
+                }
+            });
         });
     }
 
@@ -282,12 +289,14 @@ public class SocketClient implements Client {
 
     private void handleCommand(String clientInput) {
         String correlationId = auditService.newCorrelationId();
-        currentCorrelationId.set(correlationId);
-        try {
-            commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput, correlationId);
-        } finally {
-            currentCorrelationId.remove();
-        }
+        session.enqueueCommand(() -> {
+            currentCorrelationId.set(correlationId);
+            try {
+                commandDispatcher.dispatch(new SocketCommandContextImpl(), clientInput, correlationId);
+            } finally {
+                currentCorrelationId.remove();
+            }
+        });
     }
 
     // ── Game action result delivery ────────────────────────────────────

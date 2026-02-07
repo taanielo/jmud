@@ -12,8 +12,8 @@ public class PlayerRespawnTicker implements Tickable {
     private final Consumer<Player> playerUpdater;
     private final RoomService roomService;
     private final int respawnTicks;
-    private boolean scheduled;
-    private int remainingTicks;
+    private volatile boolean scheduled;
+    private volatile int remainingTicks;
 
     public PlayerRespawnTicker(
         Supplier<Player> playerSupplier,

@@ -48,9 +48,10 @@ public class PlayerSession {
     private final TickRegistry tickRegistry;
     private final PlayerRepository playerRepository;
     private final RoomService roomService;
+    private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
 
-    private Player player;
-    private boolean authenticated;
+    private volatile Player player;
+    private volatile boolean authenticated;
     private boolean connected = true;
     private TextStyler textStyler;
     private boolean quitRequested;
@@ -60,6 +61,7 @@ public class PlayerSession {
     private final PlayerRespawnTicker respawnTicker;
     private TickSubscription cooldownSubscription;
     private TickSubscription respawnSubscription;
+    private TickSubscription commandSubscription;
 
     private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
     private boolean effectsInitialized;
@@ -97,6 +99,7 @@ public class PlayerSession {
      * Must be called once after construction.
      */
     public void startTicks() {
+        commandSubscription = tickRegistry.register(commandQueue);
         cooldownSubscription = tickRegistry.register(abilityCooldowns);
         respawnSubscription = tickRegistry.register(respawnTicker);
     }
@@ -151,6 +154,10 @@ public class PlayerSession {
 
     public PlayerRespawnTicker getRespawnTicker() {
         return respawnTicker;
+    }
+
+    public void enqueueCommand(Runnable command) {
+        commandQueue.enqueue(command);
     }
 
     /**
@@ -260,6 +267,9 @@ public class PlayerSession {
         }
         if (respawnSubscription != null) {
             respawnSubscription.unsubscribe();
+        }
+        if (commandSubscription != null) {
+            commandSubscription.unsubscribe();
         }
         if (authenticated && player != null) {
             playerRepository.savePlayer(player);
