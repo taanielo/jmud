@@ -136,7 +136,7 @@ public class SocketClient implements Client {
             }
         } catch (IOException e) {
             if (e instanceof SocketException && (!session.isConnected() || session.isQuitRequested())) {
-                log.debug("Client socket closed", e);
+                log.debug("Client socket closed");
             } else {
                 log.error("Error receiving", e);
             }
