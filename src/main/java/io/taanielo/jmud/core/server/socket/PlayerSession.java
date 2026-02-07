@@ -9,16 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.CooldownTracker;
-import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
-import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
-import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
-import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
-import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.EffectSettings;
 import io.taanielo.jmud.core.effects.PlayerEffectTicker;
-import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.healing.HealingSettings;
@@ -49,6 +43,9 @@ public class PlayerSession {
     private final PlayerRepository playerRepository;
     private final RoomService roomService;
     private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
+    private final EffectEngine effectEngine;
+    private final HealingEngine healingEngine;
+    private final HealingBaseResolver healingBaseResolver;
 
     private volatile Player player;
     private volatile boolean authenticated;
@@ -78,16 +75,25 @@ public class PlayerSession {
      * @param playerRepository the player repository for persistence
      * @param roomService the room service for location management
      * @param respawnCallback called when the player respawns after death
+     * @param effectEngine effect engine for player effects
+     * @param healingEngine healing engine for player recovery
+     * @param healingBaseResolver base resolver for healing calculations
      */
     public PlayerSession(
         TickRegistry tickRegistry,
         PlayerRepository playerRepository,
         RoomService roomService,
-        Consumer<Player> respawnCallback
+        Consumer<Player> respawnCallback,
+        EffectEngine effectEngine,
+        HealingEngine healingEngine,
+        HealingBaseResolver healingBaseResolver
     ) {
         this.tickRegistry = Objects.requireNonNull(tickRegistry, "Tick registry is required");
         this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
+        this.effectEngine = Objects.requireNonNull(effectEngine, "Effect engine is required");
+        this.healingEngine = Objects.requireNonNull(healingEngine, "Healing engine is required");
+        this.healingBaseResolver = Objects.requireNonNull(healingBaseResolver, "Healing base resolver is required");
         this.respawnTicker = new PlayerRespawnTicker(
             this::getPlayer, respawnCallback, roomService, DeathSettings.respawnTicks()
         );
@@ -186,13 +192,7 @@ public class PlayerSession {
             return;
         }
         this.effectSink = sink;
-        try {
-            EffectEngine engine = new EffectEngine(new JsonEffectRepository());
-            effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, engine, sink)));
-        } catch (EffectRepositoryException e) {
-            log.error("Failed to initialize effects", e);
-            return;
-        }
+        effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, effectEngine, sink)));
         effectsInitialized = true;
     }
 
@@ -217,16 +217,9 @@ public class PlayerSession {
             return;
         }
         this.healingCallback = callback;
-        try {
-            HealingEngine engine = new HealingEngine(new JsonEffectRepository());
-            HealingBaseResolver baseResolver = new HealingBaseResolver(new JsonRaceRepository(), new JsonClassRepository());
-            healingSubscription = tickRegistry.register(
-                new PlayerHealingTicker(this::getPlayer, callback, engine, baseResolver)
-            );
-        } catch (EffectRepositoryException | RaceRepositoryException | ClassRepositoryException e) {
-            log.error("Failed to initialize healing", e);
-            return;
-        }
+        healingSubscription = tickRegistry.register(
+            new PlayerHealingTicker(this::getPlayer, callback, healingEngine, healingBaseResolver)
+        );
         healingInitialized = true;
     }
 
