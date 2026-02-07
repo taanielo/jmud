@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -134,7 +135,11 @@ public class SocketClient implements Client {
                 }
             }
         } catch (IOException e) {
-            log.error("Error receiving", e);
+            if (e instanceof SocketException && (!session.isConnected() || session.isQuitRequested())) {
+                log.debug("Client socket closed", e);
+            } else {
+                log.error("Error receiving", e);
+            }
         }
         log.info("Client disconnected");
         close();
