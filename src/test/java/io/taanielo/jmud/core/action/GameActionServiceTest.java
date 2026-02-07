@@ -304,7 +304,7 @@ class GameActionServiceTest {
     }
 
     @Test
-    void resolveDeathIfNeededShortCircuitsWhenAlreadyDead() {
+    void resolveDeathIfNeededHandlesAutoDeadPlayer() {
         // Player constructor auto-marks dead when hp <= 0
         PlayerVitals zeroHp = new PlayerVitals(0, 20, 20, 20, 20, 20);
         Player alreadyDead = new Player(
@@ -317,12 +317,14 @@ class GameActionServiceTest {
         GameActionResult result = service.resolveDeathIfNeeded(alreadyDead, attacker);
 
         assertTrue(result.updatedTarget().isDead());
-        assertTrue(result.messages().isEmpty(), "no messages for already-dead target");
+        assertTrue(result.messages().stream().anyMatch(message -> message.text().equals("You have died.")));
+        assertTrue(roomService.findPlayerLocation(alreadyDead.getUsername()).isEmpty());
     }
 
     @Test
     void resolveDeathIfNeededSkipsExplicitlyDeadPlayer() {
         Player alreadyDead = target.die();
+        roomService.clearPlayerLocation(alreadyDead.getUsername());
 
         GameActionResult result = service.resolveDeathIfNeeded(alreadyDead, attacker);
 

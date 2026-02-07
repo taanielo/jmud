@@ -258,7 +258,10 @@ public class GameActionService {
      */
     public GameActionResult resolveDeathIfNeeded(Player target, Player attacker) {
         Objects.requireNonNull(target, "Target is required");
-        if (target.isDead() || target.getVitals().hp() > 0) {
+        if (target.getVitals().hp() > 0) {
+            return new GameActionResult(null, target, List.of());
+        }
+        if (target.isDead() && roomService.findPlayerLocation(target.getUsername()).isEmpty()) {
             return new GameActionResult(null, target, List.of());
         }
         RoomService.LookResult look = roomService.look(target.getUsername());

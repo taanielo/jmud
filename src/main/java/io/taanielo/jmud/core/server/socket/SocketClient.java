@@ -322,7 +322,7 @@ public class SocketClient implements Client {
                 );
             }
         }
-        if (updated.getVitals().hp() <= 0 && !updated.isDead()) {
+        if (updated.getVitals().hp() <= 0 && (current == null || !current.isDead())) {
             GameActionResult deathResult = gameActionService.resolveDeathIfNeeded(updated, null);
             deliverMessages(deathResult.messages());
             auditDeath(deathResult.updatedTarget(), null);
@@ -597,9 +597,10 @@ public class SocketClient implements Client {
             String description = formatLookDescription(target);
             connection.writeLine(description);
             if (!target.getUsername().equals(source.getUsername())) {
-                String roomMessage = source.getUsername().getValue()
-                    + " looks at " + target.getUsername().getValue() + ".";
-                deliverRoomMessage(source.getUsername(), null, roomMessage);
+                String sourceName = source.getUsername().getValue();
+                sendToUsername(target.getUsername(), sourceName + " looks at you.");
+                String roomMessage = sourceName + " looks at " + target.getUsername().getValue() + ".";
+                deliverRoomMessage(source.getUsername(), target.getUsername(), roomMessage);
             }
             sendPrompt();
         }
