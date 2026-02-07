@@ -260,7 +260,7 @@ class GameActionServiceTest {
             "Potion",
             "A small potion.",
             ItemAttributes.empty(),
-            List.of(new io.taanielo.jmud.core.world.ItemEffect(effectId)),
+            List.of(new io.taanielo.jmud.core.world.ItemEffect(effectId, 5)),
             1
         );
         Player withItem = attacker.addItem(potion);

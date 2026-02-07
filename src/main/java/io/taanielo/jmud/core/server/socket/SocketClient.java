@@ -631,7 +631,7 @@ public class SocketClient implements Client {
                 if (oldRoom != null) {
                     String leaveMessage = player.getUsername().getValue()
                         + " leaves " + direction.label() + ".";
-                    sendToRoom(oldRoom, player.getUsername(), leaveMessage);
+                    SocketClient.this.sendToRoom(oldRoom, player.getUsername(), leaveMessage);
                 }
                 String arriveMessage = player.getUsername().getValue() + " arrives.";
                 deliverRoomMessage(player.getUsername(), null, arriveMessage);
