@@ -170,7 +170,14 @@ public class GameActionService {
             return GameActionResult.error("You don't see that here.");
         }
         Player updated = source.addItem(item.get());
-        return GameActionResult.simple(updated, "You pick up " + item.get().getName() + ".");
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You pick up " + item.get().getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " picks up " + item.get().getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
     }
 
     /**
@@ -191,7 +198,14 @@ public class GameActionService {
         }
         roomService.dropItem(source.getUsername(), item);
         Player updated = source.removeItem(item);
-        return GameActionResult.simple(updated, "You drop " + item.getName() + ".");
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " drops " + item.getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
     }
 
     /**
@@ -221,7 +235,14 @@ public class GameActionService {
             return GameActionResult.error("You cannot use that item right now.");
         }
         Player updated = source.removeItem(item);
-        return GameActionResult.simple(updated, "You quaff " + item.getName() + ".");
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You quaff " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " quaffs " + item.getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
     }
 
     /**

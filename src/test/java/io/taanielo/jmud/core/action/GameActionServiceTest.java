@@ -194,6 +194,10 @@ class GameActionServiceTest {
         GameActionResult result = service.getItem(attacker, "torch");
 
         assertEquals("You pick up Torch.", result.messages().getFirst().text());
+        assertTrue(result.messages().stream().anyMatch(message ->
+            message.type() == GameMessage.Type.ROOM
+                && message.text().equals("attacker picks up Torch.")
+        ));
         assertTrue(result.updatedSource().getInventory().stream()
             .anyMatch(i -> i.getId().equals(ItemId.of("torch"))));
     }
@@ -218,7 +222,56 @@ class GameActionServiceTest {
         GameActionResult result = service.dropItem(withItem, "torch");
 
         assertEquals("You drop Torch.", result.messages().getFirst().text());
+        assertTrue(result.messages().stream().anyMatch(message ->
+            message.type() == GameMessage.Type.ROOM
+                && message.text().equals("attacker drops Torch.")
+        ));
         assertTrue(result.updatedSource().getInventory().isEmpty());
+    }
+
+    @Test
+    void quaffItemEmitsRoomMessage() {
+        EffectId effectId = EffectId.of("effect.test");
+        EffectDefinition definition = new EffectDefinition(
+            effectId,
+            "Test Effect",
+            5,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            null
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(effectId, definition)));
+        service = new GameActionService(
+            testAbilityRegistry(),
+            new BasicAbilityCostResolver(),
+            effectEngine,
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns()
+        );
+        Item potion = new Item(
+            ItemId.of("potion"),
+            "Potion",
+            "A small potion.",
+            ItemAttributes.empty(),
+            List.of(new io.taanielo.jmud.core.world.ItemEffect(effectId)),
+            1
+        );
+        Player withItem = attacker.addItem(potion);
+
+        GameActionResult result = service.quaffItem(withItem, "potion");
+
+        assertEquals("You quaff Potion.", result.messages().getFirst().text());
+        assertTrue(result.messages().stream().anyMatch(message ->
+            message.type() == GameMessage.Type.ROOM
+                && message.text().equals("attacker quaffs Potion.")
+        ));
     }
 
     @Test

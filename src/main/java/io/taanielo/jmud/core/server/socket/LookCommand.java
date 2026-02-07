@@ -17,9 +17,14 @@ public class LookCommand extends RegistrableCommand {
 
     @Override
     public Optional<SocketCommandMatch> match(String input) {
-        String token = SocketCommandParsing.firstToken(input);
+        String[] parts = SocketCommandParsing.splitInput(input);
+        String token = parts[0];
         if ("LOOK".equals(token) || "L".equals(token)) {
-            return Optional.of(new SocketCommandMatch(this, SocketCommandContext::sendLook));
+            if (parts[1].isBlank()) {
+                return Optional.of(new SocketCommandMatch(this, SocketCommandContext::sendLook));
+            }
+            String targetInput = parts[1];
+            return Optional.of(new SocketCommandMatch(this, context -> context.sendLookAt(targetInput)));
         }
         return Optional.empty();
     }
