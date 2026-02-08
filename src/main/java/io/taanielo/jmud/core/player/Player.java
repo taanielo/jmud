@@ -185,6 +185,11 @@ public class Player implements EffectTarget, Combatant {
         return combatState.effects();
     }
 
+    @Override
+    public Username username() {
+        return getUsername();
+    }
+
     public Player die() {
         if (combatState.dead() && combatState.vitals().hp() <= 0 && combatState.effects().isEmpty()) {
             return this;

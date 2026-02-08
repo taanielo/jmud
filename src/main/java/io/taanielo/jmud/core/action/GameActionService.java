@@ -24,6 +24,8 @@ import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.messaging.MessageContext;
+import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
@@ -47,6 +49,7 @@ public class GameActionService {
     private final RoomService roomService;
     private final AbilityTargetResolver abilityTargetResolver;
     private final AbilityCooldownTracker cooldownTracker;
+    private final MessageEmitter messageEmitter = new MessageEmitter();
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -120,7 +123,7 @@ public class GameActionService {
     public GameActionResult useAbility(Player source, String input) {
         CollectingAbilityMessageSink sink = new CollectingAbilityMessageSink();
         DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(
-            abilityEffectEngine, NO_OP_EFFECT_SINK, AbilityEffectListener.noop()
+            abilityEffectEngine, sink, AbilityEffectListener.noop()
         );
         AbilityEngine engine = new AbilityEngine(abilityRegistry, abilityCostResolver, resolver, sink);
 
@@ -171,12 +174,27 @@ public class GameActionService {
         }
         Player updated = source.addItem(item.get());
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You pick up " + item.get().getName() + "."));
-        messages.add(GameMessage.toRoom(
+        MessageContext context = new MessageContext(
             source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            item.get().getName(),
             null,
-            source.getUsername().getValue() + " picks up " + item.get().getName() + "."
-        ));
+            null,
+            null
+        );
+        List<GameMessage> emitted = messageEmitter.emit(item.get().getMessages(), MessagePhase.PICKUP, context);
+        if (emitted.isEmpty()) {
+            messages.add(GameMessage.toSource("You pick up " + item.get().getName() + "."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(),
+                null,
+                source.getUsername().getValue() + " picks up " + item.get().getName() + "."
+            ));
+        } else {
+            messages.addAll(emitted);
+        }
         return new GameActionResult(updated, null, messages);
     }
 
@@ -199,12 +217,27 @@ public class GameActionService {
         roomService.dropItem(source.getUsername(), item);
         Player updated = source.removeItem(item);
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
-        messages.add(GameMessage.toRoom(
+        MessageContext context = new MessageContext(
             source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            item.getName(),
             null,
-            source.getUsername().getValue() + " drops " + item.getName() + "."
-        ));
+            null,
+            null
+        );
+        List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), MessagePhase.DROP, context);
+        if (emitted.isEmpty()) {
+            messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(),
+                null,
+                source.getUsername().getValue() + " drops " + item.getName() + "."
+            ));
+        } else {
+            messages.addAll(emitted);
+        }
         return new GameActionResult(updated, null, messages);
     }
 
@@ -227,21 +260,31 @@ public class GameActionService {
         if (item.getEffects().isEmpty()) {
             return GameActionResult.error("Nothing happens.");
         }
+        CollectingEffectMessageSink effectSink = new CollectingEffectMessageSink(
+            source.getUsername(),
+            source.getUsername()
+        );
         try {
             for (ItemEffect effect : item.getEffects()) {
-                abilityEffectEngine.apply(source, effect.id(), NO_OP_EFFECT_SINK);
+                abilityEffectEngine.apply(source, effect.id(), effectSink);
             }
         } catch (EffectRepositoryException e) {
             return GameActionResult.error("You cannot use that item right now.");
         }
         Player updated = source.removeItem(item);
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You quaff " + item.getName() + "."));
-        messages.add(GameMessage.toRoom(
+        MessageContext context = new MessageContext(
             source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            item.getName(),
             null,
-            source.getUsername().getValue() + " quaffs " + item.getName() + "."
-        ));
+            null,
+            null
+        );
+        messages.addAll(messageEmitter.emit(item.getMessages(), MessagePhase.QUAFF, context));
+        messages.addAll(effectSink.collected());
         return new GameActionResult(updated, null, messages);
     }
 
@@ -322,8 +365,6 @@ public class GameActionService {
         return null;
     }
 
-    private static final EffectMessageSink NO_OP_EFFECT_SINK = message -> {};
-
     private static class CollectingAbilityMessageSink implements AbilityMessageSink {
         private final List<GameMessage> messages = new ArrayList<>();
 
@@ -349,6 +390,44 @@ public class GameActionService {
                 return;
             }
             messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), message));
+        }
+
+        public List<GameMessage> collected() {
+            return List.copyOf(messages);
+        }
+    }
+
+    private static class CollectingEffectMessageSink implements EffectMessageSink {
+        private final List<GameMessage> messages = new ArrayList<>();
+        private final io.taanielo.jmud.core.authentication.Username source;
+        private final io.taanielo.jmud.core.authentication.Username target;
+
+        private CollectingEffectMessageSink(
+            io.taanielo.jmud.core.authentication.Username source,
+            io.taanielo.jmud.core.authentication.Username target
+        ) {
+            this.source = source;
+            this.target = target;
+        }
+
+        @Override
+        public void sendToTarget(String message) {
+            if (message == null || message.isBlank()) {
+                return;
+            }
+            if (target != null) {
+                messages.add(GameMessage.toPlayer(target, message));
+            } else if (source != null) {
+                messages.add(GameMessage.toSource(message));
+            }
+        }
+
+        @Override
+        public void sendToRoom(String message) {
+            if (message == null || message.isBlank()) {
+                return;
+            }
+            messages.add(GameMessage.toRoom(source, target, message));
         }
 
         public List<GameMessage> collected() {

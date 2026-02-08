@@ -313,6 +313,7 @@ public class RoomService {
             "The corpse of " + owner + " lies here.",
             ItemAttributes.empty(),
             List.of(),
+            List.of(),
             0
         );
     }

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "spell.heal",
   "name": "heal",
   "type": "SPELL",
@@ -20,9 +20,21 @@
       "amount": 6
     }
   ],
-  "messages": {
-    "self": "You cast {ability} on {target}.",
-    "target": "{source} casts {ability} on you.",
-    "room": "{source} casts {ability} on {target}."
-  }
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You cast {ability} on {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} on you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} on {target}."
+    }
+  ]
 }

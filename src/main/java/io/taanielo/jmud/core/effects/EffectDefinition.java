@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.effects;
 import java.util.List;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.messaging.MessageSpec;
+
 public class EffectDefinition {
     private final EffectId id;
     private final String name;
@@ -10,7 +12,7 @@ public class EffectDefinition {
     private final int tickInterval;
     private final EffectStacking stacking;
     private final List<EffectModifier> modifiers;
-    private final EffectMessages messages;
+    private final List<MessageSpec> messages;
 
     public EffectDefinition(
         EffectId id,
@@ -19,7 +21,7 @@ public class EffectDefinition {
         int tickInterval,
         EffectStacking stacking,
         List<EffectModifier> modifiers,
-        EffectMessages messages
+        List<MessageSpec> messages
     ) {
         this.id = Objects.requireNonNull(id, "Effect id is required");
         if (name == null || name.isBlank()) {
@@ -36,7 +38,7 @@ public class EffectDefinition {
         this.tickInterval = tickInterval;
         this.stacking = Objects.requireNonNull(stacking, "Stacking is required");
         this.modifiers = List.copyOf(Objects.requireNonNullElse(modifiers, List.of()));
-        this.messages = messages;
+        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
     }
 
     public EffectId id() {
@@ -63,7 +65,7 @@ public class EffectDefinition {
         return modifiers;
     }
 
-    public EffectMessages messages() {
+    public List<MessageSpec> messages() {
         return messages;
     }
 

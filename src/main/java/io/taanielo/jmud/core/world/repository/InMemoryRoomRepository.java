@@ -34,6 +34,7 @@ public class InMemoryRoomRepository implements RoomRepository {
                 "A plain iron sword with a worn leather grip.",
                 ItemAttributes.empty(),
                 List.of(),
+                List.of(),
                 25
             ), new Item(
                 ItemId.of("poisonous-potion"),
@@ -41,6 +42,7 @@ public class InMemoryRoomRepository implements RoomRepository {
                 "A cloudy green vial that smells faintly of rot.",
                 ItemAttributes.empty(),
                 List.of(new ItemEffect(EffectId.of("poison"), 10)),
+                List.of(),
                 5
             )),
             List.of()
@@ -56,6 +58,7 @@ public class InMemoryRoomRepository implements RoomRepository {
                 "Training Shield",
                 "A wooden shield used for drills.",
                 ItemAttributes.empty(),
+                List.of(),
                 List.of(),
                 15
             )),

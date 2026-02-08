@@ -31,7 +31,7 @@ class CombatEngineTest {
     @Test
     void resolvesHitAndDamage() throws Exception {
         AttackId attackId = AttackId.of("attack.test");
-        AttackDefinition attack = new AttackDefinition(attackId, "test", 2, 4, 0, 0, 0);
+        AttackDefinition attack = new AttackDefinition(attackId, "test", 2, 4, 0, 0, 0, List.of());
         CombatEngine engine = new CombatEngine(
             new StubAttackRepository(Map.of(attackId, attack)),
             new CombatModifierResolver(new StubEffectRepository(Map.of())),
@@ -51,7 +51,7 @@ class CombatEngineTest {
     @Test
     void resolvesCriticalHit() throws Exception {
         AttackId attackId = AttackId.of("attack.crit");
-        AttackDefinition attack = new AttackDefinition(attackId, "crit", 4, 4, 0, 0, 0);
+        AttackDefinition attack = new AttackDefinition(attackId, "crit", 4, 4, 0, 0, 0, List.of());
         CombatEngine engine = new CombatEngine(
             new StubAttackRepository(Map.of(attackId, attack)),
             new CombatModifierResolver(new StubEffectRepository(Map.of())),
@@ -71,7 +71,7 @@ class CombatEngineTest {
     @Test
     void resolvesMiss() throws Exception {
         AttackId attackId = AttackId.of("attack.miss");
-        AttackDefinition attack = new AttackDefinition(attackId, "miss", 2, 2, 0, 0, 0);
+        AttackDefinition attack = new AttackDefinition(attackId, "miss", 2, 2, 0, 0, 0, List.of());
         CombatEngine engine = new CombatEngine(
             new StubAttackRepository(Map.of(attackId, attack)),
             new CombatModifierResolver(new StubEffectRepository(Map.of())),
@@ -90,7 +90,7 @@ class CombatEngineTest {
     @Test
     void appliesDamageModifiersFromEffects() throws Exception {
         AttackId attackId = AttackId.of("attack.rage");
-        AttackDefinition attack = new AttackDefinition(attackId, "rage", 1, 1, 0, 0, 0);
+        AttackDefinition attack = new AttackDefinition(attackId, "rage", 1, 1, 0, 0, 0, List.of());
         EffectId rageId = EffectId.of("rage");
         EffectDefinition rage = new EffectDefinition(
             rageId,

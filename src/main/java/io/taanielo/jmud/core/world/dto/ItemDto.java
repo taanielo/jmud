@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.world.dto;
 
 import java.util.List;
 
+import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
+
 public record ItemDto(
     int schemaVersion,
     String id,
@@ -9,6 +11,7 @@ public record ItemDto(
     String description,
     ItemAttributesDto attributes,
     List<ItemEffectDto> effects,
+    List<MessageSpecDto> messages,
     int value
 ) {
 }

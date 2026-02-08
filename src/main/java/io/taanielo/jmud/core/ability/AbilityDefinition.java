@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.ability;
 import java.util.List;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.messaging.MessageSpec;
+
 public class AbilityDefinition implements Ability {
     private final AbilityId id;
     private final String name;
@@ -13,7 +15,7 @@ public class AbilityDefinition implements Ability {
     private final AbilityTargeting targeting;
     private final List<String> aliases;
     private final List<AbilityEffect> effects;
-    private final AbilityMessages messages;
+    private final List<MessageSpec> messages;
 
     public AbilityDefinition(
         AbilityId id,
@@ -25,7 +27,7 @@ public class AbilityDefinition implements Ability {
         AbilityTargeting targeting,
         List<String> aliases,
         List<AbilityEffect> effects,
-        AbilityMessages messages
+        List<MessageSpec> messages
     ) {
         this.id = Objects.requireNonNull(id, "Ability id is required");
         this.name = validateText(name, "Ability name");
@@ -39,7 +41,7 @@ public class AbilityDefinition implements Ability {
         this.targeting = Objects.requireNonNull(targeting, "Ability targeting is required");
         this.aliases = List.copyOf(Objects.requireNonNullElse(aliases, List.of()));
         this.effects = List.copyOf(Objects.requireNonNullElse(effects, List.of()));
-        this.messages = messages;
+        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
         if (this.effects.isEmpty()) {
             throw new IllegalArgumentException("Ability must define at least one effect");
         }
@@ -91,7 +93,7 @@ public class AbilityDefinition implements Ability {
     }
 
     @Override
-    public AbilityMessages messages() {
+    public List<MessageSpec> messages() {
         return messages;
     }
 

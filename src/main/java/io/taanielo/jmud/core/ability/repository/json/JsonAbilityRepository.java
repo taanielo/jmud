@@ -114,7 +114,7 @@ public class JsonAbilityRepository implements AbilityRepository {
     }
 
     private void validateSchema(AbilityDto dto, Path path) throws AbilityRepositoryException {
-        if (dto.schemaVersion() != SchemaVersions.V1) {
+        if (dto.schemaVersion() != SchemaVersions.V2) {
             throw new AbilityRepositoryException(
                 "Unsupported ability schema version " + dto.schemaVersion() + " in " + path
             );

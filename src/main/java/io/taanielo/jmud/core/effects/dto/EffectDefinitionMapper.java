@@ -7,7 +7,8 @@ import java.util.Objects;
 
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectId;
-import io.taanielo.jmud.core.effects.EffectMessages;
+import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 import io.taanielo.jmud.core.effects.EffectModifier;
 import io.taanielo.jmud.core.effects.EffectStacking;
 import io.taanielo.jmud.core.effects.ModifierOperation;
@@ -15,16 +16,14 @@ import io.taanielo.jmud.core.effects.ModifierOperation;
 public class EffectDefinitionMapper {
     public EffectDefinition toDomain(EffectDefinitionDto dto) {
         Objects.requireNonNull(dto, "Effect definition DTO is required");
-        if (dto.schemaVersion() != EffectSchemaVersions.V1) {
-            throw new IllegalArgumentException("Unsupported effect schema version " + dto.schemaVersion());
-        }
+        validateSchema(dto);
         EffectId id = EffectId.of(dto.id());
         String name = dto.name();
         int durationTicks = dto.durationTicks() == null ? 0 : dto.durationTicks();
         int tickInterval = dto.tickInterval() == null ? 1 : dto.tickInterval();
         EffectStacking stacking = parseStacking(dto.stacking());
         List<EffectModifier> modifiers = mapModifiers(dto.modifiers());
-        EffectMessages messages = mapMessages(dto.messages());
+        List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         return new EffectDefinition(id, name, durationTicks, tickInterval, stacking, modifiers, messages);
     }
 
@@ -67,16 +66,9 @@ public class EffectDefinitionMapper {
         }
     }
 
-    private EffectMessages mapMessages(EffectMessageDto dto) {
-        if (dto == null) {
-            return null;
+    private void validateSchema(EffectDefinitionDto dto) {
+        if (dto.schemaVersion() != EffectSchemaVersions.V2) {
+            throw new IllegalArgumentException("Unsupported effect schema version " + dto.schemaVersion());
         }
-        return new EffectMessages(
-            dto.applySelf(),
-            dto.applyRoom(),
-            dto.expireSelf(),
-            dto.expireRoom(),
-            dto.examine()
-        );
     }
 }

@@ -11,6 +11,7 @@ import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.CooldownTracker;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectSettings;
 import io.taanielo.jmud.core.effects.PlayerEffectTicker;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
@@ -44,6 +45,7 @@ public class PlayerSession {
     private final RoomService roomService;
     private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
     private final EffectEngine effectEngine;
+    private final EffectRepository effectRepository;
     private final HealingEngine healingEngine;
     private final HealingBaseResolver healingBaseResolver;
 
@@ -85,6 +87,7 @@ public class PlayerSession {
         RoomService roomService,
         Consumer<Player> respawnCallback,
         EffectEngine effectEngine,
+        EffectRepository effectRepository,
         HealingEngine healingEngine,
         HealingBaseResolver healingBaseResolver
     ) {
@@ -92,6 +95,7 @@ public class PlayerSession {
         this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
         this.effectEngine = Objects.requireNonNull(effectEngine, "Effect engine is required");
+        this.effectRepository = Objects.requireNonNull(effectRepository, "Effect repository is required");
         this.healingEngine = Objects.requireNonNull(healingEngine, "Healing engine is required");
         this.healingBaseResolver = Objects.requireNonNull(healingBaseResolver, "Healing base resolver is required");
         this.respawnTicker = new PlayerRespawnTicker(
@@ -218,7 +222,14 @@ public class PlayerSession {
         }
         this.healingCallback = callback;
         healingSubscription = tickRegistry.register(
-            new PlayerHealingTicker(this::getPlayer, callback, healingEngine, healingBaseResolver)
+            new PlayerHealingTicker(
+                this::getPlayer,
+                callback,
+                healingEngine,
+                healingBaseResolver,
+                effectRepository,
+                effectSink
+            )
         );
         healingInitialized = true;
     }

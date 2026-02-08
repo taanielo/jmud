@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "poison",
   "name": "Poison",
   "duration_ticks": 10,
@@ -12,9 +12,26 @@
       "amount": 5
     }
   ],
-  "messages": {
-    "apply_self": "Poison burns through your veins.",
-    "expire_self": "The poison leaves your body.",
-    "examine": "{name} looks sick."
-  }
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Poison burns through your veins."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The poison hurts."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The poison leaves your body."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks sickly."
+    }
+  ]
 }

@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 
@@ -159,7 +162,7 @@ class AbilityEngineTest {
             AbilityTargeting.HARMFUL,
             List.of(),
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 4, null)),
-            null
+            List.of(new MessageSpec(MessagePhase.USE, MessageChannel.SELF, "You bash {target}."))
         );
         Ability fireball = new AbilityDefinition(
             AbilityId.of("spell.fireball"),
@@ -171,7 +174,7 @@ class AbilityEngineTest {
             AbilityTargeting.HARMFUL,
             List.of(),
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 6, null)),
-            null
+            List.of(new MessageSpec(MessagePhase.USE, MessageChannel.SELF, "You cast {ability} at {target}."))
         );
         Ability greaterFireball = new AbilityDefinition(
             AbilityId.of("spell.fireball.greater"),
@@ -183,7 +186,7 @@ class AbilityEngineTest {
             AbilityTargeting.HARMFUL,
             List.of("fireball"),
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 9, null)),
-            null
+            List.of(new MessageSpec(MessagePhase.USE, MessageChannel.SELF, "You cast {ability} at {target}."))
         );
         Ability heal = new AbilityDefinition(
             AbilityId.of("spell.heal"),
@@ -195,7 +198,7 @@ class AbilityEngineTest {
             AbilityTargeting.BENEFICIAL,
             List.of("healing"),
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.INCREASE, 6, null)),
-            null
+            List.of(new MessageSpec(MessagePhase.USE, MessageChannel.SELF, "You cast {ability} on {target}."))
         );
         return new AbilityRegistry(List.of(bash, fireball, greaterFireball, heal));
     }
