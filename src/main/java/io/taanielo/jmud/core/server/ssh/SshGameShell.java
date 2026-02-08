@@ -72,7 +72,7 @@ public class SshGameShell implements Command {
             exit(1);
             return;
         }
-        ClientConnection connection = new SshClientConnection(input, output);
+        ClientConnection connection = new SshClientConnection(input, output, true);
         AuthenticationService authService = (input, handler) -> {
             throw new IllegalStateException("SSH sessions are pre-authenticated.");
         };
