@@ -20,9 +20,18 @@ public class Main {
         Server telnetServer = new SocketServer(telnetPort, context, clientPool);
         Server sshServer = new SshServer(sshPort, context, clientPool);
         log.info("Starting servers ..");
-        Thread.ofVirtual().name("telnet-server").start(telnetServer);
-        Thread.ofVirtual().name("ssh-server").start(sshServer);
+        Thread telnetThread = Thread.ofVirtual().name("telnet-server").start(telnetServer);
+        Thread sshThread = Thread.ofVirtual().name("ssh-server").start(sshServer);
         log.info("Servers started");
+        try {
+            telnetThread.join();
+            sshThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Main thread interrupted, stopping servers");
+            telnetThread.interrupt();
+            sshThread.interrupt();
+        }
     }
 
     private static int resolvePort(String[] args, String argName, String envName, int defaultPort) {
