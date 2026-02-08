@@ -4,23 +4,22 @@ import java.util.Objects;
 
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
-import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 
 public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
     private final EffectEngine effectEngine;
-    private final EffectMessageSink effectMessageSink;
+    private final AbilityMessageSink messageSink;
     private final AbilityEffectListener listener;
 
     public DefaultAbilityEffectResolver(
         EffectEngine effectEngine,
-        EffectMessageSink effectMessageSink,
+        AbilityMessageSink messageSink,
         AbilityEffectListener listener
     ) {
         this.effectEngine = Objects.requireNonNull(effectEngine, "Effect engine is required");
-        this.effectMessageSink = Objects.requireNonNull(effectMessageSink, "Effect message sink is required");
+        this.messageSink = Objects.requireNonNull(messageSink, "Message sink is required");
         this.listener = AbilityEffectListener.require(listener);
     }
 
@@ -56,8 +55,19 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
     }
 
     private boolean applyEffect(AbilityEffect effect, AbilityContext context) {
+        io.taanielo.jmud.core.effects.EffectMessageSink sink = new io.taanielo.jmud.core.effects.EffectMessageSink() {
+            @Override
+            public void sendToTarget(String message) {
+                messageSink.sendToTarget(context.target(), message);
+            }
+
+            @Override
+            public void sendToRoom(String message) {
+                messageSink.sendToRoom(context.source(), context.target(), message);
+            }
+        };
         try {
-            return effectEngine.apply(context.target(), EffectId.of(effect.effectId()), effectMessageSink);
+            return effectEngine.apply(context.target(), EffectId.of(effect.effectId()), sink);
         } catch (EffectRepositoryException e) {
             throw new IllegalStateException("Failed to apply effect " + effect.effectId() + ": " + e.getMessage(), e);
         }

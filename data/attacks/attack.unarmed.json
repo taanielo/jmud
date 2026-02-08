@@ -1,10 +1,57 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "attack.unarmed",
   "name": "unarmed",
   "min_damage": 1,
   "max_damage": 3,
   "hit_bonus": 0,
   "crit_bonus": 0,
-  "damage_bonus": 0
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You hit {target} for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} hits you for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} hits {target}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You miss {target}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} misses you."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} misses {target}."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You critically hit {target} for {damage}."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} critically hits you for {damage}."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} critically hits {target}."
+    }
+  ]
 }

@@ -44,7 +44,15 @@ class PlayerRespawnTickerTest {
             "Arena",
             "An empty arena.",
             Map.of(Direction.SOUTH, startId),
-            List.of(new Item(ItemId.of("stone"), "Stone", "A small stone.", ItemAttributes.empty(), List.of(), 0)),
+            List.of(new Item(
+                ItemId.of("stone"),
+                "Stone",
+                "A small stone.",
+                ItemAttributes.empty(),
+                List.of(),
+                List.of(),
+                0
+            )),
             List.of()
         );
         RoomService roomService = new RoomService(new TestRoomRepository(Map.of(startId, start, arenaId, arena)), startId);

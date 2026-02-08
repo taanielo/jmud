@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "stoneskin",
   "name": "Stoneskin",
   "duration_ticks": 120,
@@ -12,11 +12,31 @@
       "amount": 10
     }
   ],
-  "messages": {
-    "apply_self": "Your skin hardens.",
-    "apply_room": "{name}'s skin darkens.",
-    "expire_self": "Your skin softens.",
-    "expire_room": "{name}'s skin returns to normal.",
-    "examine": "{name} has stone-like skin."
-  }
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Your skin hardens."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name}'s skin darkens."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Your skin softens."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name}'s skin returns to normal."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} has stone-like skin."
+    }
+  ]
 }

@@ -24,6 +24,7 @@ import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeBannerMessage;
@@ -90,6 +91,7 @@ public class SocketClient implements Client {
             this.roomService,
             this::applyRespawnUpdate,
             context.effectEngine(),
+            context.effectRepository(),
             context.healingEngine(),
             context.healingBaseResolver()
         );
@@ -244,9 +246,21 @@ public class SocketClient implements Client {
         } else {
             roomService.ensurePlayerLocation(player.getUsername());
         }
-        session.registerEffects(message -> {
-            connection.writeLine(message);
-            sendPrompt();
+        session.registerEffects(new EffectMessageSink() {
+            @Override
+            public void sendToTarget(String message) {
+                connection.writeLine(message);
+                sendPrompt();
+            }
+
+            @Override
+            public void sendToRoom(String message) {
+                Player current = session.getPlayer();
+                if (current == null) {
+                    return;
+                }
+                deliverRoomMessage(current.getUsername(), null, message);
+            }
         });
         session.registerHealing(this::applyHealingUpdate);
         session.enqueueCommand(session::handleDeathState);

@@ -76,6 +76,7 @@ class RoomServiceTest {
             "A warm torch.",
             ItemAttributes.empty(),
             List.of(),
+            List.of(),
             5
         );
         Room roomA = new Room(
@@ -133,6 +134,7 @@ class RoomServiceTest {
             "A warm torch.",
             ItemAttributes.empty(),
             List.of(),
+            List.of(),
             5
         );
         Room roomA = new Room(
@@ -175,6 +177,7 @@ class RoomServiceTest {
             "Apple",
             "A crisp apple.",
             ItemAttributes.empty(),
+            List.of(),
             List.of(),
             1
         );

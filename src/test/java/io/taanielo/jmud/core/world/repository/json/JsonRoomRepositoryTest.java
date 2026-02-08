@@ -37,6 +37,7 @@ class JsonRoomRepositoryTest {
             "A blunted sword for sparring.",
             ItemAttributes.empty(),
             List.of(),
+            List.of(),
             12
         );
         Item potion = new Item(
@@ -44,6 +45,7 @@ class JsonRoomRepositoryTest {
             "Minor Potion",
             "A small vial for quick recovery.",
             ItemAttributes.empty(),
+            List.of(),
             List.of(),
             8
         );

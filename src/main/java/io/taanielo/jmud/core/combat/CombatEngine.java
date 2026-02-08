@@ -1,10 +1,16 @@
 package io.taanielo.jmud.core.combat;
 
+import java.util.List;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessageContext;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageRenderer;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
 
 /**
@@ -14,6 +20,7 @@ public class CombatEngine {
     private final AttackRepository attackRepository;
     private final CombatModifierResolver modifierResolver;
     private final CombatRandom random;
+    private final MessageRenderer renderer = new MessageRenderer();
 
     /**
      * Creates a combat engine with the provided dependencies.
@@ -86,12 +93,43 @@ public class CombatEngine {
             ? target.withVitals(target.getVitals().damage(damage))
             : target;
 
-        String sourceMessage;
-        String targetMessage;
-        String roomMessage;
+        String sourceMessage = null;
+        String targetMessage = null;
+        String roomMessage = null;
         String targetName = target.getUsername().getValue();
         String attackerName = attacker.getUsername().getValue();
-        if (!hit) {
+        List<MessageSpec> specs = attack.messages();
+        if (!specs.isEmpty()) {
+            MessagePhase phase = !hit
+                ? MessagePhase.ATTACK_MISS
+                : (crit ? MessagePhase.ATTACK_CRIT : MessagePhase.ATTACK_HIT);
+            MessageContext context = new MessageContext(
+                attacker.getUsername(),
+                target.getUsername(),
+                attackerName,
+                targetName,
+                null,
+                null,
+                attack.name(),
+                damage
+            );
+            for (MessageSpec spec : specs) {
+                if (spec.phase() != phase) {
+                    continue;
+                }
+                String rendered = renderer.render(spec, context);
+                if (rendered == null || rendered.isBlank()) {
+                    continue;
+                }
+                if (spec.channel() == MessageChannel.SELF) {
+                    sourceMessage = rendered;
+                } else if (spec.channel() == MessageChannel.TARGET) {
+                    targetMessage = rendered;
+                } else if (spec.channel() == MessageChannel.ROOM) {
+                    roomMessage = rendered;
+                }
+            }
+        } else if (!hit) {
             sourceMessage = "You miss " + targetName + ".";
             targetMessage = attackerName + " misses you.";
             roomMessage = attackerName + " misses " + targetName + ".";

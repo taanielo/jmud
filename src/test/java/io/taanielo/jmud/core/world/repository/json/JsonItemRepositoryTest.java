@@ -33,6 +33,7 @@ class JsonItemRepositoryTest {
             "A dull blade with a chipped edge.",
             ItemAttributes.empty(),
             List.of(),
+            List.of(),
             3
         );
         repository.save(item);

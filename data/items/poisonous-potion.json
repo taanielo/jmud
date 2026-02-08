@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "poisonous-potion",
   "name": "Poisonous Potion",
   "description": "A cloudy green vial that smells faintly of rot.",
@@ -10,6 +10,18 @@
     {
       "effect_id": "poison",
       "duration_ticks": 10
+    }
+  ],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You quaff {item}."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
     }
   ],
   "value": 5

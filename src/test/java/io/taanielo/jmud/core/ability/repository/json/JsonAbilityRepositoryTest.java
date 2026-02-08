@@ -18,6 +18,9 @@ import io.taanielo.jmud.core.ability.AbilityStat;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.ability.AbilityType;
 import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 
 class JsonAbilityRepositoryTest {
 
@@ -31,7 +34,7 @@ class JsonAbilityRepositoryTest {
         Path abilityFile = skillsDir.resolve("spell.heal.json");
         Files.writeString(abilityFile, """
             {
-              \"schema_version\": 1,
+              \"schema_version\": 2,
               \"id\": \"spell.heal\",
               \"name\": \"heal\",
               \"type\": \"SPELL\",
@@ -43,11 +46,11 @@ class JsonAbilityRepositoryTest {
               \"effects\": [
                 {\"kind\": \"VITALS\", \"stat\": \"HP\", \"operation\": \"INCREASE\", \"amount\": 6}
               ],
-              \"messages\": {
-                \"self\": \"You cast {ability} on {target}.\",
-                \"target\": \"{source} casts {ability} on you.\",
-                \"room\": \"{source} casts {ability} on {target}.\"
-              }
+              \"messages\": [
+                {\"phase\": \"use\", \"channel\": \"self\", \"text\": \"You cast {ability} on {target}.\"},
+                {\"phase\": \"use\", \"channel\": \"target\", \"text\": \"{source} casts {ability} on you.\"},
+                {\"phase\": \"use\", \"channel\": \"room\", \"text\": \"{source} casts {ability} on {target}.\"}
+              ]
             }
             """);
 
@@ -60,7 +63,11 @@ class JsonAbilityRepositoryTest {
         assertEquals(AbilityType.SPELL, ability.type());
         assertEquals(AbilityTargeting.BENEFICIAL, ability.targeting());
         assertEquals(1, ability.effects().size());
-        assertEquals("You cast {ability} on {target}.", ability.messages().self());
+        MessageSpec selfMessage = ability.messages().stream()
+            .filter(spec -> spec.phase() == MessagePhase.USE && spec.channel() == MessageChannel.SELF)
+            .findFirst()
+            .orElseThrow();
+        assertEquals("You cast {ability} on {target}.", selfMessage.text());
         assertEquals(AbilityEffectKind.VITALS, ability.effects().getFirst().kind());
         assertEquals(AbilityStat.HP, ability.effects().getFirst().stat());
         assertEquals(AbilityOperation.INCREASE, ability.effects().getFirst().operation());

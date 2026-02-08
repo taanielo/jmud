@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "spell.fireball.greater",
   "name": "greater fireball",
   "type": "SPELL",
@@ -20,9 +20,21 @@
       "amount": 9
     }
   ],
-  "messages": {
-    "self": "You cast {ability} at {target}.",
-    "target": "{source} casts {ability} at you.",
-    "room": "{source} casts {ability} at {target}."
-  }
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You cast {ability} at {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} at you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} at {target}."
+    }
+  ]
 }

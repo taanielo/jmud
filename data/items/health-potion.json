@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "health-potion",
   "name": "Health Potion",
   "description": "A small red vial that restores a bit of vitality.",
@@ -7,5 +7,17 @@
     "stats": {}
   },
   "effects": [],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You quaff {item}."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
+    }
+  ],
   "value": 15
 }

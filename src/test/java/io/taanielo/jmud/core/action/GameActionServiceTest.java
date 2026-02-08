@@ -76,7 +76,7 @@ class GameActionServiceTest {
         roomService = new RoomService(new TestRoomRepository(Map.of(ROOM_A, room)), ROOM_A);
 
         AttackId defaultAttack = CombatSettings.defaultAttackId();
-        AttackDefinition attack = new AttackDefinition(defaultAttack, "punch", 2, 4, 0, 0, 0);
+        AttackDefinition attack = new AttackDefinition(defaultAttack, "punch", 2, 4, 0, 0, 0, List.of());
         CombatEngine combatEngine = new CombatEngine(
             new StubAttackRepository(Map.of(defaultAttack, attack)),
             new CombatModifierResolver(new StubEffectRepository(Map.of())),
@@ -157,7 +157,7 @@ class GameActionServiceTest {
             new CombatEngine(
                 new StubAttackRepository(Map.of(
                     CombatSettings.defaultAttackId(),
-                    new AttackDefinition(CombatSettings.defaultAttackId(), "punch", 2, 4, 0, 0, 0)
+                    new AttackDefinition(CombatSettings.defaultAttackId(), "punch", 2, 4, 0, 0, 0, List.of())
                 )),
                 new CombatModifierResolver(new StubEffectRepository(Map.of())),
                 new FixedCombatRandom(10, 3, 100)
@@ -188,7 +188,15 @@ class GameActionServiceTest {
 
     @Test
     void getItemPicksUpItemFromRoom() {
-        Item torch = new Item(ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty(), List.of(), 5);
+        Item torch = new Item(
+            ItemId.of("torch"),
+            "Torch",
+            "A warm torch.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            5
+        );
         roomService.dropItem(attacker.getUsername(), torch);
 
         GameActionResult result = service.getItem(attacker, "torch");
@@ -216,7 +224,15 @@ class GameActionServiceTest {
 
     @Test
     void dropItemRemovesItemFromInventory() {
-        Item torch = new Item(ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty(), List.of(), 5);
+        Item torch = new Item(
+            ItemId.of("torch"),
+            "Torch",
+            "A warm torch.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            5
+        );
         Player withItem = attacker.addItem(torch);
 
         GameActionResult result = service.dropItem(withItem, "torch");
@@ -261,6 +277,18 @@ class GameActionServiceTest {
             "A small potion.",
             ItemAttributes.empty(),
             List.of(new io.taanielo.jmud.core.world.ItemEffect(effectId, 5)),
+            List.of(
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                    "You quaff {item}."
+                ),
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.ROOM,
+                    "{source} quaffs {item}."
+                )
+            ),
             1
         );
         Player withItem = attacker.addItem(potion);
@@ -288,7 +316,15 @@ class GameActionServiceTest {
 
     @Test
     void quaffItemReturnsNothingHappensForEffectlessItem() {
-        Item rock = new Item(ItemId.of("rock"), "Rock", "A plain rock.", ItemAttributes.empty(), List.of(), 1);
+        Item rock = new Item(
+            ItemId.of("rock"),
+            "Rock",
+            "A plain rock.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            1
+        );
         Player withItem = attacker.addItem(rock);
 
         GameActionResult result = service.quaffItem(withItem, "rock");
@@ -343,7 +379,7 @@ class GameActionServiceTest {
             new AbilityCost(0, 3), new AbilityCooldown(3),
             AbilityTargeting.HARMFUL, List.of(),
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 4, null)),
-            null
+            List.of()
         );
         return new AbilityRegistry(List.of(bash));
     }

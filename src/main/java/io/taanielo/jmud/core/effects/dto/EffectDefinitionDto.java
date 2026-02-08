@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.effects.dto;
 
 import java.util.List;
 
+import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
+
 public record EffectDefinitionDto(
     int schemaVersion,
     String id,
@@ -10,6 +12,6 @@ public record EffectDefinitionDto(
     Integer tickInterval,
     String stacking,
     List<EffectModifierDto> modifiers,
-    EffectMessageDto messages
+    List<MessageSpecDto> messages
 ) {
 }

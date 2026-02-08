@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.ability.dto;
 
 import java.util.List;
 
+import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
+
 import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.ability.AbilityType;
 
@@ -16,6 +18,6 @@ public record AbilityDto(
     AbilityTargeting targeting,
     List<String> aliases,
     List<AbilityEffectDto> effects,
-    AbilityMessagesDto messages
+    List<MessageSpecDto> messages
 ) {
 }

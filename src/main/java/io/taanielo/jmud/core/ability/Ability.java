@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.ability;
 
 import java.util.List;
 
+import io.taanielo.jmud.core.messaging.MessageSpec;
+
 public interface Ability {
     AbilityId id();
 
@@ -21,7 +23,7 @@ public interface Ability {
 
     List<AbilityEffect> effects();
 
-    AbilityMessages messages();
+    List<MessageSpec> messages();
 
     default boolean canUse(AbilityContext context) {
         return true;

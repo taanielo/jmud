@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 
@@ -52,7 +55,9 @@ class EffectEngineTest {
     @Test
     void expiresEffectsAndSendsMessage() throws EffectRepositoryException {
         EffectId id = EffectId.of("shield");
-        EffectMessages messages = new EffectMessages(null, null, "Shield fades.", null, null);
+        List<MessageSpec> messages = List.of(
+            new MessageSpec(MessagePhase.EXPIRE, MessageChannel.SELF, "Shield fades.")
+        );
         EffectDefinition definition = new EffectDefinition(
             id,
             "Shield",

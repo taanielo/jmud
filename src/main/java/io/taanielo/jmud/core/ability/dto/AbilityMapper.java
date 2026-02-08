@@ -10,7 +10,8 @@ import io.taanielo.jmud.core.ability.AbilityDefinition;
 import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
 import io.taanielo.jmud.core.ability.AbilityId;
-import io.taanielo.jmud.core.ability.AbilityMessages;
+import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 
 public class AbilityMapper {
 
@@ -26,7 +27,7 @@ public class AbilityMapper {
             ))
             .toList();
         return new AbilityDto(
-            SchemaVersions.V1,
+            SchemaVersions.V2,
             ability.id().getValue(),
             ability.name(),
             ability.type(),
@@ -36,13 +37,7 @@ public class AbilityMapper {
             ability.targeting(),
             ability.aliases(),
             effects,
-            ability.messages() == null
-                ? null
-                : new AbilityMessagesDto(
-                    ability.messages().self(),
-                    ability.messages().target(),
-                    ability.messages().room()
-                )
+            MessageSpecMapper.toDtos(ability.messages())
         );
     }
 
@@ -64,6 +59,7 @@ public class AbilityMapper {
                 moveCost = costDto.move();
             }
         }
+        List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         return new AbilityDefinition(
             AbilityId.of(dto.id()),
             dto.name(),
@@ -74,9 +70,7 @@ public class AbilityMapper {
             dto.targeting(),
             dto.aliases(),
             effects,
-            dto.messages() == null
-                ? null
-                : new AbilityMessages(dto.messages().self(), dto.messages().target(), dto.messages().room())
+            messages
         );
     }
 

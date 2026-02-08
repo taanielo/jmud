@@ -5,6 +5,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessageContext;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageRenderer;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
 
 public class AbilityEngine {
@@ -12,6 +17,7 @@ public class AbilityEngine {
     private final AbilityCostResolver costResolver;
     private final AbilityEffectResolver effectResolver;
     private final AbilityMessageSink messageSink;
+    private final MessageRenderer renderer = new MessageRenderer();
 
     public AbilityEngine(
         AbilityRegistry registry,
@@ -77,12 +83,7 @@ public class AbilityEngine {
             cooldowns.startCooldown(ability.id(), ability.cooldown().ticks());
         }
 
-        AbilityMessages resolved = resolveMessages(ability, context);
-        messageSink.sendToSource(context.source(), resolved.self());
-        if (!context.source().getUsername().equals(context.target().getUsername())) {
-            messageSink.sendToTarget(context.target(), resolved.target());
-        }
-        messageSink.sendToRoom(context.source(), context.target(), resolved.room());
+        emitMessages(ability, context);
 
         List<String> messages = new ArrayList<>();
         for (AbilityEffect effect : ability.effects()) {
@@ -115,50 +116,39 @@ public class AbilityEngine {
         };
     }
 
-    private AbilityMessages resolveMessages(Ability ability, AbilityContext context) {
-        AbilityMessages messages = ability.messages();
-        String sourceName = context.source().getUsername().getValue();
-        String targetName = context.target().getUsername().getValue();
-        String abilityName = ability.name();
-
-        String selfTemplate;
-        String targetTemplate;
-        String roomTemplate;
-
-        if (messages == null) {
-            if (sourceName.equals(targetName)) {
-                selfTemplate = "You use {ability} on yourself.";
-                targetTemplate = "{source} uses {ability} on themselves.";
-                roomTemplate = "{source} uses {ability} on themselves.";
-            } else {
-                selfTemplate = "You use {ability} on {target}.";
-                targetTemplate = "{source} uses {ability} on you.";
-                roomTemplate = "{source} uses {ability} on {target}.";
-            }
-        } else {
-            selfTemplate = normalize(messages.self(), "You use {ability} on {target}.");
-            targetTemplate = normalize(messages.target(), "{source} uses {ability} on you.");
-            roomTemplate = normalize(messages.room(), "{source} uses {ability} on {target}.");
+    private void emitMessages(Ability ability, AbilityContext context) {
+        List<MessageSpec> specs = ability.messages();
+        if (specs.isEmpty()) {
+            return;
         }
-
-        return new AbilityMessages(
-            format(selfTemplate, sourceName, targetName, abilityName),
-            format(targetTemplate, sourceName, targetName, abilityName),
-            format(roomTemplate, sourceName, targetName, abilityName)
+        MessageContext messageContext = new MessageContext(
+            context.source().getUsername(),
+            context.target().getUsername(),
+            context.source().getUsername().getValue(),
+            context.target().getUsername().getValue(),
+            null,
+            null,
+            ability.name(),
+            null
         );
-    }
-
-    private String normalize(String value, String fallback) {
-        if (value == null || value.isBlank()) {
-            return fallback;
+        for (MessageSpec spec : specs) {
+            if (spec.phase() != MessagePhase.USE) {
+                continue;
+            }
+            String rendered = renderer.render(spec, messageContext);
+            if (rendered == null || rendered.isBlank()) {
+                continue;
+            }
+            MessageChannel channel = spec.channel();
+            switch (channel) {
+                case SELF -> messageSink.sendToSource(context.source(), rendered);
+                case TARGET -> {
+                    if (!context.source().getUsername().equals(context.target().getUsername())) {
+                        messageSink.sendToTarget(context.target(), rendered);
+                    }
+                }
+                case ROOM -> messageSink.sendToRoom(context.source(), context.target(), rendered);
+            }
         }
-        return value.trim();
-    }
-
-    private String format(String template, String sourceName, String targetName, String abilityName) {
-        return template
-            .replace("{source}", sourceName)
-            .replace("{target}", targetName)
-            .replace("{ability}", abilityName);
     }
 }

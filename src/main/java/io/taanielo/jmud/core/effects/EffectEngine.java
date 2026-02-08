@@ -5,8 +5,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessageContext;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageRenderer;
+import io.taanielo.jmud.core.messaging.MessageSpec;
+
 public class EffectEngine {
     private final EffectRepository repository;
+    private final MessageRenderer renderer = new MessageRenderer();
 
     public EffectEngine(EffectRepository repository) {
         this.repository = Objects.requireNonNull(repository, "Effect repository is required");
@@ -29,7 +36,7 @@ public class EffectEngine {
             applied = applyStacking(existing, definition);
         }
         if (applied) {
-            sendApplyMessages(definition, sink);
+            sendMessages(target, definition, MessagePhase.APPLY, sink);
         }
         return applied;
     }
@@ -48,7 +55,7 @@ public class EffectEngine {
             instance.tickDown();
             if (instance.remainingTicks() <= 0) {
                 iterator.remove();
-                sendExpireMessages(definition, sink);
+                sendMessages(target, definition, MessagePhase.EXPIRE, sink);
             }
         }
     }
@@ -82,29 +89,39 @@ public class EffectEngine {
         return true;
     }
 
-    private void sendApplyMessages(EffectDefinition definition, EffectMessageSink sink) {
-        EffectMessages messages = definition.messages();
-        if (messages == null) {
+    private void sendMessages(
+        EffectTarget target,
+        EffectDefinition definition,
+        MessagePhase phase,
+        EffectMessageSink sink
+    ) {
+        List<MessageSpec> messages = definition.messages();
+        if (messages.isEmpty()) {
             return;
         }
-        if (messages.applySelf() != null) {
-            sink.sendToTarget(messages.applySelf());
-        }
-        if (messages.applyRoom() != null) {
-            sink.sendToRoom(messages.applyRoom());
-        }
-    }
-
-    private void sendExpireMessages(EffectDefinition definition, EffectMessageSink sink) {
-        EffectMessages messages = definition.messages();
-        if (messages == null) {
-            return;
-        }
-        if (messages.expireSelf() != null) {
-            sink.sendToTarget(messages.expireSelf());
-        }
-        if (messages.expireRoom() != null) {
-            sink.sendToRoom(messages.expireRoom());
+        MessageContext context = new MessageContext(
+            target.username(),
+            target.username(),
+            target.displayName(),
+            target.displayName(),
+            null,
+            definition.name(),
+            null,
+            null
+        );
+        for (MessageSpec spec : messages) {
+            if (spec.phase() != phase) {
+                continue;
+            }
+            String rendered = renderer.render(spec, context);
+            if (rendered == null || rendered.isBlank()) {
+                continue;
+            }
+            if (spec.channel() == MessageChannel.ROOM) {
+                sink.sendToRoom(rendered);
+            } else {
+                sink.sendToTarget(rendered);
+            }
         }
     }
 }
