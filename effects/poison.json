@@ -15,6 +15,6 @@
   "messages": {
     "apply_self": "Poison burns through your veins.",
     "expire_self": "The poison leaves your body.",
-    "examine": "{name} looks sickly."
+    "examine": "{name} looks sick."
   }
 }
