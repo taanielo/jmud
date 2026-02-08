@@ -32,6 +32,14 @@ import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.character.ClassId;
+import io.taanielo.jmud.core.character.Race;
+import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
+import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
+import io.taanielo.jmud.core.character.repository.RaceRepository;
+import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatEngine;
@@ -46,6 +54,7 @@ import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectStacking;
+import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.Direction;
@@ -105,7 +114,8 @@ class GameActionServiceTest {
         service = new GameActionService(
             abilityRegistry, costResolver, effectEngine,
             combatEngine, roomService, targetResolver,
-            new TestCooldowns()
+            new TestCooldowns(),
+            testEncumbranceService()
         );
     }
 
@@ -164,7 +174,8 @@ class GameActionServiceTest {
             ),
             roomService,
             (source, input) -> input.equalsIgnoreCase("target") ? Optional.of(target) : Optional.empty(),
-            new TestCooldowns()
+            new TestCooldowns(),
+            testEncumbranceService()
         );
 
         GameActionResult result = service.attack(attacker, "target");
@@ -195,6 +206,8 @@ class GameActionServiceTest {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            1,
             5
         );
         roomService.dropItem(attacker.getUsername(), torch);
@@ -231,6 +244,8 @@ class GameActionServiceTest {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            1,
             5
         );
         Player withItem = attacker.addItem(torch);
@@ -269,7 +284,8 @@ class GameActionServiceTest {
             ),
             roomService,
             (source, input) -> Optional.empty(),
-            new TestCooldowns()
+            new TestCooldowns(),
+            testEncumbranceService()
         );
         Item potion = new Item(
             ItemId.of("potion"),
@@ -289,6 +305,8 @@ class GameActionServiceTest {
                     "{source} quaffs {item}."
                 )
             ),
+            null,
+            1,
             1
         );
         Player withItem = attacker.addItem(potion);
@@ -323,6 +341,8 @@ class GameActionServiceTest {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            1,
             1
         );
         Player withItem = attacker.addItem(rock);
@@ -373,6 +393,15 @@ class GameActionServiceTest {
         return Player.of(User.of(Username.of(username), Password.hash("pw", 1000)), "prompt", false);
     }
 
+    private static EncumbranceService testEncumbranceService() {
+        return new EncumbranceService(new StubRaceRepository(), new StubClassRepository()) {
+            @Override
+            public boolean isOverburdened(Player player) {
+                return false;
+            }
+        };
+    }
+
     private AbilityRegistry testAbilityRegistry() {
         Ability bash = new AbilityDefinition(
             AbilityId.of("skill.bash"), "bash", AbilityType.SKILL, 1,
@@ -401,6 +430,20 @@ class GameActionServiceTest {
         @Override
         public void startCooldown(AbilityId abilityId, int ticks) {
             cooldowns.put(abilityId, ticks);
+        }
+    }
+
+    private static class StubRaceRepository implements RaceRepository {
+        @Override
+        public Optional<Race> findById(RaceId id) throws RaceRepositoryException {
+            return Optional.empty();
+        }
+    }
+
+    private static class StubClassRepository implements ClassRepository {
+        @Override
+        public Optional<ClassDefinition> findById(ClassId id) throws ClassRepositoryException {
+            return Optional.empty();
         }
     }
 

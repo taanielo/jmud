@@ -177,6 +177,14 @@ class SocketCommandDispatcherAuditTest {
         }
 
         @Override
+        public void equipItem(String args) {
+        }
+
+        @Override
+        public void unequipItem(String args) {
+        }
+
+        @Override
         public void sendMessage(io.taanielo.jmud.core.messaging.Message message) {
         }
 

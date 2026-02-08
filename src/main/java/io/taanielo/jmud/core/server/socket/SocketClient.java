@@ -31,6 +31,7 @@ import io.taanielo.jmud.core.messaging.WelcomeBannerMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.output.OutputStyleSettings;
 import io.taanielo.jmud.core.output.TextStylers;
+import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
@@ -51,6 +52,7 @@ public class SocketClient implements Client {
     private final AuthenticationService authenticationService;
     private final PlayerRepository playerRepository;
     private final RoomService roomService;
+    private final EncumbranceService encumbranceService;
     private final ClientPool clientPool;
     private final AbilityRegistry abilityRegistry;
     private final AbilityTargetResolver abilityTargetResolver;
@@ -79,6 +81,7 @@ public class SocketClient implements Client {
         this.authenticationService = Objects.requireNonNull(authenticationService, "Authentication service is required");
         this.playerRepository = context.playerRepository();
         this.roomService = context.roomService();
+        this.encumbranceService = context.encumbranceService();
         this.clientPool = clientPool;
         this.abilityRegistry = context.abilityRegistry();
         this.abilityTargetResolver = context.abilityTargetResolver();
@@ -103,7 +106,8 @@ public class SocketClient implements Client {
             context.combatEngine(),
             roomService,
             abilityTargetResolver,
-            session.getCooldownTracker()
+            session.getCooldownTracker(),
+            encumbranceService
         );
 
         this.commandDispatcher = new SocketCommandDispatcher(context.commandRegistry(), auditService);
@@ -648,6 +652,10 @@ public class SocketClient implements Client {
                 return;
             }
             Player player = session.getPlayer();
+            if (encumbranceService.isOverburdened(player)) {
+                writeLineWithPrompt("You are carrying too much to do that.");
+                return;
+            }
             RoomService.LookResult currentLook = roomService.look(player.getUsername());
             Room oldRoom = currentLook.room();
             String fromRoom = resolveRoomId(player);
@@ -776,6 +784,28 @@ public class SocketClient implements Client {
                 return;
             }
             GameActionResult result = gameActionService.quaffItem(session.getPlayer(), args);
+            deliverResult(result);
+            sendPrompt();
+        }
+
+        @Override
+        public void equipItem(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to equip items.");
+                return;
+            }
+            GameActionResult result = gameActionService.equipItem(session.getPlayer(), args);
+            deliverResult(result);
+            sendPrompt();
+        }
+
+        @Override
+        public void unequipItem(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to unequip items.");
+                return;
+            }
+            GameActionResult result = gameActionService.unequipSlot(session.getPlayer(), args);
             deliverResult(result);
             sendPrompt();
         }

@@ -34,6 +34,8 @@ class JsonItemRepositoryTest {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            2,
             3
         );
         repository.save(item);

@@ -4,6 +4,7 @@ public record RaceDto(
     int schemaVersion,
     String id,
     String name,
-    RaceHealingDto healing
+    RaceHealingDto healing,
+    int carryBase
 ) {
 }

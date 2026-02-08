@@ -6,6 +6,7 @@ import java.util.Objects;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.messaging.MessageSpecMapper;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
@@ -20,13 +21,15 @@ public class ItemMapper {
             .map(effect -> new ItemEffectDto(effect.id().getValue(), effect.durationTicks()))
             .toList();
         return new ItemDto(
-            SchemaVersions.V2,
+            SchemaVersions.V3,
             item.getId().getValue(),
             item.getName(),
             item.getDescription(),
             attributes,
             effects,
             MessageSpecMapper.toDtos(item.getMessages()),
+            item.getEquipSlot() == null ? null : item.getEquipSlot().id(),
+            item.getWeight(),
             item.getValue()
         );
     }
@@ -39,6 +42,7 @@ public class ItemMapper {
             .map(effect -> new ItemEffect(EffectId.of(effect.effectId()), effect.durationTicks()))
             .toList();
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
+        EquipmentSlot slot = EquipmentSlot.fromId(dto.equipSlot());
         return new Item(
             ItemId.of(dto.id()),
             dto.name(),
@@ -46,6 +50,8 @@ public class ItemMapper {
             attributes,
             effects,
             messages,
+            slot,
+            dto.weight(),
             dto.value()
         );
     }

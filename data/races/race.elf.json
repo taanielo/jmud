@@ -1,8 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "elf",
   "name": "Elf",
   "healing": {
     "base_modifier": -2
-  }
+  },
+  "carry_base": 40
 }
