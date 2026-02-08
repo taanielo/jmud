@@ -38,3 +38,4 @@ jmud.log
 players/
 .gradle/
 logs/
+data/ssh/
