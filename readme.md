@@ -4,7 +4,7 @@ Welcome to the Java MUD (Multi-User Dungeon) Game! This project is a simple text
 
 ## Overview
 
-This MUD game is implemented in Java and uses telnet socket connections to allow multiple users to connect and play simultaneously. The game features a simple command-based interface where players can navigate through rooms, interact with objects, and communicate with other players.
+This MUD game is implemented in Java and supports both telnet and SSH connections so multiple users can connect and play simultaneously. The game features a simple command-based interface where players can navigate through rooms, interact with objects, and communicate with other players.
 
 ## Game Data Persistence
 
@@ -24,16 +24,25 @@ Game data is stored as JSON under `data/`. See `docs/data-schema.md` for the cur
 
 - Java SDK 25 or higher
 - A telnet client (most operating systems include a built-in telnet client)
+- An SSH client (OpenSSH is commonly available)
 
 ### Connecting to the Server
 
-To connect to the server, you can use any telnet client. Open a terminal and type:
+To connect to the server, you can use either telnet or SSH. Open a terminal and type:
 
 ```sh
 telnet localhost 4444
 ```
 
-Replace `localhost` with the server's IP address and `4444` with the port number the server is listening on.
+Or connect via SSH:
+
+```sh
+ssh -p 2222 <username>@localhost
+```
+
+SSH uses the game user registry for password authentication. New users are created on first login.
+
+Replace `localhost` with the server's IP address and adjust the ports if you changed the defaults.
 
 ## Running with Gradle
 
@@ -63,6 +72,15 @@ Available keys:
 - `jmud.output.ansi.enabled` (default ANSI colors for new players)
 
 Players can toggle ANSI output in-game with `ANSI on|off|toggle|status`.
+
+### Ports
+
+Override the telnet and SSH ports via CLI args or environment variables:
+
+- `--telnet-port <port>` or `JMUD_TELNET_PORT`
+- `--ssh-port <port>` or `JMUD_SSH_PORT`
+
+SSH host keys are stored at `data/ssh/hostkey.ser`.
 
 ## Basics of Java Telnet Socket Connection
 

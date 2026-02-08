@@ -16,10 +16,10 @@ public class SocketServer implements Server {
     private final ClientPool clientPool;
     private final GameContext context;
 
-    public SocketServer(int port, ClientPool clientPool) {
+    public SocketServer(int port, GameContext context, ClientPool clientPool) {
         this.port = port;
+        this.context = context;
         this.clientPool = clientPool;
-        this.context = GameContext.create();
     }
 
     @Override
@@ -31,12 +31,17 @@ public class SocketServer implements Server {
             //noinspection InfiniteLoopStatement
             while (true) {
                 Socket clientSocket = server.accept();
-                try {
-                    SocketClient client = new SocketClient(clientSocket, context, clientPool);
-                    clientPool.add(client);
-                } catch (IOException e) {
-                    log.error("Client connecting error", e);
-                }
+                TelnetClientConnection connection = new TelnetClientConnection(clientSocket);
+                SocketClient client = new SocketClient(
+                    connection,
+                    new SocketAuthenticationService(clientSocket, context.userRegistry(), connection.messageWriter()),
+                    context,
+                    clientPool,
+                    null,
+                    false,
+                    null
+                );
+                clientPool.add(client);
             }
         } catch (IOException e) {
             log.error("Server error", e);

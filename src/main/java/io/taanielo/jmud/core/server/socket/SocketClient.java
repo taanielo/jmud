@@ -1,7 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.SocketException;
 import java.util.HashMap;
 import java.util.List;
@@ -23,9 +22,11 @@ import io.taanielo.jmud.core.audit.AuditEvent;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
+import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
+import io.taanielo.jmud.core.messaging.WelcomeBannerMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.output.OutputStyleSettings;
 import io.taanielo.jmud.core.output.TextStylers;
@@ -35,13 +36,14 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
+import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
 @Slf4j
 public class SocketClient implements Client {
 
-    private final TelnetConnection connection;
+    private final ClientConnection connection;
     private final PlayerSession session;
     private final GameActionService gameActionService;
     private final AuthenticationService authenticationService;
@@ -54,23 +56,29 @@ public class SocketClient implements Client {
     private final PromptRenderer promptRenderer = new PromptRenderer();
     private final SocketCommandDispatcher commandDispatcher;
     private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
+    private final User preAuthenticatedUser;
+    private final boolean preAuthenticatedNewUser;
+    private final Runnable onClose;
+    private final AtomicBoolean closed = new AtomicBoolean();
 
     public SocketClient(
-        Socket clientSocket,
+        ClientConnection connection,
+        AuthenticationService authenticationService,
         GameContext context,
-        ClientPool clientPool
-    ) throws IOException {
+        ClientPool clientPool,
+        User preAuthenticatedUser,
+        boolean preAuthenticatedNewUser,
+        Runnable onClose
+    ) {
         Objects.requireNonNull(context, "Game context is required");
-        this.connection = new TelnetConnection(clientSocket);
+        this.connection = Objects.requireNonNull(connection, "Connection is required");
+        this.authenticationService = Objects.requireNonNull(authenticationService, "Authentication service is required");
         this.playerRepository = context.playerRepository();
         this.roomService = context.roomService();
         this.clientPool = clientPool;
         this.abilityRegistry = context.abilityRegistry();
         this.abilityTargetResolver = context.abilityTargetResolver();
         this.auditService = Objects.requireNonNull(context.auditService(), "Audit service is required");
-        this.authenticationService = new SocketAuthenticationService(
-            clientSocket, context.userRegistry(), connection.messageWriter()
-        );
 
         this.session = new PlayerSession(
             context.tickRegistry(),
@@ -93,6 +101,9 @@ public class SocketClient implements Client {
         );
 
         this.commandDispatcher = new SocketCommandDispatcher(context.commandRegistry(), auditService);
+        this.preAuthenticatedUser = preAuthenticatedUser;
+        this.preAuthenticatedNewUser = preAuthenticatedNewUser;
+        this.onClose = onClose;
     }
 
     // ── Client interface ───────────────────────────────────────────────
@@ -108,25 +119,18 @@ public class SocketClient implements Client {
         }
         session.startTicks();
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);
-        sendMessage(WelcomeMessage.of(session.getTextStyler(), onlineCount));
-        session.setAuthenticated(false);
+        if (preAuthenticatedUser != null) {
+            sendMessage(WelcomeBannerMessage.of(session.getTextStyler(), onlineCount));
+            completeAuthentication(preAuthenticatedUser, preAuthenticatedNewUser);
+        } else {
+            sendMessage(WelcomeMessage.of(session.getTextStyler(), onlineCount));
+            session.setAuthenticated(false);
+        }
 
         try {
-            byte[] bytes = new byte[1024];
-            int read;
-            while (session.isConnected() && (read = connection.input().read(bytes)) != -1) {
-                log.debug("Read: {}", read);
-                if (SocketCommand.isIAC(bytes)) {
-                    if (SocketCommand.isIP(bytes)) {
-                        log.debug("Received IP, closing connection ..");
-                        break;
-                    } else {
-                        log.debug("Received IAC [{}], skipping ..", bytes);
-                    }
-                    continue;
-                }
-                String clientInput = SocketCommand.readString(bytes);
-                log.debug("Received: \"{}\" [{}]", clientInput, bytes);
+            String clientInput;
+            while (session.isConnected() && (clientInput = connection.readLine()) != null) {
+                log.debug("Received: \"{}\"", clientInput);
 
                 if (!session.isAuthenticated()) {
                     handleAuthentication(clientInput);
@@ -170,6 +174,9 @@ public class SocketClient implements Client {
 
     @Override
     public void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
         log.debug("Closing connection ..");
         Player player = session.getPlayer();
         if (session.isAuthenticated() && player != null) {
@@ -187,63 +194,71 @@ public class SocketClient implements Client {
         }
         session.close();
         connection.close();
+        clientPool.remove(this);
+        if (onClose != null) {
+            onClose.run();
+        }
         log.debug("Connection closed");
     }
 
     // ── Authentication ─────────────────────────────────────────────────
 
     private void handleAuthentication(String clientInput) throws IOException {
-        authenticationService.authenticate(clientInput, authenticatedUser -> {
-            session.setAuthenticated(true);
-            AtomicBoolean isNewPlayer = new AtomicBoolean(false);
-            Player player = playerRepository
-                .loadPlayer(authenticatedUser.getUsername())
-                .orElseGet(() -> {
-                    boolean ansiEnabled = OutputStyleSettings.ansiEnabledByDefault();
-                    Player newPlayer = Player.of(
-                        authenticatedUser,
-                        PromptSettings.defaultFormat(),
-                        ansiEnabled,
-                        abilityRegistry.abilityIds()
-                    );
-                    isNewPlayer.set(true);
-                    playerRepository.savePlayer(newPlayer);
-                    return newPlayer;
-                });
-            if (player.getLearnedAbilities().isEmpty()) {
-                player = player.withLearnedAbilities(abilityRegistry.abilityIds());
-                playerRepository.savePlayer(player);
-            }
-            session.setPlayer(player);
-            session.setTextStyler(TextStylers.forEnabled(player.isAnsiEnabled()));
-            if (player.isDead()) {
-                roomService.clearPlayerLocation(player.getUsername());
-            } else {
-                roomService.ensurePlayerLocation(player.getUsername());
-            }
-            session.registerEffects(message -> {
-                connection.writeLine(message);
-                sendPrompt();
+        authenticationService.authenticate(clientInput, authenticatedUser ->
+            completeAuthentication(authenticatedUser, false)
+        );
+    }
+
+    private void completeAuthentication(User authenticatedUser, boolean isNewPlayer) {
+        session.setAuthenticated(true);
+        AtomicBoolean created = new AtomicBoolean(isNewPlayer);
+        Player player = playerRepository
+            .loadPlayer(authenticatedUser.getUsername())
+            .orElseGet(() -> {
+                boolean ansiEnabled = OutputStyleSettings.ansiEnabledByDefault();
+                Player newPlayer = Player.of(
+                    authenticatedUser,
+                    PromptSettings.defaultFormat(),
+                    ansiEnabled,
+                    abilityRegistry.abilityIds()
+                );
+                created.set(true);
+                playerRepository.savePlayer(newPlayer);
+                return newPlayer;
             });
-            session.registerHealing(this::applyHealingUpdate);
-            session.enqueueCommand(session::handleDeathState);
-            emitAudit(
-                "player.login",
-                AuditSubject.player(player.getUsername()),
-                null,
-                resolveRoomId(player),
-                "success",
-                Map.of("newPlayer", isNewPlayer.get())
-            );
-            String correlationId = auditService.newCorrelationId();
-            session.enqueueCommand(() -> {
-                currentCorrelationId.set(correlationId);
-                try {
-                    commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
-                } finally {
-                    currentCorrelationId.remove();
-                }
-            });
+        if (player.getLearnedAbilities().isEmpty()) {
+            player = player.withLearnedAbilities(abilityRegistry.abilityIds());
+            playerRepository.savePlayer(player);
+        }
+        session.setPlayer(player);
+        session.setTextStyler(TextStylers.forEnabled(player.isAnsiEnabled()));
+        if (player.isDead()) {
+            roomService.clearPlayerLocation(player.getUsername());
+        } else {
+            roomService.ensurePlayerLocation(player.getUsername());
+        }
+        session.registerEffects(message -> {
+            connection.writeLine(message);
+            sendPrompt();
+        });
+        session.registerHealing(this::applyHealingUpdate);
+        session.enqueueCommand(session::handleDeathState);
+        emitAudit(
+            "player.login",
+            AuditSubject.player(player.getUsername()),
+            null,
+            resolveRoomId(player),
+            "success",
+            Map.of("newPlayer", created.get())
+        );
+        String correlationId = auditService.newCorrelationId();
+        session.enqueueCommand(() -> {
+            currentCorrelationId.set(correlationId);
+            try {
+                commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
+            } finally {
+                currentCorrelationId.remove();
+            }
         });
     }
 
