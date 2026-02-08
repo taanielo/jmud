@@ -29,7 +29,7 @@ class HealingEngineTest {
     void healsBaseAmount() throws Exception {
         PlayerVitals vitals = new PlayerVitals(10, 20, 10, 20, 10, 20);
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -65,7 +65,7 @@ class HealingEngineTest {
         List<EffectInstance> effects = new ArrayList<>();
         effects.add(new EffectInstance(regenId, 10, 2));
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -99,7 +99,7 @@ class HealingEngineTest {
         List<EffectInstance> effects = new ArrayList<>();
         effects.add(new EffectInstance(fortifyId, 10, 1));
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -142,7 +142,7 @@ class HealingEngineTest {
         List<EffectInstance> effects = new ArrayList<>();
         effects.add(new EffectInstance(regenId, 10, 1));
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -177,7 +177,7 @@ class HealingEngineTest {
         List<EffectInstance> effects = new ArrayList<>();
         effects.add(new EffectInstance(poisonId, 10, 1));
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,

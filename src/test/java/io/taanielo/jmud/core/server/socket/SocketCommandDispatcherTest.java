@@ -32,7 +32,7 @@ class SocketCommandDispatcherTest {
         SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
 
         Player deadPlayer = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             new PlayerVitals(5, 20, 5, 20, 5, 20),
@@ -60,7 +60,7 @@ class SocketCommandDispatcherTest {
         SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
 
         Player deadPlayer = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             new PlayerVitals(5, 20, 5, 20, 5, 20),

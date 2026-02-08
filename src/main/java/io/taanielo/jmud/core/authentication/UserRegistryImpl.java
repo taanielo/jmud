@@ -12,7 +12,7 @@ public class UserRegistryImpl implements UserRegistry {
     private final Map<Username, User> users = new ConcurrentHashMap<>();
 
     public UserRegistryImpl() {
-        User sparky = User.of(Username.of("sparky"), Password.of("qwerty"));
+        User sparky = User.of(Username.of("sparky"), Password.hash("qwerty"));
         users.put(sparky.getUsername(), sparky);
     }
 

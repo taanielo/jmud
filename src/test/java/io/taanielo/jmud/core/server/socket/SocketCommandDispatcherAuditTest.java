@@ -34,7 +34,7 @@ class SocketCommandDispatcherAuditTest {
         SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
 
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             PlayerVitals.defaults(),

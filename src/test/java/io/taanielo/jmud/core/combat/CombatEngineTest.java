@@ -121,7 +121,7 @@ class CombatEngineTest {
     private Player player(String username, List<EffectInstance> effects) {
         PlayerVitals vitals = PlayerVitals.defaults();
         return new Player(
-            User.of(Username.of(username), Password.of("pw")),
+            User.of(Username.of(username), Password.hash("pw", 1000)),
             1,
             0,
             vitals,

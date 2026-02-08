@@ -37,6 +37,7 @@ import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
+import io.taanielo.jmud.core.server.connection.TransportSecurity;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -53,6 +54,7 @@ public class SocketClient implements Client {
     private final AbilityRegistry abilityRegistry;
     private final AbilityTargetResolver abilityTargetResolver;
     private final AuditService auditService;
+    private final TransportSecurity transportSecurity;
     private final PromptRenderer promptRenderer = new PromptRenderer();
     private final SocketCommandDispatcher commandDispatcher;
     private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
@@ -68,7 +70,8 @@ public class SocketClient implements Client {
         ClientPool clientPool,
         User preAuthenticatedUser,
         boolean preAuthenticatedNewUser,
-        Runnable onClose
+        Runnable onClose,
+        TransportSecurity transportSecurity
     ) {
         Objects.requireNonNull(context, "Game context is required");
         this.connection = Objects.requireNonNull(connection, "Connection is required");
@@ -79,6 +82,7 @@ public class SocketClient implements Client {
         this.abilityRegistry = context.abilityRegistry();
         this.abilityTargetResolver = context.abilityTargetResolver();
         this.auditService = Objects.requireNonNull(context.auditService(), "Audit service is required");
+        this.transportSecurity = Objects.requireNonNull(transportSecurity, "Transport security is required");
 
         this.session = new PlayerSession(
             context.tickRegistry(),
@@ -116,6 +120,9 @@ public class SocketClient implements Client {
             session.setConnected(true);
         } catch (IOException e) {
             log.error("Error connecting client", e);
+        }
+        if (transportSecurity == TransportSecurity.INSECURE) {
+            connection.writeLine("Warning: Telnet is unencrypted. Use SSH for secure access.");
         }
         session.startTicks();
         int onlineCount = Math.max(0, clientPool.clients().size() - 1);

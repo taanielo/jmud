@@ -146,7 +146,7 @@ class GameActionServiceTest {
     void attackMarksTargetDeadWhenHpReachesZero() {
         PlayerVitals lowVitals = new PlayerVitals(2, 20, 20, 20, 20, 20);
         target = new Player(
-            User.of(Username.of("target"), Password.of("pw")),
+            User.of(Username.of("target"), Password.hash("pw", 1000)),
             1, 0, lowVitals, List.of(), "prompt", false,
             List.of(), null, null
         );
@@ -308,7 +308,7 @@ class GameActionServiceTest {
         // Player constructor auto-marks dead when hp <= 0
         PlayerVitals zeroHp = new PlayerVitals(0, 20, 20, 20, 20, 20);
         Player alreadyDead = new Player(
-            User.of(Username.of("target"), Password.of("pw")),
+            User.of(Username.of("target"), Password.hash("pw", 1000)),
             1, 0, zeroHp, List.of(), "prompt", false,
             List.of(), null, null
         );
@@ -334,7 +334,7 @@ class GameActionServiceTest {
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private Player player(String username) {
-        return Player.of(User.of(Username.of(username), Password.of("pw")), "prompt", false);
+        return Player.of(User.of(Username.of(username), Password.hash("pw", 1000)), "prompt", false);
     }
 
     private AbilityRegistry testAbilityRegistry() {

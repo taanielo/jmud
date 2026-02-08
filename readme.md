@@ -31,7 +31,7 @@ Game data is stored as JSON under `data/`. See `docs/data-schema.md` for the cur
 To connect to the server, you can use either telnet or SSH. Open a terminal and type:
 
 ```sh
-telnet localhost 4444
+telnet 127.0.0.1 4444
 ```
 
 Or connect via SSH:
@@ -40,7 +40,8 @@ Or connect via SSH:
 ssh -p 2222 <username>@localhost
 ```
 
-SSH uses the game user registry for password authentication. New users are created on first login.
+SSH uses the game user registry for password authentication. New users are created on first login (unless disabled).
+Telnet is unencrypted and is intended for local development only by default.
 
 Replace `localhost` with the server's IP address and adjust the ports if you changed the defaults.
 
@@ -80,7 +81,23 @@ Override the telnet and SSH ports via CLI args or environment variables:
 - `--telnet-port <port>` or `JMUD_TELNET_PORT`
 - `--ssh-port <port>` or `JMUD_SSH_PORT`
 
+You can also configure hosts and Telnet enablement:
+
+- `--telnet-enabled <true|false>` or `JMUD_TELNET_ENABLED` (default: true)
+- `--telnet-host <host>` or `JMUD_TELNET_HOST` (default: 127.0.0.1)
+- `--ssh-host <host>` or `JMUD_SSH_HOST` (default: 0.0.0.0)
+
 SSH host keys are stored at `data/ssh/hostkey.ser`.
+
+### Authentication Security
+
+Authentication settings are configured in `jmud.properties`:
+
+- `jmud.auth.allow_new_users`
+- `jmud.auth.max_attempts`
+- `jmud.auth.attempt_window_seconds`
+- `jmud.auth.lockout_seconds`
+- `jmud.auth.pbkdf2.iterations`
 
 ## Basics of Java Telnet Socket Connection
 

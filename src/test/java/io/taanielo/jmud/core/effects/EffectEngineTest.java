@@ -31,7 +31,7 @@ class EffectEngineTest {
         );
         EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
         Player player = new Player(
-            User.of(Username.of("bob"), Password.of("pw")),
+            User.of(Username.of("bob"), Password.hash("pw", 1000)),
             1,
             0,
             PlayerVitals.defaults(),
@@ -64,7 +64,7 @@ class EffectEngineTest {
         );
         EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
         Player player = new Player(
-            User.of(Username.of("ana"), Password.of("pw")),
+            User.of(Username.of("ana"), Password.hash("pw", 1000)),
             1,
             0,
             PlayerVitals.defaults(),

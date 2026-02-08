@@ -27,7 +27,7 @@ class JsonPlayerRepositoryTest {
     @Test
     void savesAndLoadsPlayerWithEffects() {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
-        User user = User.of(Username.of("sparky"), Password.of("qwerty"));
+        User user = User.of(Username.of("sparky"), Password.hash("qwerty", 1000));
         List<EffectInstance> effects = List.of(new EffectInstance(EffectId.of("stoneskin"), 5, 1));
         PlayerVitals vitals = new PlayerVitals(12, 20, 6, 10, 8, 15);
         Player player = new Player(

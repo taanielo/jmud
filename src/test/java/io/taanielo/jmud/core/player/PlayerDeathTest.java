@@ -21,7 +21,7 @@ class PlayerDeathTest {
         PlayerVitals vitals = new PlayerVitals(5, 20, 10, 20, 10, 20);
         List<EffectInstance> effects = List.of(new EffectInstance(EffectId.of("stoneskin"), 3, 1));
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -44,7 +44,7 @@ class PlayerDeathTest {
     void respawnRestoresHalfVitals() {
         PlayerVitals vitals = new PlayerVitals(12, 20, 6, 20, 8, 20);
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,

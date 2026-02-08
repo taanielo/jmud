@@ -52,7 +52,7 @@ class HealingBaseResolverTest {
 
     private Player playerWith(RaceId race, ClassId classId) {
         return new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             PlayerVitals.defaults(),

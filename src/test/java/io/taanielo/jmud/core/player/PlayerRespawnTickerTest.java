@@ -51,7 +51,7 @@ class PlayerRespawnTickerTest {
 
         PlayerVitals vitals = new PlayerVitals(10, 20, 10, 20, 10, 20);
         Player player = new Player(
-            User.of(Username.of("sparky"), Password.of("pw")),
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,

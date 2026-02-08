@@ -29,8 +29,8 @@ class AbilityEngineTest {
     @Test
     void usesHigherLevelAbilityWhenAliasesOverlap() {
         messageSink.clear();
-        Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
-        Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
+        Player source = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1000)), "prompt", false);
+        Player target = Player.of(User.of(Username.of("bob"), Password.hash("pw", 1000)), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
         TestCooldowns cooldowns = new TestCooldowns();
         List<AbilityId> learned = List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"));
@@ -47,7 +47,7 @@ class AbilityEngineTest {
         messageSink.clear();
         PlayerVitals vitals = new PlayerVitals(10, 20, 20, 20, 20, 20);
         Player source = new Player(
-            User.of(Username.of("healer"), Password.of("pw")),
+            User.of(Username.of("healer"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -71,7 +71,7 @@ class AbilityEngineTest {
     @Test
     void requiresTargetForHarmfulAbilities() {
         messageSink.clear();
-        Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
+        Player source = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1000)), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
         List<AbilityId> learned = List.of(AbilityId.of("skill.bash"));
@@ -84,7 +84,7 @@ class AbilityEngineTest {
     @Test
     void rejectsUnlearnedAbility() {
         messageSink.clear();
-        Player source = Player.of(User.of(Username.of("alice"), Password.of("pw")), "prompt", false);
+        Player source = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1000)), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.empty();
         TestCooldowns cooldowns = new TestCooldowns();
         List<AbilityId> learned = List.of();
@@ -99,7 +99,7 @@ class AbilityEngineTest {
         messageSink.clear();
         PlayerVitals vitals = new PlayerVitals(20, 20, 10, 20, 20, 20);
         Player source = new Player(
-            User.of(Username.of("alice"), Password.of("pw")),
+            User.of(Username.of("alice"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -110,7 +110,7 @@ class AbilityEngineTest {
             null,
             null
         );
-        Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
+        Player target = Player.of(User.of(Username.of("bob"), Password.hash("pw", 1000)), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
         TestCooldowns cooldowns = new TestCooldowns();
         List<AbilityId> learned = List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"));
@@ -127,7 +127,7 @@ class AbilityEngineTest {
         messageSink.clear();
         PlayerVitals vitals = new PlayerVitals(20, 20, 0, 20, 20, 20);
         Player source = new Player(
-            User.of(Username.of("alice"), Password.of("pw")),
+            User.of(Username.of("alice"), Password.hash("pw", 1000)),
             1,
             0,
             vitals,
@@ -138,7 +138,7 @@ class AbilityEngineTest {
             null,
             null
         );
-        Player target = Player.of(User.of(Username.of("bob"), Password.of("pw")), "prompt", false);
+        Player target = Player.of(User.of(Username.of("bob"), Password.hash("pw", 1000)), "prompt", false);
         AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
         TestCooldowns cooldowns = new TestCooldowns();
         List<AbilityId> learned = List.of(AbilityId.of("spell.fireball"), AbilityId.of("spell.fireball.greater"));

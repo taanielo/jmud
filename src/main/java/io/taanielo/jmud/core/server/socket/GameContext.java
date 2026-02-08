@@ -1,5 +1,7 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.time.Clock;
+
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
@@ -8,8 +10,11 @@ import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
 import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
 import io.taanielo.jmud.core.audit.AuditService;
+import io.taanielo.jmud.core.authentication.AuthenticationLimiter;
+import io.taanielo.jmud.core.authentication.AuthenticationPolicy;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistryImpl;
+import io.taanielo.jmud.core.config.GameConfig;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
@@ -40,6 +45,8 @@ import io.taanielo.jmud.core.world.repository.RoomRepository;
  */
 public record GameContext(
     UserRegistry userRegistry,
+    AuthenticationPolicy authenticationPolicy,
+    AuthenticationLimiter authenticationLimiter,
     PlayerRepository playerRepository,
     RoomRepository roomRepository,
     RoomService roomService,
@@ -62,7 +69,10 @@ public record GameContext(
      * Builds a fully wired context for the socket server.
      */
     public static GameContext create() {
+        GameConfig config = GameConfig.load();
         UserRegistry userRegistry = new UserRegistryImpl();
+        AuthenticationPolicy authenticationPolicy = AuthenticationPolicy.fromConfig(config);
+        AuthenticationLimiter authenticationLimiter = new AuthenticationLimiter(authenticationPolicy, Clock.systemUTC());
         PlayerRepository playerRepository = new JsonPlayerRepository();
         RoomRepository roomRepository = new InMemoryRoomRepository();
         RoomService roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
@@ -90,6 +100,8 @@ public record GameContext(
 
         return new GameContext(
             userRegistry,
+            authenticationPolicy,
+            authenticationLimiter,
             playerRepository,
             roomRepository,
             roomService,

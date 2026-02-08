@@ -19,6 +19,7 @@ import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
+import io.taanielo.jmud.core.server.connection.TransportSecurity;
 import io.taanielo.jmud.core.server.socket.GameContext;
 import io.taanielo.jmud.core.server.socket.SocketClient;
 
@@ -84,7 +85,8 @@ public class SshGameShell implements Command {
             clientPool,
             user,
             Boolean.TRUE.equals(isNewUser),
-            onClose
+            onClose,
+            TransportSecurity.SECURE
         );
         clientPool.add(client);
     }

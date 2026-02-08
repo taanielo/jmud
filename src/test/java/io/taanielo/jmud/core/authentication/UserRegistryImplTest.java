@@ -24,7 +24,7 @@ class UserRegistryImplTest {
         List<User> users = new ArrayList<>();
 
         for (int i = 0; i < threads; i++) {
-            users.add(User.of(Username.of("user" + i), Password.of("pw" + i)));
+            users.add(User.of(Username.of("user" + i), Password.hash("pw" + i, 1000)));
         }
 
         for (int i = 0; i < threads; i++) {
