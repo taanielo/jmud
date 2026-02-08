@@ -10,6 +10,7 @@ import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.effects.EffectId;
@@ -35,6 +36,8 @@ public class InMemoryRoomRepository implements RoomRepository {
                 ItemAttributes.empty(),
                 List.of(),
                 List.of(),
+                EquipmentSlot.WEAPON,
+                5,
                 25
             ), new Item(
                 ItemId.of("poisonous-potion"),
@@ -43,6 +46,8 @@ public class InMemoryRoomRepository implements RoomRepository {
                 ItemAttributes.empty(),
                 List.of(new ItemEffect(EffectId.of("poison"), 10)),
                 List.of(),
+                null,
+                1,
                 5
             )),
             List.of()
@@ -60,6 +65,8 @@ public class InMemoryRoomRepository implements RoomRepository {
                 ItemAttributes.empty(),
                 List.of(),
                 List.of(),
+                EquipmentSlot.OFFHAND,
+                6,
                 15
             )),
             List.of()

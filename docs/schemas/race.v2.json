@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:race:v2",
+  "title": "Race (v2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "healing",
+    "carry_base"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "healing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_modifier"
+      ],
+      "properties": {
+        "base_modifier": {
+          "type": "integer"
+        }
+      }
+    },
+    "carry_base": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

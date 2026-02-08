@@ -107,4 +107,14 @@ public interface SocketCommandContext extends Client {
      */
     void quaffItem(String args);
 
+    /**
+     * Executes an equip command with the provided arguments.
+     */
+    void equipItem(String args);
+
+    /**
+     * Executes an unequip command with the provided arguments.
+     */
+    void unequipItem(String args);
+
 }

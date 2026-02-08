@@ -51,6 +51,8 @@ class PlayerRespawnTickerTest {
                 ItemAttributes.empty(),
                 List.of(),
                 List.of(),
+                null,
+                1,
                 0
             )),
             List.of()

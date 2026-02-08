@@ -12,6 +12,8 @@ public record ItemDto(
     ItemAttributesDto attributes,
     List<ItemEffectDto> effects,
     List<MessageSpecDto> messages,
+    String equipSlot,
+    int weight,
     int value
 ) {
 }

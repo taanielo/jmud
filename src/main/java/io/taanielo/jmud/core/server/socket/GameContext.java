@@ -30,6 +30,7 @@ import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
@@ -58,6 +59,7 @@ public record GameContext(
     EffectRepository effectRepository,
     EffectEngine effectEngine,
     CombatEngine combatEngine,
+    EncumbranceService encumbranceService,
     HealingEngine healingEngine,
     HealingBaseResolver healingBaseResolver,
     AbilityCostResolver abilityCostResolver,
@@ -90,6 +92,8 @@ public record GameContext(
 
         CombatEngine combatEngine = createCombatEngine(effectRepository);
 
+        EncumbranceService encumbranceService = createEncumbranceService();
+
         HealingEngine healingEngine = new HealingEngine(effectRepository);
         HealingBaseResolver healingBaseResolver = createHealingBaseResolver();
 
@@ -113,6 +117,7 @@ public record GameContext(
             effectRepository,
             effectEngine,
             combatEngine,
+            encumbranceService,
             healingEngine,
             healingBaseResolver,
             abilityCostResolver,
@@ -151,6 +156,14 @@ public record GameContext(
             return new HealingBaseResolver(new JsonRaceRepository(), new JsonClassRepository());
         } catch (RaceRepositoryException | ClassRepositoryException e) {
             throw new IllegalStateException("Failed to initialize healing base resolver: " + e.getMessage(), e);
+        }
+    }
+
+    private static EncumbranceService createEncumbranceService() {
+        try {
+            return new EncumbranceService(new JsonRaceRepository(), new JsonClassRepository());
+        } catch (RaceRepositoryException | ClassRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize encumbrance service: " + e.getMessage(), e);
         }
     }
 }

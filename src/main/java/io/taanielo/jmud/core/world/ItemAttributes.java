@@ -5,11 +5,15 @@ import java.util.Objects;
 
 import lombok.Value;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @Value
 public class ItemAttributes {
     Map<String, Integer> stats;
 
-    public ItemAttributes(Map<String, Integer> stats) {
+    @JsonCreator
+    public ItemAttributes(@JsonProperty("stats") Map<String, Integer> stats) {
         Objects.requireNonNull(stats, "Item stats are required");
         for (Map.Entry<String, Integer> entry : stats.entrySet()) {
             String key = entry.getKey();

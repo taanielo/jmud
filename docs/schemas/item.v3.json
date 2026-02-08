@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:item:v3",
+  "title": "Item (v3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "description",
+    "attributes",
+    "effects",
+    "messages",
+    "weight",
+    "value"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stats"
+      ],
+      "properties": {
+        "stats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effect_id",
+          "duration_ticks"
+        ],
+        "properties": {
+          "effect_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "duration_ticks": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "messages": {
+      "type": "array"
+    },
+    "equip_slot": {
+      "type": "string",
+      "enum": [
+        "weapon",
+        "offhand",
+        "head",
+        "chest",
+        "legs",
+        "hands",
+        "feet"
+      ]
+    },
+    "weight": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "value": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

@@ -71,12 +71,13 @@ class HealingBaseResolverTest {
         Path raceFile = racesDir.resolve("race." + id + ".json");
         java.nio.file.Files.writeString(raceFile, String.format("""
             {
-              "schema_version": 1,
+              "schema_version": 2,
               "id": "%s",
               "name": "%s",
               "healing": {
                 "base_modifier": %d
-              }
+              },
+              "carry_base": 0
             }
             """, id, id.substring(0, 1).toUpperCase() + id.substring(1), modifier));
     }
@@ -87,12 +88,13 @@ class HealingBaseResolverTest {
         Path classFile = classesDir.resolve("class." + id + ".json");
         java.nio.file.Files.writeString(classFile, String.format("""
             {
-              "schema_version": 1,
+              "schema_version": 2,
               "id": "%s",
               "name": "%s",
               "healing": {
                 "base_modifier": %d
-              }
+              },
+              "carry_bonus": 0
             }
             """, id, id.substring(0, 1).toUpperCase() + id.substring(1), modifier));
     }

@@ -26,9 +26,12 @@ import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -49,6 +52,7 @@ public class GameActionService {
     private final RoomService roomService;
     private final AbilityTargetResolver abilityTargetResolver;
     private final AbilityCooldownTracker cooldownTracker;
+    private final EncumbranceService encumbranceService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
 
     /**
@@ -61,7 +65,8 @@ public class GameActionService {
         CombatEngine combatEngine,
         RoomService roomService,
         AbilityTargetResolver abilityTargetResolver,
-        AbilityCooldownTracker cooldownTracker
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService
     ) {
         this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         this.abilityCostResolver = Objects.requireNonNull(abilityCostResolver, "Ability cost resolver is required");
@@ -70,6 +75,7 @@ public class GameActionService {
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
         this.abilityTargetResolver = Objects.requireNonNull(abilityTargetResolver, "Ability target resolver is required");
         this.cooldownTracker = Objects.requireNonNull(cooldownTracker, "Cooldown tracker is required");
+        this.encumbranceService = Objects.requireNonNull(encumbranceService, "Encumbrance service is required");
     }
 
     /**
@@ -80,6 +86,9 @@ public class GameActionService {
      * @return result with updated target and combat messages
      */
     public GameActionResult attack(Player source, String targetInput) {
+        if (encumbranceService.isOverburdened(source)) {
+            return GameActionResult.error("You are carrying too much to do that.");
+        }
         String normalized = targetInput == null ? "" : targetInput.trim();
         if (normalized.isEmpty()) {
             return GameActionResult.error("Usage: attack <target>");
@@ -159,6 +168,9 @@ public class GameActionService {
      * @return result with updated source inventory
      */
     public GameActionResult getItem(Player source, String itemInput) {
+        if (encumbranceService.isOverburdened(source)) {
+            return GameActionResult.error("You are carrying too much to do that.");
+        }
         String normalized = itemInput == null ? "" : itemInput.trim();
         if (normalized.isEmpty()) {
             return GameActionResult.error("Get what?");
@@ -215,7 +227,14 @@ public class GameActionService {
             return GameActionResult.error("You aren't carrying that.");
         }
         roomService.dropItem(source.getUsername(), item);
-        Player updated = source.removeItem(item);
+        PlayerEquipment equipment = source.getEquipment();
+        if (equipment.isEquipped(item.getId())) {
+            EquipmentSlot slot = equipment.equippedSlot(item.getId());
+            if (slot != null) {
+                equipment = equipment.unequip(slot);
+            }
+        }
+        Player updated = source.removeItem(item).withEquipment(equipment);
         List<GameMessage> messages = new ArrayList<>();
         MessageContext context = new MessageContext(
             source.getUsername(),
@@ -271,7 +290,14 @@ public class GameActionService {
         } catch (EffectRepositoryException e) {
             return GameActionResult.error("You cannot use that item right now.");
         }
-        Player updated = source.removeItem(item);
+        PlayerEquipment equipment = source.getEquipment();
+        if (equipment.isEquipped(item.getId())) {
+            EquipmentSlot slot = equipment.equippedSlot(item.getId());
+            if (slot != null) {
+                equipment = equipment.unequip(slot);
+            }
+        }
+        Player updated = source.removeItem(item).withEquipment(equipment);
         List<GameMessage> messages = new ArrayList<>();
         MessageContext context = new MessageContext(
             source.getUsername(),
@@ -286,6 +312,57 @@ public class GameActionService {
         messages.addAll(messageEmitter.emit(item.getMessages(), MessagePhase.QUAFF, context));
         messages.addAll(effectSink.collected());
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Equips an item from inventory into its equipment slot.
+     *
+     * @param source the player equipping the item
+     * @param itemInput the item name or id to equip
+     * @return result with updated equipment state
+     */
+    public GameActionResult equipItem(Player source, String itemInput) {
+        String normalized = itemInput == null ? "" : itemInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Equip what?");
+        }
+        Item item = findInventoryItem(source, normalized);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        EquipmentSlot slot = item.getEquipSlot();
+        if (slot == null) {
+            return GameActionResult.error("You cannot equip that.");
+        }
+        PlayerEquipment equipment = source.getEquipment();
+        Player updated = source.withEquipment(equipment.equip(slot, item.getId()));
+        String message = "You equip " + item.getName() + " (" + slot.id() + ").";
+        return new GameActionResult(updated, null, List.of(GameMessage.toSource(message)));
+    }
+
+    /**
+     * Unequips an item from the specified equipment slot.
+     *
+     * @param source the player unequipping the slot
+     * @param slotInput the slot name to clear
+     * @return result with updated equipment state
+     */
+    public GameActionResult unequipSlot(Player source, String slotInput) {
+        String normalized = slotInput == null ? "" : slotInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Unequip what?");
+        }
+        EquipmentSlot slot = EquipmentSlot.fromId(normalized);
+        if (slot == null) {
+            return GameActionResult.error("Unknown equipment slot.");
+        }
+        PlayerEquipment equipment = source.getEquipment();
+        if (equipment.equipped(slot) == null) {
+            return GameActionResult.error("That slot is already empty.");
+        }
+        Player updated = source.withEquipment(equipment.unequip(slot));
+        String message = "You unequip your " + slot.id() + ".";
+        return new GameActionResult(updated, null, List.of(GameMessage.toSource(message)));
     }
 
     /**

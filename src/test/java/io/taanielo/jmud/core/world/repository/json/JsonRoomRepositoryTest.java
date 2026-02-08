@@ -38,6 +38,8 @@ class JsonRoomRepositoryTest {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            3,
             12
         );
         Item potion = new Item(
@@ -47,6 +49,8 @@ class JsonRoomRepositoryTest {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            1,
             8
         );
         itemRepository.save(sword);

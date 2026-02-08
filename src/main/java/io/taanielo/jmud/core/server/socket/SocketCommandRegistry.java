@@ -20,6 +20,8 @@ public class SocketCommandRegistry {
         new GetCommand(registry);
         new DropCommand(registry);
         new QuaffCommand(registry);
+        new EquipCommand(registry);
+        new UnequipCommand(registry);
         new SayCommand(registry);
         new AbilityCommand(registry);
         new AttackCommand(registry);

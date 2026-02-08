@@ -314,6 +314,8 @@ public class RoomService {
             ItemAttributes.empty(),
             List.of(),
             List.of(),
+            null,
+            0,
             0
         );
     }

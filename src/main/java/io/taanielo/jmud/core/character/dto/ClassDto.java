@@ -4,6 +4,7 @@ public record ClassDto(
     int schemaVersion,
     String id,
     String name,
-    ClassHealingDto healing
+    ClassHealingDto healing,
+    int carryBonus
 ) {
 }
