@@ -46,6 +46,17 @@ public class RoomService {
     }
 
     /**
+     * Returns all player usernames currently in the given room.
+     */
+    public List<Username> getPlayersInRoom(RoomId roomId) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        return playerLocations.entrySet().stream()
+            .filter(e -> e.getValue().equals(roomId))
+            .map(java.util.Map.Entry::getKey)
+            .toList();
+    }
+
+    /**
      * Ensures a player has a location, defaulting to the starting room if missing.
      */
     public RoomId ensurePlayerLocation(Username username) {
@@ -316,7 +327,8 @@ public class RoomService {
             List.of(),
             null,
             0,
-            0
+            0,
+            null
         );
     }
 }

@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.world.dto;
 import java.util.List;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.messaging.MessageSpecMapper;
@@ -30,7 +31,8 @@ public class ItemMapper {
             MessageSpecMapper.toDtos(item.getMessages()),
             item.getEquipSlot() == null ? null : item.getEquipSlot().id(),
             item.getWeight(),
-            item.getValue()
+            item.getValue(),
+            item.getAttackRef() == null ? null : item.getAttackRef().getValue()
         );
     }
 
@@ -43,6 +45,7 @@ public class ItemMapper {
             .toList();
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         EquipmentSlot slot = EquipmentSlot.fromId(dto.equipSlot());
+        AttackId attackRef = dto.attackRef() != null ? AttackId.of(dto.attackRef()) : null;
         return new Item(
             ItemId.of(dto.id()),
             dto.name(),
@@ -52,7 +55,8 @@ public class ItemMapper {
             messages,
             slot,
             dto.weight(),
-            dto.value()
+            dto.value(),
+            attackRef
         );
     }
 }

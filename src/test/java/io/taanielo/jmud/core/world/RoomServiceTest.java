@@ -79,7 +79,8 @@ class RoomServiceTest {
             List.of(),
             null,
             1,
-            5
+            5,
+            null
         );
         Room roomA = new Room(
             roomAId,
@@ -139,7 +140,8 @@ class RoomServiceTest {
             List.of(),
             null,
             1,
-            5
+            5,
+            null
         );
         Room roomA = new Room(
             roomAId,
@@ -185,7 +187,8 @@ class RoomServiceTest {
             List.of(),
             null,
             1,
-            1
+            1,
+            null
         );
         service.dropItem(bob, apple);
 

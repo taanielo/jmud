@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "goblin",
+  "name": "Goblin",
+  "max_hp": 15,
+  "attack_id": "attack.goblin",
+  "spawn_room_id": "training-yard",
+  "max_count": 2,
+  "respawn_ticks": 30,
+  "loot": [
+    {
+      "item_id": "health-potion",
+      "drop_chance": 0.5
+    }
+  ]
+}

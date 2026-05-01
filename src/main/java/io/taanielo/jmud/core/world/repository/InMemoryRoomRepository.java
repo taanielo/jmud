@@ -38,7 +38,8 @@ public class InMemoryRoomRepository implements RoomRepository {
                 List.of(),
                 EquipmentSlot.WEAPON,
                 5,
-                25
+                25,
+                null
             ), new Item(
                 ItemId.of("poisonous-potion"),
                 "Poisonous Potion",
@@ -48,7 +49,8 @@ public class InMemoryRoomRepository implements RoomRepository {
                 List.of(),
                 null,
                 1,
-                5
+                5,
+                null
             )),
             List.of()
         );
@@ -67,7 +69,8 @@ public class InMemoryRoomRepository implements RoomRepository {
                 List.of(),
                 EquipmentSlot.OFFHAND,
                 6,
-                15
+                15,
+                null
             )),
             List.of()
         );

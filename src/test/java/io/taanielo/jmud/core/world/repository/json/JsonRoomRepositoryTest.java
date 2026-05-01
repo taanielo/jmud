@@ -40,7 +40,8 @@ class JsonRoomRepositoryTest {
             List.of(),
             null,
             3,
-            12
+            12,
+            null
         );
         Item potion = new Item(
             ItemId.of("minor-potion"),
@@ -51,7 +52,8 @@ class JsonRoomRepositoryTest {
             List.of(),
             null,
             1,
-            8
+            8,
+            null
         );
         itemRepository.save(sword);
         itemRepository.save(potion);

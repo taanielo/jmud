@@ -185,6 +185,10 @@ class SocketCommandDispatcherAuditTest {
         }
 
         @Override
+        public void killMob(String args) {
+        }
+
+        @Override
         public void sendMessage(io.taanielo.jmud.core.messaging.Message message) {
         }
 

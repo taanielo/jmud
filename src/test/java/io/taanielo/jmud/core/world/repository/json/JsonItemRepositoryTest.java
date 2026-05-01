@@ -36,7 +36,8 @@ class JsonItemRepositoryTest {
             List.of(),
             null,
             2,
-            3
+            3,
+            null
         );
         repository.save(item);
 
