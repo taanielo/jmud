@@ -1,8 +1,12 @@
 package io.taanielo.jmud.core.mob;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.world.RoomId;
 
 /**
@@ -18,6 +22,7 @@ public class MobInstance {
     private final MobTemplate template;
     private final AtomicInteger hp;
     private final AtomicInteger respawnTicksRemaining = new AtomicInteger(0);
+    private final Set<Username> engagedPlayers = ConcurrentHashMap.newKeySet();
 
     public MobInstance(MobTemplate template) {
         this.template = template;
@@ -63,9 +68,22 @@ public class MobInstance {
         return respawnTicksRemaining.decrementAndGet() <= 0;
     }
 
+    public void engage(Username player) {
+        engagedPlayers.add(player);
+    }
+
+    public void disengage(Username player) {
+        engagedPlayers.remove(player);
+    }
+
+    public Set<Username> engagedPlayers() {
+        return Collections.unmodifiableSet(engagedPlayers);
+    }
+
     /** Resets the mob to full HP, ready to act again. */
     public void respawn() {
         hp.set(template.maxHp());
         respawnTicksRemaining.set(0);
+        engagedPlayers.clear();
     }
 }

@@ -8,6 +8,7 @@ public record MobTemplateDto(
     String name,
     int maxHp,
     String attackId,
+    Boolean aggressive,
     List<LootEntryDto> loot,
     String spawnRoomId,
     int maxCount,

@@ -14,6 +14,7 @@ public record MobTemplate(
     String name,
     int maxHp,
     AttackId attackId,
+    boolean aggressive,
     List<LootEntry> lootTable,
     RoomId spawnRoomId,
     int maxCount,

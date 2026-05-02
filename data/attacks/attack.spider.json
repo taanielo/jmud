@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "id": "attack.spider",
+  "name": "spider fangs",
+  "min_damage": 2,
+  "max_damage": 6,
+  "hit_bonus": -5,
+  "crit_bonus": 5,
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The giant spider sinks its fangs into you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The giant spider lunges at you but misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The giant spider drives its fangs deep into you for {damage}!"
+    }
+  ]
+}

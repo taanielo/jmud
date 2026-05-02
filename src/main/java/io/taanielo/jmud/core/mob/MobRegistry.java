@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -48,6 +49,7 @@ public class MobRegistry implements Tickable {
     private final PlayerEventBus playerEventBus;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
 
     public MobRegistry(
         MobTemplateRepository templateRepository,
@@ -87,6 +89,7 @@ public class MobRegistry implements Tickable {
 
     @Override
     public void tick() {
+        runPlayerCombat();
         for (MobInstance mob : instances.values()) {
             if (!mob.isAlive()) {
                 if (mob.tickRespawn()) {
@@ -96,6 +99,9 @@ public class MobRegistry implements Tickable {
                 continue;
             }
             if (mob.template().attackId() == null) {
+                continue;
+            }
+            if (!mob.template().aggressive() && mob.engagedPlayers().isEmpty()) {
                 continue;
             }
             runMobAi(mob);
@@ -136,6 +142,9 @@ public class MobRegistry implements Tickable {
         int damage = rollDamage(attack);
         int remaining = mob.takeDamage(damage);
 
+        mob.engage(attacker.getUsername());
+        playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
+
         List<GameMessage> messages = new ArrayList<>();
         messages.add(GameMessage.toSource(
             "You strike the " + mob.template().name() + " for " + damage + " damage. ("
@@ -145,6 +154,7 @@ public class MobRegistry implements Tickable {
             messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
             dropLoot(mob);
             mob.scheduleRespawn();
+            endCombatForMob(mob);
         }
         return new GameActionResult(null, null, messages);
     }
@@ -152,11 +162,18 @@ public class MobRegistry implements Tickable {
     // ── Mob AI ────────────────────────────────────────────────────────
 
     private void runMobAi(MobInstance mob) {
-        List<Username> players = roomService.getPlayersInRoom(mob.roomId());
-        if (players.isEmpty()) {
+        List<Username> candidates;
+        Set<Username> engaged = mob.engagedPlayers();
+        if (!engaged.isEmpty()) {
+            List<Username> inRoom = roomService.getPlayersInRoom(mob.roomId());
+            candidates = engaged.stream().filter(inRoom::contains).toList();
+        } else {
+            candidates = roomService.getPlayersInRoom(mob.roomId());
+        }
+        if (candidates.isEmpty()) {
             return;
         }
-        Username targetUsername = players.get(ThreadLocalRandom.current().nextInt(players.size()));
+        Username targetUsername = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
         Player target = playerRepository.loadPlayer(targetUsername).orElse(null);
         if (target == null || target.isDead()) {
             return;
@@ -169,7 +186,7 @@ public class MobRegistry implements Tickable {
         Player damagedPlayer = target.withVitals(target.getVitals().damage(damage));
 
         if (damagedPlayer.getVitals().hp() <= 0) {
-            handleMobKill(mob, damagedPlayer, players);
+            handleMobKill(mob, damagedPlayer, candidates);
         } else {
             playerRepository.savePlayer(damagedPlayer);
             String hitMsg = "The " + mob.template().name() + " hits you for " + damage + " damage!";
@@ -183,6 +200,8 @@ public class MobRegistry implements Tickable {
         roomService.spawnCorpse(deadPlayer.getUsername(), mob.roomId());
         roomService.clearPlayerLocation(deadPlayer.getUsername());
         playerRepository.savePlayer(deadPlayer);
+        mob.disengage(deadPlayer.getUsername());
+        playerCombatTargets.remove(deadPlayer.getUsername());
 
         String slainMsg = "The " + mob.template().name() + " has slain you!";
         playerEventBus.publish(deadPlayer.getUsername(),
@@ -195,6 +214,61 @@ public class MobRegistry implements Tickable {
                 playerEventBus.publish(occupant,
                     new GameActionResult(null, null, List.of(GameMessage.toSource(roomMsg))));
             }
+        }
+    }
+
+    private void runPlayerCombat() {
+        for (var entry : playerCombatTargets.entrySet()) {
+            Username username = entry.getKey();
+            UUID mobId = entry.getValue();
+
+            MobInstance mob = instances.get(mobId);
+            if (mob == null || !mob.isAlive()) {
+                playerCombatTargets.remove(username);
+                if (mob != null) mob.disengage(username);
+                continue;
+            }
+
+            Player player = playerRepository.loadPlayer(username).orElse(null);
+            if (player == null || player.isDead()) {
+                playerCombatTargets.remove(username);
+                mob.disengage(username);
+                continue;
+            }
+
+            RoomId playerRoom = roomService.findPlayerLocation(username).orElse(null);
+            if (playerRoom == null || !playerRoom.equals(mob.roomId())) {
+                playerCombatTargets.remove(username);
+                mob.disengage(username);
+                continue;
+            }
+
+            AttackId attackId = resolveAttackId(player);
+            AttackDefinition attack = loadAttack(attackId);
+            if (attack == null) {
+                continue;
+            }
+            int damage = rollDamage(attack);
+            int remaining = mob.takeDamage(damage);
+
+            List<GameMessage> messages = new ArrayList<>();
+            messages.add(GameMessage.toSource(
+                "You strike the " + mob.template().name() + " for " + damage + " damage. ("
+                    + remaining + " HP remaining)"));
+
+            if (!mob.isAlive()) {
+                messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
+                dropLoot(mob);
+                mob.scheduleRespawn();
+                endCombatForMob(mob);
+            }
+            playerEventBus.publish(username, new GameActionResult(null, null, messages));
+        }
+    }
+
+    private void endCombatForMob(MobInstance mob) {
+        for (Username engaged : mob.engagedPlayers()) {
+            playerCombatTargets.remove(engaged);
         }
     }
 

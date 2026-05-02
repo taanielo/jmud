@@ -23,12 +23,16 @@ public class InMemoryRoomRepository implements RoomRepository {
         RoomId trainingYardId = RoomId.of("training-yard");
         RoomId armoryId = RoomId.of("armory");
         RoomId courtyardId = RoomId.of("courtyard");
+        RoomId sparringPitId = RoomId.of("sparring-pit");
+        RoomId muddyHollowId = RoomId.of("muddy-hollow");
+        RoomId rockyAlcoveId = RoomId.of("rocky-alcove");
+        RoomId darkBurrowId = RoomId.of("dark-burrow");
 
         Room trainingYard = new Room(
             trainingYardId,
             "Training Yard",
             "A dusty yard with practice dummies and scattered weapons.",
-            Map.of(Direction.NORTH, armoryId, Direction.EAST, courtyardId),
+            Map.of(Direction.NORTH, armoryId, Direction.EAST, courtyardId, Direction.SOUTH, sparringPitId),
             List.of(new Item(
                 ItemId.of("iron-sword"),
                 "Iron Sword",
@@ -84,10 +88,50 @@ public class InMemoryRoomRepository implements RoomRepository {
             List.of()
         );
 
+        Room sparringPit = new Room(
+            sparringPitId,
+            "Sparring Pit",
+            "A sunken dirt pit ringed by wooden stakes. A few goblins pace here, eyeing you warily but holding their ground.",
+            Map.of(Direction.NORTH, trainingYardId, Direction.EAST, muddyHollowId, Direction.SOUTH, rockyAlcoveId),
+            List.of(),
+            List.of()
+        );
+
+        Room muddyHollow = new Room(
+            muddyHollowId,
+            "Muddy Hollow",
+            "A waterlogged depression thick with roots and mud. Giant rats skitter through the muck.",
+            Map.of(Direction.WEST, sparringPitId, Direction.SOUTH, darkBurrowId),
+            List.of(),
+            List.of()
+        );
+
+        Room rockyAlcove = new Room(
+            rockyAlcoveId,
+            "Rocky Alcove",
+            "A jagged nook cut into the hillside. Scrawny kobolds crouch among the stones, watching you with beady eyes.",
+            Map.of(Direction.NORTH, sparringPitId, Direction.EAST, darkBurrowId),
+            List.of(),
+            List.of()
+        );
+
+        Room darkBurrow = new Room(
+            darkBurrowId,
+            "Dark Burrow",
+            "A low earthen tunnel that opens into a dim chamber. Thick webs cling to every corner and giant spiders hang motionless overhead.",
+            Map.of(Direction.NORTH, muddyHollowId, Direction.WEST, rockyAlcoveId),
+            List.of(),
+            List.of()
+        );
+
         this.rooms = new ConcurrentHashMap<>();
         this.rooms.put(trainingYardId, trainingYard);
         this.rooms.put(armoryId, armory);
         this.rooms.put(courtyardId, courtyard);
+        this.rooms.put(sparringPitId, sparringPit);
+        this.rooms.put(muddyHollowId, muddyHollow);
+        this.rooms.put(rockyAlcoveId, rockyAlcove);
+        this.rooms.put(darkBurrowId, darkBurrow);
     }
 
     @Override
