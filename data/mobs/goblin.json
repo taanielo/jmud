@@ -4,7 +4,8 @@
   "name": "Goblin",
   "max_hp": 15,
   "attack_id": "attack.goblin",
-  "spawn_room_id": "training-yard",
+  "aggressive": false,
+  "spawn_room_id": "sparring-pit",
   "max_count": 2,
   "respawn_ticks": 30,
   "loot": [

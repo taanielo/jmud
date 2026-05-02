@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "kobold",
+  "name": "Kobold",
+  "max_hp": 12,
+  "attack_id": "attack.kobold",
+  "aggressive": false,
+  "spawn_room_id": "rocky-alcove",
+  "max_count": 2,
+  "respawn_ticks": 25,
+  "loot": [
+    {
+      "item_id": "health-potion",
+      "drop_chance": 0.3
+    }
+  ]
+}

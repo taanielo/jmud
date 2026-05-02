@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "id": "attack.kobold",
+  "name": "kobold scratch",
+  "min_damage": 2,
+  "max_damage": 5,
+  "hit_bonus": 0,
+  "crit_bonus": 0,
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The kobold scratches you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The kobold swipes at you but misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The kobold rakes its claws across you for {damage}!"
+    }
+  ]
+}

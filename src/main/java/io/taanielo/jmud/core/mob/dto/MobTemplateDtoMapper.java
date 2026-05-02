@@ -18,11 +18,13 @@ public class MobTemplateDtoMapper {
         List<LootEntry> loot = dto.loot() == null ? List.of() : dto.loot().stream()
             .map(e -> new LootEntry(ItemId.of(e.itemId()), e.dropChance()))
             .toList();
+        boolean aggressive = dto.aggressive() == null || dto.aggressive();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
             dto.maxHp(),
             attackId,
+            aggressive,
             loot,
             RoomId.of(dto.spawnRoomId()),
             dto.maxCount(),

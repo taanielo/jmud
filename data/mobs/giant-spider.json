@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "giant-spider",
+  "name": "Giant Spider",
+  "max_hp": 14,
+  "attack_id": "attack.spider",
+  "aggressive": false,
+  "spawn_room_id": "dark-burrow",
+  "max_count": 2,
+  "respawn_ticks": 20,
+  "loot": []
+}
