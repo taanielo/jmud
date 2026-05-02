@@ -17,6 +17,7 @@ import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityUseResult;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
+import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatResult;
 import io.taanielo.jmud.core.combat.CombatSettings;
@@ -29,9 +30,10 @@ import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
-import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -102,7 +104,7 @@ public class GameActionService {
             return GameActionResult.error("You cannot attack yourself.");
         }
         try {
-            CombatResult result = combatEngine.resolve(source, target, CombatSettings.defaultAttackId());
+            CombatResult result = combatEngine.resolve(source, target, resolveAttackId(source));
             List<GameMessage> messages = new ArrayList<>();
             if (result.sourceMessage() != null && !result.sourceMessage().isBlank()) {
                 messages.add(GameMessage.toSource(result.sourceMessage()));
@@ -425,6 +427,18 @@ public class GameActionService {
             roomMessage));
 
         return messages;
+    }
+
+    private AttackId resolveAttackId(Player attacker) {
+        ItemId weaponId = attacker.getEquipment().equipped(EquipmentSlot.WEAPON);
+        if (weaponId != null) {
+            for (Item item : attacker.getInventory()) {
+                if (item.getId().equals(weaponId) && item.getAttackRef() != null) {
+                    return item.getAttackRef();
+                }
+            }
+        }
+        return CombatSettings.defaultAttackId();
     }
 
     private Item findInventoryItem(Player player, String input) {

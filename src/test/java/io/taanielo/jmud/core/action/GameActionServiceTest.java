@@ -208,7 +208,8 @@ class GameActionServiceTest {
             List.of(),
             null,
             1,
-            5
+            5,
+            null
         );
         roomService.dropItem(attacker.getUsername(), torch);
 
@@ -246,7 +247,8 @@ class GameActionServiceTest {
             List.of(),
             null,
             1,
-            5
+            5,
+            null
         );
         Player withItem = attacker.addItem(torch);
 
@@ -307,7 +309,8 @@ class GameActionServiceTest {
             ),
             null,
             1,
-            1
+            1,
+            null
         );
         Player withItem = attacker.addItem(potion);
 
@@ -343,7 +346,8 @@ class GameActionServiceTest {
             List.of(),
             null,
             1,
-            1
+            1,
+            null
         );
         Player withItem = attacker.addItem(rock);
 

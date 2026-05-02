@@ -117,4 +117,9 @@ public interface SocketCommandContext extends Client {
      */
     void unequipItem(String args);
 
+    /**
+     * Executes a kill command targeting a mob in the same room.
+     */
+    void killMob(String args);
+
 }

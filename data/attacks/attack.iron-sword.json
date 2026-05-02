@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "id": "attack.iron-sword",
+  "name": "iron sword",
+  "min_damage": 3,
+  "max_damage": 8,
+  "hit_bonus": 5,
+  "crit_bonus": 1,
+  "damage_bonus": 1,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You slash {target} with your iron sword for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} slashes you with an iron sword for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} slashes {target} with an iron sword."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You swing at {target} but miss."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} swings an iron sword at you but misses."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} swings an iron sword at {target} but misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You land a devastating blow on {target} with your iron sword for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} lands a devastating blow on you with an iron sword for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} lands a devastating blow on {target} with an iron sword!"
+    }
+  ]
+}

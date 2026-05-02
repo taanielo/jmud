@@ -8,6 +8,7 @@ import lombok.Value;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 
 @Value
@@ -21,6 +22,7 @@ public class Item {
     EquipmentSlot equipSlot;
     int weight;
     int value;
+    AttackId attackRef;
 
     @JsonCreator
     public Item(
@@ -32,7 +34,8 @@ public class Item {
         @JsonProperty("messages") List<MessageSpec> messages,
         @JsonProperty("equipSlot") EquipmentSlot equipSlot,
         @JsonProperty("weight") int weight,
-        @JsonProperty("value") int value
+        @JsonProperty("value") int value,
+        @JsonProperty("attackRef") AttackId attackRef
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -52,5 +55,6 @@ public class Item {
             throw new IllegalArgumentException("Item value must be non-negative");
         }
         this.value = value;
+        this.attackRef = attackRef;
     }
 }

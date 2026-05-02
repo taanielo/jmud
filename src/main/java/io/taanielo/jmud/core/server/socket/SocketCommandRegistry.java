@@ -25,6 +25,7 @@ public class SocketCommandRegistry {
         new SayCommand(registry);
         new AbilityCommand(registry);
         new AttackCommand(registry);
+        new KillCommand(registry);
         new AnsiCommand(registry);
         new QuitCommand(registry);
         return registry;

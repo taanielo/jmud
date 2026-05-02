@@ -47,6 +47,7 @@ import io.taanielo.jmud.core.world.RoomService;
 public class SocketClient implements Client {
 
     private final ClientConnection connection;
+    private final GameContext context;
     private final PlayerSession session;
     private final GameActionService gameActionService;
     private final AuthenticationService authenticationService;
@@ -77,6 +78,7 @@ public class SocketClient implements Client {
         TransportSecurity transportSecurity
     ) {
         Objects.requireNonNull(context, "Game context is required");
+        this.context = context;
         this.connection = Objects.requireNonNull(connection, "Connection is required");
         this.authenticationService = Objects.requireNonNull(authenticationService, "Authentication service is required");
         this.playerRepository = context.playerRepository();
@@ -205,6 +207,9 @@ public class SocketClient implements Client {
                 metadata
             );
         }
+        if (context.playerEventBus() != null && session.getPlayer() != null) {
+            context.playerEventBus().unregister(session.getPlayer().getUsername());
+        }
         session.close();
         connection.close();
         clientPool.remove(this);
@@ -249,6 +254,13 @@ public class SocketClient implements Client {
             roomService.clearPlayerLocation(player.getUsername());
         } else {
             roomService.ensurePlayerLocation(player.getUsername());
+        }
+        if (context.playerEventBus() != null) {
+            context.playerEventBus().register(player.getUsername(),
+                result -> session.enqueueCommand(() -> {
+                    deliverResult(result);
+                    sendPrompt();
+                }));
         }
         session.registerEffects(new EffectMessageSink() {
             @Override
@@ -614,6 +626,15 @@ public class SocketClient implements Client {
             }
             RoomService.LookResult result = roomService.look(session.getPlayer().getUsername());
             connection.writeLines(result.lines());
+            if (context.mobRegistry() != null && result.room() != null) {
+                var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
+                if (!mobs.isEmpty()) {
+                    String mobLine = "Mobs: " + mobs.stream()
+                        .map(m -> m.template().name() + " (" + m.currentHp() + " HP)")
+                        .collect(java.util.stream.Collectors.joining(", "));
+                    connection.writeLine(mobLine);
+                }
+            }
             sendPrompt();
         }
 
@@ -806,6 +827,28 @@ public class SocketClient implements Client {
                 return;
             }
             GameActionResult result = gameActionService.unequipSlot(session.getPlayer(), args);
+            deliverResult(result);
+            sendPrompt();
+        }
+
+        @Override
+        public void killMob(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to attack.");
+                return;
+            }
+            if (context.mobRegistry() == null) {
+                writeLineWithPrompt("There are no mobs here.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            GameActionResult result = context.mobRegistry()
+                .processPlayerAttack(player, args, roomIdOpt.get());
             deliverResult(result);
             sendPrompt();
         }

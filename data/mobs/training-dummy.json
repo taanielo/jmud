@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "training-dummy",
+  "name": "Training Dummy",
+  "max_hp": 100,
+  "attack_id": null,
+  "spawn_room_id": "training-yard",
+  "max_count": 1,
+  "respawn_ticks": 10,
+  "loot": []
+}

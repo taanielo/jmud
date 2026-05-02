@@ -14,6 +14,7 @@ public record ItemDto(
     List<MessageSpecDto> messages,
     String equipSlot,
     int weight,
-    int value
+    int value,
+    String attackRef
 ) {
 }

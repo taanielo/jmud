@@ -9,6 +9,7 @@ import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
 import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
 import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
+import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.authentication.AuthenticationLimiter;
 import io.taanielo.jmud.core.authentication.AuthenticationPolicy;
@@ -30,6 +31,9 @@ import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.mob.MobRegistry;
+import io.taanielo.jmud.core.mob.MobRepositoryException;
+import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -39,7 +43,9 @@ import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.InMemoryRoomRepository;
+import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
 
 /**
  * Shared dependency container for socket server components.
@@ -64,7 +70,9 @@ public record GameContext(
     HealingBaseResolver healingBaseResolver,
     AbilityCostResolver abilityCostResolver,
     AbilityTargetResolver abilityTargetResolver,
-    SocketCommandRegistry commandRegistry
+    SocketCommandRegistry commandRegistry,
+    PlayerEventBus playerEventBus,
+    MobRegistry mobRegistry
 ) {
 
     /**
@@ -102,6 +110,13 @@ public record GameContext(
 
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault();
 
+        PlayerEventBus playerEventBus = new PlayerEventBus();
+        MobRegistry mobRegistry = createMobRegistry(playerEventBus, roomService, playerRepository);
+        if (mobRegistry != null) {
+            mobRegistry.init();
+            tickRegistry.register(mobRegistry);
+        }
+
         return new GameContext(
             userRegistry,
             authenticationPolicy,
@@ -122,8 +137,27 @@ public record GameContext(
             healingBaseResolver,
             abilityCostResolver,
             abilityTargetResolver,
-            commandRegistry
+            commandRegistry,
+            playerEventBus,
+            mobRegistry
         );
+    }
+
+    private static MobRegistry createMobRegistry(
+        PlayerEventBus playerEventBus,
+        RoomService roomService,
+        PlayerRepository playerRepository
+    ) {
+        try {
+            JsonMobTemplateRepository templateRepo = new JsonMobTemplateRepository();
+            ItemRepository itemRepo = new JsonItemRepository();
+            JsonAttackRepository attackRepo = new JsonAttackRepository();
+            return new MobRegistry(templateRepo, itemRepo, attackRepo, roomService, playerRepository, playerEventBus);
+        } catch (MobRepositoryException
+            | io.taanielo.jmud.core.world.repository.RepositoryException
+            | AttackRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
+        }
     }
 
     private static AbilityRegistry loadAbilities() {

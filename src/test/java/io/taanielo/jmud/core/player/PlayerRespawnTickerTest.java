@@ -53,7 +53,8 @@ class PlayerRespawnTickerTest {
                 List.of(),
                 null,
                 1,
-                0
+                0,
+                null
             )),
             List.of()
         );
