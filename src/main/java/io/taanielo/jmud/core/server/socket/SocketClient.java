@@ -937,6 +937,65 @@ public class SocketClient implements Client {
             }
             sendPrompt();
         }
+
+        @Override
+        public void examineItem(String args) {
+            Player player = session.getPlayer();
+            if (!session.isAuthenticated() || player == null) {
+                writeLineWithPrompt("You must be logged in to examine items.");
+                return;
+            }
+            if (args == null || args.isBlank()) {
+                writeLineWithPrompt("Examine what?");
+                return;
+            }
+            // Search inventory first, then room items.
+            Item found = matchItemByName(player.getInventory(), args);
+            if (found == null) {
+                RoomService.LookResult look = roomService.look(player.getUsername());
+                if (look.room() != null) {
+                    found = matchItemByName(look.room().getItems(), args);
+                }
+            }
+            if (found == null) {
+                writeLineWithPrompt("You don't see '" + args.trim() + "' here.");
+                return;
+            }
+            connection.writeLine(found.getName());
+            connection.writeLine(found.getDescription());
+            if (found.getEquipSlot() != null) {
+                connection.writeLine("Slot: " + found.getEquipSlot().id());
+            }
+            if (found.getAttributes() != null && !found.getAttributes().getStats().isEmpty()) {
+                StringBuilder sb = new StringBuilder("Stats:");
+                found.getAttributes().getStats().entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(e -> sb.append(" ").append(e.getKey()).append(" +").append(e.getValue()));
+                connection.writeLine(sb.toString());
+            }
+            sendPrompt();
+        }
+    }
+
+    // ── Item helpers ───────────────────────────────────────────────────
+
+    /**
+     * Returns the first item in the list whose name or id starts with (or equals)
+     * the normalised input, or {@code null} when no match is found.
+     */
+    private static Item matchItemByName(List<Item> items, String input) {
+        String normalized = input.trim().toLowerCase(java.util.Locale.ROOT);
+        for (Item item : items) {
+            String name = item.getName().toLowerCase(java.util.Locale.ROOT);
+            if (name.equals(normalized) || name.startsWith(normalized)) {
+                return item;
+            }
+            String id = item.getId().getValue().toLowerCase(java.util.Locale.ROOT);
+            if (id.equals(normalized) || id.startsWith(normalized)) {
+                return item;
+            }
+        }
+        return null;
     }
 
     // ── Audit helpers ──────────────────────────────────────────────────
