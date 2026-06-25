@@ -1,0 +1,15 @@
+{
+  "schema_version": 3,
+  "id": "training-shield",
+  "name": "Training Shield",
+  "description": "A wooden shield used for drills.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "offhand",
+  "weight": 6,
+  "value": 15,
+  "attack_ref": null
+}
