@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.character.repository.json;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +57,30 @@ public class JsonRaceRepository implements RaceRepository {
         }
         cache.put(id, race);
         return Optional.of(race);
+    }
+
+    @Override
+    public List<Race> findAll() throws RaceRepositoryException {
+        List<Race> races = new ArrayList<>();
+        if (!Files.exists(racesDirPath)) {
+            return List.of();
+        }
+        try (var stream = Files.list(racesDirPath)) {
+            for (Path path : stream.filter(p -> p.toString().endsWith(".json")).toList()) {
+                RaceDto dto = readDto(path);
+                Race race;
+                try {
+                    race = mapper.toDomain(dto);
+                } catch (IllegalArgumentException e) {
+                    throw new RaceRepositoryException("Invalid race data in " + path + ": " + e.getMessage(), e);
+                }
+                cache.put(race.id(), race);
+                races.add(race);
+            }
+        } catch (IOException e) {
+            throw new RaceRepositoryException("Failed to list races in " + racesDirPath + ": " + e.getMessage(), e);
+        }
+        return List.copyOf(races);
     }
 
     private void ensureDirectory(Path path) throws RaceRepositoryException {

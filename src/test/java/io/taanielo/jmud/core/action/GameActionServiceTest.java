@@ -526,12 +526,22 @@ class GameActionServiceTest {
         public Optional<Race> findById(RaceId id) throws RaceRepositoryException {
             return Optional.empty();
         }
+
+        @Override
+        public java.util.List<Race> findAll() throws RaceRepositoryException {
+            return java.util.List.of();
+        }
     }
 
     private static class StubClassRepository implements ClassRepository {
         @Override
         public Optional<ClassDefinition> findById(ClassId id) throws ClassRepositoryException {
             return Optional.empty();
+        }
+
+        @Override
+        public java.util.List<ClassDefinition> findAll() throws ClassRepositoryException {
+            return java.util.List.of();
         }
     }
 
