@@ -163,6 +163,16 @@ public interface SocketCommandContext extends Client {
     void fleeCombat();
 
     /**
+     * Assesses the danger of a mob in the same room and prints a qualitative tier message.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the mob name (prefix matching supported)
+     */
+    default void considerMob(String args) {}
+
+    /**
      * Broadcasts a gossip message from the named sender to all online players.
      *
      * <p>Each recipient other than the sender receives:

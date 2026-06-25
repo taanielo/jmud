@@ -1167,6 +1167,59 @@ public class SocketClient implements Client {
             }
             sendPrompt();
         }
+
+        @Override
+        public void considerMob(String args) {
+            Player player = session.getPlayer();
+            if (!session.isAuthenticated() || player == null) {
+                writeLineWithPrompt("You must be logged in to consider a target.");
+                return;
+            }
+            if (args == null || args.isBlank()) {
+                writeLineWithPrompt("Consider whom?");
+                return;
+            }
+            if (context.mobRegistry() == null) {
+                writeLineWithPrompt("There is no " + args.trim() + " here to consider.");
+                return;
+            }
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            java.util.List<io.taanielo.jmud.core.mob.MobInstance> mobs =
+                context.mobRegistry().getMobsInRoom(roomIdOpt.get());
+            String normalized = args.trim().toLowerCase(java.util.Locale.ROOT);
+            io.taanielo.jmud.core.mob.MobInstance found = null;
+            for (io.taanielo.jmud.core.mob.MobInstance mob : mobs) {
+                String name = mob.template().name().toLowerCase(java.util.Locale.ROOT);
+                if (name.equals(normalized) || name.startsWith(normalized)) {
+                    found = mob;
+                    break;
+                }
+            }
+            if (found == null) {
+                writeLineWithPrompt("There is no " + args.trim() + " here to consider.");
+                return;
+            }
+            int mobMaxHp = found.template().maxHp();
+            int playerMaxHp = player.getVitals().maxHp();
+            double ratio = playerMaxHp > 0 ? (double) mobMaxHp / playerMaxHp : Double.MAX_VALUE;
+            String tier;
+            if (ratio <= 0.25) {
+                tier = "poses no real threat";
+            } else if (ratio <= 0.60) {
+                tier = "looks like an easy opponent";
+            } else if (ratio <= 1.00) {
+                tier = "seems like a fair fight";
+            } else if (ratio <= 1.50) {
+                tier = "would be a serious challenge";
+            } else {
+                tier = "could kill you without effort";
+            }
+            writeLineWithPrompt("The " + found.template().name() + " " + tier + ".");
+        }
     }
 
     // ── Item helpers ───────────────────────────────────────────────────
