@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "training-yard",
   "name": "Training Yard",
   "description": "A dusty yard with practice dummies and scattered weapons.",
@@ -7,5 +7,10 @@
     "iron-sword",
     "health-potion",
     "poisonous-potion"
-  ]
+  ],
+  "exits": {
+    "north": "armory",
+    "east": "courtyard",
+    "south": "sparring-pit"
+  }
 }
