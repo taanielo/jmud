@@ -131,4 +131,14 @@ public interface SocketCommandContext extends Client {
      */
     void killMob(String args);
 
+    /**
+     * Sends the current player's inventory listing (carried items and encumbrance).
+     */
+    void sendInventory();
+
+    /**
+     * Sends the current player's equipment listing (worn items per slot).
+     */
+    void sendEquipment();
+
 }

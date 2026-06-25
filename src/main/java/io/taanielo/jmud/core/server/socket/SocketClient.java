@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,6 +41,8 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -872,6 +875,36 @@ public class SocketClient implements Client {
             GameActionResult result = context.mobRegistry()
                 .processPlayerAttack(player, args, roomIdOpt.get());
             deliverResult(result);
+            sendPrompt();
+        }
+
+        @Override
+        public void sendInventory() {
+            Player player = session.getPlayer();
+            if (!session.isAuthenticated() || player == null) {
+                writeLineWithPrompt("You must be logged in to check your inventory.");
+                return;
+            }
+            int carried = encumbranceService.carriedWeight(player);
+            int maxCarry = encumbranceService.maxCarry(player);
+            for (String line : InventoryListing.format(player.getInventory(), carried, maxCarry)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+        }
+
+        @Override
+        public void sendEquipment() {
+            Player player = session.getPlayer();
+            if (!session.isAuthenticated() || player == null) {
+                writeLineWithPrompt("You must be logged in to check your equipment.");
+                return;
+            }
+            Map<ItemId, Item> inventoryIndex = player.getInventory().stream()
+                .collect(Collectors.toMap(Item::getId, i -> i, (a, b) -> a));
+            for (String line : EquipmentListing.format(player.getEquipment().slots(), inventoryIndex::get)) {
+                connection.writeLine(line);
+            }
             sendPrompt();
         }
     }

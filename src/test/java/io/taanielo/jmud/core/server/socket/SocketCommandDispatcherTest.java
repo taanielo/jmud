@@ -208,6 +208,14 @@ class SocketCommandDispatcherTest {
         }
 
         @Override
+        public void sendInventory() {
+        }
+
+        @Override
+        public void sendEquipment() {
+        }
+
+        @Override
         public void sendMessage(io.taanielo.jmud.core.messaging.Message message) {
         }
 
