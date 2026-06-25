@@ -12,6 +12,7 @@ public record MobTemplateDto(
     List<LootEntryDto> loot,
     String spawnRoomId,
     int maxCount,
-    int respawnTicks
+    int respawnTicks,
+    Integer xpReward
 ) {
 }

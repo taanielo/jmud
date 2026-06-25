@@ -19,6 +19,7 @@ public class MobTemplateDtoMapper {
             .map(e -> new LootEntry(ItemId.of(e.itemId()), e.dropChance()))
             .toList();
         boolean aggressive = dto.aggressive() == null || dto.aggressive();
+        int xpReward = dto.xpReward() != null ? dto.xpReward() : dto.maxHp();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -28,7 +29,8 @@ public class MobTemplateDtoMapper {
             loot,
             RoomId.of(dto.spawnRoomId()),
             dto.maxCount(),
-            dto.respawnTicks()
+            dto.respawnTicks(),
+            xpReward
         );
     }
 }
