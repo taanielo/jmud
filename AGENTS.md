@@ -242,7 +242,17 @@ When in doubt, choose the **simpler, safer design**.
 
 ---
 
-## 13. Guiding Philosophy
+## 13. Autonomous Orchestrator Exception
+
+The multi-agent orchestrator (`.claude/commands/orchestrator.md`) is a **human-authorized, standing workflow**. Launching the loop *is* the authorization.
+
+* When a worker agent is spawned **by the orchestrator** during a loop cycle, the "ask before changes" / STOP-and-confirm expectations (including the root `CLAUDE.md` "Solve Github issue" gate and §11's confirmation rule) do **not** apply.
+* This exception is **scoped to orchestrator-spawned cycles only**. Any agent invoked manually, outside the loop, still follows the normal STOP-and-confirm rules.
+* The orchestrator still honors its safety controls: the `PAUSE` kill switch, the run lease lock, `max_cycles`, the build gate before merge, and one-logical-change-per-PR (§11).
+
+---
+
+## 14. Guiding Philosophy
 
 > A MUD server is a long-running, shared world.
 > Stability, fairness, and predictability matter more than raw speed.

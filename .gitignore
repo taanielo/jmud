@@ -39,3 +39,6 @@ players/
 .gradle/
 logs/
 data/ssh/
+
+### Claude Code agent runtime state ###
+.claude/agents/state/
