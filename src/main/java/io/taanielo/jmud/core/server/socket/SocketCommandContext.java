@@ -146,4 +146,9 @@ public interface SocketCommandContext extends Client {
      */
     default void examineItem(String args) {}
 
+    /**
+     * Attempts to flee from active combat by moving to a random available exit.
+     */
+    void fleeCombat();
+
 }

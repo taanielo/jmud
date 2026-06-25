@@ -208,6 +208,10 @@ class SocketCommandDispatcherTest {
         }
 
         @Override
+        public void fleeCombat() {
+        }
+
+        @Override
         public void sendInventory() {
         }
 
