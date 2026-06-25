@@ -4,7 +4,9 @@
   "name": "Poisonous Potion",
   "description": "A cloudy green vial that smells faintly of rot.",
   "attributes": {
-    "stats": {}
+    "stats": {
+      "hp": -10
+    }
   },
   "effects": [
     {

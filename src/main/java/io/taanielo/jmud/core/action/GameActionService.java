@@ -30,6 +30,7 @@ import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
+import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
@@ -263,7 +264,12 @@ public class GameActionService {
     }
 
     /**
-     * Consumes an item from inventory, applying its effects to the player.
+     * Consumes an item from inventory, applying its hp stat and any item effects to the player.
+     *
+     * <p>A positive {@code hp} stat in {@link io.taanielo.jmud.core.world.ItemAttributes} heals
+     * the player (capped at max HP); a negative value deals damage. Item effects such as
+     * poison are applied after the stat change. An item that has neither an {@code hp} stat
+     * nor any effects results in a "Nothing happens." message.
      *
      * @param source the player quaffing the item
      * @param itemInput the item name or id to quaff
@@ -278,28 +284,38 @@ public class GameActionService {
         if (item == null) {
             return GameActionResult.error("You aren't carrying that.");
         }
-        if (item.getEffects().isEmpty()) {
+        int hpDelta = item.getAttributes().getStats().getOrDefault("hp", 0);
+        boolean hasHpStat = hpDelta != 0;
+        if (!hasHpStat && item.getEffects().isEmpty()) {
             return GameActionResult.error("Nothing happens.");
         }
+        // Apply hp stat: positive heals, negative damages
+        PlayerVitals vitals = source.getVitals();
+        if (hpDelta > 0) {
+            vitals = vitals.heal(hpDelta);
+        } else if (hpDelta < 0) {
+            vitals = vitals.damage(-hpDelta);
+        }
+        Player working = source.withVitals(vitals);
         CollectingEffectMessageSink effectSink = new CollectingEffectMessageSink(
             source.getUsername(),
             source.getUsername()
         );
         try {
             for (ItemEffect effect : item.getEffects()) {
-                abilityEffectEngine.apply(source, effect.id(), effectSink);
+                abilityEffectEngine.apply(working, effect.id(), effectSink);
             }
         } catch (EffectRepositoryException e) {
             return GameActionResult.error("You cannot use that item right now.");
         }
-        PlayerEquipment equipment = source.getEquipment();
+        PlayerEquipment equipment = working.getEquipment();
         if (equipment.isEquipped(item.getId())) {
             EquipmentSlot slot = equipment.equippedSlot(item.getId());
             if (slot != null) {
                 equipment = equipment.unequip(slot);
             }
         }
-        Player updated = source.removeItem(item).withEquipment(equipment);
+        Player updated = working.removeItem(item).withEquipment(equipment);
         List<GameMessage> messages = new ArrayList<>();
         MessageContext context = new MessageContext(
             source.getUsername(),

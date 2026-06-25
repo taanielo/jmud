@@ -4,7 +4,9 @@
   "name": "Health Potion",
   "description": "A small red vial that restores a bit of vitality.",
   "attributes": {
-    "stats": {}
+    "stats": {
+      "hp": 20
+    }
   },
   "effects": [],
   "messages": [

@@ -356,6 +356,90 @@ class GameActionServiceTest {
     }
 
     @Test
+    void quaffItemHealsPlayerWhenHpStatIsPositive() {
+        PlayerVitals lowVitals = new PlayerVitals(5, 20, 20, 20, 20, 20);
+        Player injured = new Player(
+            User.of(Username.of("attacker"), Password.hash("pw", 1000)),
+            1, 0, lowVitals, List.of(), "prompt", false,
+            List.of(), null, null
+        );
+        Item healthPotion = new Item(
+            ItemId.of("health-potion"),
+            "Health Potion",
+            "A small red vial.",
+            new ItemAttributes(Map.of("hp", 20)),
+            List.of(),
+            List.of(
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                    "You quaff {item}."
+                )
+            ),
+            null,
+            1,
+            15,
+            null
+        );
+        Player withPotion = injured.addItem(healthPotion);
+
+        GameActionResult result = service.quaffItem(withPotion, "health-potion");
+
+        assertEquals(20, result.updatedSource().getVitals().hp());
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+    }
+
+    @Test
+    void quaffItemHpHealingIsCappedAtMaxHp() {
+        // Player is already at full HP (20/20); heal(20) should stay at 20
+        Item healthPotion = new Item(
+            ItemId.of("health-potion"),
+            "Health Potion",
+            "A small red vial.",
+            new ItemAttributes(Map.of("hp", 20)),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            15,
+            null
+        );
+        Player withPotion = attacker.addItem(healthPotion);
+
+        GameActionResult result = service.quaffItem(withPotion, "health-potion");
+
+        assertEquals(20, result.updatedSource().getVitals().hp());
+    }
+
+    @Test
+    void quaffItemDamagesPlayerWhenHpStatIsNegative() {
+        Item poisonPotion = new Item(
+            ItemId.of("poisonous-potion"),
+            "Poisonous Potion",
+            "A cloudy green vial.",
+            new ItemAttributes(Map.of("hp", -10)),
+            List.of(),
+            List.of(
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                    "You quaff {item}."
+                )
+            ),
+            null,
+            1,
+            5,
+            null
+        );
+        Player withPotion = attacker.addItem(poisonPotion);
+
+        GameActionResult result = service.quaffItem(withPotion, "poisonous-potion");
+
+        assertEquals(10, result.updatedSource().getVitals().hp());
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+    }
+
+    @Test
     void resolveDeathIfNeededDoesNothingWhenAlive() {
         GameActionResult result = service.resolveDeathIfNeeded(target, attacker);
 
