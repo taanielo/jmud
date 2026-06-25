@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "armory",
+  "name": "Armory",
+  "description": "Rows of weapon racks line the stone walls, most slots empty or holding battered spares. A faint smell of oil and rust fills the dim room.",
+  "item_ids": [],
+  "exits": {
+    "south": "training-yard"
+  }
+}

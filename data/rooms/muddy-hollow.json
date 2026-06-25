@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "muddy-hollow",
+  "name": "Muddy Hollow",
+  "description": "A gloomy depression in the ground, ankle-deep in cold mud. Gnawed bones and scraps of cloth suggest something small and hungry lives here. Giant rats scatter at your approach.",
+  "item_ids": [],
+  "exits": {
+    "east": "sparring-pit",
+    "north": "dark-burrow"
+  }
+}
