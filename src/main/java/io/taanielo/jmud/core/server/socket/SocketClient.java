@@ -402,6 +402,10 @@ public class SocketClient implements Client {
             Map.of()
         );
         connection.writeLines(result.lines());
+        if (context.mobRegistry() != null && result.room() != null) {
+            var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
+            connection.writeLine(formatMonstersLine(mobs));
+        }
         sendPrompt();
     }
 
@@ -567,6 +571,33 @@ public class SocketClient implements Client {
 
     // ── Utility ────────────────────────────────────────────────────────
 
+    /**
+     * Formats a {@code Monsters:} summary line for the given live mob instances.
+     *
+     * <p>Mobs of the same template name are grouped and counted; e.g.
+     * {@code "Monsters: 2x Goblin, 1x Troll"}. Returns {@code "Monsters: none"}
+     * when the list is empty.
+     *
+     * @param mobs live mob instances currently in the room
+     * @return formatted Monsters line
+     */
+    static String formatMonstersLine(java.util.List<io.taanielo.jmud.core.mob.MobInstance> mobs) {
+        if (mobs == null || mobs.isEmpty()) {
+            return "Monsters: none";
+        }
+        // Group by template name, preserving encounter order for determinism.
+        java.util.LinkedHashMap<String, Long> counts = mobs.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                m -> m.template().name(),
+                java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.counting()
+            ));
+        String body = counts.entrySet().stream()
+            .map(e -> e.getValue() + "x " + e.getKey())
+            .collect(java.util.stream.Collectors.joining(", "));
+        return "Monsters: " + body;
+    }
+
     private boolean isAuthenticatedUser(Username username) {
         return session.isAuthenticated()
             && session.getPlayer() != null
@@ -653,12 +684,7 @@ public class SocketClient implements Client {
             connection.writeLines(result.lines());
             if (context.mobRegistry() != null && result.room() != null) {
                 var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
-                if (!mobs.isEmpty()) {
-                    String mobLine = "Mobs: " + mobs.stream()
-                        .map(m -> m.template().name() + " (" + m.currentHp() + " HP)")
-                        .collect(java.util.stream.Collectors.joining(", "));
-                    connection.writeLine(mobLine);
-                }
+                connection.writeLine(formatMonstersLine(mobs));
             }
             sendPrompt();
         }
@@ -728,6 +754,10 @@ public class SocketClient implements Client {
                 deliverRoomMessage(player.getUsername(), null, arriveMessage);
             }
             connection.writeLines(result.lines());
+            if (result.moved() && context.mobRegistry() != null && result.room() != null) {
+                var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
+                connection.writeLine(formatMonstersLine(mobs));
+            }
             sendPrompt();
         }
 
