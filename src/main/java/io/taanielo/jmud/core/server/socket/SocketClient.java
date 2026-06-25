@@ -570,6 +570,18 @@ public class SocketClient implements Client {
             && session.getPlayer().getUsername().equals(username);
     }
 
+    /**
+     * Returns the authenticated player's username for this client, or empty when
+     * the client is still at the login stage. Used to build the online roster.
+     */
+    private Optional<Username> authenticatedUsername() {
+        if (!session.isAuthenticated()) {
+            return Optional.empty();
+        }
+        Player player = session.getPlayer();
+        return player == null ? Optional.empty() : Optional.of(player.getUsername());
+    }
+
     private void applyExternalPlayerUpdate(Player updated) {
         if (!isAuthenticatedUser(updated.getUsername())) {
             return;
@@ -600,6 +612,16 @@ public class SocketClient implements Client {
         @Override
         public List<Client> clients() {
             return clientPool.clients();
+        }
+
+        @Override
+        public List<Username> onlinePlayerNames() {
+            return clientPool.clients().stream()
+                .filter(SocketClient.class::isInstance)
+                .map(SocketClient.class::cast)
+                .map(SocketClient::authenticatedUsername)
+                .flatMap(Optional::stream)
+                .toList();
         }
 
         @Override
