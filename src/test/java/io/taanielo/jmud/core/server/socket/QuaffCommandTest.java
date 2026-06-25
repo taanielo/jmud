@@ -122,6 +122,7 @@ class QuaffCommandTest {
         @Override public void equipItem(String a) {}
         @Override public void unequipItem(String a) {}
         @Override public void killMob(String a) {}
+        @Override public void fleeCombat() {}
         @Override public void sendInventory() {}
         @Override public void sendEquipment() {}
         @Override public void sendMessage(io.taanielo.jmud.core.messaging.Message m) {}

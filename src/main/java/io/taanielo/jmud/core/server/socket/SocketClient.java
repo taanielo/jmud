@@ -2,12 +2,14 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.io.IOException;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -41,6 +43,7 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
+import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
@@ -906,6 +909,34 @@ public class SocketClient implements Client {
                 .processPlayerAttack(player, args, roomIdOpt.get());
             deliverResult(result);
             sendPrompt();
+        }
+
+        @Override
+        public void fleeCombat() {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to flee.");
+                return;
+            }
+            if (context.mobRegistry() == null) {
+                writeLineWithPrompt("You are not in combat.");
+                return;
+            }
+            Player player = session.getPlayer();
+            if (!context.mobRegistry().isInCombat(player.getUsername())) {
+                writeLineWithPrompt("You are not in combat.");
+                return;
+            }
+            RoomService.LookResult lookResult = roomService.look(player.getUsername());
+            Room currentRoom = lookResult.room();
+            if (currentRoom == null || currentRoom.getExits().isEmpty()) {
+                writeLineWithPrompt("There is nowhere to flee!");
+                return;
+            }
+            List<Direction> exits = new ArrayList<>(currentRoom.getExits().keySet());
+            Direction chosen = exits.get(ThreadLocalRandom.current().nextInt(exits.size()));
+            connection.writeLine("You flee to the " + chosen.label() + "!");
+            context.mobRegistry().fleeCombat(player.getUsername());
+            sendMove(chosen);
         }
 
         @Override

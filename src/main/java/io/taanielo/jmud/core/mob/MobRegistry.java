@@ -365,6 +365,38 @@ public class MobRegistry implements Tickable {
         return Math.max(1, base + attack.damageBonus());
     }
 
+    /**
+     * Disengages a player from combat, clearing their combat target and removing
+     * them from any mob's engaged set. Called when a player successfully flees.
+     *
+     * @param username the player fleeing from combat
+     */
+    public void fleeCombat(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        UUID mobId = playerCombatTargets.remove(username);
+        if (mobId != null) {
+            MobInstance mob = instances.get(mobId);
+            if (mob != null) {
+                mob.disengage(username);
+            }
+        }
+        // Also disengage from any other mobs that may have engaged this player.
+        for (MobInstance mob : instances.values()) {
+            mob.disengage(username);
+        }
+    }
+
+    /**
+     * Returns whether the given player is currently engaged in combat.
+     *
+     * @param username the player to check
+     * @return {@code true} if the player has an active combat target
+     */
+    public boolean isInCombat(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        return playerCombatTargets.containsKey(username);
+    }
+
     Collection<MobInstance> allInstances() {
         return instances.values();
     }

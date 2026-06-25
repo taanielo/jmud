@@ -32,6 +32,7 @@ public class SocketCommandRegistry {
         new AbilityCommand(registry);
         new AttackCommand(registry);
         new KillCommand(registry);
+        new FleeCommand(registry);
         new AnsiCommand(registry);
         new QuitCommand(registry);
         new HelpCommand(registry);
