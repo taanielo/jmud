@@ -1,0 +1,177 @@
+# SETUP — preflight & running the autonomous orchestrator
+
+This document lists the checks that **must pass before any orchestrator run** and a short guide
+to running the loop. Every item here corresponds to a real failure that has blocked a run — do not
+skip the preflight.
+
+Run all commands from the repo root (`~/repos/jmud`).
+
+---
+
+## 1. Preflight checklist (run before every session)
+
+Quick all-in-one check:
+
+```bash
+# 1. A real JDK 26 (not just a JRE) must be present — the build toolchain needs javac 26
+javac -version            # expect: javac 26.x   (NOT "command not found")
+./gradlew --stop          # kill any stale daemon caching old toolchain detection
+./gradlew -q javaToolchains | grep -A4 'JDK 26'   # expect: "Is JDK: true" for language version 26
+
+# 2. GitHub CLI authenticated AND the token has write scopes
+gh auth status            # expect: "Logged in", active account
+
+# 3. Build is green from a clean state (this is the loop's only quality gate)
+./gradlew build test --console=plain
+```
+
+If all three pass, you are clear to run. Details and fixes below.
+
+### 1.1 Java / JDK 26 (most common blocker)
+
+The build pins a **Java 26 toolchain** (`build.gradle`: `languageVersion = 26`). Compilation needs a
+full **JDK** (with `javac`) — a JRE is not enough.
+
+- Verify: `javac -version` → `javac 26.x`. If it says *command not found*, you only have a JRE.
+- Confirm Gradle sees it as a JDK:
+  ```bash
+  ./gradlew -q javaToolchains | grep -A4 'JDK 26'
+  ```
+  You need `Is JDK: true`. If it shows `Is JDK: false`, that entry is a JRE.
+- **Fix (Arch Linux):**
+  ```bash
+  sudo pacman -S jdk-openjdk        # installs the full JDK 26 (javac), coexists with the JRE
+  archlinux-java status             # confirm java-26-openjdk is available
+  ```
+- **After installing or changing the JDK, always stop the daemon** or Gradle serves cached
+  (stale) toolchain detection and the build keeps "failing" with
+  `Cannot find a Java installation ... matching {languageVersion=26}`:
+  ```bash
+  ./gradlew --stop
+  ```
+
+### 1.2 GitHub CLI auth + token scopes
+
+The workers create issues, open PRs, and squash-merge via `gh` (the GitHub API). Git push itself
+uses **SSH**, so a push can succeed while API calls fail — auth status alone is not enough.
+
+- Verify login: `gh auth status` → "Logged in to github.com".
+- **Fine-grained PAT — required Repository permissions (all `Read and write`):**
+
+  | Permission     | Used for                                  |
+  | -------------- | ----------------------------------------- |
+  | **Issues**     | game-designer / issue-creator create issues |
+  | **Pull requests** | pr-creator opens, pr-merger merges      |
+  | **Contents**   | squash-merge writes the merged commit to `main` |
+  | Metadata       | (default, read) repo access               |
+
+  Edit at <https://github.com/settings/tokens?type=beta> → your token → Repository permissions.
+  Changes apply immediately (no re-auth). A **classic token with the `repo` scope** also works.
+- Quick write test (creates then deletes a throwaway issue):
+  ```bash
+  n=$(gh issue create --title "perm-check (auto-delete)" --body "x"); \
+  gh issue delete "${n##*/}" --yes
+  ```
+  If `createIssue` / `createPullRequest` returns *"Resource not accessible by personal access
+  token"*, the token is missing that write permission.
+
+### 1.3 Build gate
+
+`build-verifier` is the **only** quality gate (this repo has no CI). A run must start from a green
+build:
+
+```bash
+./gradlew build test --console=plain   # expect: BUILD SUCCESSFUL
+```
+
+### 1.4 Permissions for unattended runs (`.claude/settings.json`)
+
+For a **detached / unattended** loop, the session must not stall on permission prompts. Add
+`.claude/settings.json` (not committed by default — it grants powerful unattended rights):
+
+```json
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(git:*)", "Bash(gh:*)", "Bash(./gradlew:*)", "Bash(gradle:*)",
+      "Bash(cat:*)", "Bash(date:*)", "Bash(mkdir:*)", "Bash(mv:*)",
+      "Bash(test:*)", "Bash(ls:*)", "Read", "Write", "Edit", "Task"
+    ]
+  }
+}
+```
+
+Easiest: run `/permissions` inside this repo and add those rules. **Security note:** this lets the
+loop commit, push, and squash-merge to `main` unattended with only the local build as a gate.
+
+---
+
+## 2. Running `/loop /orchestrator`
+
+> Launch from **inside `~/repos/jmud`** so the worker agents in `.claude/agents/` resolve as native
+> subagents (`game-designer`, `branch-manager`, …).
+
+### One supervised cycle (recommended for the first run)
+
+Run the command **without** `/loop` so it does one stage and stops; inspect, then run again:
+
+```
+/orchestrator
+```
+
+Each invocation advances one stage: `FIND_ISSUE → CREATE_BRANCH → WRITE_CODE → VERIFY_BUILD →
+CREATE_PR → MERGE_PR`. State persists in `.claude/agents/state/` between calls.
+
+### Continuous (self-paced) loop
+
+```
+/loop /orchestrator
+```
+
+No interval — the next cycle starts only after the previous one returns (prevents overlapping runs
+that would race on the single git checkout and shared state).
+
+### Leaving it running in the background
+
+The loop runs inside an interactive session; "background" means a detached terminal that stays
+alive (the machine must stay on and online):
+
+```bash
+tmux new -s jmud-loop
+cd ~/repos/jmud
+claude            # then inside Claude:  /loop /orchestrator
+# detach: Ctrl-b then d        reattach: tmux attach -t jmud-loop
+```
+
+### Stopping / pausing (kill switch)
+
+```bash
+touch .claude/agents/state/PAUSE     # next cycle exits cleanly at the GUARD step
+rm    .claude/agents/state/PAUSE     # resume
+```
+
+### State directory (`.claude/agents/state/`, git-ignored)
+
+| File                       | Purpose                                              |
+| -------------------------- | ---------------------------------------------------- |
+| `orchestrator-state.json`  | the state machine (current issue, stage, counters)   |
+| `last-result.json`         | the last worker's structured result                  |
+| `cycle-log.jsonl`          | one line per completed cycle                          |
+| `LOCK`                     | run lease (stale after 60 min); prevents overlap     |
+| `PAUSE`                    | kill switch (presence = stop)                        |
+
+If a run is interrupted, a leftover `LOCK` younger than 60 min will make the next run skip with
+`LOCK held`; delete it manually only if you are sure no run is active.
+
+---
+
+## 3. Known robustness gaps (read before unattended use)
+
+- **build-verifier can't distinguish infra failures from code failures.** A missing JDK, a stale
+  daemon, or a dependency-resolution error looks like a build failure, so the loop would waste its
+  WRITE_CODE retries rewriting correct code and then file a bogus `blocked:` issue. The preflight in
+  §1 is what prevents this — **do not skip it**.
+- **What seeds a cycle:** if `TODO.md` has unchecked `- [ ]` items, `FIND_ISSUE` turns the first one
+  into an issue (via `issue-creator`) *before* falling through to `game-designer`. Empty/checked
+  `TODO.md` ⇒ `game-designer` invents the feature.
