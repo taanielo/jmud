@@ -22,6 +22,18 @@ public class ScoreCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "Display your level, XP, and current vitals. Aliases: SC";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: SCORE\n"
+             + "  Shows your current level, experience points, HP, Mana, and Move.\n"
+             + "  Alias: SC";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String token = SocketCommandParsing.firstToken(input);
         if (!"SCORE".equals(token) && !"SC".equals(token)) {

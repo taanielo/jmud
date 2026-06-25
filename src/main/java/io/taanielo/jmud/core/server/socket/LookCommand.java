@@ -16,6 +16,18 @@ public class LookCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "Examine your surroundings or a target. Aliases: L";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: LOOK  |  LOOK <target>\n"
+             + "  LOOK        — describe the current room, its exits, and visible occupants.\n"
+             + "  LOOK <name> — examine a specific player or object in the room.";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String[] parts = SocketCommandParsing.splitInput(input);
         String token = parts[0];

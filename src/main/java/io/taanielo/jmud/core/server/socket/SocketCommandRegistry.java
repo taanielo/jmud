@@ -32,6 +32,7 @@ public class SocketCommandRegistry {
         new KillCommand(registry);
         new AnsiCommand(registry);
         new QuitCommand(registry);
+        new HelpCommand(registry);
         return registry;
     }
 

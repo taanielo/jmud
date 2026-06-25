@@ -16,6 +16,18 @@ public class GetCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "Pick up an item from the room floor.";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: GET <item>\n"
+             + "  Picks up the named item from the floor of your current room\n"
+             + "  and adds it to your inventory.";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String[] parts = SocketCommandParsing.splitInput(input);
         if (!"GET".equals(parts[0])) {

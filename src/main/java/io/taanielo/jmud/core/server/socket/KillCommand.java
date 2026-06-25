@@ -16,6 +16,17 @@ public class KillCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "Attack a mob in the same room. Aliases: K";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: KILL <target>  |  K <target>\n"
+             + "  Initiates combat against the named mob in your current room.";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String[] parts = SocketCommandParsing.splitInput(input);
         String token = parts[0];
