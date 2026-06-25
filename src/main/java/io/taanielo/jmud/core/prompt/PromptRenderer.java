@@ -15,6 +15,9 @@ public class PromptRenderer {
         rendered = rendered.replace("{move}", String.valueOf(vitals.move()));
         rendered = rendered.replace("{maxMove}", String.valueOf(vitals.maxMove()));
         rendered = rendered.replace("{exp}", String.valueOf(player.getExperience()));
+        if (player.isResting()) {
+            rendered = "[REST] " + rendered;
+        }
         return rendered;
     }
 }

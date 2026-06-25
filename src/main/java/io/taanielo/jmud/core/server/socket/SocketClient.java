@@ -48,6 +48,8 @@ import io.taanielo.jmud.core.output.TextStylers;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.player.RestSettings;
+import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.server.Client;
@@ -276,6 +278,15 @@ public class SocketClient implements Client {
         if (context.playerEventBus() != null) {
             context.playerEventBus().register(player.getUsername(),
                 result -> session.enqueueCommand(() -> {
+                    // If a mob hit updates the player and the player was resting, cancel rest first.
+                    if (result.updatedSource() != null) {
+                        Player current = session.getPlayer();
+                        if (current != null && current.isResting()) {
+                            session.setPlayer(current.withResting(false));
+                            session.clearRestingTicker();
+                            connection.writeLine("You are jolted awake by the attack!");
+                        }
+                    }
                     deliverResult(result);
                     sendPrompt();
                 }));
@@ -548,6 +559,19 @@ public class SocketClient implements Client {
     }
 
     // ── I/O helpers ────────────────────────────────────────────────────
+
+    /**
+     * Silently cancels resting if the current player is resting.
+     * The caller is responsible for sending any relevant message afterwards.
+     */
+    private void cancelRestIfActive() {
+        Player player = session.getPlayer();
+        if (player != null && player.isResting()) {
+            session.setPlayer(player.withResting(false));
+            session.clearRestingTicker();
+            connection.writeLine("Your rest is interrupted.");
+        }
+    }
 
     private void writeLineWithPrompt(String message) {
         connection.writeLine(message);
@@ -829,6 +853,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to move.");
                 return;
             }
+            cancelRestIfActive();
             Player player = session.getPlayer();
             if (encumbranceService.isOverburdened(player)) {
                 writeLineWithPrompt("You are carrying too much to do that.");
@@ -873,6 +898,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to use abilities.");
                 return;
             }
+            cancelRestIfActive();
             Player player = session.getPlayer();
             AbilityMatch match = abilityRegistry
                 .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
@@ -931,6 +957,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to attack.");
                 return;
             }
+            cancelRestIfActive();
             GameActionResult result = gameActionService.attack(session.getPlayer(), args);
             auditAttack(result, args);
             deliverResult(result);
@@ -943,6 +970,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to get items.");
                 return;
             }
+            cancelRestIfActive();
             GameActionResult result = gameActionService.getItem(session.getPlayer(), args);
             deliverResult(result);
             sendPrompt();
@@ -954,6 +982,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to drop items.");
                 return;
             }
+            cancelRestIfActive();
             GameActionResult result = gameActionService.dropItem(session.getPlayer(), args);
             deliverResult(result);
             sendPrompt();
@@ -965,6 +994,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to quaff.");
                 return;
             }
+            cancelRestIfActive();
             GameActionResult result = gameActionService.quaffItem(session.getPlayer(), args);
             deliverResult(result);
             sendPrompt();
@@ -976,6 +1006,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to equip items.");
                 return;
             }
+            cancelRestIfActive();
             GameActionResult result = gameActionService.equipItem(session.getPlayer(), args);
             deliverResult(result);
             sendPrompt();
@@ -987,6 +1018,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to unequip items.");
                 return;
             }
+            cancelRestIfActive();
             GameActionResult result = gameActionService.unequipSlot(session.getPlayer(), args);
             deliverResult(result);
             sendPrompt();
@@ -998,6 +1030,7 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("You must be logged in to attack.");
                 return;
             }
+            cancelRestIfActive();
             if (context.mobRegistry() == null) {
                 writeLineWithPrompt("There are no mobs here.");
                 return;
@@ -1219,6 +1252,73 @@ public class SocketClient implements Client {
                 tier = "could kill you without effort";
             }
             writeLineWithPrompt("The " + found.template().name() + " " + tier + ".");
+        }
+
+        @Override
+        public void startResting() {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to rest.");
+                return;
+            }
+            Player player = session.getPlayer();
+            if (player.isDead()) {
+                writeLineWithPrompt("You cannot rest while dead.");
+                return;
+            }
+            if (player.isResting()) {
+                writeLineWithPrompt("You are already resting.");
+                return;
+            }
+            if (context.mobRegistry() != null
+                    && context.mobRegistry().isInCombat(player.getUsername())) {
+                writeLineWithPrompt("You cannot rest while in combat.");
+                return;
+            }
+            Player resting = player.withResting(true);
+            session.setPlayer(resting);
+            connection.writeLine("You sit down and begin to rest.");
+            sendPrompt();
+            RestingTicker ticker = new RestingTicker(
+                session::getPlayer,
+                this::applyRestUpdate,
+                (msg, woken) -> {
+                    session.setPlayer(woken);
+                    session.clearRestingTicker();
+                    connection.writeLine(msg);
+                    sendPrompt();
+                },
+                RestSettings.regenHp(),
+                RestSettings.regenMana(),
+                RestSettings.regenMove()
+            );
+            session.registerRestingTicker(ticker);
+        }
+
+        @Override
+        public void stopResting(String message) {
+            Player player = session.getPlayer();
+            if (player == null || !player.isResting()) {
+                if (message != null && !message.isBlank()) {
+                    writeLineWithPrompt(message);
+                } else {
+                    sendPrompt();
+                }
+                return;
+            }
+            Player woken = player.withResting(false);
+            session.setPlayer(woken);
+            session.clearRestingTicker();
+            if (message != null && !message.isBlank()) {
+                writeLineWithPrompt(message);
+            } else {
+                sendPrompt();
+            }
+        }
+
+        /** Called by the resting ticker to apply regenerated vitals. */
+        private void applyRestUpdate(Player updated) {
+            session.setPlayer(updated);
+            sendPrompt();
         }
     }
 

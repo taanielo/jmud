@@ -25,6 +25,7 @@ import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRespawnTicker;
+import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
@@ -69,6 +70,8 @@ public class PlayerSession {
     private TickSubscription healingSubscription;
     private boolean healingInitialized;
     private Consumer<Player> healingCallback;
+
+    private TickSubscription restingSubscription;
 
     /**
      * Creates a player session with the given dependencies.
@@ -246,6 +249,26 @@ public class PlayerSession {
     }
 
     /**
+     * Registers a resting ticker for the current session.
+     *
+     * @param ticker the resting ticker to schedule
+     */
+    public void registerRestingTicker(RestingTicker ticker) {
+        clearRestingTicker();
+        restingSubscription = tickRegistry.register(ticker);
+    }
+
+    /**
+     * Unsubscribes the resting tick subscription, if any.
+     */
+    public void clearRestingTicker() {
+        if (restingSubscription != null) {
+            restingSubscription.unsubscribe();
+            restingSubscription = null;
+        }
+    }
+
+    /**
      * Schedules respawn if the player is dead and not already scheduled.
      */
     public void handleDeathState() {
@@ -266,6 +289,7 @@ public class PlayerSession {
         connected = false;
         clearEffects();
         clearHealing();
+        clearRestingTicker();
         if (cooldownSubscription != null) {
             cooldownSubscription.unsubscribe();
         }
