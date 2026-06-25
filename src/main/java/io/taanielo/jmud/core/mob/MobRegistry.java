@@ -155,7 +155,10 @@ public class MobRegistry implements Tickable {
 
         if (!mob.isAlive()) {
             messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-            dropLoot(mob);
+            for (Item dropped : dropLoot(mob)) {
+                messages.add(GameMessage.toSource(
+                    "A " + dropped.getName() + " drops to the ground."));
+            }
             mob.scheduleRespawn();
             endCombatForMob(mob);
             Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
@@ -270,7 +273,10 @@ public class MobRegistry implements Tickable {
 
             if (!mob.isAlive()) {
                 messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-                dropLoot(mob);
+                for (Item dropped : dropLoot(mob)) {
+                    messages.add(GameMessage.toSource(
+                        "A " + dropped.getName() + " drops to the ground."));
+                }
                 mob.scheduleRespawn();
                 endCombatForMob(mob);
                 Player reloaded = playerRepository.loadPlayer(username).orElse(player);
@@ -295,17 +301,28 @@ public class MobRegistry implements Tickable {
 
     // ── Helpers ───────────────────────────────────────────────────────
 
-    private void dropLoot(MobInstance mob) {
+    /**
+     * Rolls loot for a dead mob, places each dropped item in the mob's room,
+     * and returns the list of items that actually dropped.
+     *
+     * @param mob the mob that just died
+     * @return items placed on the room floor (never null, may be empty)
+     */
+    private List<Item> dropLoot(MobInstance mob) {
+        List<Item> dropped = new ArrayList<>();
         for (LootEntry entry : mob.template().lootTable()) {
             if (ThreadLocalRandom.current().nextDouble() <= entry.dropChance()) {
                 try {
-                    itemRepository.findById(entry.itemId()).ifPresent(item ->
-                        roomService.addItem(mob.roomId(), item));
+                    itemRepository.findById(entry.itemId()).ifPresent(item -> {
+                        roomService.addItem(mob.roomId(), item);
+                        dropped.add(item);
+                    });
                 } catch (RepositoryException e) {
                     log.warn("Failed to drop loot item {}: {}", entry.itemId(), e.getMessage());
                 }
             }
         }
+        return dropped;
     }
 
     private AttackDefinition loadAttack(AttackId attackId) {
