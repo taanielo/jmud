@@ -15,9 +15,13 @@ import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityCost;
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
+import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
@@ -251,20 +255,17 @@ public class SocketClient implements Client {
             .loadPlayer(authenticatedUser.getUsername())
             .orElseGet(() -> {
                 boolean ansiEnabled = OutputStyleSettings.ansiEnabledByDefault();
+                // New players start with no abilities; abilities are seeded after class selection.
                 Player newPlayer = Player.of(
                     authenticatedUser,
                     PromptSettings.defaultFormat(),
                     ansiEnabled,
-                    abilityRegistry.abilityIds()
+                    List.of()
                 );
                 created.set(true);
                 playerRepository.savePlayer(newPlayer);
                 return newPlayer;
             });
-        if (player.getLearnedAbilities().isEmpty()) {
-            player = player.withLearnedAbilities(abilityRegistry.abilityIds());
-            playerRepository.savePlayer(player);
-        }
         session.setPlayer(player);
         session.setTextStyler(TextStylers.forEnabled(player.isAnsiEnabled()));
         if (player.isDead()) {
@@ -332,7 +333,7 @@ public class SocketClient implements Client {
         } catch (CharacterCreationException e) {
             log.error("Failed to build race prompt", e);
             connection.writeLine("Character creation unavailable. You have been assigned a default race and class.");
-            finishCharacterCreation(null, null);
+            finishCharacterCreation(null, (ClassDefinition) null);
         }
     }
 
@@ -360,12 +361,12 @@ public class SocketClient implements Client {
             }
             case ChoosingClass choosing -> {
                 try {
-                    var classIdOpt = svc.resolveClass(input);
-                    if (classIdOpt.isEmpty()) {
+                    var classDefOpt = svc.resolveClassDefinition(input);
+                    if (classDefOpt.isEmpty()) {
                         connection.writeLine("Unknown class '" + input.trim() + "'. Please try again.");
                         connection.writeLine(svc.buildClassPrompt());
                     } else {
-                        finishCharacterCreation(choosing.chosenRace(), classIdOpt.get());
+                        finishCharacterCreation(choosing.chosenRace(), classDefOpt.get());
                     }
                 } catch (CharacterCreationException e) {
                     log.error("Error during class selection", e);
@@ -375,7 +376,7 @@ public class SocketClient implements Client {
         }
     }
 
-    private void finishCharacterCreation(RaceId raceId, ClassId classId) {
+    private void finishCharacterCreation(RaceId raceId, ClassDefinition classDef) {
         creationState = null;
         Player player = session.getPlayer();
         if (player == null) {
@@ -384,8 +385,11 @@ public class SocketClient implements Client {
         if (raceId != null) {
             player = player.withIdentity(player.identity().withRace(raceId));
         }
-        if (classId != null) {
-            player = player.withIdentity(player.identity().withClassId(classId));
+        if (classDef != null) {
+            player = player.withIdentity(player.identity().withClassId(classDef.id()));
+            if (!classDef.startingAbilityIds().isEmpty()) {
+                player = player.withLearnedAbilities(classDef.startingAbilityIds());
+            }
         }
         session.setPlayer(player);
         playerRepository.savePlayer(player);
@@ -1085,6 +1089,45 @@ public class SocketClient implements Client {
                     socketClient.sendPrompt();
                 }
             }
+        }
+
+        @Override
+        public void sendAbilities() {
+            Player player = session.getPlayer();
+            if (!session.isAuthenticated() || player == null) {
+                writeLineWithPrompt("You must be logged in to view your abilities.");
+                return;
+            }
+            List<AbilityId> learned = player.getLearnedAbilities();
+            if (learned.isEmpty()) {
+                writeLineWithPrompt("You have not learned any abilities yet.");
+                return;
+            }
+            connection.writeLine(String.format("%-20s %-6s %-12s %s", "Ability", "Type", "Cost", "Cooldown"));
+            connection.writeLine("-".repeat(52));
+            for (AbilityId abilityId : learned) {
+                Ability ability = abilityRegistry.findById(abilityId).orElse(null);
+                if (ability == null) {
+                    continue;
+                }
+                AbilityCost cost = ability.cost();
+                String costStr;
+                if (cost.mana() > 0 && cost.move() > 0) {
+                    costStr = cost.mana() + " mana, " + cost.move() + " mv";
+                } else if (cost.mana() > 0) {
+                    costStr = cost.mana() + " mana";
+                } else if (cost.move() > 0) {
+                    costStr = cost.move() + " mv";
+                } else {
+                    costStr = "none";
+                }
+                String cooldownStr = ability.cooldown().ticks() > 0
+                    ? ability.cooldown().ticks() + " ticks"
+                    : "none";
+                connection.writeLine(String.format("%-20s %-6s %-12s %s",
+                    ability.name(), ability.type().name(), costStr, cooldownStr));
+            }
+            sendPrompt();
         }
 
         @Override

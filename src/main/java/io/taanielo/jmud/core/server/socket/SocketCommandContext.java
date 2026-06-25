@@ -147,6 +147,17 @@ public interface SocketCommandContext extends Client {
     default void examineItem(String args) {}
 
     /**
+     * Sends the player's known abilities as a formatted table.
+     *
+     * <p>Each line shows the ability name, its type (SKILL/SPELL), resource cost,
+     * and cooldown in ticks.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     */
+    default void sendAbilities() {}
+
+    /**
      * Attempts to flee from active combat by moving to a random available exit.
      */
     void fleeCombat();

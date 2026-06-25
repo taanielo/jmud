@@ -117,6 +117,19 @@ public class CharacterCreationService {
      * @throws CharacterCreationException if class data cannot be loaded
      */
     public Optional<ClassId> resolveClass(String input) throws CharacterCreationException {
+        return resolveClassDefinition(input).map(ClassDefinition::id);
+    }
+
+    /**
+     * Resolves a player's class input to the full {@link ClassDefinition}.
+     *
+     * <p>Matching is case-insensitive on the class's id value or name.
+     *
+     * @param input the raw text typed by the player
+     * @return the matching {@link ClassDefinition}, or empty if input is unrecognised
+     * @throws CharacterCreationException if class data cannot be loaded
+     */
+    public Optional<ClassDefinition> resolveClassDefinition(String input) throws CharacterCreationException {
         if (input == null || input.isBlank()) {
             return Optional.empty();
         }
@@ -124,7 +137,6 @@ public class CharacterCreationService {
         return loadClasses().stream()
             .filter(c -> c.id().getValue().equalsIgnoreCase(normalised)
                       || c.name().equalsIgnoreCase(normalised))
-            .map(ClassDefinition::id)
             .findFirst();
     }
 
