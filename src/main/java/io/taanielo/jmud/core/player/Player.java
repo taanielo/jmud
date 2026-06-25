@@ -264,4 +264,11 @@ public class Player implements EffectTarget, Combatant {
     public Player withEquipment(PlayerEquipment nextEquipment) {
         return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment);
     }
+
+    /**
+     * Returns a copy of this player with the given identity (level and experience).
+     */
+    public Player withIdentity(PlayerIdentity nextIdentity) {
+        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment);
+    }
 }

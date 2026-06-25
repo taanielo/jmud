@@ -21,6 +21,8 @@ import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.player.LevelUpService;
+import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.tick.Tickable;
@@ -47,6 +49,7 @@ public class MobRegistry implements Tickable {
     private final RoomService roomService;
     private final PlayerRepository playerRepository;
     private final PlayerEventBus playerEventBus;
+    private final LevelUpService levelUpService = new LevelUpService();
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -155,6 +158,15 @@ public class MobRegistry implements Tickable {
             dropLoot(mob);
             mob.scheduleRespawn();
             endCombatForMob(mob);
+            Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
+            LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, mob.template().xpReward());
+            playerRepository.savePlayer(levelUpResult.player());
+            messages.add(GameMessage.toSource(
+                "You gain " + mob.template().xpReward() + " experience points."));
+            if (levelUpResult.leveledUp()) {
+                messages.add(GameMessage.toSource(
+                    "You have advanced to level " + levelUpResult.player().getLevel() + "!"));
+            }
         }
         return new GameActionResult(null, null, messages);
     }
@@ -261,6 +273,15 @@ public class MobRegistry implements Tickable {
                 dropLoot(mob);
                 mob.scheduleRespawn();
                 endCombatForMob(mob);
+                Player reloaded = playerRepository.loadPlayer(username).orElse(player);
+                LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, mob.template().xpReward());
+                playerRepository.savePlayer(levelUpResult.player());
+                messages.add(GameMessage.toSource(
+                    "You gain " + mob.template().xpReward() + " experience points."));
+                if (levelUpResult.leveledUp()) {
+                    messages.add(GameMessage.toSource(
+                        "You have advanced to level " + levelUpResult.player().getLevel() + "!"));
+                }
             }
             playerEventBus.publish(username, new GameActionResult(null, null, messages));
         }

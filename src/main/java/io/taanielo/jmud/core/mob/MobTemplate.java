@@ -18,7 +18,8 @@ public record MobTemplate(
     List<LootEntry> lootTable,
     RoomId spawnRoomId,
     int maxCount,
-    int respawnTicks
+    int respawnTicks,
+    int xpReward
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -29,6 +30,9 @@ public record MobTemplate(
         }
         if (respawnTicks < 0) {
             throw new IllegalArgumentException("Mob respawnTicks must be non-negative");
+        }
+        if (xpReward < 0) {
+            throw new IllegalArgumentException("Mob xpReward must be non-negative");
         }
         lootTable = List.copyOf(lootTable);
     }
