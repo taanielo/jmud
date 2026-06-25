@@ -13,8 +13,9 @@ import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.authentication.AuthenticationLimiter;
 import io.taanielo.jmud.core.authentication.AuthenticationPolicy;
+import io.taanielo.jmud.core.authentication.JsonUserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistry;
-import io.taanielo.jmud.core.authentication.UserRegistryImpl;
+import io.taanielo.jmud.core.authentication.UserRegistryException;
 import io.taanielo.jmud.core.config.GameConfig;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
@@ -42,10 +43,11 @@ import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
-import io.taanielo.jmud.core.world.repository.InMemoryRoomRepository;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
 
 /**
  * Shared dependency container for socket server components.
@@ -80,11 +82,11 @@ public record GameContext(
      */
     public static GameContext create() {
         GameConfig config = GameConfig.load();
-        UserRegistry userRegistry = new UserRegistryImpl();
+        UserRegistry userRegistry = createUserRegistry();
         AuthenticationPolicy authenticationPolicy = AuthenticationPolicy.fromConfig(config);
         AuthenticationLimiter authenticationLimiter = new AuthenticationLimiter(authenticationPolicy, Clock.systemUTC());
         PlayerRepository playerRepository = new JsonPlayerRepository();
-        RoomRepository roomRepository = new InMemoryRoomRepository();
+        RoomRepository roomRepository = createRoomRepository();
         RoomService roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
 
         TickRegistry tickRegistry = new TickRegistry();
@@ -141,6 +143,23 @@ public record GameContext(
             playerEventBus,
             mobRegistry
         );
+    }
+
+    private static UserRegistry createUserRegistry() {
+        try {
+            return new JsonUserRegistry();
+        } catch (UserRegistryException e) {
+            throw new IllegalStateException("Failed to initialize user registry: " + e.getMessage(), e);
+        }
+    }
+
+    private static RoomRepository createRoomRepository() {
+        try {
+            ItemRepository itemRepository = new JsonItemRepository();
+            return new JsonRoomRepository(itemRepository);
+        } catch (RepositoryException e) {
+            throw new IllegalStateException("Failed to initialize room repository: " + e.getMessage(), e);
+        }
     }
 
     private static MobRegistry createMobRegistry(
