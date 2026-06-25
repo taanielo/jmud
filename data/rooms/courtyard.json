@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "courtyard",
+  "name": "Courtyard",
+  "description": "An open cobblestone yard enclosed by crumbling keep walls. Weeds push through the gaps between stones. Passages lead in several directions.",
+  "item_ids": [],
+  "exits": {
+    "west": "training-yard",
+    "south": "rocky-alcove",
+    "east": "dark-burrow"
+  }
+}

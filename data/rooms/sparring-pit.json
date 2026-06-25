@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "sparring-pit",
+  "name": "Sparring Pit",
+  "description": "A sunken pit of packed earth, ringed by worn wooden barriers. The smell of sweat and blood lingers in the air. Goblins have claimed this rough arena as their own.",
+  "item_ids": [],
+  "exits": {
+    "north": "training-yard",
+    "west": "muddy-hollow"
+  }
+}

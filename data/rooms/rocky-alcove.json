@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "rocky-alcove",
+  "name": "Rocky Alcove",
+  "description": "A shallow cave cut into the keep's foundation stones. Crude markings cover the walls and small fires smoulder in cracked pots. Kobolds have made this cramped space their lair.",
+  "item_ids": [],
+  "exits": {
+    "north": "courtyard"
+  }
+}

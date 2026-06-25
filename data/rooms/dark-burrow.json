@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "dark-burrow",
+  "name": "Dark Burrow",
+  "description": "A low tunnel carved into the earth, its ceiling threaded with thick webs. The clicking of mandibles echoes in the darkness. Giant spiders nest here undisturbed.",
+  "item_ids": [],
+  "exits": {
+    "south": "muddy-hollow",
+    "west": "courtyard"
+  }
+}
