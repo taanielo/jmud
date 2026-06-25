@@ -141,4 +141,9 @@ public interface SocketCommandContext extends Client {
      */
     void sendEquipment();
 
+    /**
+     * Examines an item by name, searching the player's inventory then the current room.
+     */
+    default void examineItem(String args) {}
+
 }

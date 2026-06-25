@@ -16,6 +16,7 @@ public class SocketCommandRegistry {
     public static SocketCommandRegistry createDefault() {
         SocketCommandRegistry registry = new SocketCommandRegistry();
         new LookCommand(registry);
+        new ExamineCommand(registry);
         new MoveCommand(registry);
         new GetCommand(registry);
         new DropCommand(registry);
