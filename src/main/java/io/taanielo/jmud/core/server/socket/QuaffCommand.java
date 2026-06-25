@@ -3,7 +3,9 @@ package io.taanielo.jmud.core.server.socket;
 import java.util.Optional;
 
 /**
- * Handles quaff commands.
+ * Handles quaff commands, allowing players to consume potions and other drinkable items.
+ *
+ * <p>Accepted tokens: {@code QUAFF} and the abbreviation {@code QU}.
  */
 public class QuaffCommand extends RegistrableCommand {
     public QuaffCommand(SocketCommandRegistry registry) {
@@ -16,9 +18,22 @@ public class QuaffCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "Drink a potion from your inventory.";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: QUAFF <item>  (alias: QU)\n"
+             + "  Consumes the named item from your inventory, applying its effects\n"
+             + "  immediately. Healing potions restore HP; poisonous potions deal damage.";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String[] parts = SocketCommandParsing.splitInput(input);
-        if (!"QUAFF".equals(parts[0])) {
+        String token = parts[0];
+        if (!"QUAFF".equals(token) && !"QU".equals(token)) {
             return Optional.empty();
         }
         String args = parts[1];
