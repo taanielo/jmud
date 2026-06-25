@@ -167,6 +167,34 @@ public class PlayerVitals {
         return new PlayerVitals(hp, maxHp, baseMaxHp, mana, maxMana, nextMove, maxMove);
     }
 
+    /**
+     * Applies rest-tick regeneration to HP, mana, and move simultaneously.
+     *
+     * <p>Each stat is capped at its maximum; none may go below its current value.
+     *
+     * @param hpAmount   amount of HP to restore
+     * @param manaAmount amount of mana to restore
+     * @param moveAmount amount of move to restore
+     * @return updated vitals (may be {@code this} when all stats are already full)
+     */
+    public PlayerVitals regenRest(int hpAmount, int manaAmount, int moveAmount) {
+        validateAmount(hpAmount, "HP regen");
+        validateAmount(manaAmount, "Mana regen");
+        validateAmount(moveAmount, "Move regen");
+        int nextHp   = Math.min(maxHp,   hp   + hpAmount);
+        int nextMana = Math.min(maxMana,  mana + manaAmount);
+        int nextMove = Math.min(maxMove,  move + moveAmount);
+        return new PlayerVitals(nextHp, maxHp, baseMaxHp, nextMana, maxMana, nextMove, maxMove);
+    }
+
+    /**
+     * Returns {@code true} when HP, mana, and move are all at their respective maxima.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public boolean isFull() {
+        return hp == maxHp && mana == maxMana && move == maxMove;
+    }
+
     public PlayerVitals respawnHalf() {
         return new PlayerVitals(
             halfOf(maxHp),

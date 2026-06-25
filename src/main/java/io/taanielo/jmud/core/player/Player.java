@@ -25,6 +25,8 @@ public class Player implements EffectTarget, Combatant {
     private final PlayerAbilities abilities;
     private final PlayerInventory inventory;
     private final PlayerEquipment equipment;
+    /** In-memory only — never serialised to JSON; cleared on disconnect/reload. */
+    private final boolean resting;
 
     public static Player of(User user, String promptFormat) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of(), null, null);
@@ -101,12 +103,25 @@ public class Player implements EffectTarget, Combatant {
         PlayerInventory inventory,
         PlayerEquipment equipment
     ) {
+        this(identity, combatState, preferences, abilities, inventory, equipment, false);
+    }
+
+    private Player(
+        PlayerIdentity identity,
+        PlayerCombatState combatState,
+        PlayerPreferences preferences,
+        PlayerAbilities abilities,
+        PlayerInventory inventory,
+        PlayerEquipment equipment,
+        boolean resting
+    ) {
         this.identity = Objects.requireNonNull(identity, "Identity is required");
         this.combatState = Objects.requireNonNull(combatState, "Combat state is required");
         this.preferences = Objects.requireNonNull(preferences, "Preferences are required");
         this.abilities = Objects.requireNonNull(abilities, "Abilities are required");
         this.inventory = Objects.requireNonNull(inventory, "Inventory is required");
         this.equipment = Objects.requireNonNull(equipment, "Equipment is required");
+        this.resting = resting;
     }
 
     @JsonProperty("user")
@@ -208,6 +223,17 @@ public class Player implements EffectTarget, Combatant {
         return identity.user().getPassword();
     }
 
+    /**
+     * Returns {@code true} while the player is in a resting state.
+     *
+     * <p>This flag is in-memory only and is never persisted to JSON,
+     * so it is always {@code false} after a disconnect or server restart.
+     */
+    @JsonIgnore
+    public boolean isResting() {
+        return resting;
+    }
+
     @Override
     public List<EffectInstance> effects() {
         return combatState.effects();
@@ -222,53 +248,65 @@ public class Player implements EffectTarget, Combatant {
         if (combatState.dead() && combatState.vitals().hp() <= 0 && combatState.effects().isEmpty()) {
             return this;
         }
-        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment);
+        // Dying always clears the resting flag.
+        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false);
     }
 
     public Player respawn() {
-        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment);
+        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false);
     }
 
     public Player withoutEffects() {
-        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment);
+        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting);
     }
 
     public Player withAnsiEnabled(boolean enabled) {
-        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment);
+        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting);
     }
 
     public Player withVitals(PlayerVitals updatedVitals) {
-        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment);
+        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting);
     }
 
     public Player withDead(boolean dead) {
-        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment);
+        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting);
     }
 
     public Player withLearnedAbilities(List<AbilityId> learnedAbilities) {
-        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment);
+        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting);
     }
 
     public Player withInventory(List<Item> items) {
-        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment);
+        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting);
     }
 
     public Player addItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment);
+        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting);
     }
 
     public Player removeItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment);
+        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting);
     }
 
     public Player withEquipment(PlayerEquipment nextEquipment) {
-        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment);
+        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting);
     }
 
     /**
      * Returns a copy of this player with the given identity (level and experience).
      */
     public Player withIdentity(PlayerIdentity nextIdentity) {
-        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment);
+        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting);
+    }
+
+    /**
+     * Returns a copy of this player with the resting flag set to the given value.
+     *
+     * <p>The resting state is in-memory only and is never persisted.
+     *
+     * @param resting {@code true} to enter a resting state, {@code false} to wake up
+     */
+    public Player withResting(boolean resting) {
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting);
     }
 }

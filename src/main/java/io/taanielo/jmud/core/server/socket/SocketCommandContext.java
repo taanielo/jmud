@@ -186,4 +186,25 @@ public interface SocketCommandContext extends Client {
      */
     default void gossip(String senderName, String message) {}
 
+    /**
+     * Puts the player into a resting state and starts the regen ticker.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     */
+    default void startResting() {}
+
+    /**
+     * Cancels resting if the player is currently resting, sending the given
+     * wake message to the player.
+     *
+     * <p>If the player is not resting this method is a no-op.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param message the message shown to the player on wake; ignored when not resting
+     */
+    default void stopResting(String message) {}
+
 }
