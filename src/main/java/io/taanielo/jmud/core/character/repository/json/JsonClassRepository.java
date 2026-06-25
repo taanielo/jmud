@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.character.repository.json;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +57,30 @@ public class JsonClassRepository implements ClassRepository {
         }
         cache.put(id, definition);
         return Optional.of(definition);
+    }
+
+    @Override
+    public List<ClassDefinition> findAll() throws ClassRepositoryException {
+        List<ClassDefinition> classes = new ArrayList<>();
+        if (!Files.exists(classesDirPath)) {
+            return List.of();
+        }
+        try (var stream = Files.list(classesDirPath)) {
+            for (Path path : stream.filter(p -> p.toString().endsWith(".json")).toList()) {
+                ClassDto dto = readDto(path);
+                ClassDefinition definition;
+                try {
+                    definition = mapper.toDomain(dto);
+                } catch (IllegalArgumentException e) {
+                    throw new ClassRepositoryException("Invalid class data in " + path + ": " + e.getMessage(), e);
+                }
+                cache.put(definition.id(), definition);
+                classes.add(definition);
+            }
+        } catch (IOException e) {
+            throw new ClassRepositoryException("Failed to list classes in " + classesDirPath + ": " + e.getMessage(), e);
+        }
+        return List.copyOf(classes);
     }
 
     private void ensureDirectory(Path path) throws ClassRepositoryException {

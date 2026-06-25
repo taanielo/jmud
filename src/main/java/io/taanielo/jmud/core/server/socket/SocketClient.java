@@ -18,6 +18,13 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
+import io.taanielo.jmud.core.character.ClassId;
+import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.creation.CharacterCreationException;
+import io.taanielo.jmud.core.creation.CharacterCreationService;
+import io.taanielo.jmud.core.creation.CharacterCreationState;
+import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingClass;
+import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingRace;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
@@ -72,6 +79,8 @@ public class SocketClient implements Client {
     private final boolean preAuthenticatedNewUser;
     private final Runnable onClose;
     private final AtomicBoolean closed = new AtomicBoolean();
+    /** Non-null while a new player is choosing race/class; null during normal gameplay. */
+    private volatile CharacterCreationState creationState;
 
     public SocketClient(
         ClientConnection connection,
@@ -155,6 +164,8 @@ public class SocketClient implements Client {
 
                 if (!session.isAuthenticated()) {
                     handleAuthentication(clientInput);
+                } else if (creationState != null) {
+                    handleCharacterCreation(clientInput);
                 } else {
                     handleCommand(clientInput);
                 }
@@ -293,6 +304,94 @@ public class SocketClient implements Client {
             resolveRoomId(player),
             "success",
             Map.of("newPlayer", created.get())
+        );
+
+        if (created.get() && context.characterCreationService() != null) {
+            beginCharacterCreation();
+        } else {
+            String correlationId = auditService.newCorrelationId();
+            session.enqueueCommand(() -> {
+                currentCorrelationId.set(correlationId);
+                try {
+                    commandDispatcher.dispatch(new SocketCommandContextImpl(), "look", correlationId);
+                } finally {
+                    currentCorrelationId.remove();
+                }
+            });
+        }
+    }
+
+    // ── Character creation ─────────────────────────────────────────────
+
+    private void beginCharacterCreation() {
+        creationState = new ChoosingRace();
+        CharacterCreationService svc = context.characterCreationService();
+        try {
+            String prompt = svc.buildRacePrompt();
+            connection.writeLine(prompt);
+        } catch (CharacterCreationException e) {
+            log.error("Failed to build race prompt", e);
+            connection.writeLine("Character creation unavailable. You have been assigned a default race and class.");
+            finishCharacterCreation(null, null);
+        }
+    }
+
+    private void handleCharacterCreation(String input) {
+        CharacterCreationService svc = context.characterCreationService();
+        if (svc == null) {
+            creationState = null;
+            return;
+        }
+        switch (creationState) {
+            case ChoosingRace ignored -> {
+                try {
+                    var raceIdOpt = svc.resolveRace(input);
+                    if (raceIdOpt.isEmpty()) {
+                        connection.writeLine("Unknown race '" + input.trim() + "'. Please try again.");
+                        connection.writeLine(svc.buildRacePrompt());
+                    } else {
+                        creationState = new ChoosingClass(raceIdOpt.get());
+                        connection.writeLine(svc.buildClassPrompt());
+                    }
+                } catch (CharacterCreationException e) {
+                    log.error("Error during race selection", e);
+                    connection.writeLine("An error occurred. Please try again.");
+                }
+            }
+            case ChoosingClass choosing -> {
+                try {
+                    var classIdOpt = svc.resolveClass(input);
+                    if (classIdOpt.isEmpty()) {
+                        connection.writeLine("Unknown class '" + input.trim() + "'. Please try again.");
+                        connection.writeLine(svc.buildClassPrompt());
+                    } else {
+                        finishCharacterCreation(choosing.chosenRace(), classIdOpt.get());
+                    }
+                } catch (CharacterCreationException e) {
+                    log.error("Error during class selection", e);
+                    connection.writeLine("An error occurred. Please try again.");
+                }
+            }
+        }
+    }
+
+    private void finishCharacterCreation(RaceId raceId, ClassId classId) {
+        creationState = null;
+        Player player = session.getPlayer();
+        if (player == null) {
+            return;
+        }
+        if (raceId != null) {
+            player = player.withIdentity(player.identity().withRace(raceId));
+        }
+        if (classId != null) {
+            player = player.withIdentity(player.identity().withClassId(classId));
+        }
+        session.setPlayer(player);
+        playerRepository.savePlayer(player);
+        connection.writeLine(
+            "You are now a " + player.getRace().getValue()
+            + " " + player.getClassId().getValue() + ". Welcome to the realm!"
         );
         String correlationId = auditService.newCorrelationId();
         session.enqueueCommand(() -> {

@@ -21,6 +21,7 @@ import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
+import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
@@ -74,7 +75,8 @@ public record GameContext(
     AbilityTargetResolver abilityTargetResolver,
     SocketCommandRegistry commandRegistry,
     PlayerEventBus playerEventBus,
-    MobRegistry mobRegistry
+    MobRegistry mobRegistry,
+    CharacterCreationService characterCreationService
 ) {
 
     /**
@@ -119,6 +121,8 @@ public record GameContext(
             tickRegistry.register(mobRegistry);
         }
 
+        CharacterCreationService characterCreationService = createCharacterCreationService();
+
         return new GameContext(
             userRegistry,
             authenticationPolicy,
@@ -141,7 +145,8 @@ public record GameContext(
             abilityTargetResolver,
             commandRegistry,
             playerEventBus,
-            mobRegistry
+            mobRegistry,
+            characterCreationService
         );
     }
 
@@ -217,6 +222,14 @@ public record GameContext(
             return new EncumbranceService(new JsonRaceRepository(), new JsonClassRepository());
         } catch (RaceRepositoryException | ClassRepositoryException e) {
             throw new IllegalStateException("Failed to initialize encumbrance service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CharacterCreationService createCharacterCreationService() {
+        try {
+            return new CharacterCreationService(new JsonRaceRepository(), new JsonClassRepository());
+        } catch (RaceRepositoryException | ClassRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize character creation service: " + e.getMessage(), e);
         }
     }
 }
