@@ -112,6 +112,11 @@ class SocketCommandDispatcherAuditTest {
         }
 
         @Override
+        public List<Username> onlinePlayerNames() {
+            return List.of();
+        }
+
+        @Override
         public void sendLook() {
         }
 

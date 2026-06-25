@@ -28,6 +28,15 @@ public interface SocketCommandContext extends Client {
     List<io.taanielo.jmud.core.server.Client> clients();
 
     /**
+     * Returns the usernames of all connected, authenticated players.
+     *
+     * <p>Clients that are connected but not yet authenticated (still at login)
+     * are excluded. The result is a read-only snapshot intended for the
+     * {@code who} command.
+     */
+    List<Username> onlinePlayerNames();
+
+    /**
      * Sends a look response for the current player.
      */
     void sendLook();

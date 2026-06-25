@@ -23,6 +23,7 @@ public class SocketCommandRegistry {
         new EquipCommand(registry);
         new UnequipCommand(registry);
         new SayCommand(registry);
+        new WhoCommand(registry);
         new AbilityCommand(registry);
         new AttackCommand(registry);
         new KillCommand(registry);
