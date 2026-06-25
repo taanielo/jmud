@@ -151,4 +151,18 @@ public interface SocketCommandContext extends Client {
      */
     void fleeCombat();
 
+    /**
+     * Broadcasts a gossip message from the named sender to all online players.
+     *
+     * <p>Each recipient other than the sender receives:
+     * {@code <senderName> gossips: <message>}
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param senderName the display name of the gossiping player
+     * @param message    the message text to broadcast
+     */
+    default void gossip(String senderName, String message) {}
+
 }

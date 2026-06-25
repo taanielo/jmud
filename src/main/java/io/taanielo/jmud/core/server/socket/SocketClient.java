@@ -970,6 +970,25 @@ public class SocketClient implements Client {
         }
 
         @Override
+        public void gossip(String senderName, String message) {
+            for (Client client : clientPool.clients()) {
+                if (client instanceof SocketClient socketClient) {
+                    Optional<Username> usernameOpt = socketClient.authenticatedUsername();
+                    if (usernameOpt.isEmpty()) {
+                        continue;
+                    }
+                    Username recipient = usernameOpt.get();
+                    // Skip the sender — they already see "You gossip: ..." from GossipCommand.
+                    if (recipient.equals(Username.of(senderName))) {
+                        continue;
+                    }
+                    socketClient.connection.writeLine(senderName + " gossips: " + message);
+                    socketClient.sendPrompt();
+                }
+            }
+        }
+
+        @Override
         public void examineItem(String args) {
             Player player = session.getPlayer();
             if (!session.isAuthenticated() || player == null) {
