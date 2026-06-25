@@ -5,5 +5,6 @@
   "healing": {
     "base_modifier": 0
   },
-  "carry_bonus": 10
+  "carry_bonus": 10,
+  "ability_ids": ["skill.bash", "spell.heal"]
 }

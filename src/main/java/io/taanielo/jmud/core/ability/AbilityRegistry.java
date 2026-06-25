@@ -64,6 +64,19 @@ public class AbilityRegistry {
             .map(candidate -> new AbilityMatch(candidate.ability, candidate.remainingTarget.trim()));
     }
 
+    /**
+     * Looks up an ability by its id.
+     *
+     * @param id the ability id to look up
+     * @return the ability, or empty if not found
+     */
+    public Optional<Ability> findById(AbilityId id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(abilityById.get(id));
+    }
+
     public List<AbilityId> abilityIds() {
         return abilities.stream()
             .map(Ability::id)

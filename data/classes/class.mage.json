@@ -5,5 +5,6 @@
   "healing": {
     "base_modifier": -1
   },
-  "carry_bonus": 5
+  "carry_bonus": 5,
+  "ability_ids": ["spell.fireball", "spell.heal"]
 }
