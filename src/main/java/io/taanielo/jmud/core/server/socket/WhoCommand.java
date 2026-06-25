@@ -24,6 +24,17 @@ public class WhoCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "List all players currently online.";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: WHO\n"
+             + "  Displays a list of every authenticated player connected to the server.";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String token = SocketCommandParsing.firstToken(input);
         if (!"WHO".equals(token)) {
