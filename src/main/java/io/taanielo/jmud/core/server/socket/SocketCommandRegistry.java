@@ -25,6 +25,7 @@ public class SocketCommandRegistry {
         new InventoryCommand(registry);
         new EquipmentCommand(registry);
         new SayCommand(registry);
+        new TellCommand(registry);
         new WhoCommand(registry);
         new ScoreCommand(registry);
         new AbilityCommand(registry);
