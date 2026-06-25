@@ -22,6 +22,8 @@ public class SocketCommandRegistry {
         new QuaffCommand(registry);
         new EquipCommand(registry);
         new UnequipCommand(registry);
+        new InventoryCommand(registry);
+        new EquipmentCommand(registry);
         new SayCommand(registry);
         new WhoCommand(registry);
         new ScoreCommand(registry);
