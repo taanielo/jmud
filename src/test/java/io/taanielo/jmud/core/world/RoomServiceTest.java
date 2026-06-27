@@ -120,12 +120,12 @@ class RoomServiceTest {
 
         Username victim = Username.of("Bob");
         service.ensurePlayerLocation(victim);
-        service.spawnCorpse(victim, roomAId);
+        service.spawnCorpse(victim, roomAId, 0);
 
         RoomService.LookResult lookResult = service.look(Username.of("Alice"));
         String output = String.join("\n", lookResult.lines());
 
-        assertTrue(output.contains("Corpse of Bob"));
+        assertTrue(output.contains("corpse of Bob"));
     }
 
     @Test

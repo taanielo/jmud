@@ -1,5 +1,7 @@
 package io.taanielo.jmud.core.world;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -7,6 +9,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -35,6 +38,7 @@ public class RoomService {
     private final RoomId startingRoomId;
     private final ConcurrentHashMap<Username, RoomId> playerLocations = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<RoomId, List<Item>> transientItems = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<Corpse> trackedCorpses = new ConcurrentLinkedQueue<>();
     private final AtomicLong corpseCounter = new AtomicLong();
 
     /**
@@ -103,14 +107,46 @@ public class RoomService {
     }
 
     /**
-     * Spawns a corpse item in the specified room.
+     * Spawns a corpse item in the specified room, carrying the given amount of gold.
+     *
+     * <p>The spawned corpse is tracked internally and will be removed after the
+     * configured decay period by {@link #removeExpiredCorpses(Duration)}.
+     *
+     * @param username the player who died
+     * @param roomId   the room where the corpse is placed
+     * @param gold     gold carried by the player at time of death (0 if none)
+     * @return the {@link Corpse} tracking record
      */
-    public Item spawnCorpse(Username username, RoomId roomId) {
+    public Corpse spawnCorpse(Username username, RoomId roomId, int gold) {
         Objects.requireNonNull(username, "Username is required");
         Objects.requireNonNull(roomId, "Room id is required");
-        Item corpse = createCorpse(username);
-        addItem(roomId, corpse);
+        if (gold < 0) {
+            throw new IllegalArgumentException("Gold must be non-negative");
+        }
+        Item corpseItem = createCorpse(username, gold);
+        addItem(roomId, corpseItem);
+        Corpse corpse = new Corpse(corpseItem.getId(), roomId, username.getValue(), gold, Instant.now());
+        trackedCorpses.add(corpse);
         return corpse;
+    }
+
+    /**
+     * Removes all tracked corpses that were spawned longer ago than {@code decayAfter}.
+     *
+     * <p>Called by {@link CorpseDecayTicker} on each tick.
+     *
+     * @param decayAfter the maximum age a corpse may be before it is removed
+     */
+    public void removeExpiredCorpses(Duration decayAfter) {
+        Objects.requireNonNull(decayAfter, "Decay duration is required");
+        Instant cutoff = Instant.now().minus(decayAfter);
+        trackedCorpses.removeIf(corpse -> {
+            if (!corpse.spawnedAt().isAfter(cutoff)) {
+                removeTransientItemById(corpse.roomId(), corpse.itemId());
+                return true;
+            }
+            return false;
+        });
     }
 
     /**
@@ -315,19 +351,31 @@ public class RoomService {
         });
     }
 
-    private Item createCorpse(Username username) {
+    private void removeTransientItemById(RoomId roomId, ItemId itemId) {
+        transientItems.computeIfPresent(roomId, (id, existing) -> {
+            List<Item> next = new ArrayList<>(existing);
+            next.removeIf(item -> item.getId().equals(itemId));
+            return next.isEmpty() ? null : List.copyOf(next);
+        });
+    }
+
+    private Item createCorpse(Username username, int gold) {
         String owner = username.getValue();
         String id = "corpse-" + owner.toLowerCase(Locale.ROOT) + "-" + corpseCounter.incrementAndGet();
+        String description = gold > 0
+            ? "The corpse of " + owner + " lies here, containing "
+                + gold + " gold coin" + (gold == 1 ? "" : "s") + "."
+            : "The corpse of " + owner + " lies here.";
         return new Item(
             ItemId.of(id),
-            "Corpse of " + owner,
-            "The corpse of " + owner + " lies here.",
+            "the corpse of " + owner,
+            description,
             ItemAttributes.empty(),
             List.of(),
             List.of(),
             null,
             0,
-            0,
+            gold,
             null
         );
     }
