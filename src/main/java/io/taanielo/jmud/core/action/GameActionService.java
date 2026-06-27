@@ -404,12 +404,13 @@ public class GameActionService {
         }
         RoomService.LookResult look = roomService.look(target.getUsername());
         Room room = look.room();
-        Player deadTarget = target.die();
+        int droppedGold = target.getGold();
+        Player deadTarget = target.withGold(0).die();
 
         List<GameMessage> messages = buildDeathMessages(attacker, deadTarget);
 
         if (room != null) {
-            roomService.spawnCorpse(deadTarget.getUsername(), room.getId());
+            roomService.spawnCorpse(deadTarget.getUsername(), room.getId(), droppedGold);
         }
         roomService.clearPlayerLocation(deadTarget.getUsername());
 
@@ -421,6 +422,9 @@ public class GameActionService {
         String targetName = deadTarget.getUsername().getValue();
 
         messages.add(GameMessage.toPlayer(deadTarget.getUsername(), "You have died."));
+        messages.add(GameMessage.toPlayer(
+            deadTarget.getUsername(),
+            "You will awaken in the " + io.taanielo.jmud.core.player.DeathSettings.RESPAWN_ROOM_ID + "."));
 
         if (attacker == null) {
             messages.add(GameMessage.toRoom(
@@ -437,7 +441,7 @@ public class GameActionService {
 
         String roomMessage = attacker.getUsername().equals(deadTarget.getUsername())
             ? targetName + " has died."
-            : targetName + " has been slain by " + attacker.getUsername().getValue() + ".";
+            : targetName + " has been slain by " + attacker.getUsername().getValue() + "!";
         messages.add(GameMessage.toRoom(
             attacker.getUsername(), deadTarget.getUsername(),
             roomMessage));

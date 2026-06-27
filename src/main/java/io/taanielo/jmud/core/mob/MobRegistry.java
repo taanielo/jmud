@@ -253,19 +253,24 @@ public class MobRegistry implements Tickable {
     }
 
     private void handleMobKill(MobInstance mob, Player damagedPlayer, List<Username> roomOccupants) {
-        Player deadPlayer = damagedPlayer.die();
-        roomService.spawnCorpse(deadPlayer.getUsername(), mob.roomId());
+        int droppedGold = damagedPlayer.getGold();
+        Player deadPlayer = damagedPlayer.withGold(0).die();
+        roomService.spawnCorpse(deadPlayer.getUsername(), mob.roomId(), droppedGold);
         roomService.clearPlayerLocation(deadPlayer.getUsername());
         playerRepository.savePlayer(deadPlayer);
         mob.disengage(deadPlayer.getUsername());
         playerCombatTargets.remove(deadPlayer.getUsername());
 
-        String slainMsg = "The " + mob.template().name() + " has slain you!";
+        List<GameMessage> deathMessages = new ArrayList<>();
+        deathMessages.add(GameMessage.toSource(
+            "The " + mob.template().name() + " has slain you!"));
+        deathMessages.add(GameMessage.toSource(
+            "You will awaken in the " + io.taanielo.jmud.core.player.DeathSettings.RESPAWN_ROOM_ID + "."));
         playerEventBus.publish(deadPlayer.getUsername(),
-            new GameActionResult(deadPlayer, null, List.of(GameMessage.toSource(slainMsg))));
+            new GameActionResult(deadPlayer, null, deathMessages));
 
         String roomMsg = deadPlayer.getUsername().getValue()
-            + " has been slain by the " + mob.template().name() + ".";
+            + " has been slain by the " + mob.template().name() + "!";
         for (Username occupant : roomOccupants) {
             if (!occupant.equals(deadPlayer.getUsername())) {
                 playerEventBus.publish(occupant,

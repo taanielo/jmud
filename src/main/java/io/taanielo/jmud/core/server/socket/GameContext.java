@@ -44,12 +44,14 @@ import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
 import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
+import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
+import io.taanielo.jmud.core.world.CorpseDecayTicker;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
@@ -104,6 +106,10 @@ public record GameContext(
         TickRegistry tickRegistry = new TickRegistry();
         TickClock tickClock = new TickClock();
         tickRegistry.register(tickClock);
+        tickRegistry.register(new CorpseDecayTicker(
+            roomService,
+            java.time.Duration.ofSeconds(DeathSettings.corpseDecaySeconds())
+        ));
         FixedRateTickScheduler tickScheduler = new FixedRateTickScheduler(tickRegistry);
 
         AbilityRegistry abilityRegistry = loadAbilities();
