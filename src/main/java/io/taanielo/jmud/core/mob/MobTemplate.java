@@ -19,7 +19,9 @@ public record MobTemplate(
     RoomId spawnRoomId,
     int maxCount,
     int respawnTicks,
-    int xpReward
+    int xpReward,
+    /** Optional gold-drop range; {@code null} means this mob drops no gold. */
+    GoldDrop goldDrop
 ) {
     public MobTemplate {
         if (maxHp <= 0) {

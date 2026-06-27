@@ -60,6 +60,7 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("HP    : %d / %d", vitals.hp(), vitals.maxHp()));
         context.writeLineSafe(String.format("Mana  : %d / %d", vitals.mana(), vitals.maxMana()));
         context.writeLineSafe(String.format("Move  : %d / %d", vitals.move(), vitals.maxMove()));
+        context.writeLineSafe(String.format("Gold  : %d", player.getGold()));
         context.sendPrompt();
     }
 }

@@ -163,12 +163,22 @@ public class MobRegistry implements Tickable {
             endCombatForMob(mob);
             Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
             LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, mob.template().xpReward());
-            playerRepository.savePlayer(levelUpResult.player());
+            Player afterXp = levelUpResult.player();
+            if (mob.template().goldDrop() != null) {
+                int gold = mob.template().goldDrop().roll();
+                if (gold > 0) {
+                    afterXp = afterXp.addGold(gold);
+                    messages.add(GameMessage.toSource(
+                        "The " + mob.template().name() + " drops " + gold + " gold coin"
+                            + (gold == 1 ? "" : "s") + "."));
+                }
+            }
+            playerRepository.savePlayer(afterXp);
             messages.add(GameMessage.toSource(
                 "You gain " + mob.template().xpReward() + " experience points."));
             if (levelUpResult.leveledUp()) {
                 messages.add(GameMessage.toSource(
-                    "You have advanced to level " + levelUpResult.player().getLevel() + "!"));
+                    "You have advanced to level " + afterXp.getLevel() + "!"));
             }
         }
         return new GameActionResult(null, null, messages);
@@ -292,12 +302,22 @@ public class MobRegistry implements Tickable {
                 endCombatForMob(mob);
                 Player reloaded = playerRepository.loadPlayer(username).orElse(player);
                 LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, mob.template().xpReward());
-                playerRepository.savePlayer(levelUpResult.player());
+                Player afterXp = levelUpResult.player();
+                if (mob.template().goldDrop() != null) {
+                    int gold = mob.template().goldDrop().roll();
+                    if (gold > 0) {
+                        afterXp = afterXp.addGold(gold);
+                        messages.add(GameMessage.toSource(
+                            "The " + mob.template().name() + " drops " + gold + " gold coin"
+                                + (gold == 1 ? "" : "s") + "."));
+                    }
+                }
+                playerRepository.savePlayer(afterXp);
                 messages.add(GameMessage.toSource(
                     "You gain " + mob.template().xpReward() + " experience points."));
                 if (levelUpResult.leveledUp()) {
                     messages.add(GameMessage.toSource(
-                        "You have advanced to level " + levelUpResult.player().getLevel() + "!"));
+                        "You have advanced to level " + afterXp.getLevel() + "!"));
                 }
             }
             playerEventBus.publish(username, new GameActionResult(null, null, messages));

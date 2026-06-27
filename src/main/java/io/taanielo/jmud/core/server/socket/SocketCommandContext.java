@@ -207,4 +207,41 @@ public interface SocketCommandContext extends Client {
      */
     default void stopResting(String message) {}
 
+    /**
+     * Lists the inventory of the shop in the current room.
+     *
+     * <p>Prints an error message when there is no shop here.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     */
+    default void listShopInventory() {}
+
+    /**
+     * Buys the named item from the shop in the current room.
+     *
+     * <p>Deducts the item's price from the player's gold and places the item
+     * in the player's inventory. Prints an error if the item is unknown or
+     * the player cannot afford it.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the item name to buy
+     */
+    default void buyFromShop(String args) {}
+
+    /**
+     * Sells the named item from the player's inventory to the shop in the current room.
+     *
+     * <p>Removes the item from inventory and adds gold at the shop's sell ratio.
+     * Prints an error if the item is not in inventory.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the item name to sell
+     */
+    default void sellToShop(String args) {}
+
 }

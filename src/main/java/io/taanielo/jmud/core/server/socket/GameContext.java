@@ -36,6 +36,10 @@ import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.MobRepositoryException;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
+import io.taanielo.jmud.core.shop.ShopRepository;
+import io.taanielo.jmud.core.shop.ShopRepositoryException;
+import io.taanielo.jmud.core.shop.ShopService;
+import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -76,7 +80,8 @@ public record GameContext(
     SocketCommandRegistry commandRegistry,
     PlayerEventBus playerEventBus,
     MobRegistry mobRegistry,
-    CharacterCreationService characterCreationService
+    CharacterCreationService characterCreationService,
+    ShopService shopService
 ) {
 
     /**
@@ -122,6 +127,7 @@ public record GameContext(
         }
 
         CharacterCreationService characterCreationService = createCharacterCreationService();
+        ShopService shopService = createShopService();
 
         return new GameContext(
             userRegistry,
@@ -146,7 +152,8 @@ public record GameContext(
             commandRegistry,
             playerEventBus,
             mobRegistry,
-            characterCreationService
+            characterCreationService,
+            shopService
         );
     }
 
@@ -230,6 +237,16 @@ public record GameContext(
             return new CharacterCreationService(new JsonRaceRepository(), new JsonClassRepository());
         } catch (RaceRepositoryException | ClassRepositoryException e) {
             throw new IllegalStateException("Failed to initialize character creation service: " + e.getMessage(), e);
+        }
+    }
+
+    private static ShopService createShopService() {
+        try {
+            ShopRepository shopRepository = new JsonShopRepository();
+            ItemRepository itemRepository = new JsonItemRepository();
+            return new ShopService(shopRepository, itemRepository);
+        } catch (ShopRepositoryException | RepositoryException e) {
+            throw new IllegalStateException("Failed to initialize shop service: " + e.getMessage(), e);
         }
     }
 }

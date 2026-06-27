@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "armory-shop",
+  "name": "Torbal the Armorer",
+  "room_id": "armory",
+  "stock": [
+    {"item_id": "iron-sword"},
+    {"item_id": "training-shield"},
+    {"item_id": "health-potion"}
+  ],
+  "sell_ratio": 0.5
+}

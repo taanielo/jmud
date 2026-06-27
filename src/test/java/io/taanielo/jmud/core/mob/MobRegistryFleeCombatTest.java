@@ -60,7 +60,8 @@ class MobRegistryFleeCombatTest {
             ROOM_ID,
             1,
             10,
-            5
+            5,
+            null
         );
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
         AttackRepository attackRepo = new StubAttackRepository(Map.of(DEFAULT_ATTACK, ONE_DMG_ATTACK));

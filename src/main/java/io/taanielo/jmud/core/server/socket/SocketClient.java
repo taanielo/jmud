@@ -56,10 +56,13 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
+import io.taanielo.jmud.core.shop.Shop;
+import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
+import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 
 @Slf4j
@@ -519,9 +522,15 @@ public class SocketClient implements Client {
             Map.of()
         );
         connection.writeLines(result.lines());
-        if (context.mobRegistry() != null && result.room() != null) {
-            var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
-            connection.writeLine(formatMonstersLine(mobs));
+        if (result.room() != null) {
+            if (context.mobRegistry() != null) {
+                var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
+                connection.writeLine(formatMonstersLine(mobs));
+            }
+            String shopLine = formatShopNpcLine(result.room().getId());
+            if (!shopLine.isEmpty()) {
+                connection.writeLine(shopLine);
+            }
         }
         sendPrompt();
     }
@@ -728,6 +737,24 @@ public class SocketClient implements Client {
         return "Monsters: " + body;
     }
 
+    /**
+     * Builds a shopkeeper NPC line for the given room, using the context's shop service.
+     *
+     * <p>Returns an empty string when there is no shop in the room or the service is unavailable.
+     *
+     * @param roomId the room to check for a shop
+     * @return a formatted line such as {@code "Merchant: Torbal the Armorer"}, or {@code ""}
+     */
+    private String formatShopNpcLine(RoomId roomId) {
+        if (context.shopService() == null || roomId == null) {
+            return "";
+        }
+        return context.shopService()
+            .findShopInRoom(roomId)
+            .map(shop -> "Merchant: " + shop.name())
+            .orElse("");
+    }
+
     private boolean isAuthenticatedUser(Username username) {
         return session.isAuthenticated()
             && session.getPlayer() != null
@@ -816,6 +843,12 @@ public class SocketClient implements Client {
                 var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
                 connection.writeLine(formatMonstersLine(mobs));
             }
+            if (result.room() != null) {
+                String shopLine = formatShopNpcLine(result.room().getId());
+                if (!shopLine.isEmpty()) {
+                    connection.writeLine(shopLine);
+                }
+            }
             sendPrompt();
         }
 
@@ -885,9 +918,15 @@ public class SocketClient implements Client {
                 deliverRoomMessage(player.getUsername(), null, arriveMessage);
             }
             connection.writeLines(result.lines());
-            if (result.moved() && context.mobRegistry() != null && result.room() != null) {
-                var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
-                connection.writeLine(formatMonstersLine(mobs));
+            if (result.moved() && result.room() != null) {
+                if (context.mobRegistry() != null) {
+                    var mobs = context.mobRegistry().getMobsInRoom(result.room().getId());
+                    connection.writeLine(formatMonstersLine(mobs));
+                }
+                String shopLine = formatShopNpcLine(result.room().getId());
+                if (!shopLine.isEmpty()) {
+                    connection.writeLine(shopLine);
+                }
             }
             sendPrompt();
         }
@@ -1313,6 +1352,89 @@ public class SocketClient implements Client {
             } else {
                 sendPrompt();
             }
+        }
+
+        @Override
+        public void listShopInventory() {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to browse a shop.");
+                return;
+            }
+            if (context.shopService() == null) {
+                writeLineWithPrompt("There is no shop here.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            var shopOpt = context.shopService().findShopInRoom(roomIdOpt.get());
+            if (shopOpt.isEmpty()) {
+                writeLineWithPrompt("There is no shop here.");
+                return;
+            }
+            for (String line : context.shopService().formatListing(shopOpt.get())) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+        }
+
+        @Override
+        public void buyFromShop(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to buy items.");
+                return;
+            }
+            if (context.shopService() == null) {
+                writeLineWithPrompt("There is no shop here.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            var shopOpt = context.shopService().findShopInRoom(roomIdOpt.get());
+            if (shopOpt.isEmpty()) {
+                writeLineWithPrompt("There is no shop here.");
+                return;
+            }
+            ShopTransactionResult result = context.shopService().buy(player, shopOpt.get(), args);
+            if (result.success()) {
+                session.replacePlayer(result.updatedPlayer());
+            }
+            writeLineWithPrompt(result.message());
+        }
+
+        @Override
+        public void sellToShop(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to sell items.");
+                return;
+            }
+            if (context.shopService() == null) {
+                writeLineWithPrompt("There is no shop here.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            var shopOpt = context.shopService().findShopInRoom(roomIdOpt.get());
+            if (shopOpt.isEmpty()) {
+                writeLineWithPrompt("There is no shop here.");
+                return;
+            }
+            ShopTransactionResult result = context.shopService().sell(player, shopOpt.get(), args);
+            if (result.success()) {
+                session.replacePlayer(result.updatedPlayer());
+            }
+            writeLineWithPrompt(result.message());
         }
 
         /** Called by the resting ticker to apply regenerated vitals. */
