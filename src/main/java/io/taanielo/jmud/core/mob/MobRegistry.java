@@ -197,6 +197,11 @@ public class MobRegistry implements Tickable {
         if (attack == null) {
             return;
         }
+
+        boolean firstEngagement = !mob.engagedPlayers().contains(targetUsername);
+        mob.engage(targetUsername);
+        playerCombatTargets.put(targetUsername, mob.instanceId());
+
         int damage = rollDamage(attack);
         Player damagedPlayer = target.withVitals(target.getVitals().damage(damage));
 
@@ -204,9 +209,15 @@ public class MobRegistry implements Tickable {
             handleMobKill(mob, damagedPlayer, candidates);
         } else {
             playerRepository.savePlayer(damagedPlayer);
-            String hitMsg = "The " + mob.template().name() + " hits you for " + damage + " damage!";
+            List<GameMessage> messages = new ArrayList<>();
+            if (firstEngagement) {
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + " lunges at you!"));
+            }
+            messages.add(GameMessage.toSource(
+                "The " + mob.template().name() + " hits you for " + damage + " damage!"));
             playerEventBus.publish(targetUsername,
-                new GameActionResult(damagedPlayer, null, List.of(GameMessage.toSource(hitMsg))));
+                new GameActionResult(damagedPlayer, null, messages));
         }
     }
 

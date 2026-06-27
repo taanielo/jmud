@@ -4,7 +4,7 @@
   "name": "Kobold",
   "max_hp": 12,
   "attack_id": "attack.kobold",
-  "aggressive": false,
+  "aggressive": true,
   "spawn_room_id": "rocky-alcove",
   "max_count": 2,
   "respawn_ticks": 25,
