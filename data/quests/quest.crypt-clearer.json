@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "crypt-clearer",
+  "name": "Crypt Clearer",
+  "description": "The crypt wardens are ancient guardians twisted by dark magic. Slay three of them to restore some peace to the depths of the catacombs.",
+  "target_mob_id": "crypt-warden",
+  "required_kills": 3,
+  "gold_reward": 120,
+  "xp_reward": 300
+}

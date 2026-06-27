@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "crypt-warden",
+  "name": "Crypt Warden",
+  "max_hp": 40,
+  "attack_id": "attack.crypt-warden",
+  "aggressive": true,
+  "spawn_room_id": "warden-chamber",
+  "max_count": 1,
+  "respawn_ticks": 60,
+  "loot": [
+    {
+      "item_id": "crypt-key",
+      "drop_chance": 0.8
+    }
+  ],
+  "gold_drop": {
+    "min": 10,
+    "max": 25
+  }
+}

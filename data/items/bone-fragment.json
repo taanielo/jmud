@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "bone-fragment",
+  "name": "Bone Fragment",
+  "description": "A shard of yellowed bone, dry and brittle. It holds no obvious use but might be worth something to the right collector.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 2
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "burial-alcove",
+  "name": "Burial Alcove",
+  "description": "A narrow side chamber carved from the bedrock. Shallow niches in the walls once held the remains of the forgotten dead. Most have been disturbed, their contents scattered across the dusty floor.",
+  "item_ids": [],
+  "exits": {
+    "west": "ossuary-hall"
+  }
+}

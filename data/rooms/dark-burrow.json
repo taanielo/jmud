@@ -6,6 +6,7 @@
   "item_ids": [],
   "exits": {
     "south": "muddy-hollow",
-    "west": "courtyard"
+    "west": "courtyard",
+    "east": "catacombs-entrance"
   }
 }
