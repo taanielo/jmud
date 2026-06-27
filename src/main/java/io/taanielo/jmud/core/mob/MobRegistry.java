@@ -25,6 +25,7 @@ import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.tick.Tickable;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
@@ -50,6 +51,8 @@ public class MobRegistry implements Tickable {
     private final PlayerRepository playerRepository;
     private final PlayerEventBus playerEventBus;
     private final LevelUpService levelUpService = new LevelUpService();
+    /** Optional quest kill hook; may be null when quests are disabled. */
+    private QuestKillService questKillService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -68,6 +71,15 @@ public class MobRegistry implements Tickable {
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
         this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
         this.playerEventBus = Objects.requireNonNull(playerEventBus, "Player event bus is required");
+    }
+
+    /**
+     * Registers the quest kill service used to record mob kills toward active quests.
+     *
+     * @param questKillService the service to notify on mob death; may be null to disable
+     */
+    public void setQuestKillService(QuestKillService questKillService) {
+        this.questKillService = questKillService;
     }
 
     /**
@@ -171,6 +183,15 @@ public class MobRegistry implements Tickable {
                     messages.add(GameMessage.toSource(
                         "The " + mob.template().name() + " drops " + gold + " gold coin"
                             + (gold == 1 ? "" : "s") + "."));
+                }
+            }
+            if (questKillService != null) {
+                var killResult = questKillService.recordKill(afterXp, mob.template().id().getValue());
+                if (killResult.isPresent()) {
+                    afterXp = killResult.get().player();
+                    for (String msg : killResult.get().messages()) {
+                        messages.add(GameMessage.toSource(msg));
+                    }
                 }
             }
             playerRepository.savePlayer(afterXp);
@@ -310,6 +331,15 @@ public class MobRegistry implements Tickable {
                         messages.add(GameMessage.toSource(
                             "The " + mob.template().name() + " drops " + gold + " gold coin"
                                 + (gold == 1 ? "" : "s") + "."));
+                    }
+                }
+                if (questKillService != null) {
+                    var killResult = questKillService.recordKill(afterXp, mob.template().id().getValue());
+                    if (killResult.isPresent()) {
+                        afterXp = killResult.get().player();
+                        for (String msg : killResult.get().messages()) {
+                            messages.add(GameMessage.toSource(msg));
+                        }
                     }
                 }
                 playerRepository.savePlayer(afterXp);

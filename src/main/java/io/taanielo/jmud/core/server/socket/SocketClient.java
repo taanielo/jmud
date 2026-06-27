@@ -56,6 +56,11 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
+import io.taanielo.jmud.core.quest.ActiveQuest;
+import io.taanielo.jmud.core.quest.QuestKillService;
+import io.taanielo.jmud.core.quest.QuestRepository;
+import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.QuestTemplate;
 import io.taanielo.jmud.core.shop.Shop;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
@@ -1435,6 +1440,192 @@ public class SocketClient implements Client {
                 session.replacePlayer(result.updatedPlayer());
             }
             writeLineWithPrompt(result.message());
+        }
+
+        @Override
+        public void executeQuest(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to manage quests.");
+                return;
+            }
+            QuestRepository questRepo = context.questRepository();
+            if (questRepo == null) {
+                writeLineWithPrompt("Quests are not available.");
+                return;
+            }
+
+            String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+            String sub = parts[0]; // already uppercased by splitInput
+            String subArgs = parts[1];
+
+            switch (sub) {
+                case "LIST" -> handleQuestList(questRepo);
+                case "ACCEPT" -> handleQuestAccept(questRepo, subArgs);
+                case "STATUS" -> handleQuestStatus(questRepo);
+                case "COMPLETE" -> handleQuestComplete(questRepo);
+                case "ABANDON" -> handleQuestAbandon();
+                default -> writeLineWithPrompt(
+                    "Usage: QUEST [LIST|ACCEPT <id>|STATUS|COMPLETE|ABANDON]");
+            }
+        }
+
+        private void handleQuestList(QuestRepository questRepo) {
+            List<QuestTemplate> templates;
+            try {
+                templates = questRepo.findAll();
+            } catch (QuestRepositoryException e) {
+                log.warn("Failed to load quest list: {}", e.getMessage());
+                writeLineWithPrompt("Quest list unavailable.");
+                return;
+            }
+            if (templates.isEmpty()) {
+                writeLineWithPrompt("There are no contracts available.");
+                return;
+            }
+            connection.writeLine("Guild Clerk — Available Contracts:");
+            connection.writeLine(String.format("  %-20s %-36s %s", "ID", "Description", "Reward"));
+            connection.writeLine("  " + "-".repeat(72));
+            for (QuestTemplate t : templates) {
+                String desc = t.description().length() > 35
+                    ? t.description().substring(0, 32) + "..."
+                    : t.description();
+                connection.writeLine(String.format(
+                    "  %-20s %-36s %dg / %dxp",
+                    t.id().getValue(), desc, t.goldReward(), t.xpReward()));
+            }
+            sendPrompt();
+        }
+
+        private void handleQuestAccept(QuestRepository questRepo, String questIdInput) {
+            if (questIdInput == null || questIdInput.isBlank()) {
+                writeLineWithPrompt("Accept which contract? Use QUEST ACCEPT <id>.");
+                return;
+            }
+            Player player = session.getPlayer();
+            if (player.getActiveQuest() != null) {
+                writeLineWithPrompt("You already hold an active contract. QUEST ABANDON it first.");
+                return;
+            }
+            QuestTemplate template;
+            try {
+                String normalized = questIdInput.trim().toLowerCase(Locale.ROOT);
+                template = questRepo.findAll().stream()
+                    .filter(t -> t.id().getValue().equalsIgnoreCase(normalized)
+                        || t.name().equalsIgnoreCase(normalized))
+                    .findFirst()
+                    .orElse(null);
+            } catch (QuestRepositoryException e) {
+                log.warn("Failed to look up quest {}: {}", questIdInput, e.getMessage());
+                writeLineWithPrompt("Quest lookup failed. Try again.");
+                return;
+            }
+            if (template == null) {
+                writeLineWithPrompt("Unknown contract '" + questIdInput.trim() + "'. Use QUEST LIST to see available contracts.");
+                return;
+            }
+            ActiveQuest active = new ActiveQuest(template.id(), template.requiredKills());
+            Player updated = player.withActiveQuest(active);
+            session.replacePlayer(updated);
+            writeLineWithPrompt(
+                "Contract accepted: " + template.name() + ". "
+                    + "Kill " + template.requiredKills() + " "
+                    + template.targetMobId() + "(s). Good luck.");
+        }
+
+        private void handleQuestStatus(QuestRepository questRepo) {
+            Player player = session.getPlayer();
+            ActiveQuest active = player.getActiveQuest();
+            if (active == null) {
+                writeLineWithPrompt("No active contract.");
+                return;
+            }
+            QuestTemplate template;
+            try {
+                template = questRepo.findById(active.templateId()).orElse(null);
+            } catch (QuestRepositoryException e) {
+                log.warn("Failed to load quest template {}: {}", active.templateId(), e.getMessage());
+                writeLineWithPrompt("Quest status unavailable.");
+                return;
+            }
+            if (template == null) {
+                writeLineWithPrompt("Unknown quest. Use QUEST ABANDON to clear it.");
+                return;
+            }
+            if (active.isComplete()) {
+                writeLineWithPrompt(template.name() + ": complete — return to the Guild Clerk to claim your reward.");
+            } else {
+                int done = template.requiredKills() - active.killsRemaining();
+                writeLineWithPrompt(template.name() + ": " + done + "/" + template.requiredKills() + " kills.");
+            }
+        }
+
+        private void handleQuestComplete(QuestRepository questRepo) {
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            if (!"courtyard".equals(roomIdOpt.get().getValue())) {
+                writeLineWithPrompt("The Guild Clerk is not here. Find them in the Courtyard.");
+                return;
+            }
+            ActiveQuest active = player.getActiveQuest();
+            if (active == null) {
+                writeLineWithPrompt("You have no active contract to complete.");
+                return;
+            }
+            if (!active.isComplete()) {
+                QuestTemplate template;
+                try {
+                    template = questRepo.findById(active.templateId()).orElse(null);
+                } catch (QuestRepositoryException e) {
+                    writeLineWithPrompt("Quest lookup failed.");
+                    return;
+                }
+                String name = template != null ? template.name() : active.templateId().getValue();
+                writeLineWithPrompt("Contract not yet fulfilled: " + name + " (" + active.killsRemaining() + " kills remaining).");
+                return;
+            }
+            QuestTemplate template;
+            try {
+                template = questRepo.findById(active.templateId()).orElse(null);
+            } catch (QuestRepositoryException e) {
+                log.warn("Failed to load quest template on complete: {}", e.getMessage());
+                writeLineWithPrompt("Quest reward lookup failed.");
+                return;
+            }
+            if (template == null) {
+                writeLineWithPrompt("Unknown quest template. Contract cleared.");
+                session.replacePlayer(player.withActiveQuest(null));
+                return;
+            }
+            Player rewarded = player
+                .withActiveQuest(null)
+                .addGold(template.goldReward());
+            // Award XP via LevelUpService to trigger any level-up logic
+            io.taanielo.jmud.core.player.LevelUpService levelUpSvc = new io.taanielo.jmud.core.player.LevelUpService();
+            io.taanielo.jmud.core.player.LevelUpService.LevelUpResult lvResult = levelUpSvc.awardXp(rewarded, template.xpReward());
+            rewarded = lvResult.player();
+            session.replacePlayer(rewarded);
+            connection.writeLine(
+                "The Guild Clerk nods approvingly. Contract complete: " + template.name() + ".");
+            connection.writeLine(
+                "You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
+            if (lvResult.leveledUp()) {
+                connection.writeLine("You have advanced to level " + rewarded.getLevel() + "!");
+            }
+            sendPrompt();
+        }
+
+        private void handleQuestAbandon() {
+            Player player = session.getPlayer();
+            if (player.getActiveQuest() == null) {
+                writeLineWithPrompt("You have no active contract to abandon.");
+                return;
+            }
+            session.replacePlayer(player.withActiveQuest(null));
+            writeLineWithPrompt("Contract abandoned. No reward will be granted.");
         }
 
         /** Called by the resting ticker to apply regenerated vitals. */

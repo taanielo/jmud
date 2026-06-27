@@ -36,6 +36,10 @@ import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.MobRepositoryException;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
+import io.taanielo.jmud.core.quest.QuestKillService;
+import io.taanielo.jmud.core.quest.QuestRepository;
+import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
@@ -81,7 +85,8 @@ public record GameContext(
     PlayerEventBus playerEventBus,
     MobRegistry mobRegistry,
     CharacterCreationService characterCreationService,
-    ShopService shopService
+    ShopService shopService,
+    QuestRepository questRepository
 ) {
 
     /**
@@ -128,6 +133,10 @@ public record GameContext(
 
         CharacterCreationService characterCreationService = createCharacterCreationService();
         ShopService shopService = createShopService();
+        QuestRepository questRepository = createQuestRepository();
+        if (mobRegistry != null && questRepository != null) {
+            mobRegistry.setQuestKillService(new QuestKillService(questRepository));
+        }
 
         return new GameContext(
             userRegistry,
@@ -153,7 +162,8 @@ public record GameContext(
             playerEventBus,
             mobRegistry,
             characterCreationService,
-            shopService
+            shopService,
+            questRepository
         );
     }
 
@@ -247,6 +257,14 @@ public record GameContext(
             return new ShopService(shopRepository, itemRepository);
         } catch (ShopRepositoryException | RepositoryException e) {
             throw new IllegalStateException("Failed to initialize shop service: " + e.getMessage(), e);
+        }
+    }
+
+    private static QuestRepository createQuestRepository() {
+        try {
+            return new JsonQuestRepository();
+        } catch (QuestRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize quest repository: " + e.getMessage(), e);
         }
     }
 }

@@ -244,4 +244,14 @@ public interface SocketCommandContext extends Client {
      */
     default void sellToShop(String args) {}
 
+    /**
+     * Executes a QUEST sub-command (LIST, ACCEPT, STATUS, COMPLETE, ABANDON).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ACCEPT rat-catcher"})
+     */
+    default void executeQuest(String args) {}
+
 }
