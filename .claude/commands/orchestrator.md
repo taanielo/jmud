@@ -18,7 +18,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 `orchestrator-state.json` default:
 ```json
 { "current_issue": null, "stage": "FIND_ISSUE", "build_retries": 0,
-  "cycles_since_last_optimization": 0, "cycles_this_run": 0, "max_cycles": 10,
+  "cycles_since_last_optimization": 0,
   "blocked_issues": [], "parked_pr": null, "waiting_for_session_reset": false,
   "last_updated": null }
 ```
@@ -26,7 +26,8 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 ## Step 0 — GUARD (always first)
 1. If `.claude/agents/state/PAUSE` exists → print `PAUSED (remove .claude/agents/state/PAUSE to resume)` and STOP.
 2. If `LOCK` exists and its `started_at` is **younger than 60 min** → another run is active; print `LOCK held, skipping` and STOP. Otherwise (no lock, or stale) write a fresh `LOCK`.
-3. Read `orchestrator-state.json` (create with defaults if missing). If `cycles_this_run >= max_cycles` → print `max_cycles reached`, release LOCK, STOP.
+3. Read `orchestrator-state.json` (create with defaults if missing).
+4. **Usage-limit check**: the system prompt contains a `<total_tokens>N tokens left</total_tokens>` tag. Parse N. If N ≤ 20000 (i.e. ≥ 90 % of the context window consumed) → print `usage limit reached (≤20k tokens remaining)`, release LOCK, STOP.
 
 ## Step 1 — Dispatch by `state.stage`
 - **FIND_ISSUE** — `gh issue list --assignee @me --state open --json number,title`.
@@ -44,7 +45,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
   - MERGED → append `{ "issue":N, "pr":M, "merged_at":"..." }` to `cycle-log.jsonl`; `cycles_since_last_optimization += 1`; `current_issue = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0.
 
 ## Step 2 — Persist & finish
-- Write `orchestrator-state.json` **atomically**: write `orchestrator-state.json.tmp`, then `mv` over the real file. Update `last_updated` (ISO-8601). Increment `cycles_this_run` once per cycle.
+- Write `orchestrator-state.json` **atomically**: write `orchestrator-state.json.tmp`, then `mv` over the real file. Update `last_updated` (ISO-8601).
 - Release the LOCK (`rm .claude/agents/state/LOCK`).
 - Print a one-line summary of what this cycle did.
 
