@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "bonecrusher",
+  "name": "Bonecrusher",
+  "description": "The skeletons in the catacombs are a menace to anyone who dares venture below. Destroy five of them and put them to rest for good.",
+  "target_mob_id": "skeleton",
+  "required_kills": 5,
+  "gold_reward": 80,
+  "xp_reward": 200
+}

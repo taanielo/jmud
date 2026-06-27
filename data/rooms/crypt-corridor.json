@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "crypt-corridor",
+  "name": "Crypt Corridor",
+  "description": "A long stone corridor stretching deeper into the earth. Torch sconces line the walls but have long since burned out, leaving only cold darkness. The passage ends at a heavy iron door to the south.",
+  "item_ids": [],
+  "exits": {
+    "north": "ossuary-hall",
+    "south": "warden-chamber"
+  }
+}

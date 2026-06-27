@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "catacombs-entrance",
+  "name": "Catacombs Entrance",
+  "description": "Crumbling stone steps descend into a cold, musty passage. Ancient runes are carved into the archway above, their meaning long forgotten. The smell of dry bone and stale air drifts upward from below.",
+  "item_ids": [],
+  "exits": {
+    "north": "dark-burrow",
+    "south": "ossuary-hall"
+  }
+}

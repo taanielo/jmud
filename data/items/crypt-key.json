@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "crypt-key",
+  "name": "Crypt Key",
+  "description": "A heavy iron key engraved with a skull motif. It looks like it once opened something deep within the catacombs, though whatever it unlocked is long since lost.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 15
+}

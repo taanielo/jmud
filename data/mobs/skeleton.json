@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "skeleton",
+  "name": "Skeleton",
+  "max_hp": 20,
+  "attack_id": "attack.skeleton",
+  "aggressive": true,
+  "spawn_room_id": "ossuary-hall",
+  "max_count": 3,
+  "respawn_ticks": 25,
+  "loot": [
+    {
+      "item_id": "bone-fragment",
+      "drop_chance": 0.6
+    }
+  ],
+  "gold_drop": {
+    "min": 3,
+    "max": 9
+  }
+}
