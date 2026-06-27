@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "kobold-hunter",
+  "name": "Kobold Hunter",
+  "description": "Drive back the kobold menace lurking in the tunnels below.",
+  "target_mob_id": "kobold",
+  "required_kills": 4,
+  "gold_reward": 80,
+  "xp_reward": 200
+}
