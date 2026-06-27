@@ -40,6 +40,10 @@ public class SocketCommandRegistry {
         new RestCommand(registry);
         new WakeCommand(registry);
         new AnsiCommand(registry);
+        new GoldCommand(registry);
+        new ListCommand(registry);
+        new BuyCommand(registry);
+        new SellCommand(registry);
         new QuitCommand(registry);
         new HelpCommand(registry);
         return registry;

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.mob.GoldDrop;
 import io.taanielo.jmud.core.mob.LootEntry;
 import io.taanielo.jmud.core.mob.MobId;
 import io.taanielo.jmud.core.mob.MobTemplate;
@@ -20,6 +21,9 @@ public class MobTemplateDtoMapper {
             .toList();
         boolean aggressive = dto.aggressive() == null || dto.aggressive();
         int xpReward = dto.xpReward() != null ? dto.xpReward() : dto.maxHp();
+        GoldDrop goldDrop = dto.goldDrop() != null
+            ? new GoldDrop(dto.goldDrop().min(), dto.goldDrop().max())
+            : null;
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -30,7 +34,8 @@ public class MobTemplateDtoMapper {
             RoomId.of(dto.spawnRoomId()),
             dto.maxCount(),
             dto.respawnTicks(),
-            xpReward
+            xpReward,
+            goldDrop
         );
     }
 }

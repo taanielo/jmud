@@ -13,6 +13,7 @@ public record MobTemplateDto(
     String spawnRoomId,
     int maxCount,
     int respawnTicks,
-    Integer xpReward
+    Integer xpReward,
+    GoldDropDto goldDrop
 ) {
 }

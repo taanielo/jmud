@@ -60,4 +60,34 @@ class JsonPlayerRepositoryTest {
         assertEquals(1, loaded.get().effects().size());
         assertEquals("stoneskin", loaded.get().effects().get(0).id().getValue());
     }
+
+    @Test
+    void savesAndLoadsGoldField() {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("goldie"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ").withGold(42);
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertEquals(42, loaded.get().getGold(), "Gold should round-trip through JSON");
+    }
+
+    @Test
+    void loadingOldSaveFileWithoutGoldDefaultsToZero() {
+        // Simulate a save file that lacks a "gold" property by serializing a
+        // player with 0 gold. The @JsonCreator maps null gold → 0, so any
+        // file missing the field behaves as if gold == 0.
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("veteran"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> "); // gold defaults to 0
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertEquals(0, loaded.get().getGold(),
+            "Player with no gold field set should load as 0 gold");
+    }
 }

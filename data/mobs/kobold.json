@@ -13,5 +13,9 @@
       "item_id": "health-potion",
       "drop_chance": 0.3
     }
-  ]
+  ],
+  "gold_drop": {
+    "min": 2,
+    "max": 7
+  }
 }

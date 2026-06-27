@@ -26,7 +26,8 @@ class MonstersLineFormatterTest {
             RoomId.of("test-room"),
             1,
             0,
-            0
+            0,
+            null
         );
         return new MobInstance(template);
     }
