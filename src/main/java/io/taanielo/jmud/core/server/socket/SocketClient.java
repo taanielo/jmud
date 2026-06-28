@@ -1611,6 +1611,36 @@ public class SocketClient implements Client {
             }
         }
 
+        @Override
+        public void lockExit(Direction direction) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to lock doors.");
+                return;
+            }
+            Player player = session.getPlayer();
+            RoomService.DoorActionResult result = roomService.lock(
+                player.getUsername(), direction, player.getInventory());
+            if (result.roomMessage() != null) {
+                deliverRoomMessage(player.getUsername(), null, result.roomMessage());
+            }
+            writeLineWithPrompt(result.playerMessage());
+        }
+
+        @Override
+        public void unlockExit(Direction direction) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to unlock doors.");
+                return;
+            }
+            Player player = session.getPlayer();
+            RoomService.DoorActionResult result = roomService.unlock(
+                player.getUsername(), direction, player.getInventory());
+            if (result.roomMessage() != null) {
+                deliverRoomMessage(player.getUsername(), null, result.roomMessage());
+            }
+            writeLineWithPrompt(result.playerMessage());
+        }
+
         private void handlePartyForm(Player player, PartyService partyService) {
             PartyService.PartyResult result = partyService.form(player.getUsername());
             writeLineWithPrompt(result.message());

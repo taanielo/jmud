@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 
@@ -25,7 +26,11 @@ public class RoomMapper {
             .toList();
         Map<String, String> exits = new HashMap<>();
         room.getExits().forEach((dir, roomId) -> exits.put(dir.name().toLowerCase(), roomId.getValue()));
-        return new RoomDto(SchemaVersions.V2, room.getId().getValue(), room.getName(), room.getDescription(), itemIds, exits);
+        Map<String, String> lockedExits = new HashMap<>();
+        room.getLockedExits().forEach((dir, keyId) -> lockedExits.put(dir.name().toLowerCase(), keyId.getValue()));
+        int version = lockedExits.isEmpty() ? SchemaVersions.V2 : SchemaVersions.V3;
+        return new RoomDto(version, room.getId().getValue(), room.getName(), room.getDescription(), itemIds, exits,
+            lockedExits.isEmpty() ? null : lockedExits);
     }
 
     /**
@@ -42,13 +47,22 @@ public class RoomMapper {
                 );
             }
         }
+        Map<Direction, ItemId> lockedExits = new HashMap<>();
+        if (dto.lockedExits() != null) {
+            for (Map.Entry<String, String> entry : dto.lockedExits().entrySet()) {
+                Direction.fromInput(entry.getKey()).ifPresent(
+                    dir -> lockedExits.put(dir, ItemId.of(entry.getValue()))
+                );
+            }
+        }
         return new Room(
             RoomId.of(dto.id()),
             dto.name(),
             dto.description(),
             exits,
             items,
-            List.of()
+            List.of(),
+            lockedExits
         );
     }
 }
