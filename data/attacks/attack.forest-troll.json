@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "id": "attack.forest-troll",
+  "name": "Club Smash",
+  "min_damage": 8,
+  "max_damage": 20,
+  "hit_bonus": 1,
+  "crit_bonus": 1,
+  "damage_bonus": 2,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The forest troll smashes you with its massive club for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The forest troll swings its club wildly but misses you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The forest troll delivers a crushing club smash for {damage}!"
+    }
+  ]
+}

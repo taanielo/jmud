@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "hunters-clearing",
+  "name": "Hunter's Clearing",
+  "description": "Bones and scraps mark this as a feeding ground. Ranger Bryn stands at the edge of the clearing, offering bounty contracts to those willing to thin the Darkwood's predators.",
+  "item_ids": [],
+  "exits": {
+    "south": "tangled-undergrowth",
+    "east": "trolls-hollow"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "wolf",
+  "name": "Wolf",
+  "max_hp": 30,
+  "attack_id": "attack.wolf",
+  "aggressive": false,
+  "spawn_room_id": "hunters-clearing",
+  "max_count": 3,
+  "respawn_ticks": 20,
+  "loot": [
+    {
+      "item_id": "wolf-pelt",
+      "drop_chance": 0.5
+    }
+  ],
+  "gold_drop": {
+    "min": 2,
+    "max": 6
+  }
+}

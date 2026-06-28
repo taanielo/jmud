@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "troll-tooth",
+  "name": "Troll Tooth",
+  "description": "A massive, yellowed tooth wrenched from a forest troll. A grim trophy of a dangerous hunt.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 2,
+  "value": 20
+}

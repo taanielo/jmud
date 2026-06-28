@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "wolf-pelt",
+  "name": "Wolf Pelt",
+  "description": "A thick, coarse pelt stripped from a Darkwood wolf. Still carries the scent of the forest.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 2,
+  "value": 5
+}

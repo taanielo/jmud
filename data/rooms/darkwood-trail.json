@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "darkwood-trail",
+  "name": "Darkwood Trail",
+  "description": "A narrow dirt path winds into a dense, shadow-choked forest.",
+  "item_ids": [],
+  "exits": {
+    "south": "courtyard",
+    "north": "tangled-undergrowth"
+  }
+}
