@@ -3,9 +3,18 @@ package io.taanielo.jmud.core.server.socket;
 import java.util.Optional;
 
 /**
- * Handles ability usage commands.
+ * Handles the {@code USE} command, which activates any learned ability regardless of type
+ * (both {@code SKILL} and {@code SPELL}).
+ *
+ * <p>For spell-only activation with type enforcement, see {@link CastCommand}.
  */
 public class AbilityCommand extends RegistrableCommand {
+
+    /**
+     * Creates an {@code AbilityCommand} and registers it with the given registry.
+     *
+     * @param registry the registry to register this command with
+     */
     public AbilityCommand(SocketCommandRegistry registry) {
         super(registry);
     }
@@ -16,10 +25,25 @@ public class AbilityCommand extends RegistrableCommand {
     }
 
     @Override
+    public String shortDescription() {
+        return "Activate a learned ability (skill or spell). Usage: USE <ability> [target]";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: USE <ability-name> [target]\n"
+             + "  Activates any learned ability, regardless of whether it is a skill or a spell.\n"
+             + "  Examples:\n"
+             + "    USE bash               — use the Bash skill on your current target\n"
+             + "    USE fireball goblin    — cast Fireball at the goblin\n"
+             + "  See also: CAST (spell-only), ABILITIES (list all known abilities)";
+    }
+
+    @Override
     public Optional<SocketCommandMatch> match(String input) {
         String[] parts = SocketCommandParsing.splitInput(input);
         String token = parts[0];
-        if (!"CAST".equals(token) && !"USE".equals(token)) {
+        if (!"USE".equals(token)) {
             return Optional.empty();
         }
         String args = parts[1];

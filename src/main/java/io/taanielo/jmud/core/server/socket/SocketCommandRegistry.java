@@ -32,6 +32,7 @@ public class SocketCommandRegistry {
         new WhoCommand(registry);
         new ScoreCommand(registry);
         new AbilityCommand(registry);
+        new CastCommand(registry);
         new AbilitiesCommand(registry);
         new AttackCommand(registry);
         new KillCommand(registry);

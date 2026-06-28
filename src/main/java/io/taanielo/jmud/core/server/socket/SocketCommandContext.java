@@ -57,6 +57,20 @@ public interface SocketCommandContext extends Client {
     void useAbility(String args);
 
     /**
+     * Casts a spell-type ability using the provided arguments.
+     *
+     * <p>Unlike {@link #useAbility(String)}, this method restricts activation to
+     * abilities whose {@link io.taanielo.jmud.core.ability.AbilityType} is
+     * {@code SPELL}. Using it on a skill-type ability prints an error message.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the spell name and optional target (e.g. {@code "fireball goblin"})
+     */
+    default void castSpell(String args) {}
+
+    /**
      * Updates ANSI settings using the provided arguments.
      */
     void updateAnsi(String args);
