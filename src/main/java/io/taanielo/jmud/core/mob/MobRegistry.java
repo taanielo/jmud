@@ -149,6 +149,9 @@ public class MobRegistry implements Tickable {
         if (mob == null) {
             return GameActionResult.error("No such target here.");
         }
+        if (mob.template().hasTag("npc")) {
+            return GameActionResult.error("You cannot attack that.");
+        }
         AttackId attackId = resolveAttackId(attacker);
         AttackDefinition attack = loadAttack(attackId);
         if (attack == null) {

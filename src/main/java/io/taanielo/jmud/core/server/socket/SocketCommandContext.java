@@ -254,4 +254,19 @@ public interface SocketCommandContext extends Client {
      */
     default void executeQuest(String args) {}
 
+    /**
+     * Executes a TRAIN sub-command (LIST or an ability id).
+     *
+     * <p>The command requires the player to be in the Training Yard with the
+     * Master Trainer present. {@code TRAIN LIST} shows trainable abilities for
+     * the player's class. {@code TRAIN <id>} spends one practice point to learn
+     * the named ability.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the sub-command or ability id to train (e.g. {@code "LIST"} or {@code "skill.bash"})
+     */
+    default void executeTrain(String args) {}
+
 }

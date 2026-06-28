@@ -62,6 +62,7 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Move  : %d / %d", vitals.move(), vitals.maxMove()));
         context.writeLineSafe(String.format("Gold  : %d", player.getGold()));
         context.writeLineSafe(String.format("Kills : %d", player.getTotalKills()));
+        context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.sendPrompt();
     }
 }

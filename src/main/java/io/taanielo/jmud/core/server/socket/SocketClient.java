@@ -1471,6 +1471,127 @@ public class SocketClient implements Client {
             }
         }
 
+        @Override
+        public void executeTrain(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to train.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty() || !"training-yard".equals(roomIdOpt.get().getValue())) {
+                writeLineWithPrompt("The Master Trainer is not here. Find them in the Training Yard.");
+                return;
+            }
+            // Verify trainer NPC is present in the room
+            if (context.mobRegistry() != null) {
+                var mobs = context.mobRegistry().getMobsInRoom(roomIdOpt.get());
+                boolean trainerPresent = mobs.stream()
+                    .anyMatch(m -> "trainer".equals(m.template().id().getValue()));
+                if (!trainerPresent) {
+                    writeLineWithPrompt("The Master Trainer is not here.");
+                    return;
+                }
+            }
+            String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+            String sub = parts[0];
+            String subArgs = parts[1];
+            switch (sub) {
+                case "LIST" -> handleTrainList(player);
+                case "" -> writeLineWithPrompt("Usage: TRAIN LIST  or  TRAIN <ability-id>");
+                default -> handleTrainAbility(player, sub + (subArgs.isBlank() ? "" : " " + subArgs));
+            }
+        }
+
+        private void handleTrainList(Player player) {
+            if (player.getClassId() == null) {
+                writeLineWithPrompt("You have no class. Complete character creation first.");
+                return;
+            }
+            CharacterCreationService ccs = context.characterCreationService();
+            if (ccs == null) {
+                writeLineWithPrompt("Trainer is unavailable.");
+                return;
+            }
+            ClassDefinition classDef;
+            try {
+                classDef = ccs.resolveClassDefinition(player.getClassId().getValue()).orElse(null);
+            } catch (CharacterCreationException e) {
+                log.warn("Failed to load class definition for train list: {}", e.getMessage());
+                writeLineWithPrompt("Trainer is unavailable.");
+                return;
+            }
+            if (classDef == null || classDef.startingAbilityIds().isEmpty()) {
+                writeLineWithPrompt("No trainable abilities found for your class.");
+                return;
+            }
+            connection.writeLine("Master Trainer — Trainable Abilities (Practice Points: " + player.getPracticePoints() + "):");
+            connection.writeLine(String.format("  %-24s %-8s %s", "Ability ID", "Cost", "Status"));
+            connection.writeLine("  " + "-".repeat(48));
+            for (AbilityId abilityId : classDef.startingAbilityIds()) {
+                Ability ability = abilityRegistry.findById(abilityId).orElse(null);
+                String displayId = abilityId.getValue();
+                String name = ability != null ? ability.name() : displayId;
+                boolean learned = player.getLearnedAbilities().contains(abilityId);
+                String status = learned ? "learned" : "unlearned";
+                connection.writeLine(String.format("  %-24s %-8s %s", displayId, "1 prac", status));
+            }
+            sendPrompt();
+        }
+
+        private void handleTrainAbility(Player player, String abilityInput) {
+            if (player.getClassId() == null) {
+                writeLineWithPrompt("You have no class. Complete character creation first.");
+                return;
+            }
+            CharacterCreationService ccs = context.characterCreationService();
+            if (ccs == null) {
+                writeLineWithPrompt("Trainer is unavailable.");
+                return;
+            }
+            ClassDefinition classDef;
+            try {
+                classDef = ccs.resolveClassDefinition(player.getClassId().getValue()).orElse(null);
+            } catch (CharacterCreationException e) {
+                log.warn("Failed to load class definition for train: {}", e.getMessage());
+                writeLineWithPrompt("Trainer is unavailable.");
+                return;
+            }
+            if (classDef == null) {
+                writeLineWithPrompt("Trainer is unavailable.");
+                return;
+            }
+            // Find the ability by id (case-insensitive match within class abilities)
+            String normalized = abilityInput.trim().toLowerCase(java.util.Locale.ROOT);
+            AbilityId targetId = classDef.startingAbilityIds().stream()
+                .filter(id -> id.getValue().equalsIgnoreCase(normalized))
+                .findFirst()
+                .orElse(null);
+            if (targetId == null) {
+                writeLineWithPrompt("'" + abilityInput.trim() + "' is not trainable by your class. Use TRAIN LIST to see options.");
+                return;
+            }
+            if (player.getLearnedAbilities().contains(targetId)) {
+                writeLineWithPrompt("You have already learned " + targetId.getValue() + ".");
+                return;
+            }
+            if (player.getPracticePoints() <= 0) {
+                writeLineWithPrompt("You have no practice points. Practice points are earned by levelling up.");
+                return;
+            }
+            // Deduct one practice point, add the ability, and persist
+            java.util.List<AbilityId> newAbilities = new java.util.ArrayList<>(player.getLearnedAbilities());
+            newAbilities.add(targetId);
+            Player updated = player
+                .withPracticePoints(player.getPracticePoints() - 1)
+                .withLearnedAbilities(newAbilities);
+            session.replacePlayer(updated);
+            playerRepository.savePlayer(updated);
+            Ability ability = abilityRegistry.findById(targetId).orElse(null);
+            String abilityName = ability != null ? ability.name() : targetId.getValue();
+            writeLineWithPrompt("You have learned " + abilityName + "! (" + updated.getPracticePoints() + " practice point(s) remaining)");
+        }
+
         private void handleQuestList(QuestRepository questRepo) {
             List<QuestTemplate> templates;
             try {

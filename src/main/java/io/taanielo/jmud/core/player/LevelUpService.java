@@ -26,6 +26,9 @@ public class LevelUpService {
     /** Max-mana gain applied per level-up. */
     public static final int MANA_GAIN_PER_LEVEL = 5;
 
+    /** Practice points awarded per level-up. */
+    public static final int PRACTICE_POINTS_PER_LEVEL = 1;
+
     /**
      * Awards the given amount of XP to the player and resolves any resulting
      * level-ups.
@@ -42,6 +45,7 @@ public class LevelUpService {
         long newXp = player.getExperience() + xpAmount;
         int newLevel = player.getLevel();
         PlayerVitals newVitals = player.getVitals();
+        int newPracticePoints = player.getPracticePoints();
         boolean leveledUp = false;
 
         // Resolve multiple level-ups in case the XP gain is large
@@ -56,6 +60,7 @@ public class LevelUpService {
                 newMaxMana, newMaxMana,
                 newVitals.maxMove(), newVitals.maxMove()
             );
+            newPracticePoints += PRACTICE_POINTS_PER_LEVEL;
             leveledUp = true;
         }
 
@@ -63,7 +68,8 @@ public class LevelUpService {
             .withIdentity(player.identity()
                 .withLevel(newLevel)
                 .withExperience(newXp))
-            .withVitals(newVitals);
+            .withVitals(newVitals)
+            .withPracticePoints(newPracticePoints);
 
         return new LevelUpResult(updated, leveledUp);
     }
