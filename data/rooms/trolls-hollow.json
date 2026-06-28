@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "trolls-hollow",
+  "name": "Troll's Hollow",
+  "description": "A massive, mossy cave carved into a hillside. The floor is littered with gnawed bones.",
+  "item_ids": [],
+  "exits": {
+    "west": "hunters-clearing"
+  }
+}

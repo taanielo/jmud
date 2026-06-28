@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "dire-wolf",
+  "name": "Dire Wolf",
+  "max_hp": 55,
+  "attack_id": "attack.dire-wolf",
+  "aggressive": true,
+  "spawn_room_id": "wolf-den",
+  "max_count": 2,
+  "respawn_ticks": 30,
+  "loot": [
+    {
+      "item_id": "dire-wolf-fang",
+      "drop_chance": 0.6
+    }
+  ],
+  "gold_drop": {
+    "min": 8,
+    "max": 18
+  }
+}

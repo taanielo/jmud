@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "tangled-undergrowth",
+  "name": "Tangled Undergrowth",
+  "description": "Thick briars snag your boots. Something moves in the darkness.",
+  "item_ids": [],
+  "exits": {
+    "south": "darkwood-trail",
+    "north": "hunters-clearing",
+    "east": "wolf-den"
+  }
+}

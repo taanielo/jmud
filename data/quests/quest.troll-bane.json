@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "troll-bane",
+  "name": "Troll Bane",
+  "description": "A fearsome forest troll has made its lair in Troll's Hollow. Ranger Bryn is offering a handsome reward to whoever can bring it down.",
+  "target_mob_id": "forest-troll",
+  "required_kills": 1,
+  "gold_reward": 100,
+  "xp_reward": 350
+}

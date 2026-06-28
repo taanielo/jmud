@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "dire-wolf-slayer",
+  "name": "Dire Wolf Slayer",
+  "description": "The dire wolves in the Darkwood's deepest dens are terrorising travellers. Ranger Bryn asks you to slay three of them.",
+  "target_mob_id": "dire-wolf",
+  "required_kills": 3,
+  "gold_reward": 60,
+  "xp_reward": 200
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "dire-wolf-fang",
+  "name": "Dire Wolf Fang",
+  "description": "A long, wicked fang from a dire wolf. Its serrated edge could tear through hide with ease.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 10
+}

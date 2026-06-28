@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "wolf-den",
+  "name": "Wolf Den",
+  "description": "The reek of wet fur fills the air. Howls echo from all sides.",
+  "item_ids": [],
+  "exits": {
+    "west": "tangled-undergrowth"
+  }
+}

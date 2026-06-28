@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "forest-troll",
+  "name": "Forest Troll",
+  "max_hp": 90,
+  "attack_id": "attack.forest-troll",
+  "aggressive": true,
+  "spawn_room_id": "trolls-hollow",
+  "max_count": 1,
+  "respawn_ticks": 60,
+  "loot": [
+    {
+      "item_id": "troll-tooth",
+      "drop_chance": 0.8
+    }
+  ],
+  "gold_drop": {
+    "min": 20,
+    "max": 45
+  }
+}
