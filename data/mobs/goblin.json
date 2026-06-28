@@ -12,6 +12,10 @@
     {
       "item_id": "health-potion",
       "drop_chance": 0.5
+    },
+    {
+      "item_id": "mana-potion",
+      "drop_chance": 0.2
     }
   ],
   "gold_drop": {
