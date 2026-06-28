@@ -8,7 +8,9 @@
   "spawn_room_id": "muddy-hollow",
   "max_count": 3,
   "respawn_ticks": 15,
-  "loot": [],
+  "loot": [
+    { "item_id": "rat-tail", "drop_chance": 0.4 }
+  ],
   "gold_drop": {
     "min": 1,
     "max": 4

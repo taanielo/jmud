@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "rat-tail",
+  "name": "Rat Tail",
+  "description": "A stiff, scaly rat tail. The Guild Clerk is collecting these as proof of pest control.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 0,
+  "value": 0
+}

@@ -59,6 +59,10 @@ public class QuestKillService {
             return Optional.empty();
         }
 
+        if (template.isDeliveryQuest() || template.targetMobId() == null) {
+            return Optional.empty();
+        }
+
         if (!template.targetMobId().equals(killedMobId)) {
             return Optional.empty();
         }
