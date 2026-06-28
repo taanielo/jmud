@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "leather-chest",
+  "name": "Leather Chestpiece",
+  "description": "A fitted leather chestpiece stitched with reinforced panels.",
+  "attributes": {
+    "stats": {
+      "ac": 5
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 8,
+  "value": 50,
+  "attack_ref": null
+}

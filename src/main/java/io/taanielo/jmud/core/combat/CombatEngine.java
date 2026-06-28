@@ -20,6 +20,7 @@ public class CombatEngine {
     private final AttackRepository attackRepository;
     private final CombatModifierResolver modifierResolver;
     private final RaceArmorBonusResolver armorBonusResolver;
+    private final EquipmentArmorResolver equipmentArmorResolver;
     private final CombatRandom random;
     private final MessageRenderer renderer = new MessageRenderer();
 
@@ -31,7 +32,7 @@ public class CombatEngine {
         CombatModifierResolver modifierResolver,
         CombatRandom random
     ) {
-        this(attackRepository, modifierResolver, RaceArmorBonusResolver.noOp(), random);
+        this(attackRepository, modifierResolver, RaceArmorBonusResolver.noOp(), EquipmentArmorResolver.noOp(), random);
     }
 
     /**
@@ -43,9 +44,23 @@ public class CombatEngine {
         RaceArmorBonusResolver armorBonusResolver,
         CombatRandom random
     ) {
+        this(attackRepository, modifierResolver, armorBonusResolver, EquipmentArmorResolver.noOp(), random);
+    }
+
+    /**
+     * Creates a combat engine with both race and equipment armor resolution.
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        CombatRandom random
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
+        this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         this.random = Objects.requireNonNull(random, "Combat random is required");
     }
 
@@ -71,7 +86,7 @@ public class CombatEngine {
             .orElseThrow(() -> new AttackRepositoryException("Unknown attack id " + attackId.getValue()));
         CombatModifiers attackerMods = modifierResolver.resolve(attacker.effects());
         CombatModifiers targetMods = modifierResolver.resolve(target.effects());
-        int targetArmorBonus = armorBonusResolver.armorBonus(target);
+        int targetArmorBonus = armorBonusResolver.armorBonus(target) + equipmentArmorResolver.totalAc(target);
 
         int hitChanceBase = CombatSettings.baseHitChance()
             + attack.hitBonus()

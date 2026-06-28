@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "leather-legs",
+  "name": "Leather Leggings",
+  "description": "Supple leather leggings that protect the legs without impeding movement.",
+  "attributes": {
+    "stats": {
+      "ac": 3
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "legs",
+  "weight": 5,
+  "value": 35,
+  "attack_ref": null
+}
