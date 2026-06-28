@@ -64,7 +64,8 @@ class MobRegistryKillTrackingTest {
             10,
             5,
             null,
-            null
+            null,
+            false
         );
     }
 

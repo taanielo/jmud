@@ -5,6 +5,7 @@
   "max_hp": 8,
   "attack_id": "attack.rat",
   "aggressive": false,
+  "wanders": true,
   "spawn_room_id": "muddy-hollow",
   "max_count": 3,
   "respawn_ticks": 15,

@@ -43,6 +43,21 @@ public enum Direction {
         return shortLabel;
     }
 
+    /**
+     * Returns the cardinal opposite of this direction
+     * (e.g. {@code NORTH.opposite()} returns {@code SOUTH}).
+     */
+    public Direction opposite() {
+        return switch (this) {
+            case NORTH -> SOUTH;
+            case SOUTH -> NORTH;
+            case EAST  -> WEST;
+            case WEST  -> EAST;
+            case UP    -> DOWN;
+            case DOWN  -> UP;
+        };
+    }
+
     public static Optional<Direction> fromInput(String input) {
         if (input == null) {
             return Optional.empty();

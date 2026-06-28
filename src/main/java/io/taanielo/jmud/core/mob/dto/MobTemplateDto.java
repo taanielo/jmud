@@ -15,6 +15,7 @@ public record MobTemplateDto(
     int maxCount,
     int respawnTicks,
     Integer xpReward,
-    GoldDropDto goldDrop
+    GoldDropDto goldDrop,
+    Boolean wanders
 ) {
 }
