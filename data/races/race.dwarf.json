@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "dwarf",
+  "name": "Dwarf",
+  "healing": {
+    "base_modifier": 0
+  },
+  "carry_base": 100,
+  "armor_bonus": 2
+}

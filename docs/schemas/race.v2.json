@@ -39,6 +39,10 @@
     "carry_base": {
       "type": "integer",
       "minimum": 0
+    },
+    "armor_bonus": {
+      "type": "integer",
+      "default": 0
     }
   }
 }

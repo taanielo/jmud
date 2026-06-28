@@ -118,6 +118,46 @@ class CombatEngineTest {
         assertEquals(14, result.target().getVitals().hp());
     }
 
+    @Test
+    void raceArmorBonusReducesHitChance() throws Exception {
+        // Base hit chance is 75. With armor bonus 3, effective hit chance becomes 72.
+        // Rolling 73 would normally hit (73 <= 75) but misses with armor bonus (73 > 72).
+        AttackId attackId = AttackId.of("attack.armor");
+        AttackDefinition attack = new AttackDefinition(attackId, "armor", 2, 2, 0, 0, 0, List.of());
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new StubArmorBonusResolver(3),
+            new FixedCombatRandom(73)
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertFalse(result.hit());
+        assertEquals(0, result.damage());
+    }
+
+    @Test
+    void raceArmorBonusZeroLeavesHitChanceUnchanged() throws Exception {
+        // Base hit chance is 75. With armor bonus 0, rolling 75 still hits.
+        AttackId attackId = AttackId.of("attack.no-armor");
+        AttackDefinition attack = new AttackDefinition(attackId, "no-armor", 2, 2, 0, 0, 0, List.of());
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new StubArmorBonusResolver(0),
+            new FixedCombatRandom(75, 2, 100)
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+    }
+
     private Player player(String username, List<EffectInstance> effects) {
         PlayerVitals vitals = PlayerVitals.defaults();
         return new Player(
@@ -161,6 +201,35 @@ class CombatEngineTest {
         @Override
         public Optional<AttackDefinition> findById(AttackId id) throws AttackRepositoryException {
             return Optional.ofNullable(attacks.get(id));
+        }
+    }
+
+    private static class StubArmorBonusResolver extends RaceArmorBonusResolver {
+        private final int bonus;
+
+        private StubArmorBonusResolver(int bonus) {
+            super(emptyRaceRepository());
+            this.bonus = bonus;
+        }
+
+        @Override
+        public int armorBonus(Player player) {
+            return bonus;
+        }
+
+        private static io.taanielo.jmud.core.character.repository.RaceRepository emptyRaceRepository() {
+            return new io.taanielo.jmud.core.character.repository.RaceRepository() {
+                @Override
+                public Optional<io.taanielo.jmud.core.character.Race> findById(
+                    io.taanielo.jmud.core.character.RaceId id) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public java.util.List<io.taanielo.jmud.core.character.Race> findAll() {
+                    return List.of();
+                }
+            };
         }
     }
 
