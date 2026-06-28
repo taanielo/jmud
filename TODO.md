@@ -61,7 +61,7 @@
 - [x] Add CAST command as an explicit spell-use alias alongside the existing ability system
 - [x] Add mana potions with QUAFF restoring mana and add them to shops and mob loot tables
 - [x] Add BANK NPC with DEPOSIT and WITHDRAW commands for safe gold storage
-- [ ] Add item sell-value and item description visible in LIST so players can compare gear
+- [x] Add item sell-value and item description visible in LIST so players can compare gear
 - [ ] Add weapon type variety: blunt, piercing, slashing with different damage dice and attack messages
 - [ ] Add armour items (chest, legs, head slots) with AC value reducing incoming damage in combat engine
 - [ ] Add SCORE prompt stat: show current AC derived from equipped armour

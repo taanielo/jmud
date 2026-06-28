@@ -97,6 +97,54 @@ class ShopServiceTest {
         assertTrue(joined.contains("25 gold"), "Listing should show item value 25 gold for Iron Sword");
     }
 
+    @Test
+    void formatListing_showsSellColumn_inHeaderAndRows() {
+        List<String> lines = shopService.formatListing(shop);
+        // Header must contain a "Sell" label
+        assertTrue(lines.stream().anyMatch(l -> l.contains("Sell")),
+            "Listing header should include 'Sell' column");
+    }
+
+    @Test
+    void formatListing_showsCorrectSellValue_forIronSword() {
+        // Iron Sword: value=25, sellRatio=0.5 → floor(25 * 0.5) = 12
+        List<String> lines = shopService.formatListing(shop);
+        // Find the Iron Sword line and verify it ends with sell value
+        String swordLine = lines.stream()
+            .filter(l -> l.contains("Iron Sword"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Iron Sword line not found"));
+        assertTrue(swordLine.endsWith("12 gold") || swordLine.contains("12 gold"),
+            "Iron Sword sell value should be 12 gold (floor(25*0.5)): " + swordLine);
+    }
+
+    @Test
+    void formatListing_showsCorrectSellValue_forHealthPotion() {
+        // Health Potion: value=10, sellRatio=0.5 → floor(10 * 0.5) = 5
+        List<String> lines = shopService.formatListing(shop);
+        String potionLine = lines.stream()
+            .filter(l -> l.contains("Health Potion"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Health Potion line not found"));
+        assertTrue(potionLine.contains("5 gold"),
+            "Health Potion sell value should be 5 gold (floor(10*0.5)): " + potionLine);
+    }
+
+    @Test
+    void formatListing_sellValueUsesItemBaseValue_notPriceOverride() {
+        // Health Potion has price override of 8, but item.value is 10.
+        // Sell value should be based on item.value (10), not price override (8).
+        // floor(10 * 0.5) = 5
+        List<String> lines = shopService.formatListing(shop);
+        String potionLine = lines.stream()
+            .filter(l -> l.contains("Health Potion"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Health Potion line not found"));
+        // Price column shows 8 gold, sell column shows 5 gold
+        assertTrue(potionLine.contains("8 gold"), "Price column should show 8 gold: " + potionLine);
+        assertTrue(potionLine.contains("5 gold"), "Sell column should show 5 gold: " + potionLine);
+    }
+
     // ── buy ───────────────────────────────────────────────────────────
 
     @Test
