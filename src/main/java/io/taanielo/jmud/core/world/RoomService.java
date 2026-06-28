@@ -3,12 +3,14 @@ package io.taanielo.jmud.core.world;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,12 +37,27 @@ public class RoomService {
     public record MoveResult(boolean moved, List<String> lines, Room room) {
     }
 
+    /**
+     * Result of a lock or unlock door action.
+     *
+     * @param success       whether the action was performed
+     * @param playerMessage message shown to the acting player
+     * @param roomMessage   message broadcast to other room occupants, or {@code null} on failure
+     */
+    public record DoorActionResult(boolean success, String playerMessage, String roomMessage) {
+    }
+
     private final RoomRepository roomRepository;
     private final RoomId startingRoomId;
     private final ConcurrentHashMap<Username, RoomId> playerLocations = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<RoomId, List<Item>> transientItems = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<Corpse> trackedCorpses = new ConcurrentLinkedQueue<>();
     private final AtomicLong corpseCounter = new AtomicLong();
+    /**
+     * Runtime locked-exit state: maps each room id to the set of directions that are currently locked.
+     * Seeded lazily from each room's {@link Room#getLockedExits()} on first access.
+     */
+    private final ConcurrentHashMap<RoomId, Set<Direction>> runtimeLockedExits = new ConcurrentHashMap<>();
 
     /**
      * Creates a room service with the provided repository and starting room id.
@@ -230,6 +247,9 @@ public class RoomService {
         if (destinationId == null) {
             return new MoveResult(false, List.of("You cannot go " + direction.label() + "."), room);
         }
+        if (isExitLocked(room.getId(), direction)) {
+            return new MoveResult(false, List.of("The door to the " + direction.label() + " is locked."), room);
+        }
         Room destination = findRoom(destinationId).orElse(null);
         if (destination == null) {
             return new MoveResult(false, List.of("The way " + direction.label() + " is blocked."), room);
@@ -267,7 +287,8 @@ public class RoomService {
             room.getDescription(),
             room.getExits(),
             items,
-            occupants
+            occupants,
+            room.getLockedExits()
         );
     }
 
@@ -275,19 +296,20 @@ public class RoomService {
         List<String> lines = new ArrayList<>();
         lines.add(room.getName());
         lines.add(room.getDescription());
-        lines.add("Exits: " + formatExits(room.getExits()));
+        lines.add("Exits: " + formatExits(room.getId(), room.getExits()));
         lines.add("Items: " + formatItems(room.getItems()));
         lines.add("Occupants: " + formatOccupants(room.getOccupants(), viewer));
         return lines;
     }
 
-    private String formatExits(java.util.Map<Direction, RoomId> exits) {
+    private String formatExits(RoomId roomId, Map<Direction, RoomId> exits) {
         if (exits.isEmpty()) {
             return "none";
         }
+        Set<Direction> locked = ensureLockedState(roomId);
         return exits.keySet().stream()
-            .map(Direction::label)
-            .sorted()
+            .sorted(Comparator.comparing(Direction::label))
+            .map(dir -> locked.contains(dir) ? dir.label() + " [locked]" : dir.label())
             .collect(Collectors.joining(", "));
     }
 
@@ -345,7 +367,8 @@ public class RoomService {
             room.getDescription(),
             room.getExits(),
             nextItems,
-            room.getOccupants()
+            room.getOccupants(),
+            room.getLockedExits()
         );
         try {
             roomRepository.save(updated);
@@ -371,6 +394,132 @@ public class RoomService {
             next.removeIf(item -> item.getId().equals(itemId));
             return next.isEmpty() ? null : List.copyOf(next);
         });
+    }
+
+    /**
+     * Attempts to unlock the exit in the given direction from the player's current room.
+     *
+     * <p>Succeeds when the exit is declared lockable in the room data, is currently locked,
+     * and the player's inventory contains the required key item.
+     *
+     * @param username  the acting player
+     * @param direction the direction of the exit to unlock
+     * @param inventory the player's current inventory (used to check for the required key)
+     * @return the result of the action
+     */
+    public DoorActionResult unlock(Username username, Direction direction, List<Item> inventory) {
+        Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(direction, "Direction is required");
+        Objects.requireNonNull(inventory, "Inventory is required");
+        Room room = loadRoomForPlayer(username);
+        if (room == null) {
+            return new DoorActionResult(false, "You are nowhere.", null);
+        }
+        ItemId requiredKey = room.getLockedExits().get(direction);
+        if (requiredKey == null) {
+            return new DoorActionResult(false, "There is no lockable door to the " + direction.label() + ".", null);
+        }
+        Set<Direction> locked = ensureLockedState(room.getId());
+        if (!locked.contains(direction)) {
+            return new DoorActionResult(false, "The door to the " + direction.label() + " is already unlocked.", null);
+        }
+        if (!hasItem(inventory, requiredKey)) {
+            return new DoorActionResult(false, "You need the right key to unlock this door.", null);
+        }
+        locked.remove(direction);
+        propagateLockState(room, direction, false);
+        String playerMsg = "You unlock the door to the " + direction.label() + ".";
+        String roomMsg = username.getValue() + " unlocks the door to the " + direction.label() + ".";
+        return new DoorActionResult(true, playerMsg, roomMsg);
+    }
+
+    /**
+     * Attempts to lock the exit in the given direction from the player's current room.
+     *
+     * <p>Succeeds when the exit is declared lockable, is currently unlocked, and the player's
+     * inventory contains the required key item.
+     *
+     * @param username  the acting player
+     * @param direction the direction of the exit to lock
+     * @param inventory the player's current inventory
+     * @return the result of the action
+     */
+    public DoorActionResult lock(Username username, Direction direction, List<Item> inventory) {
+        Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(direction, "Direction is required");
+        Objects.requireNonNull(inventory, "Inventory is required");
+        Room room = loadRoomForPlayer(username);
+        if (room == null) {
+            return new DoorActionResult(false, "You are nowhere.", null);
+        }
+        ItemId requiredKey = room.getLockedExits().get(direction);
+        if (requiredKey == null) {
+            return new DoorActionResult(false, "There is no lockable door to the " + direction.label() + ".", null);
+        }
+        Set<Direction> locked = ensureLockedState(room.getId());
+        if (locked.contains(direction)) {
+            return new DoorActionResult(false, "The door to the " + direction.label() + " is already locked.", null);
+        }
+        if (!hasItem(inventory, requiredKey)) {
+            return new DoorActionResult(false, "You need the right key to lock this door.", null);
+        }
+        locked.add(direction);
+        propagateLockState(room, direction, true);
+        String playerMsg = "You lock the door to the " + direction.label() + ".";
+        String roomMsg = username.getValue() + " locks the door to the " + direction.label() + ".";
+        return new DoorActionResult(true, playerMsg, roomMsg);
+    }
+
+    private boolean isExitLocked(RoomId roomId, Direction direction) {
+        return ensureLockedState(roomId).contains(direction);
+    }
+
+    /**
+     * Returns (and lazily seeds) the runtime locked-exit set for a room.
+     *
+     * <p>The first call for a given room id loads the room from the repository and
+     * initialises the set from the room's {@link Room#getLockedExits()} configuration.
+     */
+    private Set<Direction> ensureLockedState(RoomId roomId) {
+        return runtimeLockedExits.computeIfAbsent(roomId, id -> {
+            Set<Direction> set = ConcurrentHashMap.newKeySet();
+            findRoom(id).ifPresent(r -> set.addAll(r.getLockedExits().keySet()));
+            return set;
+        });
+    }
+
+    /**
+     * Propagates a lock state change to the opposite side of the door (if the destination
+     * room also declares the reverse direction as a lockable exit).
+     */
+    private void propagateLockState(Room room, Direction direction, boolean nowLocked) {
+        RoomId destId = room.getExits().get(direction);
+        if (destId == null) {
+            return;
+        }
+        Room dest = findRoom(destId).orElse(null);
+        if (dest == null) {
+            return;
+        }
+        Direction reverse = direction.opposite();
+        if (!dest.getLockedExits().containsKey(reverse)) {
+            return;
+        }
+        Set<Direction> destLocked = ensureLockedState(destId);
+        if (nowLocked) {
+            destLocked.add(reverse);
+        } else {
+            destLocked.remove(reverse);
+        }
+    }
+
+    private boolean hasItem(List<Item> inventory, ItemId itemId) {
+        for (Item item : inventory) {
+            if (item.getId().equals(itemId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Item createCorpse(Username username, int gold) {

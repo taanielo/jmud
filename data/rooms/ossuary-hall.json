@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "ossuary-hall",
   "name": "Ossuary Hall",
   "description": "A wide underground hall lined with rows of skulls and bones stacked in alcoves along every wall. The bones rattle softly as you move through the chamber. The dead do not rest easy here.",
@@ -8,5 +8,8 @@
     "north": "catacombs-entrance",
     "east": "burial-alcove",
     "south": "crypt-corridor"
+  },
+  "locked_exits": {
+    "north": "crypt-key"
   }
 }

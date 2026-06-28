@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.world;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -196,6 +197,197 @@ class RoomServiceTest {
         String output = String.join("\n", lookResult.lines());
 
         assertTrue(output.contains("Apple"));
+    }
+
+    // ── Lock / Unlock tests ─────────────────────────────────────────────
+
+    @Test
+    void moveBlockedThroughLockedExit() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        ItemId keyId = ItemId.of("iron-key");
+        Room roomA = new Room(
+            roomAId,
+            "Room A",
+            "A quiet room.",
+            Map.of(Direction.NORTH, roomBId),
+            List.of(),
+            List.of(),
+            Map.of(Direction.NORTH, keyId)
+        );
+        Room roomB = new Room(
+            roomBId,
+            "Room B",
+            "A bright room.",
+            Map.of(Direction.SOUTH, roomAId),
+            List.of(),
+            List.of(),
+            Map.of(Direction.SOUTH, keyId)
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+
+        RoomService.MoveResult result = service.move(player, Direction.NORTH);
+
+        assertFalse(result.moved());
+        assertTrue(result.lines().getFirst().contains("locked"));
+    }
+
+    @Test
+    void unlockWithCorrectKeyAllowsMovement() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        ItemId keyId = ItemId.of("iron-key");
+        Item key = new Item(
+            keyId, "Iron Key", "A key.", ItemAttributes.empty(),
+            List.of(), List.of(), null, 1, 0, null
+        );
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room.",
+            Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
+            Map.of(Direction.NORTH, keyId)
+        );
+        Room roomB = new Room(
+            roomBId, "Room B", "A bright room.",
+            Map.of(Direction.SOUTH, roomAId), List.of(), List.of(),
+            Map.of(Direction.SOUTH, keyId)
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+
+        RoomService.DoorActionResult unlockResult = service.unlock(player, Direction.NORTH, List.of(key));
+        assertTrue(unlockResult.success());
+        assertTrue(unlockResult.playerMessage().contains("unlock"));
+
+        RoomService.MoveResult moveResult = service.move(player, Direction.NORTH);
+        assertTrue(moveResult.moved());
+    }
+
+    @Test
+    void unlockWithoutKeyFails() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        ItemId keyId = ItemId.of("iron-key");
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room.",
+            Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
+            Map.of(Direction.NORTH, keyId)
+        );
+        Room roomB = new Room(
+            roomBId, "Room B", "A bright room.",
+            Map.of(Direction.SOUTH, roomAId), List.of(), List.of()
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+
+        RoomService.DoorActionResult result = service.unlock(player, Direction.NORTH, List.of());
+
+        assertFalse(result.success());
+        assertTrue(result.playerMessage().contains("key"));
+    }
+
+    @Test
+    void lockAfterUnlockRestoresBlockedMovement() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        ItemId keyId = ItemId.of("iron-key");
+        Item key = new Item(
+            keyId, "Iron Key", "A key.", ItemAttributes.empty(),
+            List.of(), List.of(), null, 1, 0, null
+        );
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room.",
+            Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
+            Map.of(Direction.NORTH, keyId)
+        );
+        Room roomB = new Room(
+            roomBId, "Room B", "A bright room.",
+            Map.of(Direction.SOUTH, roomAId), List.of(), List.of(),
+            Map.of(Direction.SOUTH, keyId)
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+
+        // Unlock then lock again
+        assertTrue(service.unlock(player, Direction.NORTH, List.of(key)).success());
+        assertTrue(service.lock(player, Direction.NORTH, List.of(key)).success());
+
+        // Should be blocked again
+        assertFalse(service.move(player, Direction.NORTH).moved());
+    }
+
+    @Test
+    void lookShowsLockedSuffix() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        ItemId keyId = ItemId.of("iron-key");
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room.",
+            Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
+            Map.of(Direction.NORTH, keyId)
+        );
+        Room roomB = new Room(
+            roomBId, "Room B", "A bright room.",
+            Map.of(Direction.SOUTH, roomAId), List.of(), List.of()
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+
+        RoomService.LookResult look = service.look(player);
+        String output = String.join("\n", look.lines());
+
+        assertTrue(output.contains("[locked]"), "Expected '[locked]' in exits line, got: " + output);
+    }
+
+    @Test
+    void unlockFromOneSideUnlocksBothSides() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        ItemId keyId = ItemId.of("iron-key");
+        Item key = new Item(
+            keyId, "Iron Key", "A key.", ItemAttributes.empty(),
+            List.of(), List.of(), null, 1, 0, null
+        );
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room.",
+            Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
+            Map.of(Direction.NORTH, keyId)
+        );
+        Room roomB = new Room(
+            roomBId, "Room B", "A bright room.",
+            Map.of(Direction.SOUTH, roomAId), List.of(), List.of(),
+            Map.of(Direction.SOUTH, keyId)
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+        Username playerA = Username.of("Alice");
+        Username playerB = Username.of("Bob");
+        service.ensurePlayerLocation(playerA); // Alice in room A
+        // Move Bob to room B first using direct location assignment
+        service.ensurePlayerLocation(playerB);
+        // Manually place Bob in room B by unlocking and moving
+        service.unlock(playerA, Direction.NORTH, List.of(key));
+        // Alice unlocked from room A; now Bob (also in room A) tries to move north
+        // First re-lock so we can verify Bob in B after Alice unlocks
+        service.lock(playerA, Direction.NORTH, List.of(key));
+
+        // Alice unlocks from room A side
+        assertTrue(service.unlock(playerA, Direction.NORTH, List.of(key)).success());
+
+        // Move Bob to room B
+        service.move(playerA, Direction.NORTH);
+        // Now Alice is in room B; simulate Bob being in room A at the start
+        // Let's simplify: verify that the south exit from room B is also unlocked
+        // Re-place Alice back in room A for clarity
+        service.respawnPlayer(playerA); // puts Alice in starting room = roomA
+        service.move(playerA, Direction.NORTH); // Alice goes north (unlocked)
+        // Alice is now in room B - the reverse (south) should also be unlocked
+        RoomService.MoveResult backResult = service.move(playerA, Direction.SOUTH);
+        assertTrue(backResult.moved(), "Reverse direction should be unlocked after unlocking from other side");
     }
 
     private record TestRoomRepository(Map<RoomId, Room> rooms) implements RoomRepository {

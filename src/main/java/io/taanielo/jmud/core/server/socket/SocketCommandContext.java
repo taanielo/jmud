@@ -282,4 +282,30 @@ public interface SocketCommandContext extends Client {
      */
     default void executeParty(String args) {}
 
+    /**
+     * Locks the door in the given direction from the player's current room.
+     *
+     * <p>Requires the player to carry the correct key item. Prints a failure message
+     * when the exit is not lockable or the player lacks the key.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param direction the direction of the exit to lock
+     */
+    default void lockExit(Direction direction) {}
+
+    /**
+     * Unlocks the door in the given direction from the player's current room.
+     *
+     * <p>Requires the player to carry the correct key item. Prints a failure message
+     * when the exit is not lockable, already unlocked, or the player lacks the key.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param direction the direction of the exit to unlock
+     */
+    default void unlockExit(Direction direction) {}
+
 }
