@@ -48,6 +48,8 @@ public class SocketCommandRegistry {
         new QuestCommand(registry);
         new TrainCommand(registry);
         new PartyCommand(registry);
+        new DepositCommand(registry);
+        new WithdrawCommand(registry);
         new LockCommand(registry);
         new UnlockCommand(registry);
         new QuitCommand(registry);

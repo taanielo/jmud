@@ -26,7 +26,7 @@ public class GoldCommand extends RegistrableCommand {
     @Override
     public String longDescription() {
         return "Usage: GOLD\n"
-             + "  Shows how many gold coins you are currently carrying.";
+             + "  Shows how many gold coins you are currently carrying and how much is banked.";
     }
 
     @Override
@@ -44,7 +44,11 @@ public class GoldCommand extends RegistrableCommand {
             return;
         }
         Player player = context.getPlayer();
-        context.writeLineWithPrompt("You are carrying " + player.getGold() + " gold coin"
-            + (player.getGold() == 1 ? "" : "s") + ".");
+        context.writeLineWithPrompt(
+            "Carried: " + player.getGold() + " gold coin"
+                + (player.getGold() == 1 ? "" : "s") + ".  "
+                + "Banked: " + player.getBankedGold() + " gold coin"
+                + (player.getBankedGold() == 1 ? "" : "s") + "."
+        );
     }
 }
