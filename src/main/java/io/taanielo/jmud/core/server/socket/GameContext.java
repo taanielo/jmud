@@ -42,6 +42,10 @@ import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
+import io.taanielo.jmud.core.bank.BankRepository;
+import io.taanielo.jmud.core.bank.BankRepositoryException;
+import io.taanielo.jmud.core.bank.BankService;
+import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
@@ -91,7 +95,8 @@ public record GameContext(
     CharacterCreationService characterCreationService,
     ShopService shopService,
     QuestRepository questRepository,
-    PartyService partyService
+    PartyService partyService,
+    BankService bankService
 ) {
 
     /**
@@ -142,6 +147,7 @@ public record GameContext(
 
         CharacterCreationService characterCreationService = createCharacterCreationService();
         ShopService shopService = createShopService();
+        BankService bankService = createBankService();
         QuestRepository questRepository = createQuestRepository();
         if (mobRegistry != null && questRepository != null) {
             mobRegistry.setQuestKillService(new QuestKillService(questRepository));
@@ -178,7 +184,8 @@ public record GameContext(
             characterCreationService,
             shopService,
             questRepository,
-            partyService
+            partyService,
+            bankService
         );
     }
 
@@ -273,6 +280,15 @@ public record GameContext(
             return new ShopService(shopRepository, itemRepository);
         } catch (ShopRepositoryException | RepositoryException e) {
             throw new IllegalStateException("Failed to initialize shop service: " + e.getMessage(), e);
+        }
+    }
+
+    private static BankService createBankService() {
+        try {
+            BankRepository bankRepository = new JsonBankRepository();
+            return new BankService(bankRepository);
+        } catch (BankRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize bank service: " + e.getMessage(), e);
         }
     }
 

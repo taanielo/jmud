@@ -322,4 +322,32 @@ public interface SocketCommandContext extends Client {
      */
     default void unlockExit(Direction direction) {}
 
+    /**
+     * Deposits the specified amount of gold from the player's carried balance into the bank.
+     *
+     * <p>Requires the player to be in the same room as a bank NPC.
+     * Fails with a clear message if no bank is present, the amount is invalid,
+     * or the player does not carry enough gold.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the raw amount string (e.g. {@code "100"})
+     */
+    default void depositToBank(String args) {}
+
+    /**
+     * Withdraws the specified amount of gold from the bank into the player's carried balance.
+     *
+     * <p>Requires the player to be in the same room as a bank NPC.
+     * Fails with a clear message if no bank is present, the amount is invalid,
+     * or the bank does not hold enough gold for this player.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the raw amount string (e.g. {@code "50"})
+     */
+    default void withdrawFromBank(String args) {}
+
 }

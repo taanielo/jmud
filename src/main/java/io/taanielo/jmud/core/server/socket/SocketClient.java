@@ -64,6 +64,8 @@ import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.QuestTemplate;
+import io.taanielo.jmud.core.bank.Bank;
+import io.taanielo.jmud.core.bank.BankTransactionResult;
 import io.taanielo.jmud.core.shop.Shop;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
@@ -541,6 +543,10 @@ public class SocketClient implements Client {
             if (!shopLine.isEmpty()) {
                 connection.writeLine(shopLine);
             }
+            String bankLine = formatBankNpcLine(result.room().getId());
+            if (!bankLine.isEmpty()) {
+                connection.writeLine(bankLine);
+            }
         }
         sendPrompt();
     }
@@ -820,6 +826,24 @@ public class SocketClient implements Client {
             .orElse("");
     }
 
+    /**
+     * Builds a bank NPC line for the given room, using the context's bank service.
+     *
+     * <p>Returns an empty string when there is no bank in the room or the service is unavailable.
+     *
+     * @param roomId the room to check for a bank
+     * @return a formatted line such as {@code "Banker: Aldric the Banker"}, or {@code ""}
+     */
+    private String formatBankNpcLine(RoomId roomId) {
+        if (context.bankService() == null || roomId == null) {
+            return "";
+        }
+        return context.bankService()
+            .findBankInRoom(roomId)
+            .map(bank -> "Banker: " + bank.name())
+            .orElse("");
+    }
+
     private boolean isAuthenticatedUser(Username username) {
         return session.isAuthenticated()
             && session.getPlayer() != null
@@ -913,6 +937,10 @@ public class SocketClient implements Client {
                 if (!shopLine.isEmpty()) {
                     connection.writeLine(shopLine);
                 }
+                String bankLine = formatBankNpcLine(result.room().getId());
+                if (!bankLine.isEmpty()) {
+                    connection.writeLine(bankLine);
+                }
             }
             sendPrompt();
         }
@@ -991,6 +1019,10 @@ public class SocketClient implements Client {
                 String shopLine = formatShopNpcLine(result.room().getId());
                 if (!shopLine.isEmpty()) {
                     connection.writeLine(shopLine);
+                }
+                String bankLine = formatBankNpcLine(result.room().getId());
+                if (!bankLine.isEmpty()) {
+                    connection.writeLine(bankLine);
                 }
             }
             sendPrompt();
@@ -1659,6 +1691,82 @@ public class SocketClient implements Client {
                 deliverRoomMessage(player.getUsername(), null, result.roomMessage());
             }
             writeLineWithPrompt(result.playerMessage());
+        }
+
+        @Override
+        public void depositToBank(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to use the bank.");
+                return;
+            }
+            if (context.bankService() == null) {
+                writeLineWithPrompt("There is no bank here.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            if (context.bankService().findBankInRoom(roomIdOpt.get()).isEmpty()) {
+                writeLineWithPrompt("There is no bank here.");
+                return;
+            }
+            if (args == null || args.isBlank()) {
+                writeLineWithPrompt("Deposit how much gold? Usage: DEPOSIT <amount>");
+                return;
+            }
+            int amount;
+            try {
+                amount = Integer.parseInt(args.trim());
+            } catch (NumberFormatException e) {
+                writeLineWithPrompt("'" + args.trim() + "' is not a valid amount.");
+                return;
+            }
+            BankTransactionResult result = context.bankService().deposit(player, amount);
+            if (result.success()) {
+                session.replacePlayer(result.updatedPlayer());
+            }
+            writeLineWithPrompt(result.message());
+        }
+
+        @Override
+        public void withdrawFromBank(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to use the bank.");
+                return;
+            }
+            if (context.bankService() == null) {
+                writeLineWithPrompt("There is no bank here.");
+                return;
+            }
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            if (context.bankService().findBankInRoom(roomIdOpt.get()).isEmpty()) {
+                writeLineWithPrompt("There is no bank here.");
+                return;
+            }
+            if (args == null || args.isBlank()) {
+                writeLineWithPrompt("Withdraw how much gold? Usage: WITHDRAW <amount>");
+                return;
+            }
+            int amount;
+            try {
+                amount = Integer.parseInt(args.trim());
+            } catch (NumberFormatException e) {
+                writeLineWithPrompt("'" + args.trim() + "' is not a valid amount.");
+                return;
+            }
+            BankTransactionResult result = context.bankService().withdraw(player, amount);
+            if (result.success()) {
+                session.replacePlayer(result.updatedPlayer());
+            }
+            writeLineWithPrompt(result.message());
         }
 
         private void handlePartyForm(Player player, PartyService partyService) {
