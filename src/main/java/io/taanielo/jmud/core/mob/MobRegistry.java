@@ -194,6 +194,7 @@ public class MobRegistry implements Tickable {
                     }
                 }
             }
+            afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
             playerRepository.savePlayer(afterXp);
             messages.add(GameMessage.toSource(
                 "You gain " + mob.template().xpReward() + " experience points."));
@@ -347,6 +348,7 @@ public class MobRegistry implements Tickable {
                         }
                     }
                 }
+                afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
                 playerRepository.savePlayer(afterXp);
                 messages.add(GameMessage.toSource(
                     "You gain " + mob.template().xpReward() + " experience points."));
