@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "iron-mace",
+  "name": "Iron Mace",
+  "description": "A heavy iron mace with a flanged head. Slow but devastating.",
+  "attributes": {
+    "stats": {
+      "strength": 2
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 7,
+  "value": 30,
+  "attack_ref": "attack.iron-mace"
+}

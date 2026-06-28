@@ -5,6 +5,8 @@
   "room_id": "armory",
   "stock": [
     {"item_id": "iron-sword"},
+    {"item_id": "iron-mace"},
+    {"item_id": "dagger"},
     {"item_id": "training-shield"},
     {"item_id": "health-potion"},
     {"item_id": "mana-potion"}

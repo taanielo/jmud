@@ -1,0 +1,58 @@
+{
+  "schema_version": 3,
+  "id": "attack.iron-mace",
+  "name": "iron mace",
+  "weapon_type": "BLUNT",
+  "min_damage": 5,
+  "max_damage": 10,
+  "hit_bonus": 2,
+  "crit_bonus": 2,
+  "damage_bonus": 2,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You bludgeon {target} with your iron mace for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} bludgeons you with an iron mace for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} bludgeons {target} with an iron mace."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You swing your iron mace at {target} but miss."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} swings an iron mace at you but misses."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} swings an iron mace at {target} but misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You smash {target} with a bone-crushing blow from your iron mace for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} smashes you with a bone-crushing blow from an iron mace for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} smashes {target} with a bone-crushing blow from an iron mace!"
+    }
+  ]
+}

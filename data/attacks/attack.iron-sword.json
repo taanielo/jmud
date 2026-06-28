@@ -1,7 +1,8 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "attack.iron-sword",
   "name": "iron sword",
+  "weapon_type": "SLASHING",
   "min_damage": 3,
   "max_damage": 8,
   "hit_bonus": 5,

@@ -62,7 +62,7 @@
 - [x] Add mana potions with QUAFF restoring mana and add them to shops and mob loot tables
 - [x] Add BANK NPC with DEPOSIT and WITHDRAW commands for safe gold storage
 - [x] Add item sell-value and item description visible in LIST so players can compare gear
-- [ ] Add weapon type variety: blunt, piercing, slashing with different damage dice and attack messages
+- [x] Add weapon type variety: blunt, piercing, slashing with different damage dice and attack messages
 - [ ] Add armour items (chest, legs, head slots) with AC value reducing incoming damage in combat engine
 - [ ] Add SCORE prompt stat: show current AC derived from equipped armour
 - [ ] Add poison status effect applied by certain mob attacks (damage-over-time ticks)
