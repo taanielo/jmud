@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,10 +57,18 @@ public class GameActionService {
     private final AbilityTargetResolver abilityTargetResolver;
     private final AbilityCooldownTracker cooldownTracker;
     private final EncumbranceService encumbranceService;
+    /**
+     * Predicate that returns {@code true} when the given player is currently engaged in combat.
+     * Used by {@link #useAbility} to enforce first-strike restrictions on
+     * {@link io.taanielo.jmud.core.ability.AbilityTargeting#HARMFUL_OPENER} abilities.
+     */
+    private final Predicate<Player> inCombatCheck;
     private final MessageEmitter messageEmitter = new MessageEmitter();
 
     /**
      * Creates a game action service with the given domain dependencies.
+     * The in-combat check defaults to {@code false} (never in combat), which disables
+     * opener-ability enforcement. Use the full constructor to supply real combat state.
      */
     public GameActionService(
         AbilityRegistry abilityRegistry,
@@ -71,6 +80,29 @@ public class GameActionService {
         AbilityCooldownTracker cooldownTracker,
         EncumbranceService encumbranceService
     ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService,
+            _ -> false);
+    }
+
+    /**
+     * Creates a game action service with an explicit in-combat predicate.
+     *
+     * @param inCombatCheck returns {@code true} when the given player is already engaged in combat;
+     *                      used to block {@link io.taanielo.jmud.core.ability.AbilityTargeting#HARMFUL_OPENER}
+     *                      abilities mid-combat
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        Predicate<Player> inCombatCheck
+    ) {
         this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         this.abilityCostResolver = Objects.requireNonNull(abilityCostResolver, "Ability cost resolver is required");
         this.abilityEffectEngine = Objects.requireNonNull(abilityEffectEngine, "Ability effect engine is required");
@@ -79,6 +111,7 @@ public class GameActionService {
         this.abilityTargetResolver = Objects.requireNonNull(abilityTargetResolver, "Ability target resolver is required");
         this.cooldownTracker = Objects.requireNonNull(cooldownTracker, "Cooldown tracker is required");
         this.encumbranceService = Objects.requireNonNull(encumbranceService, "Encumbrance service is required");
+        this.inCombatCheck = Objects.requireNonNull(inCombatCheck, "In-combat check is required");
     }
 
     /**
@@ -141,7 +174,7 @@ public class GameActionService {
 
         AbilityUseResult result = engine.use(
             source, input, source.getLearnedAbilities(),
-            abilityTargetResolver, cooldownTracker
+            abilityTargetResolver, cooldownTracker, inCombatCheck
         );
 
         List<GameMessage> messages = new ArrayList<>(sink.collected());

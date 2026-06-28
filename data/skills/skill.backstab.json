@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "skill.backstab",
+  "name": "backstab",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {
+    "move": 5
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL_OPENER",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 10
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You slip behind {target} and drive your blade deep!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} backstabs you from the shadows!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} backstabs {target} from the shadows!"
+    }
+  ]
+}
