@@ -24,6 +24,7 @@ public class MobTemplateDtoMapper {
         GoldDrop goldDrop = dto.goldDrop() != null
             ? new GoldDrop(dto.goldDrop().min(), dto.goldDrop().max())
             : null;
+        List<String> tags = dto.tags() == null ? List.of() : List.copyOf(dto.tags());
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -35,7 +36,8 @@ public class MobTemplateDtoMapper {
             dto.maxCount(),
             dto.respawnTicks(),
             xpReward,
-            goldDrop
+            goldDrop,
+            tags
         );
     }
 }

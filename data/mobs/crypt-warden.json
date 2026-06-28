@@ -5,6 +5,7 @@
   "max_hp": 40,
   "attack_id": "attack.crypt-warden",
   "aggressive": true,
+  "tags": ["undead"],
   "spawn_room_id": "warden-chamber",
   "max_count": 1,
   "respawn_ticks": 60,

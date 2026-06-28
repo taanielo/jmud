@@ -65,6 +65,7 @@ class MobRegistryAggressiveMobTest {
             1,
             10,
             5,
+            null,
             null
         );
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
