@@ -7,8 +7,13 @@ public class Race {
     private final String name;
     private final int healingBaseModifier;
     private final int carryBase;
+    private final int armorBonus;
 
     public Race(RaceId id, String name, int healingBaseModifier, int carryBase) {
+        this(id, name, healingBaseModifier, carryBase, 0);
+    }
+
+    public Race(RaceId id, String name, int healingBaseModifier, int carryBase, int armorBonus) {
         this.id = Objects.requireNonNull(id, "Race id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Race name must not be blank");
@@ -19,6 +24,10 @@ public class Race {
             throw new IllegalArgumentException("Race carry base must be non-negative");
         }
         this.carryBase = carryBase;
+        if (armorBonus < 0) {
+            throw new IllegalArgumentException("Race armor bonus must be non-negative");
+        }
+        this.armorBonus = armorBonus;
     }
 
     public RaceId id() {
@@ -35,5 +44,10 @@ public class Race {
 
     public int carryBase() {
         return carryBase;
+    }
+
+    /** Returns the natural armor bonus that reduces attacker hit chance in combat. */
+    public int armorBonus() {
+        return armorBonus;
     }
 }

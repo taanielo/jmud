@@ -24,6 +24,7 @@ import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
+import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
@@ -226,8 +227,9 @@ public record GameContext(
     private static CombatEngine createCombatEngine(EffectRepository effectRepository) {
         try {
             CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
-            return new CombatEngine(new JsonAttackRepository(), resolver, new ThreadLocalCombatRandom());
-        } catch (AttackRepositoryException e) {
+            RaceArmorBonusResolver armorBonusResolver = new RaceArmorBonusResolver(new JsonRaceRepository());
+            return new CombatEngine(new JsonAttackRepository(), resolver, armorBonusResolver, new ThreadLocalCombatRandom());
+        } catch (AttackRepositoryException | RaceRepositoryException e) {
             throw new IllegalStateException("Failed to initialize combat: " + e.getMessage(), e);
         }
     }

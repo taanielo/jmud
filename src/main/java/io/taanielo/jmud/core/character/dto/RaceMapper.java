@@ -16,7 +16,8 @@ public class RaceMapper {
             RaceId.of(dto.id()),
             dto.name(),
             healingDto.baseModifier(),
-            dto.carryBase()
+            dto.carryBase(),
+            dto.armorBonus()
         );
     }
 }

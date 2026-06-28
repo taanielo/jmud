@@ -21,7 +21,7 @@ import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 class JsonRaceRepositoryFindAllTest {
 
     @Test
-    void findAll_returnsAllThreeRaces() throws RaceRepositoryException {
+    void findAll_returnsAllFourRaces() throws RaceRepositoryException {
         JsonRaceRepository repo = new JsonRaceRepository(Path.of("data"));
 
         List<Race> races = repo.findAll();
@@ -34,7 +34,8 @@ class JsonRaceRepositoryFindAllTest {
         assertTrue(ids.contains("human"), "Expected 'human' race");
         assertTrue(ids.contains("elf"), "Expected 'elf' race");
         assertTrue(ids.contains("troll"), "Expected 'troll' race");
-        assertEquals(3, races.size(), "Expected exactly 3 races");
+        assertTrue(ids.contains("dwarf"), "Expected 'dwarf' race");
+        assertEquals(4, races.size(), "Expected exactly 4 races");
     }
 
     @Test

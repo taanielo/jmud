@@ -19,6 +19,7 @@ import io.taanielo.jmud.core.player.Player;
 public class CombatEngine {
     private final AttackRepository attackRepository;
     private final CombatModifierResolver modifierResolver;
+    private final RaceArmorBonusResolver armorBonusResolver;
     private final CombatRandom random;
     private final MessageRenderer renderer = new MessageRenderer();
 
@@ -30,8 +31,21 @@ public class CombatEngine {
         CombatModifierResolver modifierResolver,
         CombatRandom random
     ) {
+        this(attackRepository, modifierResolver, RaceArmorBonusResolver.noOp(), random);
+    }
+
+    /**
+     * Creates a combat engine with race armor bonus resolution.
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        CombatRandom random
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
+        this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
         this.random = Objects.requireNonNull(random, "Combat random is required");
     }
 
@@ -57,11 +71,13 @@ public class CombatEngine {
             .orElseThrow(() -> new AttackRepositoryException("Unknown attack id " + attackId.getValue()));
         CombatModifiers attackerMods = modifierResolver.resolve(attacker.effects());
         CombatModifiers targetMods = modifierResolver.resolve(target.effects());
+        int targetArmorBonus = armorBonusResolver.armorBonus(target);
 
         int hitChanceBase = CombatSettings.baseHitChance()
             + attack.hitBonus()
             + attackerMods.attack().apply(0)
-            - targetMods.defense().apply(0);
+            - targetMods.defense().apply(0)
+            - targetArmorBonus;
         int hitChance = attackerMods.hitChance().apply(hitChanceBase);
         hitChance = clamp(hitChance, 0, 100);
         int hitRoll = random.roll(1, 100);
