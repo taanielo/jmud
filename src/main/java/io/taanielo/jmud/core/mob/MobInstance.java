@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.mob;
 
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,10 @@ import io.taanielo.jmud.core.world.RoomId;
  * <p>HP is tracked via {@link AtomicInteger} so that player-thread attacks
  * (command queue) and tick-thread AI reads are both safe. All other state
  * mutations are confined to the tick thread.
+ *
+ * <p>{@code currentRoomId} tracks the mob's live position (it starts at
+ * {@code template.spawnRoomId()} and is updated when the mob wanders or
+ * reset to the spawn room on respawn).
  */
 public class MobInstance {
 
@@ -23,10 +28,13 @@ public class MobInstance {
     private final AtomicInteger hp;
     private final AtomicInteger respawnTicksRemaining = new AtomicInteger(0);
     private final Set<Username> engagedPlayers = ConcurrentHashMap.newKeySet();
+    /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
+    private volatile RoomId currentRoomId;
 
     public MobInstance(MobTemplate template) {
         this.template = template;
         this.hp = new AtomicInteger(template.maxHp());
+        this.currentRoomId = template.spawnRoomId();
     }
 
     public UUID instanceId() {
@@ -37,8 +45,19 @@ public class MobInstance {
         return template;
     }
 
+    /** Returns the mob's current live room (may differ from the template spawn room after wandering). */
     public RoomId roomId() {
-        return template.spawnRoomId();
+        return currentRoomId;
+    }
+
+    /**
+     * Moves the mob to the given room.
+     * Must only be called from the tick thread.
+     *
+     * @param roomId the destination room
+     */
+    public void moveTo(RoomId roomId) {
+        this.currentRoomId = Objects.requireNonNull(roomId, "Room id is required");
     }
 
     public boolean isAlive() {
@@ -80,10 +99,11 @@ public class MobInstance {
         return Collections.unmodifiableSet(engagedPlayers);
     }
 
-    /** Resets the mob to full HP, ready to act again. */
+    /** Resets the mob to full HP and returns it to its spawn room, ready to act again. */
     public void respawn() {
         hp.set(template.maxHp());
         respawnTicksRemaining.set(0);
         engagedPlayers.clear();
+        currentRoomId = template.spawnRoomId();
     }
 }

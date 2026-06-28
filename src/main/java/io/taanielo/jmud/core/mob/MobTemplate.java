@@ -26,7 +26,13 @@ public record MobTemplate(
      * Optional classification tags (e.g. {@code "undead"}).
      * Always non-null; defaults to an empty list when not specified in data.
      */
-    List<String> tags
+    List<String> tags,
+    /**
+     * When {@code true} the mob may randomly wander between linked rooms on each tick.
+     * NPCs (tag {@code "npc"}) never wander regardless of this flag.
+     * Defaults to {@code false}.
+     */
+    boolean wanders
 ) {
     public MobTemplate {
         if (maxHp <= 0) {

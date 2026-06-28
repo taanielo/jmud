@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
@@ -91,6 +92,19 @@ public class RoomService {
         Objects.requireNonNull(username, "Username is required");
         playerLocations.put(username, startingRoomId);
         return startingRoomId;
+    }
+
+    /**
+     * Returns the exit map for the given room, or an empty map if the room cannot be found.
+     *
+     * <p>Used by mob AI to enumerate candidate wander destinations.
+     *
+     * @param roomId the room to query
+     * @return an unmodifiable map of direction to neighbouring room id (never null)
+     */
+    public Map<Direction, RoomId> getExits(RoomId roomId) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        return findRoom(roomId).map(Room::getExits).orElse(Map.of());
     }
 
     /**

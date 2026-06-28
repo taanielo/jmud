@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +29,7 @@ import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.tick.Tickable;
+import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
@@ -117,6 +119,7 @@ public class MobRegistry implements Tickable {
     @Override
     public void tick() {
         runPlayerCombat();
+        runWanderPhase();
         for (MobInstance mob : instances.values()) {
             if (!mob.isAlive()) {
                 if (mob.tickRespawn()) {
@@ -132,6 +135,61 @@ public class MobRegistry implements Tickable {
                 continue;
             }
             runMobAi(mob);
+        }
+    }
+
+    /**
+     * Wander phase: for each alive, non-NPC, non-combat, wandering mob, with 30% probability
+     * move it through a randomly chosen exit and notify nearby players.
+     */
+    private void runWanderPhase() {
+        for (MobInstance mob : instances.values()) {
+            if (!mob.isAlive()) {
+                continue;
+            }
+            if (!mob.template().wanders()) {
+                continue;
+            }
+            if (mob.template().hasTag("npc")) {
+                continue;
+            }
+            if (!mob.engagedPlayers().isEmpty()) {
+                continue;
+            }
+            // ~30 % chance to wander this tick
+            if (ThreadLocalRandom.current().nextDouble() >= 0.30) {
+                continue;
+            }
+            RoomId fromRoomId = mob.roomId();
+            Map<Direction, RoomId> exits = roomService.getExits(fromRoomId);
+            if (exits.isEmpty()) {
+                continue;
+            }
+            List<Map.Entry<Direction, RoomId>> exitList = List.copyOf(exits.entrySet());
+            Map.Entry<Direction, RoomId> chosen =
+                exitList.get(ThreadLocalRandom.current().nextInt(exitList.size()));
+            Direction dir = chosen.getKey();
+            RoomId toRoomId = chosen.getValue();
+
+            // Notify players in departure room
+            String departMsg = "A " + mob.template().name() + " wanders off to the " + dir.label() + ".";
+            for (Username occupant : roomService.getPlayersInRoom(fromRoomId)) {
+                playerEventBus.publish(occupant,
+                    new GameActionResult(null, null, List.of(GameMessage.toSource(departMsg))));
+            }
+
+            mob.moveTo(toRoomId);
+
+            // Notify players in arrival room
+            String arriveMsg = "A " + mob.template().name()
+                + " wanders in from the " + dir.opposite().label() + ".";
+            for (Username occupant : roomService.getPlayersInRoom(toRoomId)) {
+                playerEventBus.publish(occupant,
+                    new GameActionResult(null, null, List.of(GameMessage.toSource(arriveMsg))));
+            }
+
+            log.debug("Mob {} wandered from {} to {} ({})",
+                mob.template().name(), fromRoomId, toRoomId, dir.label());
         }
     }
 

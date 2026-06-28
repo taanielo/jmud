@@ -69,7 +69,8 @@ class MobRegistryGoldDropTest {
             10,
             5,
             drop,
-            null
+            null,
+            false
         );
     }
 
@@ -87,7 +88,8 @@ class MobRegistryGoldDropTest {
             10,
             5,
             null,
-            null
+            null,
+            false
         );
     }
 

@@ -84,7 +84,8 @@ class MobRegistryLootAnnouncementTest {
             10,
             5,
             null,
-            null
+            null,
+            false
         );
     }
 
@@ -198,7 +199,8 @@ class MobRegistryLootAnnouncementTest {
             10,
             5,
             null,
-            null
+            null,
+            false
         );
         AttackRepository attackRepo = new StubAttackRepository(
             Map.of(DEFAULT_ATTACK, ONE_DMG_ATTACK));
