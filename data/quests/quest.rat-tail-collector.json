@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "rat-tail-collector",
+  "name": "Rat Tail Collector",
+  "description": "Bring 5 rat tails to the Guild Clerk as proof of pest control in the muddy hollow.",
+  "drop_item_id": "rat-tail",
+  "required_drop_count": 5,
+  "gold_reward": 40,
+  "xp_reward": 100
+}

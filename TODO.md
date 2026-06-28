@@ -54,7 +54,7 @@
 ## Planned
 - [x] Add SCORE command enhancements: show current level, XP to next level, and total kills
 - [x] Add TRAIN command and trainer NPC so players can spend practice points on skills
-- [ ] Add multi-kill quest: deliver a fixed number of drops (e.g. rat tails) to an NPC for a reward
+- [x] Add multi-kill quest: deliver a fixed number of drops (e.g. rat tails) to an NPC for a reward
 - [ ] Add PARTY system: players can form a group to share XP and see party HP in prompt
 - [ ] Add mob respawn with wander: mobs randomly move between linked rooms on tick
 - [ ] Add LOCK and UNLOCK commands with key items for gated doors between zones

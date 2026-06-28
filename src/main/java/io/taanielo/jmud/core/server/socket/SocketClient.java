@@ -57,6 +57,7 @@ import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
 import io.taanielo.jmud.core.quest.ActiveQuest;
+import io.taanielo.jmud.core.quest.QuestDeliveryService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
@@ -1017,8 +1018,28 @@ public class SocketClient implements Client {
                 return;
             }
             cancelRestIfActive();
-            GameActionResult result = gameActionService.getItem(session.getPlayer(), args);
+            Player playerBeforeGet = session.getPlayer();
+            GameActionResult result = gameActionService.getItem(playerBeforeGet, args);
             deliverResult(result);
+            // After a successful pickup, check if this triggers delivery quest progress
+            if (result.updatedSource() != null && context.questRepository() != null) {
+                Player updatedPlayer = session.getPlayer();
+                // Find the newly added item by comparing item-id counts before and after
+                java.util.Map<io.taanielo.jmud.core.world.ItemId, Long> oldCounts =
+                    playerBeforeGet.getInventory().stream()
+                        .collect(java.util.stream.Collectors.groupingBy(Item::getId, java.util.stream.Collectors.counting()));
+                QuestDeliveryService deliverySvc = new QuestDeliveryService(context.questRepository());
+                for (Item item : updatedPlayer.getInventory()) {
+                    long before = oldCounts.getOrDefault(item.getId(), 0L);
+                    long after = updatedPlayer.getInventory().stream()
+                        .filter(i -> i.getId().equals(item.getId())).count();
+                    if (after > before) {
+                        deliverySvc.checkPickupProgress(updatedPlayer, item.getId())
+                            .ifPresent(connection::writeLine);
+                        break;
+                    }
+                }
+            }
             sendPrompt();
         }
 
@@ -1465,9 +1486,10 @@ public class SocketClient implements Client {
                 case "ACCEPT" -> handleQuestAccept(questRepo, subArgs);
                 case "STATUS" -> handleQuestStatus(questRepo);
                 case "COMPLETE" -> handleQuestComplete(questRepo);
+                case "DELIVER" -> handleQuestDeliver(questRepo);
                 case "ABANDON" -> handleQuestAbandon();
                 default -> writeLineWithPrompt(
-                    "Usage: QUEST [LIST|ACCEPT <id>|STATUS|COMPLETE|ABANDON]");
+                    "Usage: QUEST [LIST|ACCEPT <id>|STATUS|COMPLETE|DELIVER|ABANDON]");
             }
         }
 
@@ -1649,10 +1671,17 @@ public class SocketClient implements Client {
             ActiveQuest active = new ActiveQuest(template.id(), template.requiredKills());
             Player updated = player.withActiveQuest(active);
             session.replacePlayer(updated);
-            writeLineWithPrompt(
-                "Contract accepted: " + template.name() + ". "
-                    + "Kill " + template.requiredKills() + " "
-                    + template.targetMobId() + "(s). Good luck.");
+            if (template.isDeliveryQuest()) {
+                writeLineWithPrompt(
+                    "Contract accepted: " + template.name() + ". "
+                        + "Collect " + template.requiredDropCount() + " "
+                        + template.dropItemId() + "(s) and QUEST DELIVER them here. Good luck.");
+            } else {
+                writeLineWithPrompt(
+                    "Contract accepted: " + template.name() + ". "
+                        + "Kill " + template.requiredKills() + " "
+                        + template.targetMobId() + "(s). Good luck.");
+            }
         }
 
         private void handleQuestStatus(QuestRepository questRepo) {
@@ -1674,7 +1703,20 @@ public class SocketClient implements Client {
                 writeLineWithPrompt("Unknown quest. Use QUEST ABANDON to clear it.");
                 return;
             }
-            if (active.isComplete()) {
+            if (template.isDeliveryQuest()) {
+                int held = 0;
+                for (Item it : player.getInventory()) {
+                    if (it.getId().getValue().equalsIgnoreCase(template.dropItemId())) {
+                        held++;
+                    }
+                }
+                if (held >= template.requiredDropCount()) {
+                    writeLineWithPrompt(template.name() + ": " + held + "/" + template.requiredDropCount()
+                        + " collected — return to the Guild Clerk and use QUEST DELIVER to claim your reward.");
+                } else {
+                    writeLineWithPrompt(template.name() + ": " + held + "/" + template.requiredDropCount() + " collected.");
+                }
+            } else if (active.isComplete()) {
                 writeLineWithPrompt(template.name() + ": complete — return to the Guild Clerk to claim your reward.");
             } else {
                 int done = template.requiredKills() - active.killsRemaining();
@@ -1696,6 +1738,18 @@ public class SocketClient implements Client {
             ActiveQuest active = player.getActiveQuest();
             if (active == null) {
                 writeLineWithPrompt("You have no active contract to complete.");
+                return;
+            }
+            // Delivery quests use QUEST DELIVER, not QUEST COMPLETE
+            QuestTemplate templateCheck;
+            try {
+                templateCheck = questRepo.findById(active.templateId()).orElse(null);
+            } catch (QuestRepositoryException e) {
+                writeLineWithPrompt("Quest lookup failed.");
+                return;
+            }
+            if (templateCheck != null && templateCheck.isDeliveryQuest()) {
+                writeLineWithPrompt("This contract requires item delivery. Use QUEST DELIVER instead.");
                 return;
             }
             if (!active.isComplete()) {
@@ -1737,6 +1791,28 @@ public class SocketClient implements Client {
                 "You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
             if (lvResult.leveledUp()) {
                 connection.writeLine("You have advanced to level " + rewarded.getLevel() + "!");
+            }
+            sendPrompt();
+        }
+
+        private void handleQuestDeliver(QuestRepository questRepo) {
+            Player player = session.getPlayer();
+            var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+            if (roomIdOpt.isEmpty()) {
+                writeLineWithPrompt("You are nowhere.");
+                return;
+            }
+            if (!"courtyard".equals(roomIdOpt.get().getValue())) {
+                writeLineWithPrompt("The Guild Clerk is not here. Find them in the Courtyard.");
+                return;
+            }
+            QuestDeliveryService deliverySvc = new QuestDeliveryService(questRepo);
+            QuestDeliveryService.DeliverResult result = deliverySvc.deliver(player);
+            if (result.success()) {
+                session.replacePlayer(result.player());
+            }
+            for (String msg : result.messages()) {
+                connection.writeLine(msg);
             }
             sendPrompt();
         }
