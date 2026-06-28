@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "dagger",
+  "name": "Dagger",
+  "description": "A short, double-edged blade — light and quick in hand.",
+  "attributes": {
+    "stats": {
+      "dexterity": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 2,
+  "value": 15,
+  "attack_ref": "attack.dagger"
+}

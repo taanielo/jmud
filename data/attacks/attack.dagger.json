@@ -1,0 +1,58 @@
+{
+  "schema_version": 3,
+  "id": "attack.dagger",
+  "name": "dagger",
+  "weapon_type": "PIERCING",
+  "min_damage": 1,
+  "max_damage": 5,
+  "hit_bonus": 8,
+  "crit_bonus": 4,
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You stab {target} with your dagger for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} stabs you with a dagger for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} stabs {target} with a dagger."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You thrust your dagger at {target} but miss."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} thrusts a dagger at you but misses."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} thrusts a dagger at {target} but misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You pierce {target} through a gap in their armour with your dagger for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} pierces you through a gap in your armour with a dagger for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} pierces {target} through a gap in their armour with a dagger!"
+    }
+  ]
+}
