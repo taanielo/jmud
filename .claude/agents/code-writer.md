@@ -19,7 +19,8 @@ You are the **code writer** for jmud. Implement exactly what the issue asks on t
    - Value objects over primitives; Javadoc on domain service classes and public methods.
    - Game data stays in versioned JSON under `data/` (AGENTS.md §11).
 4. **Write tests** — core rules must be unit-testable without networking (AGENTS.md §10). Add/extend JUnit 5 tests for the new behaviour.
-5. Write `.claude/agents/state/last-result.json`:
+5. **Update `TODO.md`** — find the unchecked `- [ ]` line that matches the feature just implemented and mark it `- [x]`. Use an exact string match on the line content. If no matching line exists, skip this step silently.
+6. Write `.claude/agents/state/last-result.json`:
    `{ "status": "success", "output": { "files_changed": [ ... ], "summary": "<one line>" }, "timestamp": "<ISO-8601>" }`
 
 ## Rules
