@@ -46,14 +46,12 @@
 - [x] Unified messaging system with ANSI/plain-text styling
 - [x] Starter zone rooms (courtyard, training yard, armory, sparring pit, etc.)
 - [x] The Catacombs dungeon zone with skeleton and crypt-warden mobs
-
-## In Progress
-- [x] Add The Darkwood zone with wolves, dire wolves, and forest troll boss (#135)
+- [x] The Darkwood zone with wolves, dire wolves, and forest troll boss
+- [x] Dwarf race with high carry capacity and natural armour bonus
+- [x] Rogue class with backstab skill that deals bonus damage on first strike
+- [x] Cleric class with group heal spell and turn undead ability
 
 ## Planned
-- [x] Add Dwarf race with high carry capacity and natural armour bonus
-- [x] Add Rogue class with backstab skill that deals bonus damage on first strike
-- [ ] Add Cleric class with group heal spell and undead turn ability
 - [ ] Add SCORE command enhancements: show current level, XP to next level, and total kills
 - [ ] Add TRAIN command and trainer NPC so players can spend practice points on skills
 - [ ] Add multi-kill quest: deliver a fixed number of drops (e.g. rat tails) to an NPC for a reward
