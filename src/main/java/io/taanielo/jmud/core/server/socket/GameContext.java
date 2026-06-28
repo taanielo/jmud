@@ -37,6 +37,7 @@ import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.MobRepositoryException;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
+import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
@@ -89,7 +90,8 @@ public record GameContext(
     MobRegistry mobRegistry,
     CharacterCreationService characterCreationService,
     ShopService shopService,
-    QuestRepository questRepository
+    QuestRepository questRepository,
+    PartyService partyService
 ) {
 
     /**
@@ -145,6 +147,11 @@ public record GameContext(
             mobRegistry.setQuestKillService(new QuestKillService(questRepository));
         }
 
+        PartyService partyService = new PartyService();
+        if (mobRegistry != null) {
+            mobRegistry.setPartyService(partyService);
+        }
+
         return new GameContext(
             userRegistry,
             authenticationPolicy,
@@ -170,7 +177,8 @@ public record GameContext(
             mobRegistry,
             characterCreationService,
             shopService,
-            questRepository
+            questRepository,
+            partyService
         );
     }
 

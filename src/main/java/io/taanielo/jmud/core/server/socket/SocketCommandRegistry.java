@@ -46,6 +46,7 @@ public class SocketCommandRegistry {
         new SellCommand(registry);
         new QuestCommand(registry);
         new TrainCommand(registry);
+        new PartyCommand(registry);
         new QuitCommand(registry);
         new HelpCommand(registry);
         return registry;

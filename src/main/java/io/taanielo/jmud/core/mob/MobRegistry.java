@@ -25,6 +25,7 @@ import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.tick.Tickable;
 import io.taanielo.jmud.core.world.EquipmentSlot;
@@ -53,6 +54,8 @@ public class MobRegistry implements Tickable {
     private final LevelUpService levelUpService = new LevelUpService();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
+    /** Optional party service for XP splitting; may be null when parties are disabled. */
+    private PartyService partyService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -80,6 +83,15 @@ public class MobRegistry implements Tickable {
      */
     public void setQuestKillService(QuestKillService questKillService) {
         this.questKillService = questKillService;
+    }
+
+    /**
+     * Registers the party service used to split XP among party members on mob kills.
+     *
+     * @param partyService the party service; may be null to disable party XP splitting
+     */
+    public void setPartyService(PartyService partyService) {
+        this.partyService = partyService;
     }
 
     /**
@@ -176,8 +188,17 @@ public class MobRegistry implements Tickable {
             }
             mob.scheduleRespawn();
             endCombatForMob(mob);
+
+            // Determine XP share: split equally among party members in the same room.
+            List<Username> xpRecipients = partyService != null
+                ? partyService.getPartyMembersInRoom(
+                    attacker.getUsername(), roomId, roomService::findPlayerLocation)
+                : List.of(attacker.getUsername());
+            int xpPerMember = (int) Math.floor(
+                (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
+
             Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
-            LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, mob.template().xpReward());
+            LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
             Player afterXp = levelUpResult.player();
             if (mob.template().goldDrop() != null) {
                 int gold = mob.template().goldDrop().roll();
@@ -200,10 +221,34 @@ public class MobRegistry implements Tickable {
             afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
             playerRepository.savePlayer(afterXp);
             messages.add(GameMessage.toSource(
-                "You gain " + mob.template().xpReward() + " experience points."));
+                "You gain " + xpPerMember + " experience points."));
             if (levelUpResult.leveledUp()) {
                 messages.add(GameMessage.toSource(
                     "You have advanced to level " + afterXp.getLevel() + "!"));
+            }
+
+            // Award XP to other party members in the same room.
+            for (Username member : xpRecipients) {
+                if (member.equals(attacker.getUsername())) {
+                    continue;
+                }
+                Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
+                if (memberPlayer == null || memberPlayer.isDead()) {
+                    continue;
+                }
+                LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
+                Player memberAfterXp = memberLvl.player()
+                    .withTotalKills(memberLvl.player().getTotalKills() + 1);
+                playerRepository.savePlayer(memberAfterXp);
+                List<GameMessage> memberMsgs = new ArrayList<>();
+                memberMsgs.add(GameMessage.toSource(
+                    "Your party slay the " + mob.template().name()
+                        + "! You gain " + xpPerMember + " experience points."));
+                if (memberLvl.leveledUp()) {
+                    memberMsgs.add(GameMessage.toSource(
+                        "You have advanced to level " + memberAfterXp.getLevel() + "!"));
+                }
+                playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
             }
         }
         return new GameActionResult(null, null, messages);
@@ -330,8 +375,18 @@ public class MobRegistry implements Tickable {
                 }
                 mob.scheduleRespawn();
                 endCombatForMob(mob);
+
+                // Determine XP share: split equally among party members in the same room.
+                RoomId killRoom = playerRoom;
+                List<Username> xpRecipients = partyService != null
+                    ? partyService.getPartyMembersInRoom(
+                        username, killRoom, roomService::findPlayerLocation)
+                    : List.of(username);
+                int xpPerMember = (int) Math.floor(
+                    (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
+
                 Player reloaded = playerRepository.loadPlayer(username).orElse(player);
-                LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, mob.template().xpReward());
+                LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
                 Player afterXp = levelUpResult.player();
                 if (mob.template().goldDrop() != null) {
                     int gold = mob.template().goldDrop().roll();
@@ -354,10 +409,34 @@ public class MobRegistry implements Tickable {
                 afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
                 playerRepository.savePlayer(afterXp);
                 messages.add(GameMessage.toSource(
-                    "You gain " + mob.template().xpReward() + " experience points."));
+                    "You gain " + xpPerMember + " experience points."));
                 if (levelUpResult.leveledUp()) {
                     messages.add(GameMessage.toSource(
                         "You have advanced to level " + afterXp.getLevel() + "!"));
+                }
+
+                // Award XP to other party members in the same room.
+                for (Username member : xpRecipients) {
+                    if (member.equals(username)) {
+                        continue;
+                    }
+                    Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
+                    if (memberPlayer == null || memberPlayer.isDead()) {
+                        continue;
+                    }
+                    LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
+                    Player memberAfterXp = memberLvl.player()
+                        .withTotalKills(memberLvl.player().getTotalKills() + 1);
+                    playerRepository.savePlayer(memberAfterXp);
+                    List<GameMessage> memberMsgs = new ArrayList<>();
+                    memberMsgs.add(GameMessage.toSource(
+                        "Your party slay the " + mob.template().name()
+                            + "! You gain " + xpPerMember + " experience points."));
+                    if (memberLvl.leveledUp()) {
+                        memberMsgs.add(GameMessage.toSource(
+                            "You have advanced to level " + memberAfterXp.getLevel() + "!"));
+                    }
+                    playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
                 }
             }
             playerEventBus.publish(username, new GameActionResult(null, null, messages));

@@ -269,4 +269,17 @@ public interface SocketCommandContext extends Client {
      */
     default void executeTrain(String args) {}
 
+    /**
+     * Executes a PARTY sub-command (FORM, INVITE, ACCEPT, DECLINE, LEAVE, DISBAND, or empty).
+     *
+     * <p>Manages in-memory party groups that share XP on mob kills and display
+     * member HP in the prompt via the {@code {partyHp}} token.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "INVITE Alice"})
+     */
+    default void executeParty(String args) {}
+
 }
