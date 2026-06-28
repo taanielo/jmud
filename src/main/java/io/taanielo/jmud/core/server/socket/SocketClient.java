@@ -138,7 +138,9 @@ public class SocketClient implements Client {
             roomService,
             abilityTargetResolver,
             session.getCooldownTracker(),
-            encumbranceService
+            encumbranceService,
+            p -> context.mobRegistry() != null
+                && context.mobRegistry().isInCombat(p.getUsername())
         );
 
         this.commandDispatcher = new SocketCommandDispatcher(context.commandRegistry(), auditService);

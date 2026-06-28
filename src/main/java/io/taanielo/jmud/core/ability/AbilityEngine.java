@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
@@ -31,6 +32,22 @@ public class AbilityEngine {
         this.messageSink = Objects.requireNonNull(messageSink, "Ability message sink is required");
     }
 
+    /**
+     * Uses an ability identified by {@code input}.
+     *
+     * <p>Equivalent to calling
+     * {@link #use(Player, String, List, AbilityTargetResolver, AbilityCooldownTracker, Predicate)}
+     * with an {@code inCombatCheck} that always returns {@code false} (never in combat).
+     * Prefer the overload that accepts an explicit in-combat predicate when combat state
+     * is available to the caller.
+     *
+     * @param source            the player using the ability
+     * @param input             raw ability input (name and optional target)
+     * @param learnedAbilityIds abilities the player has learned
+     * @param targetResolver    resolves target names to player objects
+     * @param cooldowns         tracks per-ability cooldowns
+     * @return result of the ability use
+     */
     public AbilityUseResult use(
         Player source,
         String input,
@@ -38,9 +55,34 @@ public class AbilityEngine {
         AbilityTargetResolver targetResolver,
         AbilityCooldownTracker cooldowns
     ) {
+        return use(source, input, learnedAbilityIds, targetResolver, cooldowns, _ -> false);
+    }
+
+    /**
+     * Uses an ability identified by {@code input}, enforcing first-strike restrictions for
+     * {@link AbilityTargeting#HARMFUL_OPENER} abilities via the supplied predicate.
+     *
+     * @param source            the player using the ability
+     * @param input             raw ability input (name and optional target)
+     * @param learnedAbilityIds abilities the player has learned
+     * @param targetResolver    resolves target names to player objects
+     * @param cooldowns         tracks per-ability cooldowns
+     * @param inCombatCheck     returns {@code true} when the source is already engaged in combat;
+     *                          used to block opener abilities mid-combat
+     * @return result of the ability use
+     */
+    public AbilityUseResult use(
+        Player source,
+        String input,
+        List<AbilityId> learnedAbilityIds,
+        AbilityTargetResolver targetResolver,
+        AbilityCooldownTracker cooldowns,
+        Predicate<Player> inCombatCheck
+    ) {
         Objects.requireNonNull(source, "Source player is required");
         Objects.requireNonNull(targetResolver, "Target resolver is required");
         Objects.requireNonNull(cooldowns, "Cooldown tracker is required");
+        Objects.requireNonNull(inCombatCheck, "In-combat check is required");
 
         Optional<AbilityMatch> match = registry.findBestMatch(input, learnedAbilityIds);
         if (match.isEmpty()) {
@@ -49,9 +91,14 @@ public class AbilityEngine {
         Ability ability = match.get().ability();
         String targetInput = match.get().remainingTarget();
 
+        if (ability.targeting() == AbilityTargeting.HARMFUL_OPENER && inCombatCheck.test(source)) {
+            return new AbilityUseResult(source, source,
+                List.of("You can only backstab as an opener — you are already in combat."));
+        }
+
         Player target = resolveTarget(ability, source, targetInput, targetResolver);
         if (target == null) {
-            if (ability.targeting() == AbilityTargeting.HARMFUL) {
+            if (isHarmfulTargeting(ability.targeting())) {
                 return new AbilityUseResult(source, source, List.of("You must specify a target."));
             }
             return new AbilityUseResult(source, source, List.of("Target not found."));
@@ -103,6 +150,11 @@ public class AbilityEngine {
             return ability.targeting() == AbilityTargeting.BENEFICIAL ? source : null;
         }
         return targetResolver.resolve(source, targetInput).orElse(null);
+    }
+
+    /** Returns {@code true} for targeting modes that require an explicit hostile target. */
+    private static boolean isHarmfulTargeting(AbilityTargeting targeting) {
+        return targeting == AbilityTargeting.HARMFUL || targeting == AbilityTargeting.HARMFUL_OPENER;
     }
 
     private String formatEffect(AbilityEffect effect, Player target) {
