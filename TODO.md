@@ -58,7 +58,7 @@
 - [x] Add PARTY system: players can form a group to share XP and see party HP in prompt
 - [x] Add mob respawn with wander: mobs randomly move between linked rooms on tick
 - [x] Add LOCK and UNLOCK commands with key items for gated doors between zones
-- [ ] Add CAST command as an explicit spell-use alias alongside the existing ability system
+- [x] Add CAST command as an explicit spell-use alias alongside the existing ability system
 - [ ] Add mana potions with QUAFF restoring mana and add them to shops and mob loot tables
 - [ ] Add BANK NPC with DEPOSIT and WITHDRAW commands for safe gold storage
 - [ ] Add item sell-value and item description visible in LIST so players can compare gear

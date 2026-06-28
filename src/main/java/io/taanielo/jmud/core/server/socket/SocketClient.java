@@ -1013,6 +1013,26 @@ public class SocketClient implements Client {
         }
 
         @Override
+        public void castSpell(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to cast spells.");
+                return;
+            }
+            cancelRestIfActive();
+            Player player = session.getPlayer();
+            AbilityMatch match = abilityRegistry
+                .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
+            if (match != null && match.ability().type() != io.taanielo.jmud.core.ability.AbilityType.SPELL) {
+                writeLineWithPrompt("That is not a spell.");
+                return;
+            }
+            GameActionResult result = gameActionService.useAbility(player, args);
+            auditAbilityUse(match, result, args);
+            deliverResult(result);
+            sendPrompt();
+        }
+
+        @Override
         public void updateAnsi(String args) {
             handleAnsiCommand(args);
         }
