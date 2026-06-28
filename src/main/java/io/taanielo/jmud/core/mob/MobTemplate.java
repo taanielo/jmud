@@ -21,7 +21,12 @@ public record MobTemplate(
     int respawnTicks,
     int xpReward,
     /** Optional gold-drop range; {@code null} means this mob drops no gold. */
-    GoldDrop goldDrop
+    GoldDrop goldDrop,
+    /**
+     * Optional classification tags (e.g. {@code "undead"}).
+     * Always non-null; defaults to an empty list when not specified in data.
+     */
+    List<String> tags
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -37,5 +42,11 @@ public record MobTemplate(
             throw new IllegalArgumentException("Mob xpReward must be non-negative");
         }
         lootTable = List.copyOf(lootTable);
+        tags = tags == null ? List.of() : List.copyOf(tags);
+    }
+
+    /** Returns {@code true} when this mob carries the given tag (case-sensitive). */
+    public boolean hasTag(String tag) {
+        return tags.contains(tag);
     }
 }

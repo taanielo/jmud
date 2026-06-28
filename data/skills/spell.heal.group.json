@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "id": "spell.heal.group",
+  "name": "group heal",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "INCREASE",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "Divine light floods the room as you call upon holy power with {ability}."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "Divine light floods the room as {source} calls upon holy power to heal the group."
+    }
+  ]
+}

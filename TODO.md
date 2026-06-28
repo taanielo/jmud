@@ -48,11 +48,11 @@
 - [x] The Catacombs dungeon zone with skeleton and crypt-warden mobs
 
 ## In Progress
-- [ ] Add The Darkwood zone with wolves, dire wolves, and forest troll boss (#135)
+- [x] Add The Darkwood zone with wolves, dire wolves, and forest troll boss (#135)
 
 ## Planned
-- [ ] Add Dwarf race with high carry capacity and natural armour bonus
-- [ ] Add Rogue class with backstab skill that deals bonus damage on first strike
+- [x] Add Dwarf race with high carry capacity and natural armour bonus
+- [x] Add Rogue class with backstab skill that deals bonus damage on first strike
 - [ ] Add Cleric class with group heal spell and undead turn ability
 - [ ] Add SCORE command enhancements: show current level, XP to next level, and total kills
 - [ ] Add TRAIN command and trainer NPC so players can spend practice points on skills

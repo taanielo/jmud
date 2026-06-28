@@ -83,6 +83,7 @@ class MobRegistryLootAnnouncementTest {
             1,
             10,
             5,
+            null,
             null
         );
     }
@@ -196,6 +197,7 @@ class MobRegistryLootAnnouncementTest {
             1,
             10,
             5,
+            null,
             null
         );
         AttackRepository attackRepo = new StubAttackRepository(

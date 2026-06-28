@@ -27,6 +27,7 @@ class MonstersLineFormatterTest {
             1,
             0,
             0,
+            null,
             null
         );
         return new MobInstance(template);
