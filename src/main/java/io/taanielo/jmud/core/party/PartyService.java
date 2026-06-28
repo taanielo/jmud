@@ -1,0 +1,279 @@
+package io.taanielo.jmud.core.party;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
+import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.RoomId;
+
+/**
+ * In-memory party management service.
+ *
+ * <p>Manages party formation, membership, invitations, and disbanding.
+ * All mutating operations are {@code synchronized} to guarantee consistent
+ * state across concurrent virtual-thread player sessions.
+ *
+ * <p>No persistence is used; parties vanish on server restart.
+ */
+public class PartyService {
+
+    /**
+     * Result of a party operation, carrying a success flag and a player-facing message.
+     */
+    public record PartyResult(boolean success, String message) {}
+
+    /** partyId → Party snapshot. */
+    private final Map<UUID, Party> parties = new ConcurrentHashMap<>();
+    /** member username → partyId. */
+    private final Map<Username, UUID> memberToParty = new ConcurrentHashMap<>();
+    /** invitee username → inviter username (pending invitations). */
+    private final Map<Username, Username> pendingInvites = new ConcurrentHashMap<>();
+
+    // ── Party lifecycle ───────────────────────────────────────────────
+
+    /**
+     * Creates a new party with {@code leader} as its sole member.
+     *
+     * @param leader the player forming the party
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult form(Username leader) {
+        Objects.requireNonNull(leader, "leader is required");
+        if (memberToParty.containsKey(leader)) {
+            return new PartyResult(false, "You are already in a party. Use PARTY LEAVE first.");
+        }
+        UUID partyId = UUID.randomUUID();
+        Party party = new Party(leader, List.of(leader));
+        parties.put(partyId, party);
+        memberToParty.put(leader, partyId);
+        return new PartyResult(true, "You have formed a new party.");
+    }
+
+    /**
+     * Records a pending invitation from {@code inviter} to {@code invitee}.
+     *
+     * <p>The inviter must be the party leader. The invitee must be online and
+     * not already in a party.
+     *
+     * @param inviter        the player sending the invitation (must be party leader)
+     * @param invitee        the player to invite
+     * @param inviteeOnline  whether the invitee is currently connected
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult invite(Username inviter, Username invitee, boolean inviteeOnline) {
+        Objects.requireNonNull(inviter, "inviter is required");
+        Objects.requireNonNull(invitee, "invitee is required");
+        if (invitee.equals(inviter)) {
+            return new PartyResult(false, "You cannot invite yourself.");
+        }
+        if (!inviteeOnline) {
+            return new PartyResult(false, invitee.getValue() + " is not online.");
+        }
+        UUID partyId = memberToParty.get(inviter);
+        if (partyId == null) {
+            return new PartyResult(false, "You are not in a party. Use PARTY FORM first.");
+        }
+        Party party = parties.get(partyId);
+        if (party == null || !party.isLeader(inviter)) {
+            return new PartyResult(false, "Only the party leader can invite players.");
+        }
+        if (memberToParty.containsKey(invitee)) {
+            return new PartyResult(false, invitee.getValue() + " is already in a party.");
+        }
+        pendingInvites.put(invitee, inviter);
+        return new PartyResult(true, "Party invitation sent to " + invitee.getValue() + ".");
+    }
+
+    /**
+     * Accepts the pending invitation for {@code invitee}, adding them to the party.
+     *
+     * @param invitee the player accepting an invitation
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult accept(Username invitee) {
+        Objects.requireNonNull(invitee, "invitee is required");
+        Username inviter = pendingInvites.remove(invitee);
+        if (inviter == null) {
+            return new PartyResult(false, "You have no pending party invitation.");
+        }
+        if (memberToParty.containsKey(invitee)) {
+            return new PartyResult(false, "You are already in a party.");
+        }
+        UUID partyId = memberToParty.get(inviter);
+        if (partyId == null) {
+            return new PartyResult(false, "The party you were invited to no longer exists.");
+        }
+        Party old = parties.get(partyId);
+        if (old == null) {
+            return new PartyResult(false, "The party you were invited to no longer exists.");
+        }
+        List<Username> newMembers = new ArrayList<>(old.memberIds());
+        newMembers.add(invitee);
+        parties.put(partyId, new Party(old.leaderId(), newMembers));
+        memberToParty.put(invitee, partyId);
+        return new PartyResult(true, "You have joined " + inviter.getValue() + "'s party.");
+    }
+
+    /**
+     * Declines the pending invitation for {@code invitee}.
+     *
+     * @param invitee the player declining an invitation
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult decline(Username invitee) {
+        Objects.requireNonNull(invitee, "invitee is required");
+        Username inviter = pendingInvites.remove(invitee);
+        if (inviter == null) {
+            return new PartyResult(false, "You have no pending party invitation.");
+        }
+        return new PartyResult(true, "You declined the party invitation from " + inviter.getValue() + ".");
+    }
+
+    /**
+     * Removes {@code member} from their current party.
+     *
+     * <p>If only one member remains after the leave, the party is automatically disbanded.
+     * If the leaving member was the leader, leadership is transferred to the next member.
+     *
+     * @param member the player leaving the party
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult leave(Username member) {
+        Objects.requireNonNull(member, "member is required");
+        UUID partyId = memberToParty.remove(member);
+        if (partyId == null) {
+            return new PartyResult(false, "You are not in a party.");
+        }
+        Party old = parties.get(partyId);
+        if (old == null) {
+            return new PartyResult(true, "You have left the party.");
+        }
+        List<Username> remaining = old.memberIds().stream()
+            .filter(m -> !m.equals(member))
+            .toList();
+        if (remaining.size() <= 1) {
+            // Disband: remove party and remaining member mapping
+            parties.remove(partyId);
+            for (Username m : remaining) {
+                memberToParty.remove(m);
+            }
+            return new PartyResult(true, "You have left the party. The party has been disbanded.");
+        }
+        Username newLeader = old.isLeader(member) ? remaining.get(0) : old.leaderId();
+        parties.put(partyId, new Party(newLeader, remaining));
+        String suffix = old.isLeader(member)
+            ? " " + newLeader.getValue() + " is now the party leader."
+            : "";
+        return new PartyResult(true, "You have left the party." + suffix);
+    }
+
+    /**
+     * Disbands the party entirely. Only the party leader may invoke this.
+     *
+     * @param leader the player disbanding the party
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult disband(Username leader) {
+        Objects.requireNonNull(leader, "leader is required");
+        UUID partyId = memberToParty.get(leader);
+        if (partyId == null) {
+            return new PartyResult(false, "You are not in a party.");
+        }
+        Party party = parties.get(partyId);
+        if (party == null || !party.isLeader(leader)) {
+            return new PartyResult(false, "Only the party leader can disband the party.");
+        }
+        parties.remove(partyId);
+        for (Username m : party.memberIds()) {
+            memberToParty.remove(m);
+        }
+        return new PartyResult(true, "Party disbanded.");
+    }
+
+    // ── Queries ───────────────────────────────────────────────────────
+
+    /**
+     * Returns the party that {@code username} belongs to, if any.
+     *
+     * @param username the player to look up
+     * @return an {@code Optional} containing the party, or empty
+     */
+    public Optional<Party> findParty(Username username) {
+        Objects.requireNonNull(username, "username is required");
+        UUID partyId = memberToParty.get(username);
+        if (partyId == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(parties.get(partyId));
+    }
+
+    /**
+     * Returns the party members of {@code username}'s party who are currently
+     * in {@code roomId}. Includes the player themselves.
+     *
+     * <p>If the player is not in a party, the returned list contains only
+     * {@code username} (so callers can always iterate recipients).
+     *
+     * @param username   the reference player (killer/actor)
+     * @param roomId     the room to filter by
+     * @param locationFn function that resolves a username to their current room
+     * @return usernames of party members in the room
+     */
+    public List<Username> getPartyMembersInRoom(
+        Username username,
+        RoomId roomId,
+        Function<Username, Optional<RoomId>> locationFn
+    ) {
+        Objects.requireNonNull(username, "username is required");
+        Objects.requireNonNull(roomId, "roomId is required");
+        Objects.requireNonNull(locationFn, "locationFn is required");
+        Optional<Party> partyOpt = findParty(username);
+        if (partyOpt.isEmpty()) {
+            return List.of(username);
+        }
+        return partyOpt.get().memberIds().stream()
+            .filter(m -> locationFn.apply(m)
+                .map(r -> r.equals(roomId))
+                .orElse(false))
+            .toList();
+    }
+
+    /**
+     * Returns the usernames of all party members of {@code username} except
+     * {@code username} themselves. Useful for broadcasting party notifications.
+     *
+     * @param username the reference player
+     * @return other members in the same party, or an empty list
+     */
+    public List<Username> getOtherMembers(Username username) {
+        Objects.requireNonNull(username, "username is required");
+        UUID partyId = memberToParty.get(username);
+        if (partyId == null) {
+            return List.of();
+        }
+        Party party = parties.get(partyId);
+        if (party == null) {
+            return List.of();
+        }
+        return party.memberIds().stream()
+            .filter(m -> !m.equals(username))
+            .toList();
+    }
+
+    /**
+     * Returns the pending inviter for the given invitee, if an invitation exists.
+     *
+     * @param invitee the player who received an invite
+     * @return the inviter username, or empty
+     */
+    public Optional<Username> getPendingInviter(Username invitee) {
+        Objects.requireNonNull(invitee, "invitee is required");
+        return Optional.ofNullable(pendingInvites.get(invitee));
+    }
+}

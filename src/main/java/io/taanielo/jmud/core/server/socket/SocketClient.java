@@ -56,6 +56,8 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
+import io.taanielo.jmud.core.party.Party;
+import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.quest.ActiveQuest;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
 import io.taanielo.jmud.core.quest.QuestKillService;
@@ -604,8 +606,63 @@ public class SocketClient implements Client {
         if (format == null || format.isBlank()) {
             format = PromptSettings.defaultFormat();
         }
-        String promptLine = promptRenderer.render(format, player);
+        String partyHp = format.contains("{partyHp}") ? buildPartyHpString(player) : "";
+        String promptLine = promptRenderer.render(format, player, partyHp);
         connection.write(promptLine + "> ");
+    }
+
+    /**
+     * Builds the {@code {partyHp}} token value for the given player.
+     *
+     * <p>Iterates the party members, looks up current HP from connected sessions
+     * (falling back to the repository), and returns a space-separated
+     * {@code Name:hp/maxHp} string. Returns an empty string when the player
+     * is not in a party.
+     *
+     * @param player the current player
+     * @return formatted party HP string, or {@code ""} when not in a party
+     */
+    private String buildPartyHpString(Player player) {
+        PartyService partyService = context.partyService();
+        if (partyService == null) {
+            return "";
+        }
+        return partyService.findParty(player.getUsername())
+            .map(party -> {
+                StringBuilder sb = new StringBuilder();
+                for (Username memberId : party.memberIds()) {
+                    if (memberId.equals(player.getUsername())) {
+                        continue;
+                    }
+                    if (sb.length() > 0) {
+                        sb.append(' ');
+                    }
+                    sb.append(memberId.getValue()).append(':').append(findMemberCurrentHp(memberId));
+                }
+                return sb.toString();
+            })
+            .orElse("");
+    }
+
+    /**
+     * Returns the current HP string for a party member by consulting connected sessions
+     * first, then falling back to the player repository.
+     *
+     * @param username the member to look up
+     * @return {@code "hp/maxHp"} string
+     */
+    private String findMemberCurrentHp(Username username) {
+        for (Client client : clientPool.clients()) {
+            if (client instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
+                Player p = sc.session.getPlayer();
+                if (p != null) {
+                    return p.getVitals().hp() + "/" + p.getVitals().maxHp();
+                }
+            }
+        }
+        return playerRepository.loadPlayer(username)
+            .map(p -> p.getVitals().hp() + "/" + p.getVitals().maxHp())
+            .orElse("?/?");
     }
 
     private void sendToUsername(Username username, String message) {
@@ -1523,6 +1580,121 @@ public class SocketClient implements Client {
                 case "" -> writeLineWithPrompt("Usage: TRAIN LIST  or  TRAIN <ability-id>");
                 default -> handleTrainAbility(player, sub + (subArgs.isBlank() ? "" : " " + subArgs));
             }
+        }
+
+        @Override
+        public void executeParty(String args) {
+            if (!session.isAuthenticated() || session.getPlayer() == null) {
+                writeLineWithPrompt("You must be logged in to use party commands.");
+                return;
+            }
+            PartyService partyService = context.partyService();
+            if (partyService == null) {
+                writeLineWithPrompt("The party system is not available.");
+                return;
+            }
+            Player player = session.getPlayer();
+            String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+            String sub = parts[0];
+            String subArgs = parts[1];
+
+            switch (sub) {
+                case "FORM" -> handlePartyForm(player, partyService);
+                case "INVITE" -> handlePartyInvite(player, partyService, subArgs);
+                case "ACCEPT" -> handlePartyAccept(player, partyService);
+                case "DECLINE" -> handlePartyDecline(player, partyService);
+                case "LEAVE" -> handlePartyLeave(player, partyService);
+                case "DISBAND" -> handlePartyDisband(player, partyService);
+                case "" -> handlePartyStatus(player, partyService);
+                default -> writeLineWithPrompt(
+                    "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND]");
+            }
+        }
+
+        private void handlePartyForm(Player player, PartyService partyService) {
+            PartyService.PartyResult result = partyService.form(player.getUsername());
+            writeLineWithPrompt(result.message());
+        }
+
+        private void handlePartyInvite(Player player, PartyService partyService, String targetName) {
+            if (targetName == null || targetName.isBlank()) {
+                writeLineWithPrompt("Invite whom? Usage: PARTY INVITE <player>");
+                return;
+            }
+            Username invitee = Username.of(targetName.trim());
+            List<Username> online = onlinePlayerNames();
+            boolean inviteeOnline = online.contains(invitee);
+            PartyService.PartyResult result = partyService.invite(
+                player.getUsername(), invitee, inviteeOnline);
+            writeLineWithPrompt(result.message());
+            if (result.success()) {
+                // Notify the invitee
+                sendToUsername(invitee,
+                    player.getUsername().getValue()
+                        + " invites you to join their party. Type PARTY ACCEPT or PARTY DECLINE.");
+            }
+        }
+
+        private void handlePartyAccept(Player player, PartyService partyService) {
+            // Notify the inviter before accepting (so we can look up party members)
+            java.util.Optional<Username> inviterOpt = partyService.getPendingInviter(player.getUsername());
+            PartyService.PartyResult result = partyService.accept(player.getUsername());
+            writeLineWithPrompt(result.message());
+            if (result.success()) {
+                inviterOpt.ifPresent(inviter ->
+                    sendToUsername(inviter,
+                        player.getUsername().getValue() + " has joined the party."));
+            }
+        }
+
+        private void handlePartyDecline(Player player, PartyService partyService) {
+            java.util.Optional<Username> inviterOpt = partyService.getPendingInviter(player.getUsername());
+            PartyService.PartyResult result = partyService.decline(player.getUsername());
+            writeLineWithPrompt(result.message());
+            if (result.success()) {
+                inviterOpt.ifPresent(inviter ->
+                    sendToUsername(inviter,
+                        player.getUsername().getValue() + " declined the party invitation."));
+            }
+        }
+
+        private void handlePartyLeave(Player player, PartyService partyService) {
+            List<Username> others = partyService.getOtherMembers(player.getUsername());
+            PartyService.PartyResult result = partyService.leave(player.getUsername());
+            writeLineWithPrompt(result.message());
+            if (result.success()) {
+                for (Username other : others) {
+                    sendToUsername(other,
+                        player.getUsername().getValue() + " has left the party.");
+                }
+            }
+        }
+
+        private void handlePartyDisband(Player player, PartyService partyService) {
+            List<Username> others = partyService.getOtherMembers(player.getUsername());
+            PartyService.PartyResult result = partyService.disband(player.getUsername());
+            writeLineWithPrompt(result.message());
+            if (result.success()) {
+                for (Username other : others) {
+                    sendToUsername(other, "The party has been disbanded by the leader.");
+                }
+            }
+        }
+
+        private void handlePartyStatus(Player player, PartyService partyService) {
+            java.util.Optional<Party> partyOpt = partyService.findParty(player.getUsername());
+            if (partyOpt.isEmpty()) {
+                writeLineWithPrompt("You are not in a party. Use PARTY FORM to create one.");
+                return;
+            }
+            Party party = partyOpt.get();
+            connection.writeLine("Party members:");
+            for (Username memberId : party.memberIds()) {
+                String hp = findMemberCurrentHp(memberId);
+                String leaderTag = party.isLeader(memberId) ? " (leader)" : "";
+                connection.writeLine("  " + memberId.getValue() + leaderTag + "  HP: " + hp);
+            }
+            sendPrompt();
         }
 
         private void handleTrainList(Player player) {
