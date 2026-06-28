@@ -56,8 +56,8 @@ public class ShopService {
         Objects.requireNonNull(shop, "shop is required");
         List<String> lines = new ArrayList<>();
         lines.add(shop.name() + " — wares for sale:");
-        lines.add(String.format("  %-24s %-30s %s", "Item", "Description", "Price"));
-        lines.add("  " + "-".repeat(62));
+        lines.add(String.format("  %-24s %-30s %-10s %s", "Item", "Description", "Price", "Sell"));
+        lines.add("  " + "-".repeat(74));
         for (StockEntry entry : shop.stock()) {
             try {
                 Optional<Item> itemOpt = itemRepository.findById(entry.itemId());
@@ -67,11 +67,13 @@ public class ShopService {
                 }
                 Item item = itemOpt.get();
                 int price = entry.price() != null ? entry.price() : item.getValue();
+                int sellValue = (int) Math.floor(item.getValue() * shop.sellRatio());
                 String desc = item.getDescription();
                 if (desc.length() > 29) {
                     desc = desc.substring(0, 26) + "...";
                 }
-                lines.add(String.format("  %-24s %-30s %d gold", item.getName(), desc, price));
+                lines.add(String.format("  %-24s %-30s %-10s %d gold",
+                    item.getName(), desc, price + " gold", sellValue));
             } catch (RepositoryException e) {
                 log.warn("Failed to load item {} for shop listing: {}", entry.itemId(), e.getMessage());
             }
