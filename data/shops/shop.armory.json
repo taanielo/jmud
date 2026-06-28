@@ -8,6 +8,9 @@
     {"item_id": "iron-mace"},
     {"item_id": "dagger"},
     {"item_id": "training-shield"},
+    {"item_id": "leather-cap"},
+    {"item_id": "leather-chest"},
+    {"item_id": "leather-legs"},
     {"item_id": "health-potion"},
     {"item_id": "mana-potion"}
   ],

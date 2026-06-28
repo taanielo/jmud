@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "leather-cap",
+  "name": "Leather Cap",
+  "description": "A simple cap cut from cured leather, offering modest head protection.",
+  "attributes": {
+    "stats": {
+      "ac": 2
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "head",
+  "weight": 2,
+  "value": 20,
+  "attack_ref": null
+}
