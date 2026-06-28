@@ -440,6 +440,84 @@ class GameActionServiceTest {
     }
 
     @Test
+    void quaffManaPotionRestoresManaFromPartialToMax() {
+        PlayerVitals lowMana = new PlayerVitals(20, 20, 5, 20, 20, 20);
+        Player withLowMana = new Player(
+            User.of(Username.of("attacker"), Password.hash("pw", 1000)),
+            1, 0, lowMana, List.of(), "prompt", false,
+            List.of(), null, null
+        );
+        Item manaPotion = new Item(
+            ItemId.of("mana-potion"),
+            "Mana Potion",
+            "A small blue vial.",
+            new ItemAttributes(Map.of("mana", 20)),
+            List.of(),
+            List.of(
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                    "You quaff {item}."
+                )
+            ),
+            null,
+            1,
+            15,
+            null
+        );
+        Player withPotion = withLowMana.addItem(manaPotion);
+
+        GameActionResult result = service.quaffItem(withPotion, "mana-potion");
+
+        assertEquals(20, result.updatedSource().getVitals().mana());
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+    }
+
+    @Test
+    void quaffManaPotionIsCappedAtMaxMana() {
+        // Player is already at full mana (20/20); restoreMana(20) should stay at 20
+        Item manaPotion = new Item(
+            ItemId.of("mana-potion"),
+            "Mana Potion",
+            "A small blue vial.",
+            new ItemAttributes(Map.of("mana", 20)),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            15,
+            null
+        );
+        Player withPotion = attacker.addItem(manaPotion);
+
+        GameActionResult result = service.quaffItem(withPotion, "mana-potion");
+
+        assertEquals(20, result.updatedSource().getVitals().mana());
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+    }
+
+    @Test
+    void quaffItemNothingHappensGuardRequiresBothHpAndManaToBeZero() {
+        // Item with neither hp nor mana stat and no effects should still return "Nothing happens."
+        Item rock = new Item(
+            ItemId.of("rock"),
+            "Rock",
+            "A plain rock.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            1,
+            null
+        );
+        Player withItem = attacker.addItem(rock);
+
+        GameActionResult result = service.quaffItem(withItem, "rock");
+        assertEquals("Nothing happens.", result.messages().getFirst().text());
+    }
+
+    @Test
     void resolveDeathIfNeededDoesNothingWhenAlive() {
         GameActionResult result = service.resolveDeathIfNeeded(target, attacker);
 

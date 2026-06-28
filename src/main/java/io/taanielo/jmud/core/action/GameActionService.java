@@ -318,8 +318,10 @@ public class GameActionService {
             return GameActionResult.error("You aren't carrying that.");
         }
         int hpDelta = item.getAttributes().getStats().getOrDefault("hp", 0);
+        int manaDelta = item.getAttributes().getStats().getOrDefault("mana", 0);
         boolean hasHpStat = hpDelta != 0;
-        if (!hasHpStat && item.getEffects().isEmpty()) {
+        boolean hasManaStat = manaDelta != 0;
+        if (!hasHpStat && !hasManaStat && item.getEffects().isEmpty()) {
             return GameActionResult.error("Nothing happens.");
         }
         // Apply hp stat: positive heals, negative damages
@@ -328,6 +330,10 @@ public class GameActionService {
             vitals = vitals.heal(hpDelta);
         } else if (hpDelta < 0) {
             vitals = vitals.damage(-hpDelta);
+        }
+        // Apply mana stat: positive restores mana
+        if (manaDelta > 0) {
+            vitals = vitals.restoreMana(manaDelta);
         }
         Player working = source.withVitals(vitals);
         CollectingEffectMessageSink effectSink = new CollectingEffectMessageSink(

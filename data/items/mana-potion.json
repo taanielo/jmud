@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "mana-potion",
+  "name": "Mana Potion",
+  "description": "A small blue vial that restores a bit of magical energy.",
+  "attributes": {
+    "stats": {
+      "mana": 20
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You quaff {item}."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 15
+}

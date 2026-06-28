@@ -6,7 +6,8 @@
   "stock": [
     {"item_id": "iron-sword"},
     {"item_id": "training-shield"},
-    {"item_id": "health-potion"}
+    {"item_id": "health-potion"},
+    {"item_id": "mana-potion"}
   ],
   "sell_ratio": 0.5
 }
