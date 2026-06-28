@@ -119,6 +119,44 @@ class LevelUpServiceTest {
         assertEquals(0, result.player().getExperience());
     }
 
+    // ── awardXp: practice points ─────────────────────────────────────────────
+
+    @Test
+    void levelUpGrantsOnePracticePoint() {
+        Player player = basePlayer(1, 0);
+        int initialPracticePoints = player.getPracticePoints();
+
+        LevelUpService.LevelUpResult result = service.awardXp(player, 100);
+
+        assertTrue(result.leveledUp());
+        assertEquals(initialPracticePoints + LevelUpService.PRACTICE_POINTS_PER_LEVEL,
+            result.player().getPracticePoints(),
+            "One practice point should be granted per level-up");
+    }
+
+    @Test
+    void multipleLevelUpsGrantOnePracticePointEach() {
+        Player player = basePlayer(1, 0);
+        // Level 1->2: 100, Level 2->3: 200 => 300 total for 2 level-ups
+        LevelUpService.LevelUpResult result = service.awardXp(player, 300);
+
+        assertEquals(2, result.player().getLevel() - 1, "Should have gained 2 levels");
+        assertEquals(2 * LevelUpService.PRACTICE_POINTS_PER_LEVEL,
+            result.player().getPracticePoints(),
+            "Two practice points should be granted for two level-ups");
+    }
+
+    @Test
+    void noLevelUpDoesNotGrantPracticePoints() {
+        Player player = basePlayer(1, 0);
+
+        LevelUpService.LevelUpResult result = service.awardXp(player, 50);
+
+        assertFalse(result.leveledUp());
+        assertEquals(0, result.player().getPracticePoints(),
+            "No practice points should be granted without levelling up");
+    }
+
     // ── awardXp: validation ───────────────────────────────────────────────────
 
     @Test
