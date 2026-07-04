@@ -38,6 +38,8 @@ import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.messaging.MessageBroadcaster;
+import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.party.PartyService;
@@ -50,6 +52,7 @@ import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
+import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
@@ -97,13 +100,17 @@ public record GameContext(
     ShopService shopService,
     QuestRepository questRepository,
     PartyService partyService,
-    BankService bankService
+    BankService bankService,
+    MessageBroadcaster messageBroadcaster
 ) {
 
     /**
      * Builds a fully wired context for the socket server.
+     *
+     * @param clientPool the pool of connected clients, used to wire {@link MessageBroadcaster}
+     *                    without transport adapters ever constructing it themselves
      */
-    public static GameContext create() {
+    public static GameContext create(ClientPool clientPool) {
         GameConfig config = GameConfig.load();
         UserRegistry userRegistry = createUserRegistry();
         AuthenticationPolicy authenticationPolicy = AuthenticationPolicy.fromConfig(config);
@@ -162,6 +169,8 @@ public record GameContext(
             mobRegistry.setPartyService(partyService);
         }
 
+        MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
+
         return new GameContext(
             userRegistry,
             authenticationPolicy,
@@ -190,7 +199,8 @@ public record GameContext(
             shopService,
             questRepository,
             partyService,
-            bankService
+            bankService,
+            messageBroadcaster
         );
     }
 

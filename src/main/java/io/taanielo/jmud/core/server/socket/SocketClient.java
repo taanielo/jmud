@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -40,6 +42,7 @@ import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingClass;
 import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingRace;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.messaging.Message;
+import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeBannerMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
@@ -680,14 +683,7 @@ public class SocketClient implements Client {
         if (message == null || message.isBlank()) {
             return;
         }
-        for (Client client : clientPool.clients()) {
-            if (client instanceof SocketClient socketClient) {
-                if (socketClient.isAuthenticatedUser(username)) {
-                    socketClient.connection.writeLine(message);
-                    return;
-                }
-            }
-        }
+        context.messageBroadcaster().sendToPlayer(username, new PlainTextMessage(message));
     }
 
     private void sendToRoom(Player source, Player target, String message) {
@@ -698,15 +694,8 @@ public class SocketClient implements Client {
         if (message == null || message.isBlank() || room == null) {
             return;
         }
-        if (room.getOccupants().isEmpty()) {
-            return;
-        }
-        for (Username occupant : room.getOccupants()) {
-            if (exclude != null && occupant.equals(exclude)) {
-                continue;
-            }
-            sendToUsername(occupant, message);
-        }
+        Set<Username> excludeSet = exclude == null ? Set.of() : Set.of(exclude);
+        context.messageBroadcaster().broadcastToRoom(room.getId(), new PlainTextMessage(message), excludeSet);
     }
 
     private void deliverRoomMessage(Username sourceExclude, Username targetExclude, String message) {
@@ -719,18 +708,18 @@ public class SocketClient implements Client {
         if (lookupUser == null) {
             return;
         }
-        RoomService.LookResult look = roomService.look(lookupUser);
-        Room room = look.room();
-        if (room == null || room.getOccupants().isEmpty()) {
+        Optional<RoomId> roomIdOpt = roomService.findPlayerLocation(lookupUser);
+        if (roomIdOpt.isEmpty()) {
             return;
         }
-        for (Username occupant : room.getOccupants()) {
-            if ((sourceExclude != null && occupant.equals(sourceExclude))
-                || (targetExclude != null && occupant.equals(targetExclude))) {
-                continue;
-            }
-            sendToUsername(occupant, message);
+        Set<Username> excludeSet = new HashSet<>();
+        if (sourceExclude != null) {
+            excludeSet.add(sourceExclude);
         }
+        if (targetExclude != null) {
+            excludeSet.add(targetExclude);
+        }
+        context.messageBroadcaster().broadcastToRoom(roomIdOpt.get(), new PlainTextMessage(message), excludeSet);
     }
 
     // ── Persistence ─────────────────────────────────────────────────────
@@ -1322,21 +1311,11 @@ public class SocketClient implements Client {
 
         @Override
         public void gossip(String senderName, String message) {
-            for (Client client : clientPool.clients()) {
-                if (client instanceof SocketClient socketClient) {
-                    Optional<Username> usernameOpt = socketClient.authenticatedUsername();
-                    if (usernameOpt.isEmpty()) {
-                        continue;
-                    }
-                    Username recipient = usernameOpt.get();
-                    // Skip the sender — they already see "You gossip: ..." from GossipCommand.
-                    if (recipient.equals(Username.of(senderName))) {
-                        continue;
-                    }
-                    socketClient.connection.writeLine(senderName + " gossips: " + message);
-                    socketClient.sendPrompt();
-                }
-            }
+            // Skip the sender — they already see "You gossip: ..." from GossipCommand.
+            context.messageBroadcaster().broadcastGlobal(
+                new PlainTextMessage(senderName + " gossips: " + message),
+                Set.of(Username.of(senderName))
+            );
         }
 
         @Override
