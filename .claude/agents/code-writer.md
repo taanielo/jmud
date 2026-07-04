@@ -22,6 +22,7 @@ You are the **code writer** for jmud. Implement exactly what the issue asks on t
    - Value objects over primitives; Javadoc on domain service classes and public methods.
    - Game data stays in versioned JSON under `data/` (AGENTS.md §11); new zones/items/mobs are data changes, not code.
    - Dependency versions: never from memory — check Maven Central, or keep the existing pin.
+   - **New packages must be `@NullMarked`** (via `package-info.java`, `org.jspecify.annotations.NullMarked`) so NullAway enforces nullness on them; `./gradlew check` fails the build on violations. Use `@Nullable` explicitly on fields/params/returns that may be null.
 5. **Write tests** — core rules must be unit-testable without networking (AGENTS.md §10). Add/extend JUnit 5 tests for the new behaviour.
 6. **Update `TODO.md`** — find the unchecked `- [ ]` line that matches the feature just implemented and mark it `- [x]`. Use an exact string match on the line content. If no matching line exists, skip this step silently.
 7. Write `.claude/agents/state/last-result.json`:

@@ -70,7 +70,6 @@ public class PlayerSession {
 
     private TickSubscription healingSubscription;
     private boolean healingInitialized;
-    private Consumer<Player> healingCallback;
 
     private TickSubscription restingSubscription;
 
@@ -259,7 +258,6 @@ public class PlayerSession {
         if (!HealingSettings.enabled() || healingInitialized) {
             return;
         }
-        this.healingCallback = callback;
         healingSubscription = tickRegistry.register(
             new PlayerHealingTicker(
                 this::getPlayer,
@@ -337,7 +335,10 @@ public class PlayerSession {
         }
         if (authenticated && player != null) {
             // Retry once before giving up: on-disconnect saves have no further chance to persist.
-            boolean saved = trySavePlayerQuietly(player) || trySavePlayerQuietly(player);
+            boolean saved = trySavePlayerQuietly(player);
+            if (!saved) {
+                saved = trySavePlayerQuietly(player);
+            }
             if (saved) {
                 log.info("Player {} data saved on disconnect.", player.getUsername());
             } else {

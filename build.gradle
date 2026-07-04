@@ -1,5 +1,7 @@
 plugins {
     id 'application'
+    alias libs.plugins.errorprone
+    alias libs.plugins.spotless
 }
 
 group = 'io.taanielo'
@@ -29,6 +31,11 @@ dependencies {
     implementation libs.sshd.core
     implementation libs.bcprov.jdk18on
 
+    implementation libs.jspecify
+
+    errorprone libs.errorprone.core
+    errorprone libs.nullaway
+
     testImplementation libs.junit.jupiter
     testRuntimeOnly libs.junit.platform.launcher
 }
@@ -39,4 +46,36 @@ application {
 
 test {
     useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        // Lombok generates code (builders, constructors, equals/hashCode) that Error Prone's
+        // default checks were not designed to review; disabling avoids noisy false positives
+        // on generated members we don't hand-write.
+        disable('MissingSummary')
+        disable('AlmostJavadoc')
+
+        if (name == 'compileJava') {
+            check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+            // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at
+            // once (they are mutually exclusive scoping strategies); OnlyNullMarked alone
+            // already scopes enforcement to @NullMarked packages, which is what we want here.
+            option('NullAway:OnlyNullMarked', 'true')
+        } else {
+            // Test sources are not part of the @NullMarked ratchet yet.
+            disable('NullAway')
+        }
+    }
+}
+
+spotless {
+    java {
+        target 'src/*/java/**/*.java'
+        ratchetFrom 'origin/main'
+        importOrder('java', 'javax', '', 'lombok', 'io.taanielo')
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
