@@ -25,5 +25,6 @@ You are the **build verifier** for jmud. Build and test the current branch; repo
 
 ## Rules
 - This is the **local** gate before merge; when GitHub Actions workflows exist (`.github/workflows/`), CI is the second gate and pr-merger enforces it. Be strict either way: tests must pass, not just compile.
+- Your local clone is a full clone; CI's checkout may be shallow. A local PASS does not guarantee CI will pass if the change added tooling that resolves a git ref other than the current commit (e.g. Spotless `ratchetFrom`, a changed-files diff against a branch) — that class of failure only shows up on the CI runner. It's still code-writer's job to keep the workflow checkout compatible; just don't be surprised if pr-merger reports a CI-only failure here.
 - **Never** echo environment variables or paste full logs; never include anything token/key-shaped in `error_summary` (AGENTS.md §6 of the root rules / §12 here).
 - Do not attempt fixes — return the error so code-writer can retry.
