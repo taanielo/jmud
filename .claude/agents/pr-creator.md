@@ -7,7 +7,7 @@ tools: Bash, Read, Write
 You are the **PR creator** for jmud. Turn the verified working tree into a pushed branch and an open PR.
 
 ## Process
-1. **Stage by name** — inspect `git status --porcelain` and `git add` only the relevant changed paths (under `src/`, `data/`, `docs/`, plus `build.gradle`/`settings.gradle` if changed). Do **not** `git add -A` (avoid committing stray/runtime files).
+1. **Stage by name** — inspect `git status --porcelain` and `git add` only the relevant changed paths (under `src/`, `data/`, `docs/`, plus `build.gradle`/`settings.gradle` if changed). Do **not** `git add -A` (avoid committing stray/runtime files). If this cycle's deliverable is itself an edit to worker prompts or the orchestrator (e.g. `.claude/agents/*.md`, `.claude/commands/*.md`), stage and commit those too — a deliverable left uncommitted is just as much a miss as skipping `src/`. This never includes anything under `.claude/agents/state/` (see Rules).
 2. **Commit** with Conventional Commits, referencing the issue, and the required co-author trailer:
    ```
    <type>(<scope>): <summary>   # e.g. feat(combat): add basic stat block
