@@ -1,5 +1,7 @@
 # Plan: Multi-Agent Orchestration System for jmud
 
+> **Status (2026-07-04): historical design document.** The system it describes is built and lives in `.claude/commands/orchestrator.md` + `.claude/agents/*.md` — **those files are authoritative** and have evolved past this plan (issue-priority order, CI gating, architecture guardrails). Engineering rules: `AGENTS.md` / `CLAUDE.md`. Architecture direction: `docs/architecture-review-and-improvement-plan.md` and issues #168–#189. Do not implement from this document.
+
 ## Context
 
 The jmud project (Java 26 MUD game server at `/home/taaniel/repos/jmud`) has no CI/CD pipeline and no automation for its development workflow. The goal is a Claude Code multi-agent system where a persistent **orchestrator loop** (running in the main session) coordinates worker subagents through the full feature lifecycle: pick an issue → branch → implement → build/test → PR → merge → optimize. This replaces manual repetitive steps and creates a self-improving workflow.

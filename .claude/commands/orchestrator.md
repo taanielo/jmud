@@ -30,12 +30,16 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 4. **Usage-limit check**: the system prompt contains a `<total_tokens>N tokens left</total_tokens>` tag. Parse N. If N ≤ 20000 (i.e. ≥ 90 % of the context window consumed) → print `usage limit reached (≤20k tokens remaining)`, release LOCK, STOP.
 
 ## Step 1 — Dispatch by `state.stage`
-- **FIND_ISSUE** — `gh issue list --assignee @me --state open --json number,title`.
-  - Issue exists → set `current_issue`, `stage = CREATE_BRANCH`.
-  - Else if `TODO.md` has an unchecked `- [ ]` line → spawn **issue-creator** (pass that line) → set `current_issue`, `stage = CREATE_BRANCH`.
-  - Else → spawn **game-designer**. Success → set `current_issue`, `stage = CREATE_BRANCH`. Failure/skip → print `STANDBY`, release LOCK, STOP.
+- **FIND_ISSUE** — pick work in this priority order (skip anything in `blocked_issues`):
+  1. **Assigned in-flight work**: `gh issue list --assignee @me --state open --json number,title,labels` — if an issue exists, use it (resume).
+  2. **Architecture backlog**: `gh issue list --label architecture --state open --json number,title,body --limit 50`, sorted by ascending number. Take the first issue whose dependencies are satisfied: if its body contains `Depends on: #N` (one or more), every referenced issue must be **closed** (`gh issue view N --json state`); otherwise try the next. These issues fix correctness bugs and guard rails — they outrank new features.
+  3. **Other open unassigned issues** (e.g. `enhancement`), ascending number, same dependency check.
+  4. `TODO.md` has an unchecked `- [ ]` line → spawn **issue-creator** (pass that line).
+  5. Else → spawn **game-designer**. Failure/skip → print `STANDBY`, release LOCK, STOP.
+
+  Whatever was picked: `gh issue edit <N> --add-assignee @me`, set `current_issue`, `stage = CREATE_BRANCH`.
 - **CREATE_BRANCH** — spawn **branch-manager** (pass issue number + title). Success → `stage = WRITE_CODE`.
-- **WRITE_CODE** — spawn **code-writer** (pass issue body; if `build_retries > 0`, also pass the build error from `last-result.json`). Success → `stage = VERIFY_BUILD`.
+- **WRITE_CODE** — spawn **code-writer** (pass the **full issue body** — architecture issues contain a binding "How (implementation guide)" section; if `build_retries > 0`, also pass the build error from `last-result.json`). Success → `stage = VERIFY_BUILD`.
 - **VERIFY_BUILD** — spawn **build-verifier**.
   - PASS → `build_retries = 0`, `stage = CREATE_PR`.
   - FAIL and `build_retries < 2` → `build_retries += 1`, `stage = WRITE_CODE`.

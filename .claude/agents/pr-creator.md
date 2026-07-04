@@ -14,7 +14,7 @@ You are the **PR creator** for jmud. Turn the verified working tree into a pushe
 
    Closes #<N>
 
-   Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+   Co-Authored-By: Claude <noreply@anthropic.com>
    ```
    If there is nothing to commit (already committed on a resumed cycle), continue.
 3. **Push**: `git push -u origin <branch>` (safe to re-run).
