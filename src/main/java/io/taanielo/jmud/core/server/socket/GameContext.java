@@ -24,6 +24,7 @@ import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
+import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
@@ -126,7 +127,9 @@ public record GameContext(
         EffectRepository effectRepository = createEffectRepository();
         EffectEngine effectEngine = new EffectEngine(effectRepository);
 
-        CombatEngine combatEngine = createCombatEngine(effectRepository);
+        EquipmentArmorResolver equipmentArmorResolver = createEquipmentArmorResolver();
+        RaceArmorBonusResolver raceArmorBonusResolver = createRaceArmorBonusResolver();
+        CombatEngine combatEngine = createCombatEngine(effectRepository, raceArmorBonusResolver, equipmentArmorResolver);
 
         EncumbranceService encumbranceService = createEncumbranceService();
 
@@ -136,7 +139,7 @@ public record GameContext(
         AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
         AbilityTargetResolver abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
 
-        SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault();
+        SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(equipmentArmorResolver, raceArmorBonusResolver);
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(playerEventBus, roomService, playerRepository);
@@ -239,13 +242,32 @@ public record GameContext(
         }
     }
 
-    private static CombatEngine createCombatEngine(EffectRepository effectRepository) {
+    private static CombatEngine createCombatEngine(
+        EffectRepository effectRepository,
+        RaceArmorBonusResolver armorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver
+    ) {
         try {
             CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
-            RaceArmorBonusResolver armorBonusResolver = new RaceArmorBonusResolver(new JsonRaceRepository());
-            return new CombatEngine(new JsonAttackRepository(), resolver, armorBonusResolver, new ThreadLocalCombatRandom());
-        } catch (AttackRepositoryException | RaceRepositoryException e) {
+            return new CombatEngine(new JsonAttackRepository(), resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
+        } catch (AttackRepositoryException e) {
             throw new IllegalStateException("Failed to initialize combat: " + e.getMessage(), e);
+        }
+    }
+
+    private static EquipmentArmorResolver createEquipmentArmorResolver() {
+        try {
+            return new EquipmentArmorResolver(new JsonItemRepository());
+        } catch (RepositoryException e) {
+            throw new IllegalStateException("Failed to initialize equipment armor resolver: " + e.getMessage(), e);
+        }
+    }
+
+    private static RaceArmorBonusResolver createRaceArmorBonusResolver() {
+        try {
+            return new RaceArmorBonusResolver(new JsonRaceRepository());
+        } catch (RaceRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize race armor bonus resolver: " + e.getMessage(), e);
         }
     }
 
