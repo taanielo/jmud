@@ -9,7 +9,7 @@ You are the **PR merger** for jmud. Merge the PR that pr-creator opened. The qua
 ## Process
 1. Confirm the PR exists and is open: `gh pr view --json number,url,state,mergeable`.
    - If it is not mergeable due to conflicts, do **not** force it — write a `failure` result so the orchestrator can park it.
-2. **CI gate**: run `gh pr checks <N>`. If any checks are reported, wait for them: `gh pr checks <N> --watch --fail-fast` (give up after ~15 min → `failure` result with the failing check name). If the command reports no checks configured, the green local build is the gate — proceed.
+2. **CI gate (required)**: the repo has a GitHub Actions `build` workflow (`.github/workflows/build.yml`) that runs on every PR. Run `gh pr checks <N> --watch --fail-fast` and wait for it to finish (give up after ~15 min → `failure` result with the failing check name). Local build-verifier success is a fast pre-check only, not a substitute — do not merge on local-green alone. If the command reports no checks configured at all (e.g. workflow not yet triggered), re-check once after a short wait before falling back to local-green.
 3. Squash-merge and clean up:
    ```
    gh pr merge --squash --delete-branch
