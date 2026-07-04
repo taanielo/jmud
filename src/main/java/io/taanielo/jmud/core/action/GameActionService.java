@@ -22,7 +22,6 @@ import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatResult;
 import io.taanielo.jmud.core.combat.CombatSettings;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
@@ -33,6 +32,7 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemId;
@@ -153,7 +153,7 @@ public class GameActionService {
             Player updatedTarget = deathResult.updatedTarget();
             messages.addAll(deathResult.messages());
             return new GameActionResult(null, updatedTarget, messages);
-        } catch (AttackRepositoryException | EffectRepositoryException e) {
+        } catch (RepositoryException | EffectRepositoryException e) {
             return GameActionResult.error("Combat failed: " + e.getMessage());
         }
     }

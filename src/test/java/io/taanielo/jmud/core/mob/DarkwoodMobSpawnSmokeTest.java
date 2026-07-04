@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
  * Integration smoke-test confirming that the three Darkwood mob templates
@@ -22,7 +23,7 @@ import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 class DarkwoodMobSpawnSmokeTest {
 
     @Test
-    void darkwood_mobTemplates_arePresent() throws MobRepositoryException {
+    void darkwood_mobTemplates_arePresent() throws RepositoryException {
         JsonMobTemplateRepository repo = new JsonMobTemplateRepository(Path.of("data"));
 
         List<MobTemplate> templates = repo.findAll();
@@ -36,7 +37,7 @@ class DarkwoodMobSpawnSmokeTest {
     }
 
     @Test
-    void wolf_template_hasCorrectAttributes() throws MobRepositoryException {
+    void wolf_template_hasCorrectAttributes() throws RepositoryException {
         JsonMobTemplateRepository repo = new JsonMobTemplateRepository(Path.of("data"));
 
         MobTemplate wolf = repo.findAll().stream()
@@ -58,7 +59,7 @@ class DarkwoodMobSpawnSmokeTest {
     }
 
     @Test
-    void direWolf_template_hasCorrectAttributes() throws MobRepositoryException {
+    void direWolf_template_hasCorrectAttributes() throws RepositoryException {
         JsonMobTemplateRepository repo = new JsonMobTemplateRepository(Path.of("data"));
 
         MobTemplate direWolf = repo.findAll().stream()
@@ -79,7 +80,7 @@ class DarkwoodMobSpawnSmokeTest {
     }
 
     @Test
-    void forestTroll_template_hasCorrectAttributes() throws MobRepositoryException {
+    void forestTroll_template_hasCorrectAttributes() throws RepositoryException {
         JsonMobTemplateRepository repo = new JsonMobTemplateRepository(Path.of("data"));
 
         MobTemplate troll = repo.findAll().stream()

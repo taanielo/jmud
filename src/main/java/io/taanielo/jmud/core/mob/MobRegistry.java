@@ -16,11 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.PlayerEventBus;
+import io.taanielo.jmud.core.audit.AuditEvent;
+import io.taanielo.jmud.core.audit.AuditService;
+import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
@@ -58,6 +60,8 @@ public class MobRegistry implements Tickable {
     private QuestKillService questKillService;
     /** Optional party service for XP splitting; may be null when parties are disabled. */
     private PartyService partyService;
+    /** Optional audit service used to record save failures; may be null when auditing is disabled. */
+    private AuditService auditService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -97,13 +101,23 @@ public class MobRegistry implements Tickable {
     }
 
     /**
+     * Registers the audit service used to record player-save failures encountered
+     * while awarding XP or applying combat damage during mob AI ticks.
+     *
+     * @param auditService the audit service; may be null to disable auditing
+     */
+    public void setAuditService(AuditService auditService) {
+        this.auditService = auditService;
+    }
+
+    /**
      * Spawns initial mob instances from all templates. Call once on server start.
      */
     public void init() {
         List<MobTemplate> templates;
         try {
             templates = templateRepository.findAll();
-        } catch (MobRepositoryException e) {
+        } catch (RepositoryException e) {
             log.error("Failed to load mob templates: {}", e.getMessage(), e);
             return;
         }
@@ -277,7 +291,7 @@ public class MobRegistry implements Tickable {
                 }
             }
             afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
-            playerRepository.savePlayer(afterXp);
+            saveOrLog(afterXp);
             messages.add(GameMessage.toSource(
                 "You gain " + xpPerMember + " experience points."));
             if (levelUpResult.leveledUp()) {
@@ -297,7 +311,7 @@ public class MobRegistry implements Tickable {
                 LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
                 Player memberAfterXp = memberLvl.player()
                     .withTotalKills(memberLvl.player().getTotalKills() + 1);
-                playerRepository.savePlayer(memberAfterXp);
+                saveOrLog(memberAfterXp);
                 List<GameMessage> memberMsgs = new ArrayList<>();
                 memberMsgs.add(GameMessage.toSource(
                     "Your party slay the " + mob.template().name()
@@ -346,7 +360,7 @@ public class MobRegistry implements Tickable {
         if (damagedPlayer.getVitals().hp() <= 0) {
             handleMobKill(mob, damagedPlayer, candidates);
         } else {
-            playerRepository.savePlayer(damagedPlayer);
+            saveOrLog(damagedPlayer);
             List<GameMessage> messages = new ArrayList<>();
             if (firstEngagement) {
                 messages.add(GameMessage.toSource(
@@ -364,7 +378,7 @@ public class MobRegistry implements Tickable {
         Player deadPlayer = damagedPlayer.withGold(0).die();
         roomService.spawnCorpse(deadPlayer.getUsername(), mob.roomId(), droppedGold);
         roomService.clearPlayerLocation(deadPlayer.getUsername());
-        playerRepository.savePlayer(deadPlayer);
+        saveOrLog(deadPlayer);
         mob.disengage(deadPlayer.getUsername());
         playerCombatTargets.remove(deadPlayer.getUsername());
 
@@ -465,7 +479,7 @@ public class MobRegistry implements Tickable {
                     }
                 }
                 afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
-                playerRepository.savePlayer(afterXp);
+                saveOrLog(afterXp);
                 messages.add(GameMessage.toSource(
                     "You gain " + xpPerMember + " experience points."));
                 if (levelUpResult.leveledUp()) {
@@ -485,7 +499,7 @@ public class MobRegistry implements Tickable {
                     LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
                     Player memberAfterXp = memberLvl.player()
                         .withTotalKills(memberLvl.player().getTotalKills() + 1);
-                    playerRepository.savePlayer(memberAfterXp);
+                    saveOrLog(memberAfterXp);
                     List<GameMessage> memberMsgs = new ArrayList<>();
                     memberMsgs.add(GameMessage.toSource(
                         "Your party slay the " + mob.template().name()
@@ -533,10 +547,35 @@ public class MobRegistry implements Tickable {
         return dropped;
     }
 
+    /**
+     * Attempts to persist the given player, logging an error and emitting an audit
+     * event on failure rather than propagating the exception into the tick loop.
+     *
+     * @param player the player to save
+     */
+    private void saveOrLog(Player player) {
+        try {
+            playerRepository.savePlayer(player);
+        } catch (RepositoryException e) {
+            log.error("Failed to save player {} during mob tick processing", player.getUsername(), e);
+            if (auditService != null) {
+                auditService.emit(new AuditEvent(
+                    "player.save.failed",
+                    AuditSubject.player(player.getUsername()),
+                    null,
+                    null,
+                    "failure",
+                    auditService.newCorrelationId(),
+                    Map.of()
+                ));
+            }
+        }
+    }
+
     private AttackDefinition loadAttack(AttackId attackId) {
         try {
             return attackRepository.findById(attackId).orElse(null);
-        } catch (AttackRepositoryException e) {
+        } catch (RepositoryException e) {
             log.warn("Failed to load attack {}: {}", attackId, e.getMessage());
             return null;
         }

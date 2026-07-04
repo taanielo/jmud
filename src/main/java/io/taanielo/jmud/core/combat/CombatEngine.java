@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
@@ -68,7 +68,7 @@ public class CombatEngine {
      * Resolves a single combat action between the attacker and target.
      */
     public CombatResult resolve(Player attacker, Player target, AttackId attackId)
-        throws AttackRepositoryException, EffectRepositoryException {
+        throws RepositoryException, EffectRepositoryException {
         return resolve(new CombatAction(attacker, target, attackId));
     }
 
@@ -76,14 +76,14 @@ public class CombatEngine {
      * Resolves a single combat action between the attacker and target.
      */
     public CombatResult resolve(CombatAction action)
-        throws AttackRepositoryException, EffectRepositoryException {
+        throws RepositoryException, EffectRepositoryException {
         Objects.requireNonNull(action, "Combat action is required");
         Player attacker = action.attacker();
         Player target = action.target();
         AttackId attackId = action.attackId();
 
         AttackDefinition attack = attackRepository.findById(attackId)
-            .orElseThrow(() -> new AttackRepositoryException("Unknown attack id " + attackId.getValue()));
+            .orElseThrow(() -> new RepositoryException("Unknown attack id " + attackId.getValue()));
         CombatModifiers attackerMods = modifierResolver.resolve(attacker.effects());
         CombatModifiers targetMods = modifierResolver.resolve(target.effects());
         int targetArmorBonus = armorBonusResolver.armorBonus(target) + equipmentArmorResolver.totalAc(target);

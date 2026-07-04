@@ -1,7 +1,9 @@
 package io.taanielo.jmud.core.player;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -18,6 +20,7 @@ import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 class JsonPlayerRepositoryTest {
 
@@ -25,7 +28,7 @@ class JsonPlayerRepositoryTest {
     Path tempDir;
 
     @Test
-    void savesAndLoadsPlayerWithEffects() {
+    void savesAndLoadsPlayerWithEffects() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("sparky"), Password.hash("qwerty", 1000));
         List<EffectInstance> effects = List.of(new EffectInstance(EffectId.of("stoneskin"), 5, 1));
@@ -62,7 +65,7 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
-    void savesAndLoadsGoldField() {
+    void savesAndLoadsGoldField() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("goldie"), Password.hash("pw", 1));
         Player player = Player.of(user, "%hp> ").withGold(42);
@@ -75,7 +78,7 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
-    void loadingOldSaveFileWithoutGoldDefaultsToZero() {
+    void loadingOldSaveFileWithoutGoldDefaultsToZero() throws Exception {
         // Simulate a save file that lacks a "gold" property by serializing a
         // player with 0 gold. The @JsonCreator maps null gold → 0, so any
         // file missing the field behaves as if gold == 0.
@@ -89,5 +92,23 @@ class JsonPlayerRepositoryTest {
         assertTrue(loaded.isPresent());
         assertEquals(0, loaded.get().getGold(),
             "Player with no gold field set should load as 0 gold");
+    }
+
+    @Test
+    void savePlayerThrowsRepositoryExceptionWhenPlayersDirectoryIsUnwritable() throws Exception {
+        Path dataRoot = tempDir.resolve("unwritable-root");
+        JsonPlayerRepository repository = new JsonPlayerRepository(dataRoot);
+        Path playersDir = dataRoot.resolve("players");
+        // Some environments (e.g. root-owned containers) ignore write permission bits;
+        // skip rather than false-fail if we can't actually make the directory unwritable.
+        assumeTrue(playersDir.toFile().setWritable(false), "Could not make players directory read-only");
+        try {
+            User user = User.of(Username.of("doomed"), Password.hash("pw", 1));
+            Player player = Player.of(user, "%hp> ");
+
+            assertThrows(RepositoryException.class, () -> repository.savePlayer(player));
+        } finally {
+            playersDir.toFile().setWritable(true);
+        }
     }
 }

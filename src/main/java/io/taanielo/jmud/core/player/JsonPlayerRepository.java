@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 @Slf4j
 public class JsonPlayerRepository implements PlayerRepository {
@@ -39,7 +40,7 @@ public class JsonPlayerRepository implements PlayerRepository {
     }
 
     @Override
-    public void savePlayer(Player player) {
+    public void savePlayer(Player player) throws RepositoryException {
         Path playerFilePath = getPlayerFilePath(player.getUsername());
         Path tempFilePath = playerFilePath.getParent().resolve(playerFilePath.getFileName() + ".tmp");
 
@@ -51,6 +52,7 @@ public class JsonPlayerRepository implements PlayerRepository {
             log.info("Player {} saved successfully to {}", player.getUsername(), playerFilePath);
         } catch (IOException e) {
             log.error("Failed to save player {}", player.getUsername(), e);
+            throw new RepositoryException("Failed to save player " + player.getUsername().getValue(), e);
         }
     }
 
