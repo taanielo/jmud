@@ -24,7 +24,7 @@ public class Main {
         String sshHost = resolveHost(args, "--ssh-host", "JMUD_SSH_HOST", "0.0.0.0");
         int sshPort = resolvePort(args, "--ssh-port", "JMUD_SSH_PORT", 2222);
         ClientPool clientPool = new DefaultClientPool();
-        GameContext context = GameContext.create();
+        GameContext context = GameContext.create(clientPool);
         context.tickScheduler().start();
 
         Server telnetServer = telnetEnabled ? new SocketServer(telnetHost, telnetPort, context, clientPool) : null;
