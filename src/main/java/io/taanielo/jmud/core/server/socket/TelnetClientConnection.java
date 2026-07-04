@@ -13,6 +13,7 @@ import io.taanielo.jmud.core.server.connection.ClientConnection;
 public class TelnetClientConnection implements ClientConnection {
 
     private final TelnetConnection connection;
+    private TelnetLineReader lineReader;
 
     public TelnetClientConnection(java.net.Socket socket) {
         this.connection = new TelnetConnection(Objects.requireNonNull(socket, "Socket is required"));
@@ -21,23 +22,23 @@ public class TelnetClientConnection implements ClientConnection {
     @Override
     public void open() throws IOException {
         connection.open();
+        this.lineReader = new TelnetLineReader(connection.input());
     }
 
     @Override
     public String readLine() throws IOException {
         while (true) {
-            byte[] bytes = new byte[1024];
-            int read = connection.input().read(bytes);
-            if (read == -1) {
-                return null;
-            }
-            if (SocketCommand.isIAC(bytes)) {
-                if (SocketCommand.isIP(bytes)) {
+            TelnetLineReader.Result result = lineReader.readLine();
+            switch (result) {
+                case TelnetLineReader.Result.EndOfStream ignored -> {
                     return null;
                 }
-                continue;
+                case TelnetLineReader.Result.Oversized ignored ->
+                    connection.writeLine("*** Line too long; input discarded. ***");
+                case TelnetLineReader.Result.Line line -> {
+                    return line.text();
+                }
             }
-            return SocketCommand.readString(bytes);
         }
     }
 
