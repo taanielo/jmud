@@ -130,19 +130,17 @@ class ArchitectureTest {
                             + "layer (AGENTS.md §3.1, §5, §10)");
 
     /**
-     * No legacy resurrection: {@code io.taanielo.jmud.command} and {@code core.command} are dead
-     * code scheduled for deletion (AGENTS.md §3.3) — nothing new may depend on them, so they
-     * cannot silently regain callers while awaiting removal. Frozen because at least one live
-     * class ({@code core.server.socket.QuitCommand}) currently still reaches into the legacy
-     * {@code command} package, along with the legacy packages' own internal dependencies.
+     * No legacy resurrection: {@code io.taanielo.jmud.command} and {@code core.command} were the
+     * dead, duplicate command systems removed in issue #178 (AGENTS.md §3.3). Since the packages
+     * no longer exist, this rule is trivially satisfied and simply guards against either package
+     * being reintroduced.
      */
     @ArchTest
     static final ArchRule no_legacy_resurrection =
-            FreezingArchRule.freeze(
-                    noClasses()
-                            .should()
-                            .dependOnClassesThat()
-                            .resideInAnyPackage("io.taanielo.jmud.command..", "io.taanielo.jmud.core.command..")
-                            .because("io.taanielo.jmud.command.. and core.command.. are dead code scheduled for "
-                                    + "deletion; no new dependencies on them are allowed (AGENTS.md §3.3)"));
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("io.taanielo.jmud.command..", "io.taanielo.jmud.core.command..")
+                    .because("io.taanielo.jmud.command.. and core.command.. were deleted as dead code "
+                            + "(AGENTS.md §3.3, issue #178); they must not be reintroduced");
 }
