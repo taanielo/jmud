@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,6 +20,8 @@ public class SocketServer implements Server {
 
     private final ClientPool clientPool;
     private final GameContext context;
+    private final AtomicBoolean stopping = new AtomicBoolean(false);
+    private volatile ServerSocket serverSocket;
 
     public SocketServer(String host, int port, GameContext context, ClientPool clientPool) {
         this.host = Objects.requireNonNull(host, "Host is required");
@@ -33,6 +36,7 @@ public class SocketServer implements Server {
 
         try (ServerSocket server = new ServerSocket()) {
             server.bind(new InetSocketAddress(host, port));
+            serverSocket = server;
             //noinspection InfiniteLoopStatement
             while (true) {
                 Socket clientSocket = server.accept();
@@ -56,8 +60,28 @@ public class SocketServer implements Server {
                 clientPool.add(client);
             }
         } catch (IOException e) {
-            log.error("Server error", e);
+            if (stopping.get()) {
+                log.info("Telnet server stopped accepting connections.");
+            } else {
+                log.error("Server error", e);
+            }
+        } finally {
+            serverSocket = null;
         }
+    }
 
+    @Override
+    public void stop() {
+        if (!stopping.compareAndSet(false, true)) {
+            return;
+        }
+        ServerSocket server = serverSocket;
+        if (server != null) {
+            try {
+                server.close();
+            } catch (IOException e) {
+                log.warn("Error closing telnet server socket", e);
+            }
+        }
     }
 }

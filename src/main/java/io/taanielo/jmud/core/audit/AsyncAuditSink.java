@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.audit;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -42,6 +43,48 @@ public class AsyncAuditSink implements AuditSink {
             return;
         }
         worker.interrupt();
+    }
+
+    /**
+     * Blocks (up to {@code timeout}) while the background worker drains the
+     * queue, without stopping the worker. Call {@link #close()} afterward to
+     * stop the worker thread and release the delegate sink.
+     *
+     * @param timeout the maximum time to wait for the queue to drain
+     * @return true if the queue was empty before the timeout elapsed
+     */
+    @Override
+    public boolean flush(Duration timeout) {
+        Objects.requireNonNull(timeout, "Timeout is required");
+        long deadlineNanos = System.nanoTime() + timeout.toNanos();
+        while (!queue.isEmpty()) {
+            if (System.nanoTime() >= deadlineNanos) {
+                log.warn("Audit queue flush timed out with {} entries remaining", queue.size());
+                return false;
+            }
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return queue.isEmpty();
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Stops the background worker and closes the delegate sink. Safe to call
+     * multiple times.
+     */
+    @Override
+    public void close() {
+        stop();
+        try {
+            worker.join(Duration.ofSeconds(2).toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        delegate.close();
     }
 
     private void drainQueue() {

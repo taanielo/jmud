@@ -214,6 +214,11 @@ public class SocketClient implements Client {
         sendPrompt();
     }
 
+    @Override
+    public Optional<Player> currentPlayer() {
+        return session.isAuthenticated() ? Optional.ofNullable(session.getPlayer()) : Optional.empty();
+    }
+
     public void sendMessage(UserSayMessage message) {
         Player player = session.getPlayer();
         if (player != null && message.getUsername().equals(player.getUsername())) {
