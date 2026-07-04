@@ -30,6 +30,7 @@ import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
  * Manages the lifecycle of a connected player within a single session.
@@ -72,6 +73,9 @@ public class PlayerSession {
     private Consumer<Player> healingCallback;
 
     private TickSubscription restingSubscription;
+
+    /** Optional hook invoked (on the tick thread) whenever a player save fails, after logging. */
+    private Consumer<Player> saveFailureHandler;
 
     /**
      * Creates a player session with the given dependencies.
@@ -174,12 +178,44 @@ public class PlayerSession {
     }
 
     /**
+     * Registers a hook invoked whenever a player save fails, after the failure has
+     * already been logged. Used by the transport layer to warn the player and emit
+     * an audit event without embedding transport concerns in this class.
+     *
+     * @param saveFailureHandler callback receiving the player whose save failed; may be null
+     */
+    public void setSaveFailureHandler(Consumer<Player> saveFailureHandler) {
+        this.saveFailureHandler = saveFailureHandler;
+    }
+
+    /**
+     * Attempts to persist the given player, logging and notifying the save-failure
+     * handler (if any) on failure rather than propagating the exception.
+     *
+     * @param playerToSave the player to save
+     * @param context short label describing the call site, used in the log message
+     * @return true if the save succeeded, false otherwise
+     */
+    private boolean trySavePlayer(Player playerToSave, String context) {
+        try {
+            playerRepository.savePlayer(playerToSave);
+            return true;
+        } catch (RepositoryException e) {
+            log.error("Failed to save player {} ({})", playerToSave.getUsername(), context, e);
+            if (saveFailureHandler != null) {
+                saveFailureHandler.accept(playerToSave);
+            }
+            return false;
+        }
+    }
+
+    /**
      * Replaces the current player, persists the update, and re-registers
      * effect ticks if active.
      */
     public void replacePlayer(Player updated) {
         player = updated;
-        playerRepository.savePlayer(player);
+        trySavePlayer(player, "replacePlayer");
         if (effectsInitialized) {
             clearEffects();
             if (!player.isDead()) {
@@ -300,8 +336,27 @@ public class PlayerSession {
             commandSubscription.unsubscribe();
         }
         if (authenticated && player != null) {
-            playerRepository.savePlayer(player);
-            log.info("Player {} data saved on disconnect.", player.getUsername());
+            // Retry once before giving up: on-disconnect saves have no further chance to persist.
+            boolean saved = trySavePlayerQuietly(player) || trySavePlayerQuietly(player);
+            if (saved) {
+                log.info("Player {} data saved on disconnect.", player.getUsername());
+            } else {
+                log.error("Failed to save player {} on disconnect after retry.", player.getUsername());
+                if (saveFailureHandler != null) {
+                    saveFailureHandler.accept(player);
+                }
+            }
+        }
+    }
+
+    private boolean trySavePlayerQuietly(Player playerToSave) {
+        try {
+            playerRepository.savePlayer(playerToSave);
+            return true;
+        } catch (RepositoryException e) {
+            log.warn("Save attempt failed for player {} on disconnect: {}",
+                playerToSave.getUsername(), e.getMessage());
+            return false;
         }
     }
 }

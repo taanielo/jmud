@@ -48,7 +48,6 @@ import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatResult;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
@@ -648,7 +647,7 @@ class GameActionServiceTest {
         }
 
         @Override
-        public Optional<AttackDefinition> findById(AttackId id) throws AttackRepositoryException {
+        public Optional<AttackDefinition> findById(AttackId id) throws RepositoryException {
             return Optional.ofNullable(attacks.get(id));
         }
     }

@@ -50,6 +50,7 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.server.Client;
@@ -134,6 +135,7 @@ public class SocketClient implements Client {
             context.healingEngine(),
             context.healingBaseResolver()
         );
+        this.session.setSaveFailureHandler(this::handleSaveFailure);
 
         this.gameActionService = new GameActionService(
             abilityRegistry,
@@ -280,7 +282,7 @@ public class SocketClient implements Client {
                     List.of()
                 );
                 created.set(true);
-                playerRepository.savePlayer(newPlayer);
+                saveOrWarn(newPlayer);
                 return newPlayer;
             });
         session.setPlayer(player);
@@ -418,7 +420,7 @@ public class SocketClient implements Client {
             }
         }
         session.setPlayer(player);
-        playerRepository.savePlayer(player);
+        saveOrWarn(player);
         connection.writeLine(
             "You are now a " + player.getRace().getValue()
             + " " + player.getClassId().getValue() + ". Welcome to the realm!"
@@ -474,7 +476,7 @@ public class SocketClient implements Client {
     }
 
     private void updateTarget(Player updatedTarget) {
-        playerRepository.savePlayer(updatedTarget);
+        saveOrWarn(updatedTarget);
         for (Client client : clientPool.clients()) {
             if (client instanceof SocketClient socketClient) {
                 if (socketClient.isAuthenticatedUser(updatedTarget.getUsername())) {
@@ -517,7 +519,7 @@ public class SocketClient implements Client {
             return;
         }
         session.setPlayer(updated);
-        playerRepository.savePlayer(updated);
+        saveOrWarn(updated);
     }
 
     private void applyRespawnUpdate(Player updated) {
@@ -726,6 +728,43 @@ public class SocketClient implements Client {
             }
             sendToUsername(occupant, message);
         }
+    }
+
+    // ── Persistence ─────────────────────────────────────────────────────
+
+    /**
+     * Saves the given player, warning the player and emitting an audit event
+     * on failure instead of letting the persistence exception escape.
+     *
+     * @param playerToSave the player to save
+     */
+    private void saveOrWarn(Player playerToSave) {
+        try {
+            playerRepository.savePlayer(playerToSave);
+        } catch (RepositoryException e) {
+            handleSaveFailure(playerToSave);
+        }
+    }
+
+    /**
+     * Handles a failed player save: logs the failure, warns the player, and
+     * emits an audit event. Passed to {@link PlayerSession} as its save-failure hook
+     * so saves triggered internally by the session (e.g. {@code replacePlayer}) are
+     * surfaced the same way as saves performed directly by this class.
+     *
+     * @param player the player whose save failed
+     */
+    private void handleSaveFailure(Player player) {
+        log.error("Player save failed for {}; warning player", player.getUsername());
+        connection.writeLine("Warning: your progress could not be saved.");
+        emitAudit(
+            "player.save.failed",
+            AuditSubject.player(player.getUsername()),
+            null,
+            resolveRoomId(player),
+            "failure",
+            Map.of()
+        );
     }
 
     // ── Auditing ───────────────────────────────────────────────────────
@@ -1938,7 +1977,7 @@ public class SocketClient implements Client {
                 .withPracticePoints(player.getPracticePoints() - 1)
                 .withLearnedAbilities(newAbilities);
             session.replacePlayer(updated);
-            playerRepository.savePlayer(updated);
+            saveOrWarn(updated);
             Ability ability = abilityRegistry.findById(targetId).orElse(null);
             String abilityName = ability != null ? ability.name() : targetId.getValue();
             writeLineWithPrompt("You have learned " + abilityName + "! (" + updated.getPracticePoints() + " practice point(s) remaining)");

@@ -15,7 +15,6 @@ import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
@@ -25,6 +24,7 @@ import io.taanielo.jmud.core.effects.EffectStacking;
 import io.taanielo.jmud.core.effects.ModifierOperation;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 class CombatEngineTest {
 
@@ -199,7 +199,7 @@ class CombatEngineTest {
         }
 
         @Override
-        public Optional<AttackDefinition> findById(AttackId id) throws AttackRepositoryException {
+        public Optional<AttackDefinition> findById(AttackId id) throws RepositoryException {
             return Optional.ofNullable(attacks.get(id));
         }
     }

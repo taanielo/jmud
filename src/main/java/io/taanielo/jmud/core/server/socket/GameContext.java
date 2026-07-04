@@ -27,7 +27,6 @@ import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectRepository;
@@ -36,7 +35,6 @@ import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.mob.MobRegistry;
-import io.taanielo.jmud.core.mob.MobRepositoryException;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.quest.QuestKillService;
@@ -144,6 +142,7 @@ public record GameContext(
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(playerEventBus, roomService, playerRepository);
         if (mobRegistry != null) {
+            mobRegistry.setAuditService(auditService);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -219,9 +218,7 @@ public record GameContext(
             ItemRepository itemRepo = new JsonItemRepository();
             JsonAttackRepository attackRepo = new JsonAttackRepository();
             return new MobRegistry(templateRepo, itemRepo, attackRepo, roomService, playerRepository, playerEventBus);
-        } catch (MobRepositoryException
-            | io.taanielo.jmud.core.world.repository.RepositoryException
-            | AttackRepositoryException e) {
+        } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
         }
     }
@@ -250,7 +247,7 @@ public record GameContext(
         try {
             CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
             return new CombatEngine(new JsonAttackRepository(), resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
-        } catch (AttackRepositoryException e) {
+        } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize combat: " + e.getMessage(), e);
         }
     }

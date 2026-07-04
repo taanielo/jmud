@@ -14,7 +14,7 @@ import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.dto.AttackDto;
 import io.taanielo.jmud.core.combat.dto.AttackMapper;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 public class JsonAttackRepository implements AttackRepository {
     private static final String ATTACKS_DIR = "attacks";
@@ -24,11 +24,11 @@ public class JsonAttackRepository implements AttackRepository {
     private final Path attacksDirPath;
     private final ConcurrentHashMap<AttackId, AttackDefinition> cache = new ConcurrentHashMap<>();
 
-    public JsonAttackRepository() throws AttackRepositoryException {
+    public JsonAttackRepository() throws RepositoryException {
         this(Path.of("data"));
     }
 
-    public JsonAttackRepository(Path dataRoot) throws AttackRepositoryException {
+    public JsonAttackRepository(Path dataRoot) throws RepositoryException {
         this.objectMapper = JsonDataMapper.create();
         this.mapper = new AttackMapper();
         this.attacksDirPath = Objects.requireNonNull(dataRoot, "Data root is required").resolve(ATTACKS_DIR);
@@ -36,7 +36,7 @@ public class JsonAttackRepository implements AttackRepository {
     }
 
     @Override
-    public Optional<AttackDefinition> findById(AttackId id) throws AttackRepositoryException {
+    public Optional<AttackDefinition> findById(AttackId id) throws RepositoryException {
         Objects.requireNonNull(id, "Attack id is required");
         AttackDefinition cached = cache.get(id);
         if (cached != null) {
@@ -51,17 +51,17 @@ public class JsonAttackRepository implements AttackRepository {
         try {
             definition = mapper.toDomain(dto);
         } catch (IllegalArgumentException e) {
-            throw new AttackRepositoryException("Invalid attack data in " + attackFilePath + ": " + e.getMessage(), e);
+            throw new RepositoryException("Invalid attack data in " + attackFilePath + ": " + e.getMessage(), e);
         }
         cache.put(id, definition);
         return Optional.of(definition);
     }
 
-    private void ensureDirectory(Path path) throws AttackRepositoryException {
+    private void ensureDirectory(Path path) throws RepositoryException {
         try {
             Files.createDirectories(path);
         } catch (IOException e) {
-            throw new AttackRepositoryException("Failed to create attacks directory " + path, e);
+            throw new RepositoryException("Failed to create attacks directory " + path, e);
         }
     }
 
@@ -69,11 +69,11 @@ public class JsonAttackRepository implements AttackRepository {
         return attacksDirPath.resolve(id.getValue() + ".json");
     }
 
-    private AttackDto readDto(Path path) throws AttackRepositoryException {
+    private AttackDto readDto(Path path) throws RepositoryException {
         try {
             return objectMapper.readValue(path.toFile(), AttackDto.class);
         } catch (IOException e) {
-            throw new AttackRepositoryException("Failed to read attack data from " + path + ": " + e.getMessage(), e);
+            throw new RepositoryException("Failed to read attack data from " + path + ": " + e.getMessage(), e);
         }
     }
 }

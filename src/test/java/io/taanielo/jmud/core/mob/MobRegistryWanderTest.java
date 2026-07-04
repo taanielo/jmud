@@ -17,7 +17,6 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
-import io.taanielo.jmud.core.combat.repository.AttackRepositoryException;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -221,7 +220,7 @@ class MobRegistryWanderTest {
     private record StubAttackRepository(Map<AttackId, AttackDefinition> attacks)
         implements AttackRepository {
         @Override
-        public Optional<AttackDefinition> findById(AttackId id) throws AttackRepositoryException {
+        public Optional<AttackDefinition> findById(AttackId id) throws RepositoryException {
             return Optional.ofNullable(attacks.get(id));
         }
     }
