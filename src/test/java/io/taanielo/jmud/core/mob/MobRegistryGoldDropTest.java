@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.mob;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +22,10 @@ import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.world.Item;
-import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
@@ -96,7 +97,8 @@ class MobRegistryGoldDropTest {
         MobTemplate template,
         Player attacker,
         StubPlayerRepository playerRepo,
-        List<GameActionResult> captured
+        List<GameActionResult> captured,
+        PersistenceQueue persistenceQueue
     ) {
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
         AttackRepository attackRepo = new StubAttackRepository(Map.of(DEFAULT_ATTACK, ONE_DMG_ATTACK));
@@ -109,7 +111,7 @@ class MobRegistryGoldDropTest {
         bus.register(attacker.getUsername(), captured::add);
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo, persistenceQueue, bus);
         registry.init();
         return registry;
     }
@@ -127,8 +129,9 @@ class MobRegistryGoldDropTest {
         MobTemplate template = templateWithFixedGoldDrop(1); // 1 HP → one-shot kill
 
         StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
         List<GameActionResult> captured = new ArrayList<>();
-        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured, persistenceQueue);
 
         GameActionResult result = registry.processPlayerAttack(attacker, "Goblin", ROOM_ID);
 
@@ -140,6 +143,8 @@ class MobRegistryGoldDropTest {
             texts.stream().anyMatch(t -> t.contains("gold coin")),
             "Expected a gold drop message but got: " + texts);
 
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
         Player saved = playerRepo.load(attacker.getUsername());
         assertTrue(saved.getGold() > 0,
             "Expected saved player to have gold > 0, got " + saved.getGold());
@@ -156,8 +161,9 @@ class MobRegistryGoldDropTest {
         MobTemplate template = templateWithNoGoldDrop(1);
 
         StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
         List<GameActionResult> captured = new ArrayList<>();
-        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured, persistenceQueue);
 
         GameActionResult result = registry.processPlayerAttack(attacker, "Rat", ROOM_ID);
 
@@ -169,6 +175,8 @@ class MobRegistryGoldDropTest {
             texts.stream().noneMatch(t -> t.contains("gold coin")),
             "Expected no gold message for mob with no gold drop, but got: " + texts);
 
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
         Player saved = playerRepo.load(attacker.getUsername());
         assertEquals(0, saved.getGold(), "Expected 0 gold for mob with no gold drop");
     }
@@ -185,8 +193,9 @@ class MobRegistryGoldDropTest {
         MobTemplate template = templateWithFixedGoldDrop(2);
 
         StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
         List<GameActionResult> captured = new ArrayList<>();
-        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured, persistenceQueue);
 
         // First hit — mob survives, combat is registered.
         registry.processPlayerAttack(attacker, "Goblin", ROOM_ID);
@@ -204,6 +213,8 @@ class MobRegistryGoldDropTest {
             allTexts.stream().anyMatch(t -> t.contains("gold coin")),
             "Expected gold drop message on tick kill, but got: " + allTexts);
 
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
         Player saved = playerRepo.load(attacker.getUsername());
         assertTrue(saved.getGold() > 0,
             "Expected saved player to have gold after tick kill, got " + saved.getGold());

@@ -1,7 +1,9 @@
 package io.taanielo.jmud.core.mob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.world.Item;
@@ -72,7 +75,8 @@ class MobRegistryKillTrackingTest {
         MobTemplate template,
         Player attacker,
         StubPlayerRepository playerRepo,
-        List<GameActionResult> captured
+        List<GameActionResult> captured,
+        PersistenceQueue persistenceQueue
     ) {
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
         AttackRepository attackRepo = new StubAttackRepository(Map.of(DEFAULT_ATTACK, ONE_DMG_ATTACK));
@@ -85,7 +89,7 @@ class MobRegistryKillTrackingTest {
         bus.register(attacker.getUsername(), captured::add);
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo, persistenceQueue, bus);
         registry.init();
         return registry;
     }
@@ -103,10 +107,15 @@ class MobRegistryKillTrackingTest {
 
         MobTemplate template = templateWithHp(1); // 1 HP → one-shot
         StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
-        MobRegistry registry = buildRegistry(template, attacker, playerRepo, new ArrayList<>());
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, new ArrayList<>(), persistenceQueue);
 
         registry.processPlayerAttack(attacker, "Rat", ROOM_ID);
 
+        // Saves are write-behind (issue #179): wait for the queue to drain before
+        // reading back the persisted state.
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
         Player saved = playerRepo.load(attacker.getUsername());
         assertEquals(1L, saved.getTotalKills(),
             "totalKills should be 1 after one kill via processPlayerAttack");
@@ -121,23 +130,29 @@ class MobRegistryKillTrackingTest {
 
         // Use two separate registries / mob instances to simulate two distinct kills.
         StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
         List<GameActionResult> captured = new ArrayList<>();
 
         MobTemplate template = templateWithHp(1);
-        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured, persistenceQueue);
 
         registry.processPlayerAttack(attacker, "Rat", ROOM_ID);
 
         // Reload the saved state and simulate a second kill.
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
         Player afterFirst = playerRepo.load(attacker.getUsername());
         assertEquals(1L, afterFirst.getTotalKills());
 
         // The second kill reuses the same registry — mob respawns after scheduleRespawn,
         // so we rebuild to get a fresh instance.
         StubPlayerRepository playerRepo2 = new StubPlayerRepository(afterFirst);
-        MobRegistry registry2 = buildRegistry(template, afterFirst, playerRepo2, new ArrayList<>());
+        PersistenceQueue persistenceQueue2 = MobRegistryTestSupport.persistenceQueueFor(playerRepo2);
+        MobRegistry registry2 = buildRegistry(template, afterFirst, playerRepo2, new ArrayList<>(), persistenceQueue2);
         registry2.processPlayerAttack(afterFirst, "Rat", ROOM_ID);
 
+        assertTrue(persistenceQueue2.flush(Duration.ofSeconds(2)));
+        persistenceQueue2.close();
         Player afterSecond = playerRepo2.load(afterFirst.getUsername());
         assertEquals(2L, afterSecond.getTotalKills(),
             "totalKills should be 2 after two kills");
@@ -154,8 +169,9 @@ class MobRegistryKillTrackingTest {
         // 2 HP: first attack leaves 1 HP, next tick delivers the killing blow.
         MobTemplate template = templateWithHp(2);
         StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
         List<GameActionResult> captured = new ArrayList<>();
-        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured, persistenceQueue);
 
         // First hit — mob survives, combat registered.
         registry.processPlayerAttack(attacker, "Rat", ROOM_ID);
@@ -164,6 +180,8 @@ class MobRegistryKillTrackingTest {
         // Tick — killing blow via runPlayerCombat.
         registry.tick();
 
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
         Player saved = playerRepo.load(attacker.getUsername());
         assertEquals(1L, saved.getTotalKills(),
             "totalKills should be 1 after a tick kill via runPlayerCombat");

@@ -76,4 +76,19 @@ public class EffectInstance {
             remainingTicks -= 1;
         }
     }
+
+    /**
+     * Returns an independent copy of this instance with the same state.
+     *
+     * <p>Unlike most value objects in this codebase, {@code EffectInstance} is mutable
+     * (see {@link #tickDown()}, {@link #refresh}, {@link #stack}, {@link #replace}), so
+     * code that hands an effect list to another thread (e.g. the persistence
+     * write-behind queue) must copy each instance rather than share the live reference.
+     *
+     * @return a new, independently mutable {@code EffectInstance} with the same id,
+     *         remaining ticks, and stack count
+     */
+    public EffectInstance copy() {
+        return new EffectInstance(id, remainingTicks, stacks);
+    }
 }

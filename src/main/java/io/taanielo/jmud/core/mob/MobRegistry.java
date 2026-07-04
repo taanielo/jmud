@@ -16,19 +16,17 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.PlayerEventBus;
-import io.taanielo.jmud.core.audit.AuditEvent;
-import io.taanielo.jmud.core.audit.AuditService;
-import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
-import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.party.PartyService;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
-import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.tick.Tickable;
 import io.taanielo.jmud.core.world.Direction;
@@ -54,14 +52,13 @@ public class MobRegistry implements Tickable {
     private final AttackRepository attackRepository;
     private final RoomService roomService;
     private final PlayerRepository playerRepository;
+    private final PersistenceQueue persistenceQueue;
     private final PlayerEventBus playerEventBus;
     private final LevelUpService levelUpService = new LevelUpService();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
     /** Optional party service for XP splitting; may be null when parties are disabled. */
     private PartyService partyService;
-    /** Optional audit service used to record save failures; may be null when auditing is disabled. */
-    private AuditService auditService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -72,6 +69,7 @@ public class MobRegistry implements Tickable {
         AttackRepository attackRepository,
         RoomService roomService,
         PlayerRepository playerRepository,
+        PersistenceQueue persistenceQueue,
         PlayerEventBus playerEventBus
     ) {
         this.templateRepository = Objects.requireNonNull(templateRepository, "Template repository is required");
@@ -79,6 +77,7 @@ public class MobRegistry implements Tickable {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
         this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
+        this.persistenceQueue = Objects.requireNonNull(persistenceQueue, "Persistence queue is required");
         this.playerEventBus = Objects.requireNonNull(playerEventBus, "Player event bus is required");
     }
 
@@ -98,16 +97,6 @@ public class MobRegistry implements Tickable {
      */
     public void setPartyService(PartyService partyService) {
         this.partyService = partyService;
-    }
-
-    /**
-     * Registers the audit service used to record player-save failures encountered
-     * while awarding XP or applying combat damage during mob AI ticks.
-     *
-     * @param auditService the audit service; may be null to disable auditing
-     */
-    public void setAuditService(AuditService auditService) {
-        this.auditService = auditService;
     }
 
     /**
@@ -548,28 +537,15 @@ public class MobRegistry implements Tickable {
     }
 
     /**
-     * Attempts to persist the given player, logging an error and emitting an audit
-     * event on failure rather than propagating the exception into the tick loop.
+     * Hands the given player off to the write-behind persistence queue rather than
+     * saving synchronously, so a slow disk write during mob AI processing (XP/damage
+     * application) never stalls the tick thread (AGENTS.md §5). Failures (including
+     * retries) are logged and audited by the queue itself.
      *
      * @param player the player to save
      */
     private void saveOrLog(Player player) {
-        try {
-            playerRepository.savePlayer(player);
-        } catch (RepositoryException e) {
-            log.error("Failed to save player {} during mob tick processing", player.getUsername(), e);
-            if (auditService != null) {
-                auditService.emit(new AuditEvent(
-                    "player.save.failed",
-                    AuditSubject.player(player.getUsername()),
-                    null,
-                    null,
-                    "failure",
-                    auditService.newCorrelationId(),
-                    Map.of()
-                ));
-            }
-        }
+        persistenceQueue.enqueueSave(player);
     }
 
     private AttackDefinition loadAttack(AttackId attackId) {

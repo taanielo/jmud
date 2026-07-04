@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -21,16 +22,15 @@ import io.taanielo.jmud.core.healing.PlayerHealingTicker;
 import io.taanielo.jmud.core.output.OutputStyleSettings;
 import io.taanielo.jmud.core.output.TextStyler;
 import io.taanielo.jmud.core.output.TextStylers;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.Player;
-import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRespawnTicker;
 import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.RoomService;
-import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
  * Manages the lifecycle of a connected player within a single session.
@@ -42,8 +42,10 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
 @Slf4j
 public class PlayerSession {
 
+    private static final Duration DISCONNECT_FLUSH_TIMEOUT = Duration.ofSeconds(5);
+
     private final TickRegistry tickRegistry;
-    private final PlayerRepository playerRepository;
+    private final PersistenceQueue persistenceQueue;
     private final RoomService roomService;
     private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
     private final EffectEngine effectEngine;
@@ -80,7 +82,8 @@ public class PlayerSession {
      * Creates a player session with the given dependencies.
      *
      * @param tickRegistry the tick registry for scheduling tickables
-     * @param playerRepository the player repository for persistence
+     * @param persistenceQueue the write-behind queue used for all player saves, so
+     *                         this session never blocks the tick thread on disk I/O
      * @param roomService the room service for location management
      * @param respawnCallback called when the player respawns after death
      * @param effectEngine effect engine for player effects
@@ -89,7 +92,7 @@ public class PlayerSession {
      */
     public PlayerSession(
         TickRegistry tickRegistry,
-        PlayerRepository playerRepository,
+        PersistenceQueue persistenceQueue,
         RoomService roomService,
         Consumer<Player> respawnCallback,
         EffectEngine effectEngine,
@@ -98,7 +101,7 @@ public class PlayerSession {
         HealingBaseResolver healingBaseResolver
     ) {
         this.tickRegistry = Objects.requireNonNull(tickRegistry, "Tick registry is required");
-        this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
+        this.persistenceQueue = Objects.requireNonNull(persistenceQueue, "Persistence queue is required");
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
         this.effectEngine = Objects.requireNonNull(effectEngine, "Effect engine is required");
         this.effectRepository = Objects.requireNonNull(effectRepository, "Effect repository is required");
@@ -188,24 +191,14 @@ public class PlayerSession {
     }
 
     /**
-     * Attempts to persist the given player, logging and notifying the save-failure
-     * handler (if any) on failure rather than propagating the exception.
+     * Hands the given player off to the write-behind persistence queue rather than
+     * saving synchronously (AGENTS.md §5); the queue itself logs and audits any
+     * eventual save failure after its retry.
      *
      * @param playerToSave the player to save
-     * @param context short label describing the call site, used in the log message
-     * @return true if the save succeeded, false otherwise
      */
-    private boolean trySavePlayer(Player playerToSave, String context) {
-        try {
-            playerRepository.savePlayer(playerToSave);
-            return true;
-        } catch (RepositoryException e) {
-            log.error("Failed to save player {} ({})", playerToSave.getUsername(), context, e);
-            if (saveFailureHandler != null) {
-                saveFailureHandler.accept(playerToSave);
-            }
-            return false;
-        }
+    private void enqueueSave(Player playerToSave) {
+        persistenceQueue.enqueueSave(playerToSave);
     }
 
     /**
@@ -214,7 +207,7 @@ public class PlayerSession {
      */
     public void replacePlayer(Player updated) {
         player = updated;
-        trySavePlayer(player, "replacePlayer");
+        enqueueSave(player);
         if (effectsInitialized) {
             clearEffects();
             if (!player.isDead()) {
@@ -318,6 +311,12 @@ public class PlayerSession {
 
     /**
      * Closes the session by unsubscribing all ticks and persisting the player.
+     *
+     * <p>Unlike normal in-play saves, disconnect has no further chance to persist,
+     * so this enqueues the final save and then synchronously {@link
+     * PersistenceQueue#flush(Duration) flushes} the queue (bounded by {@link
+     * #DISCONNECT_FLUSH_TIMEOUT}) before returning, guaranteeing the write has
+     * completed (or definitively failed) by the time the connection is torn down.
      */
     public void close() {
         connected = false;
@@ -334,30 +333,19 @@ public class PlayerSession {
             commandSubscription.unsubscribe();
         }
         if (authenticated && player != null) {
-            // Retry once before giving up: on-disconnect saves have no further chance to persist.
-            boolean saved = trySavePlayerQuietly(player);
-            if (!saved) {
-                saved = trySavePlayerQuietly(player);
-            }
-            if (saved) {
+            long failuresBeforeSave = persistenceQueue.getFailureCount();
+            enqueueSave(player);
+            boolean flushed = persistenceQueue.flush(DISCONNECT_FLUSH_TIMEOUT);
+            boolean saveFailed = persistenceQueue.getFailureCount() > failuresBeforeSave;
+            if (flushed && !saveFailed) {
                 log.info("Player {} data saved on disconnect.", player.getUsername());
             } else {
-                log.error("Failed to save player {} on disconnect after retry.", player.getUsername());
+                log.error("Failed to save player {} on disconnect (flushed={}, failureDetected={}).",
+                    player.getUsername(), flushed, saveFailed);
                 if (saveFailureHandler != null) {
                     saveFailureHandler.accept(player);
                 }
             }
-        }
-    }
-
-    private boolean trySavePlayerQuietly(Player playerToSave) {
-        try {
-            playerRepository.savePlayer(playerToSave);
-            return true;
-        } catch (RepositoryException e) {
-            log.warn("Save attempt failed for player {} on disconnect: {}",
-                playerToSave.getUsername(), e.getMessage());
-            return false;
         }
     }
 }

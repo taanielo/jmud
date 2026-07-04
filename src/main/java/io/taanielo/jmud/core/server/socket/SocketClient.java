@@ -21,14 +21,6 @@ import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
-import io.taanielo.jmud.core.character.ClassDefinition;
-import io.taanielo.jmud.core.character.ClassId;
-import io.taanielo.jmud.core.character.RaceId;
-import io.taanielo.jmud.core.creation.CharacterCreationException;
-import io.taanielo.jmud.core.creation.CharacterCreationService;
-import io.taanielo.jmud.core.creation.CharacterCreationState;
-import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingClass;
-import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingRace;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
@@ -38,6 +30,14 @@ import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.bank.BankTransactionResult;
+import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.creation.CharacterCreationException;
+import io.taanielo.jmud.core.creation.CharacterCreationService;
+import io.taanielo.jmud.core.creation.CharacterCreationState;
+import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingClass;
+import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingRace;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
@@ -45,29 +45,25 @@ import io.taanielo.jmud.core.messaging.WelcomeBannerMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
 import io.taanielo.jmud.core.output.OutputStyleSettings;
 import io.taanielo.jmud.core.output.TextStylers;
+import io.taanielo.jmud.core.party.Party;
+import io.taanielo.jmud.core.party.PartyService;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
-import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
+import io.taanielo.jmud.core.quest.ActiveQuest;
+import io.taanielo.jmud.core.quest.QuestDeliveryService;
+import io.taanielo.jmud.core.quest.QuestRepository;
+import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.QuestTemplate;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
-import io.taanielo.jmud.core.party.Party;
-import io.taanielo.jmud.core.party.PartyService;
-import io.taanielo.jmud.core.quest.ActiveQuest;
-import io.taanielo.jmud.core.quest.QuestDeliveryService;
-import io.taanielo.jmud.core.quest.QuestKillService;
-import io.taanielo.jmud.core.quest.QuestRepository;
-import io.taanielo.jmud.core.quest.QuestRepositoryException;
-import io.taanielo.jmud.core.quest.QuestTemplate;
-import io.taanielo.jmud.core.bank.Bank;
-import io.taanielo.jmud.core.bank.BankTransactionResult;
-import io.taanielo.jmud.core.shop.Shop;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
@@ -85,6 +81,7 @@ public class SocketClient implements Client {
     private final GameActionService gameActionService;
     private final AuthenticationService authenticationService;
     private final PlayerRepository playerRepository;
+    private final PersistenceQueue persistenceQueue;
     private final RoomService roomService;
     private final EncumbranceService encumbranceService;
     private final ClientPool clientPool;
@@ -117,6 +114,7 @@ public class SocketClient implements Client {
         this.connection = Objects.requireNonNull(connection, "Connection is required");
         this.authenticationService = Objects.requireNonNull(authenticationService, "Authentication service is required");
         this.playerRepository = context.playerRepository();
+        this.persistenceQueue = context.persistenceQueue();
         this.roomService = context.roomService();
         this.encumbranceService = context.encumbranceService();
         this.clientPool = clientPool;
@@ -127,7 +125,7 @@ public class SocketClient implements Client {
 
         this.session = new PlayerSession(
             context.tickRegistry(),
-            this.playerRepository,
+            this.persistenceQueue,
             this.roomService,
             this::applyRespawnUpdate,
             context.effectEngine(),
@@ -738,26 +736,23 @@ public class SocketClient implements Client {
     // ── Persistence ─────────────────────────────────────────────────────
 
     /**
-     * Saves the given player, warning the player and emitting an audit event
-     * on failure instead of letting the persistence exception escape.
+     * Hands the given player off to the write-behind persistence queue rather than
+     * saving synchronously on this (tick) thread (AGENTS.md §5). Failures are logged
+     * and audited by the queue itself after its retry; there is no more a way to warn
+     * the player synchronously about a failed save from this call site.
      *
      * @param playerToSave the player to save
      */
     private void saveOrWarn(Player playerToSave) {
-        try {
-            playerRepository.savePlayer(playerToSave);
-        } catch (RepositoryException e) {
-            handleSaveFailure(playerToSave);
-        }
+        persistenceQueue.enqueueSave(playerToSave);
     }
 
     /**
-     * Handles a failed player save: logs the failure, warns the player, and
-     * emits an audit event. Passed to {@link PlayerSession} as its save-failure hook
-     * so saves triggered internally by the session (e.g. {@code replacePlayer}) are
-     * surfaced the same way as saves performed directly by this class.
+     * Handles a failed flush of pending saves on disconnect: logs the failure, warns
+     * the player, and emits an audit event. Passed to {@link PlayerSession} as its
+     * save-failure hook.
      *
-     * @param player the player whose save failed
+     * @param player the player whose save failed to flush before disconnect
      */
     private void handleSaveFailure(Player player) {
         log.error("Player save failed for {}; warning player", player.getUsername());

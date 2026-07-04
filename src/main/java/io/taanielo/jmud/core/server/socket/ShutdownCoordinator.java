@@ -8,14 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.messaging.SystemNoticeMessage;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
-import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickRegistry;
-import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
  * Executes the server's orderly shutdown sequence: stop accepting new
@@ -32,12 +31,13 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
 public class ShutdownCoordinator {
 
     private static final Duration DEFAULT_AUDIT_FLUSH_TIMEOUT = Duration.ofSeconds(2);
+    private static final Duration PERSISTENCE_FLUSH_TIMEOUT = Duration.ofSeconds(10);
 
     private final List<Server> servers;
     private final ClientPool clientPool;
     private final FixedRateTickScheduler tickScheduler;
     private final TickRegistry tickRegistry;
-    private final PlayerRepository playerRepository;
+    private final PersistenceQueue persistenceQueue;
     private final AuditService auditService;
     private final Duration auditFlushTimeout;
 
@@ -46,10 +46,10 @@ public class ShutdownCoordinator {
         ClientPool clientPool,
         FixedRateTickScheduler tickScheduler,
         TickRegistry tickRegistry,
-        PlayerRepository playerRepository,
+        PersistenceQueue persistenceQueue,
         AuditService auditService
     ) {
-        this(servers, clientPool, tickScheduler, tickRegistry, playerRepository, auditService, DEFAULT_AUDIT_FLUSH_TIMEOUT);
+        this(servers, clientPool, tickScheduler, tickRegistry, persistenceQueue, auditService, DEFAULT_AUDIT_FLUSH_TIMEOUT);
     }
 
     public ShutdownCoordinator(
@@ -57,7 +57,7 @@ public class ShutdownCoordinator {
         ClientPool clientPool,
         FixedRateTickScheduler tickScheduler,
         TickRegistry tickRegistry,
-        PlayerRepository playerRepository,
+        PersistenceQueue persistenceQueue,
         AuditService auditService,
         Duration auditFlushTimeout
     ) {
@@ -65,7 +65,7 @@ public class ShutdownCoordinator {
         this.clientPool = Objects.requireNonNull(clientPool, "Client pool is required");
         this.tickScheduler = Objects.requireNonNull(tickScheduler, "Tick scheduler is required");
         this.tickRegistry = Objects.requireNonNull(tickRegistry, "Tick registry is required");
-        this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
+        this.persistenceQueue = Objects.requireNonNull(persistenceQueue, "Persistence queue is required");
         this.auditService = Objects.requireNonNull(auditService, "Audit service is required");
         this.auditFlushTimeout = Objects.requireNonNull(auditFlushTimeout, "Audit flush timeout is required");
     }
@@ -85,6 +85,23 @@ public class ShutdownCoordinator {
         flushAudit();
         tickRegistry.clear();
         log.info("Shutdown sequence complete");
+    }
+
+    private void saveOnlinePlayers() {
+        for (Client client : clientPool.clients()) {
+            client.currentPlayer().ifPresent(this::enqueueSave);
+        }
+        boolean flushed = persistenceQueue.flush(PERSISTENCE_FLUSH_TIMEOUT);
+        if (!flushed) {
+            log.error("Persistence queue did not drain within {} during shutdown; some player saves may be lost",
+                PERSISTENCE_FLUSH_TIMEOUT);
+        }
+        persistenceQueue.close();
+    }
+
+    private void enqueueSave(Player player) {
+        persistenceQueue.enqueueSave(player);
+        log.info("Enqueued save for player {} during shutdown", player.getUsername());
     }
 
     private void stopAccepting() {
@@ -110,21 +127,6 @@ public class ShutdownCoordinator {
 
     private void stopTickScheduler() {
         tickScheduler.stop();
-    }
-
-    private void saveOnlinePlayers() {
-        for (Client client : clientPool.clients()) {
-            client.currentPlayer().ifPresent(this::saveOrLog);
-        }
-    }
-
-    private void saveOrLog(Player player) {
-        try {
-            playerRepository.savePlayer(player);
-            log.info("Saved player {} during shutdown", player.getUsername());
-        } catch (RepositoryException e) {
-            log.error("Failed to save player {} during shutdown", player.getUsername(), e);
-        }
     }
 
     private void flushAudit() {

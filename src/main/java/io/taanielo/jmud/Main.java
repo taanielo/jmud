@@ -40,7 +40,7 @@ public class Main {
             clientPool,
             context.tickScheduler(),
             context.tickRegistry(),
-            context.playerRepository(),
+            context.persistenceQueue(),
             context.auditService()
         );
         Runtime.getRuntime().addShutdownHook(
