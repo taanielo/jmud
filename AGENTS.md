@@ -2,7 +2,7 @@
 
 This file defines how Codex agents must operate in this **Java MUD (Multi-User Dungeon)** project.
 
-The goal is to ensure **correctness under concurrency**, **predictable game behavior**, and **long-term evolvability**, while taking advantage of **modern Java (Java 25)** features, including **virtual threads**.
+The goal is to ensure **correctness under concurrency**, **predictable game behavior**, and **long-term evolvability**, while taking advantage of **modern Java (Java 26 — always match the toolchain in `build.gradle`, which is authoritative over any version mentioned in prose)** features, including **virtual threads**.
 
 ---
 
@@ -71,6 +71,22 @@ Examples (current packages):
 
 ---
 
+### 3.3 Canonical Implementations (Anti-Drift — read before writing any code)
+
+The codebase contains historical duplicates. These rules pick the winners; extending a loser is always wrong:
+
+* **Command system**: the ONLY real one is `SocketCommand` + `SocketCommandRegistry` (`core.server.socket`). A new player command = a `SocketCommand` implementation, registered in `SocketCommandRegistry.createDefault()`, with its game logic in `GameActionService` or a domain service — **never inside `SocketClient`**.
+* **Forbidden packages** (dead code scheduled for deletion in issue #178): never modify, extend, import, or imitate `io.taanielo.jmud.command.*`, `io.taanielo.jmud.core.command.*`, `core.server.ClientContext`, or the parallel character model (`core.character.Character`/`BaseCharacter`/`PlayerCharacter`/`Stats`/`BasicStats`). The canonical player model is `core.player.Player` and its component records.
+* **`SocketClient` is frozen**: it is an oversized transport adapter being shrunk (issue #182). Do not add fields, game logic, or fan-out loops to it. If your change seems to need it, the logic belongs in `GameActionService`, `PlayerSession`, a domain service, or the messaging layer.
+* **Composition root**: only `GameContext` (moving to a `bootstrap` package, issue #181) may construct `Json*Repository` implementations, engines, and schedulers. Everywhere else: constructor injection of interfaces.
+* **Message delivery**: use the `MessageBroadcaster` abstraction; do not hand-roll loops over the client pool. (Scoped room/player delivery arrives with issue #180 — extend it there, not ad hoc.)
+
+### 3.4 Architecture Roadmap
+
+`docs/architecture-review-and-improvement-plan.md` is the current architecture assessment and target design. The actionable backlog is GitHub issues **#168–#189** (label `architecture`); each contains a "How (implementation guide)" section that is binding for the implementing agent, plus explicit `Depends on:` ordering. Feature work must not contradict the target design described there.
+
+---
+
 ## 4. Concurrency & Thread Safety (Critical)
 
 This is a multi-user, concurrent system. Thread safety is not optional.
@@ -107,13 +123,12 @@ Allowed primitives:
 
 Java virtual threads must be preferred for:
 
-* Player connections
-* Command handling
-* Blocking I/O (sockets, persistence)
+* Player connections (socket read loops)
+* Blocking I/O (sockets, persistence workers)
 
 Rules:
 
-* One virtual thread per player or command is acceptable
+* One virtual thread per player **connection** is the pattern; command **execution** does NOT get its own thread — see §5
 * Do not pool virtual threads manually
 * Avoid thread-local state unless strictly required
 
@@ -135,11 +150,20 @@ Unstructured `ExecutorService` usage is discouraged unless justified.
 
 ---
 
-## 5. Game Loop & Determinism
+## 5. Game Loop & Determinism (the actual concurrency model — Critical)
 
-* Game state updates must be deterministic
-* Avoid time-based logic tied directly to wall-clock time
-* Use explicit ticks or events where ordering matters
+jmud uses a **single-writer tick loop**. This is the load-bearing design decision; preserve it:
+
+* One `FixedRateTickScheduler` thread drains all `Tickable`s each tick (default 1000 ms), including every player's `PlayerCommandQueue`.
+* Connection reader threads **only parse input and enqueue** a task via `PlayerSession.enqueueCommand(...)`. They never touch game state directly.
+* **All mutation of game state (Player, rooms, mobs, effects) happens on the tick thread.** Code running on a reader thread that reads live game state must treat it as a possibly-stale snapshot.
+* Do not add locks/synchronization to game state — if you think you need one, you are mutating from the wrong thread.
+* Do not add **new blocking file/network I/O** to any code reachable from `tick()`; one slow write stalls the whole world. (Existing saves are being moved to a write-behind queue in issue #179 — route persistence through it once it exists.)
+
+Determinism rules:
+
+* Game state updates must be deterministic; avoid logic tied directly to wall-clock time — use ticks
+* Randomness goes through the `CombatRandom`/RNG ports, never bare `Random`/`Math.random()` (seeded determinism is issue #183)
 
 Combat resolution, movement, and effects must produce the same result given the same inputs.
 
@@ -147,9 +171,10 @@ Combat resolution, movement, and effects must produce the same result given the 
 
 ## 6. Command Handling
 
-* Commands must be explicit domain objects
-* Parsing and execution must be separated
+* Commands must be explicit objects: implement `SocketCommand`, register in `SocketCommandRegistry.createDefault()` (see §3.3)
+* Parsing and execution must be separated; execution runs on the tick thread via the player's command queue (§5)
 * Validation happens before execution
+* Game logic goes in `GameActionService` or a domain service so it is testable without sockets
 
 Good:
 
@@ -159,6 +184,7 @@ Good:
 Bad:
 
 * Large `switch` statements on command strings
+* New logic added to `SocketClient`
 
 Commands must not:
 
@@ -177,7 +203,7 @@ Virtual threads must be isolated so failure affects only the originating player 
 
 ---
 
-## 8. Java 25 Feature Usage
+## 8. Modern Java Feature Usage (Java 26)
 
 Agents should prefer modern Java features when they improve clarity:
 
@@ -230,13 +256,15 @@ Breaking changes to game rules must be clearly documented.
 
 ## 12. Agent Behavior Constraints
 
-Codex agents must:
+Agents must:
 
-* Never introduce data races
+* Never introduce data races (mutate game state only on the tick thread — §5)
 * Never block platform threads unnecessarily
 * Never mix infrastructure and domain logic
 * Always consider multiplayer impact
-* Run tests before pushing changes to GitHub
+* Verify with `./gradlew build` (the wrapper, never a bare `gradle`) before pushing changes to GitHub; when quality gates exist (`check`, CI workflows, ArchUnit), they are part of the definition of done
+* Never write a dependency version from memory — look up the current version on Maven Central (or keep the existing pinned one); this repo has been burned by stale training-data versions
+* Never resurrect deleted code or patterns; if a file you expected is gone, check `git log` and the architecture plan before recreating it
 
 When in doubt, choose the **simpler, safer design**.
 

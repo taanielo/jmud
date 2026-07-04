@@ -1,19 +1,37 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.util.Objects;
 import java.util.Optional;
 
+import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
+import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 
 /**
  * Handles the {@code score} / {@code sc} command, displaying the player's level,
- * experience, XP needed for the next level, and current vitals.
+ * experience, XP needed for the next level, current vitals, and total armour class.
  */
 public class ScoreCommand extends RegistrableCommand {
 
-    public ScoreCommand(SocketCommandRegistry registry) {
+    private final EquipmentArmorResolver equipmentArmorResolver;
+    private final RaceArmorBonusResolver raceArmorBonusResolver;
+
+    /**
+     * Creates a ScoreCommand that computes AC from the given resolvers.
+     *
+     * @param registry               the command registry to register with
+     * @param equipmentArmorResolver resolver for AC contributed by equipped armour items
+     * @param raceArmorBonusResolver resolver for AC contributed by the player's race
+     */
+    public ScoreCommand(
+            SocketCommandRegistry registry,
+            EquipmentArmorResolver equipmentArmorResolver,
+            RaceArmorBonusResolver raceArmorBonusResolver) {
         super(registry);
+        this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "EquipmentArmorResolver is required");
+        this.raceArmorBonusResolver = Objects.requireNonNull(raceArmorBonusResolver, "RaceArmorBonusResolver is required");
     }
 
     @Override
@@ -39,10 +57,10 @@ public class ScoreCommand extends RegistrableCommand {
         if (!"SCORE".equals(token) && !"SC".equals(token)) {
             return Optional.empty();
         }
-        return Optional.of(new SocketCommandMatch(this, ScoreCommand::handleScore));
+        return Optional.of(new SocketCommandMatch(this, this::handleScore));
     }
 
-    private static void handleScore(SocketCommandContext context) {
+    private void handleScore(SocketCommandContext context) {
         if (!context.isAuthenticated() || context.getPlayer() == null) {
             context.writeLineWithPrompt("You must be logged in to view your score.");
             return;
@@ -53,6 +71,7 @@ public class ScoreCommand extends RegistrableCommand {
         long xp = player.getExperience();
         long xpNeeded = LevelUpService.xpForNextLevel(level);
         long xpRemaining = Math.max(0L, xpNeeded - xp);
+        int ac = equipmentArmorResolver.totalAc(player) + raceArmorBonusResolver.armorBonus(player);
 
         context.writeLineSafe("--- Score ---");
         context.writeLineSafe(String.format("Level : %d", level));
@@ -63,6 +82,7 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Gold  : %d", player.getGold()));
         context.writeLineSafe(String.format("Kills : %d", player.getTotalKills()));
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
+        context.writeLineSafe(String.format("AC    : %d", ac));
         context.sendPrompt();
     }
 }
