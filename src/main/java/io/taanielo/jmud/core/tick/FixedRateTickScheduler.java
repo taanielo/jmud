@@ -8,6 +8,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.jspecify.annotations.Nullable;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -28,7 +30,7 @@ public class FixedRateTickScheduler {
     private volatile long lastTickNanos;
     private volatile long maxTickNanos;
     private volatile boolean previousTickOverran;
-    private ScheduledFuture<?> task;
+    private @Nullable ScheduledFuture<?> task;
 
     public FixedRateTickScheduler(TickRegistry tickRegistry) {
         this(

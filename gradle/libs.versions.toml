@@ -7,6 +7,16 @@ sshdCore = "2.18.0"
 bcprovJdk18on = "1.84"
 junitJupiter = "6.1.1"
 junitPlatformLauncher = "6.1.1"
+# Pinned below the latest Error Prone release (2.50.0): NullAway 0.12.7 (the latest NullAway
+# release as of writing) reflectively depends on an internal Error Prone API class
+# (com.google.errorprone.predicates.type.DescendantOf) that was removed in error_prone_core
+# 2.49.0+, which crashes NullAway at compile time. 2.48.0 is the newest release that still
+# has it; revisit once a NullAway release compatible with newer Error Prone ships.
+errorproneCore = "2.48.0"
+errorpronePlugin = "5.1.0"
+nullaway = "0.12.7"
+jspecify = "1.0.0"
+spotless = "8.8.0"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -26,5 +36,13 @@ bcprov-jdk18on = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bc
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatformLauncher" }
 
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorproneCore" }
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+
 [bundles]
 log4j = ["log4j-api", "log4j-core", "log4j-slf4j-impl"]
+
+[plugins]
+errorprone = { id = "net.ltgt.errorprone", version.ref = "errorpronePlugin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
