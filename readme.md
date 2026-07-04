@@ -22,7 +22,7 @@ Game data is stored as JSON under `data/`. See `docs/data-schema.md` for the cur
 
 ### Prerequisites
 
-- Java SDK 25 or higher
+- Java SDK 26 or higher
 - A telnet client (most operating systems include a built-in telnet client)
 - An SSH client (OpenSSH is commonly available)
 
@@ -47,18 +47,18 @@ Replace `localhost` with the server's IP address and adjust the ports if you cha
 
 ## Running with Gradle
 
-Ensure you have Java 25 installed and Gradle available on your PATH.
+Ensure you have Java 26 installed. Use the committed Gradle wrapper (`./gradlew`) — never a bare `gradle` — so everyone builds with the same Gradle version.
 
 Build the project:
 
 ```sh
-gradle build
+./gradlew build
 ```
 
 Run the server:
 
 ```sh
-gradle run
+./gradlew run
 ```
 
 ## Configuration
