@@ -1,7 +1,9 @@
 plugins {
     id 'application'
+    id 'jacoco'
     alias libs.plugins.errorprone
     alias libs.plugins.spotless
+    alias libs.plugins.pitest
 }
 
 group = 'io.taanielo'
@@ -39,6 +41,8 @@ dependencies {
     testImplementation libs.junit.jupiter
     testRuntimeOnly libs.junit.platform.launcher
     testImplementation libs.archunit.junit5
+
+    pitest libs.pitest.junit5.plugin
 }
 
 application {
@@ -47,6 +51,14 @@ application {
 
 test {
     useJUnitPlatform()
+
+    // JaCoCo's runtime agent instruments every class loaded in the forked test JVM unless told
+    // otherwise; on JDK 26 that trips over JDK-internal classes (e.g. CLDR locale providers)
+    // whose class file version is newer than the JaCoCo 0.8.x agent expects. We only care about
+    // coverage of our own code, so exclude JDK-internal packages from instrumentation.
+    jacoco {
+        excludes += ['jdk/**', 'sun/**', 'com/sun/**']
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -79,4 +91,78 @@ spotless {
         trimTrailingWhitespace()
         endWithNewline()
     }
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// Coverage floors are scoped to the numeric game engines (combat, effects, ability) rather
+// than the whole codebase: these packages hold the damage/healing/stacking math that is most
+// valuable to pin down with regression tests, whereas infrastructure/adapters (sockets,
+// persistence) are better covered by the e2e smoke test (AGENTS.md #10.1) than by unit line
+// coverage. dto/ and repository/ subpackages are excluded because they are largely generated
+// data carriers and JSON-mapping glue with little branching logic worth a coverage floor.
+//
+// 0.70 is the floor mandated by issue #176. Measured line coverage on 2026-07-04 was combat
+// 73.1%, effects 72.5%, ability 71.0% (ability needed two small tests added alongside this
+// change — CooldownTrackerTest, AbilityCostTest — to clear the floor; it sat at 69.4% before
+// them). The floor is pinned at the mandated minimum rather than ratcheted up to current
+// coverage, leaving a little headroom while still guarding against regressions.
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            element = 'PACKAGE'
+            includes = [
+                'io.taanielo.jmud.core.combat.*',
+                'io.taanielo.jmud.core.effects.*',
+                'io.taanielo.jmud.core.ability.*',
+            ]
+            limit {
+                counter = 'LINE'
+                minimum = 0.70
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(
+            files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: ['**/dto/**', '**/repository/**'])
+            })
+        )
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
+
+// PIT mutation testing runs only from the weekly scheduled workflow (.github/workflows/mutation.yml),
+// not on every PR: mutation testing is far slower than plain unit tests, so it is not wired into `check`.
+pitest {
+    junit5PluginVersion = libs.versions.pitestJunit5Plugin
+    pitestVersion = libs.versions.pitest
+    targetClasses.set([
+        'io.taanielo.jmud.core.combat.*',
+        'io.taanielo.jmud.core.effects.*',
+        'io.taanielo.jmud.core.ability.*',
+    ])
+    targetTests.set([
+        'io.taanielo.jmud.core.combat.*',
+        'io.taanielo.jmud.core.effects.*',
+        'io.taanielo.jmud.core.ability.*',
+    ])
+    excludedClasses.set([
+        '*.dto.*',
+        '*.repository.*',
+    ])
+    outputFormats.set(['HTML', 'XML'])
+    timestampedReports.set(false)
 }

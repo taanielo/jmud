@@ -18,6 +18,10 @@ nullaway = "0.12.7"
 jspecify = "1.0.0"
 spotless = "8.8.0"
 archunit = "1.4.2"
+jacoco = "0.8.15"
+pitest = "1.19.1"
+pitestGradlePlugin = "1.19.0"
+pitestJunit5Plugin = "1.2.2"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -39,6 +43,8 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
+pitest-junit5-plugin = { module = "org.pitest:pitest-junit5-plugin", version.ref = "pitestJunit5Plugin" }
+
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorproneCore" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
@@ -49,3 +55,4 @@ log4j = ["log4j-api", "log4j-core", "log4j-slf4j-impl"]
 [plugins]
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorpronePlugin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+pitest = { id = "info.solidsoft.pitest", version.ref = "pitestGradlePlugin" }
