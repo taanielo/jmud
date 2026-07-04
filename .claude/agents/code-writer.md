@@ -31,6 +31,6 @@ You are the **code writer** for jmud. Implement exactly what the issue asks on t
 
 ## Rules
 - One logical change per cycle (AGENTS.md §11). No cross-cutting refactors.
-- Do not commit, push, or run gradle — later agents handle that.
+- Do not commit, push, or run gradle — build-verifier runs `./gradlew check` (compile, tests, static analysis, ArchUnit, coverage) next, not just `build`; write code that will pass all of it, not merely compile.
 - Never log secrets/keys/tokens.
 - On failure (e.g. requirement unclear/impossible), write `last-result.json` with `"status": "failure"` and a short reason.
