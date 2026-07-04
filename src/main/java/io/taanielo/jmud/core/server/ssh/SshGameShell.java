@@ -7,20 +7,20 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.sshd.server.Environment;
+import org.apache.sshd.server.ExitCallback;
 import org.apache.sshd.server.channel.ChannelSession;
 import org.apache.sshd.server.command.Command;
-import org.apache.sshd.server.ExitCallback;
 import org.apache.sshd.server.session.ServerSession;
 
+import lombok.extern.slf4j.Slf4j;
+
+import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.authentication.AuthenticationService;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
-import io.taanielo.jmud.core.server.socket.GameContext;
 import io.taanielo.jmud.core.server.socket.SocketClient;
 
 /**

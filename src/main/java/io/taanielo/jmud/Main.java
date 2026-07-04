@@ -6,10 +6,10 @@ import java.util.Locale;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
 import io.taanielo.jmud.core.server.socket.DefaultClientPool;
-import io.taanielo.jmud.core.server.socket.GameContext;
 import io.taanielo.jmud.core.server.socket.ShutdownCoordinator;
 import io.taanielo.jmud.core.server.socket.SocketServer;
 import io.taanielo.jmud.core.server.ssh.SshServer;

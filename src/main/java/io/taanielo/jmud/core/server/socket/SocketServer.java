@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;

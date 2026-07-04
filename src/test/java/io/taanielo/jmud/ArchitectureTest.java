@@ -39,7 +39,7 @@ class ArchitectureTest {
 
     /**
      * Transport isolation: the socket/SSH adapters are infrastructure (AGENTS.md §3.2) and must
-     * stay reachable only from the composition root (currently inside {@code core.server}) and
+     * stay reachable only from the composition root ({@code bootstrap}, AGENTS.md §3.3) and
      * {@code Main}. Nothing else — domain services, other adapters — may depend on them
      * directly, so that transport can be swapped or extended without rippling through the
      * codebase.
@@ -48,7 +48,7 @@ class ArchitectureTest {
     static final ArchRule transport_isolation =
             noClasses()
                     .that()
-                    .resideOutsideOfPackages("..core.server..")
+                    .resideOutsideOfPackages("..core.server..", "..bootstrap..")
                     .and(DescribedPredicate.not(JavaClass.Predicates.equivalentTo(Main.class)))
                     .should()
                     .dependOnClassesThat()
