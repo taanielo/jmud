@@ -17,6 +17,7 @@ errorpronePlugin = "5.1.0"
 nullaway = "0.12.7"
 jspecify = "1.0.0"
 spotless = "8.8.0"
+archunit = "1.4.2"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -35,6 +36,8 @@ bcprov-jdk18on = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bc
 
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatformLauncher" }
+
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorproneCore" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
