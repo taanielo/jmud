@@ -16,23 +16,21 @@ java {
 }
 
 dependencies {
-    compileOnly 'org.projectlombok:lombok:1.18.42'
-    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
 
-    implementation 'org.apache.logging.log4j:log4j-api:2.25.3'
-    implementation 'org.apache.logging.log4j:log4j-core:2.25.3'
-    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.25.3'
+    implementation libs.bundles.log4j
 
-    implementation 'org.apache.commons:commons-lang3:3.20.0'
+    implementation libs.commons.lang3
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.21.0'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.0'
+    implementation libs.jackson.core
+    implementation libs.jackson.databind
 
-    implementation 'org.apache.sshd:sshd-core:2.17.1'
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.83'
+    implementation libs.sshd.core
+    implementation libs.bcprov.jdk18on
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly libs.junit.platform.launcher
 }
 
 application {
