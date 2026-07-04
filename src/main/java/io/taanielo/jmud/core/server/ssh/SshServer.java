@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.common.cipher.BuiltinCiphers;
 import org.apache.sshd.common.cipher.Cipher;
@@ -26,9 +24,11 @@ import org.apache.sshd.server.forward.RejectAllForwardingFilter;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import lombok.extern.slf4j.Slf4j;
+
+import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
-import io.taanielo.jmud.core.server.socket.GameContext;
 
 /**
  * SSH server endpoint for the game.

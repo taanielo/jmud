@@ -6,8 +6,8 @@ import org.apache.sshd.server.channel.ChannelSession;
 import org.apache.sshd.server.command.Command;
 import org.apache.sshd.server.shell.ShellFactory;
 
+import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.server.ClientPool;
-import io.taanielo.jmud.core.server.socket.GameContext;
 
 /**
  * Creates SSH shell commands bound to the game session.

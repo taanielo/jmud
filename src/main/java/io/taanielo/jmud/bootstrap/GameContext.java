@@ -1,4 +1,4 @@
-package io.taanielo.jmud.core.server.socket;
+package io.taanielo.jmud.bootstrap;
 
 import java.time.Clock;
 
@@ -53,6 +53,7 @@ import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.server.ClientPool;
+import io.taanielo.jmud.core.server.socket.SocketCommandRegistry;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
@@ -70,7 +71,8 @@ import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
 
 /**
- * Shared dependency container for socket server components.
+ * Composition root. The only place allowed to construct {@code Json*} repository
+ * implementations and infrastructure schedulers.
  */
 public record GameContext(
     UserRegistry userRegistry,
@@ -116,7 +118,16 @@ public record GameContext(
         AuthenticationPolicy authenticationPolicy = AuthenticationPolicy.fromConfig(config);
         AuthenticationLimiter authenticationLimiter = new AuthenticationLimiter(authenticationPolicy, Clock.systemUTC());
         PlayerRepository playerRepository = new JsonPlayerRepository();
-        RoomRepository roomRepository = createRoomRepository();
+
+        // Shared repository instances: each Json*Repository is constructed exactly once here
+        // and passed to every consumer (AGENTS.md §3.3), instead of every consumer building
+        // its own copy.
+        ItemRepository itemRepository = createItemRepository();
+        JsonAttackRepository attackRepository = createAttackRepository();
+        JsonRaceRepository raceRepository = createRaceRepository();
+        JsonClassRepository classRepository = createClassRepository();
+
+        RoomRepository roomRepository = createRoomRepository(itemRepository);
         RoomService roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
 
         TickRegistry tickRegistry = new TickRegistry();
@@ -135,14 +146,15 @@ public record GameContext(
         EffectRepository effectRepository = createEffectRepository();
         EffectEngine effectEngine = new EffectEngine(effectRepository);
 
-        EquipmentArmorResolver equipmentArmorResolver = createEquipmentArmorResolver();
-        RaceArmorBonusResolver raceArmorBonusResolver = createRaceArmorBonusResolver();
-        CombatEngine combatEngine = createCombatEngine(effectRepository, raceArmorBonusResolver, equipmentArmorResolver);
+        EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
+        RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
+        CombatEngine combatEngine =
+                createCombatEngine(effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository);
 
-        EncumbranceService encumbranceService = createEncumbranceService();
+        EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 
         HealingEngine healingEngine = new HealingEngine(effectRepository);
-        HealingBaseResolver healingBaseResolver = createHealingBaseResolver();
+        HealingBaseResolver healingBaseResolver = new HealingBaseResolver(raceRepository, classRepository);
 
         AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
         AbilityTargetResolver abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
@@ -150,14 +162,15 @@ public record GameContext(
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(equipmentArmorResolver, raceArmorBonusResolver);
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
-        MobRegistry mobRegistry = createMobRegistry(playerEventBus, roomService, playerRepository, persistenceQueue);
+        MobRegistry mobRegistry = createMobRegistry(
+                playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository);
         if (mobRegistry != null) {
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
 
-        CharacterCreationService characterCreationService = createCharacterCreationService();
-        ShopService shopService = createShopService();
+        CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
+        ShopService shopService = createShopService(itemRepository);
         BankService bankService = createBankService();
         QuestRepository questRepository = createQuestRepository();
         if (mobRegistry != null && questRepository != null) {
@@ -212,9 +225,8 @@ public record GameContext(
         }
     }
 
-    private static RoomRepository createRoomRepository() {
+    private static RoomRepository createRoomRepository(ItemRepository itemRepository) {
         try {
-            ItemRepository itemRepository = new JsonItemRepository();
             return new JsonRoomRepository(itemRepository);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize room repository: " + e.getMessage(), e);
@@ -225,13 +237,14 @@ public record GameContext(
         PlayerEventBus playerEventBus,
         RoomService roomService,
         PlayerRepository playerRepository,
-        PersistenceQueue persistenceQueue
+        PersistenceQueue persistenceQueue,
+        ItemRepository itemRepository,
+        JsonAttackRepository attackRepository
     ) {
         try {
             JsonMobTemplateRepository templateRepo = new JsonMobTemplateRepository();
-            ItemRepository itemRepo = new JsonItemRepository();
-            JsonAttackRepository attackRepo = new JsonAttackRepository();
-            return new MobRegistry(templateRepo, itemRepo, attackRepo, roomService, playerRepository, persistenceQueue, playerEventBus);
+            return new MobRegistry(
+                templateRepo, itemRepository, attackRepository, roomService, playerRepository, persistenceQueue, playerEventBus);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
         }
@@ -256,62 +269,50 @@ public record GameContext(
     private static CombatEngine createCombatEngine(
         EffectRepository effectRepository,
         RaceArmorBonusResolver armorBonusResolver,
-        EquipmentArmorResolver equipmentArmorResolver
+        EquipmentArmorResolver equipmentArmorResolver,
+        JsonAttackRepository attackRepository
     ) {
+        CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
+        return new CombatEngine(attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
+    }
+
+    private static ItemRepository createItemRepository() {
         try {
-            CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
-            return new CombatEngine(new JsonAttackRepository(), resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
+            return new JsonItemRepository();
         } catch (RepositoryException e) {
-            throw new IllegalStateException("Failed to initialize combat: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to initialize item repository: " + e.getMessage(), e);
         }
     }
 
-    private static EquipmentArmorResolver createEquipmentArmorResolver() {
+    private static JsonAttackRepository createAttackRepository() {
         try {
-            return new EquipmentArmorResolver(new JsonItemRepository());
+            return new JsonAttackRepository();
         } catch (RepositoryException e) {
-            throw new IllegalStateException("Failed to initialize equipment armor resolver: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to initialize attack repository: " + e.getMessage(), e);
         }
     }
 
-    private static RaceArmorBonusResolver createRaceArmorBonusResolver() {
+    private static JsonRaceRepository createRaceRepository() {
         try {
-            return new RaceArmorBonusResolver(new JsonRaceRepository());
+            return new JsonRaceRepository();
         } catch (RaceRepositoryException e) {
-            throw new IllegalStateException("Failed to initialize race armor bonus resolver: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to initialize race repository: " + e.getMessage(), e);
         }
     }
 
-    private static HealingBaseResolver createHealingBaseResolver() {
+    private static JsonClassRepository createClassRepository() {
         try {
-            return new HealingBaseResolver(new JsonRaceRepository(), new JsonClassRepository());
-        } catch (RaceRepositoryException | ClassRepositoryException e) {
-            throw new IllegalStateException("Failed to initialize healing base resolver: " + e.getMessage(), e);
+            return new JsonClassRepository();
+        } catch (ClassRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize class repository: " + e.getMessage(), e);
         }
     }
 
-    private static EncumbranceService createEncumbranceService() {
-        try {
-            return new EncumbranceService(new JsonRaceRepository(), new JsonClassRepository());
-        } catch (RaceRepositoryException | ClassRepositoryException e) {
-            throw new IllegalStateException("Failed to initialize encumbrance service: " + e.getMessage(), e);
-        }
-    }
-
-    private static CharacterCreationService createCharacterCreationService() {
-        try {
-            return new CharacterCreationService(new JsonRaceRepository(), new JsonClassRepository());
-        } catch (RaceRepositoryException | ClassRepositoryException e) {
-            throw new IllegalStateException("Failed to initialize character creation service: " + e.getMessage(), e);
-        }
-    }
-
-    private static ShopService createShopService() {
+    private static ShopService createShopService(ItemRepository itemRepository) {
         try {
             ShopRepository shopRepository = new JsonShopRepository();
-            ItemRepository itemRepository = new JsonItemRepository();
             return new ShopService(shopRepository, itemRepository);
-        } catch (ShopRepositoryException | RepositoryException e) {
+        } catch (ShopRepositoryException e) {
             throw new IllegalStateException("Failed to initialize shop service: " + e.getMessage(), e);
         }
     }

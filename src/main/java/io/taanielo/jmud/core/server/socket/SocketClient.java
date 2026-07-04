@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.ability.Ability;
 import io.taanielo.jmud.core.ability.AbilityCost;
 import io.taanielo.jmud.core.ability.AbilityId;
