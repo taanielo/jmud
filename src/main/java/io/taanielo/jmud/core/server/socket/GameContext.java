@@ -16,18 +16,22 @@ import io.taanielo.jmud.core.authentication.AuthenticationPolicy;
 import io.taanielo.jmud.core.authentication.JsonUserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistryException;
-import io.taanielo.jmud.core.config.GameConfig;
+import io.taanielo.jmud.core.bank.BankRepository;
+import io.taanielo.jmud.core.bank.BankRepositoryException;
+import io.taanielo.jmud.core.bank.BankService;
+import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
-import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
+import io.taanielo.jmud.core.config.GameConfig;
+import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
@@ -37,22 +41,19 @@ import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.party.PartyService;
-import io.taanielo.jmud.core.quest.QuestKillService;
-import io.taanielo.jmud.core.quest.QuestRepository;
-import io.taanielo.jmud.core.quest.QuestRepositoryException;
-import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
-import io.taanielo.jmud.core.bank.BankRepository;
-import io.taanielo.jmud.core.bank.BankRepositoryException;
-import io.taanielo.jmud.core.bank.BankService;
-import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
-import io.taanielo.jmud.core.shop.ShopRepository;
-import io.taanielo.jmud.core.shop.ShopRepositoryException;
-import io.taanielo.jmud.core.shop.ShopService;
-import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.quest.QuestKillService;
+import io.taanielo.jmud.core.quest.QuestRepository;
+import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
+import io.taanielo.jmud.core.shop.ShopRepository;
+import io.taanielo.jmud.core.shop.ShopRepositoryException;
+import io.taanielo.jmud.core.shop.ShopService;
+import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
@@ -73,6 +74,7 @@ public record GameContext(
     AuthenticationPolicy authenticationPolicy,
     AuthenticationLimiter authenticationLimiter,
     PlayerRepository playerRepository,
+    PersistenceQueue persistenceQueue,
     RoomRepository roomRepository,
     RoomService roomService,
     TickRegistry tickRegistry,
@@ -121,6 +123,7 @@ public record GameContext(
 
         AbilityRegistry abilityRegistry = loadAbilities();
         AuditService auditService = AuditService.create(tickClock::currentTick);
+        PersistenceQueue persistenceQueue = new PersistenceQueue(playerRepository, auditService);
 
         EffectRepository effectRepository = createEffectRepository();
         EffectEngine effectEngine = new EffectEngine(effectRepository);
@@ -140,9 +143,8 @@ public record GameContext(
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(equipmentArmorResolver, raceArmorBonusResolver);
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
-        MobRegistry mobRegistry = createMobRegistry(playerEventBus, roomService, playerRepository);
+        MobRegistry mobRegistry = createMobRegistry(playerEventBus, roomService, playerRepository, persistenceQueue);
         if (mobRegistry != null) {
-            mobRegistry.setAuditService(auditService);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -165,6 +167,7 @@ public record GameContext(
             authenticationPolicy,
             authenticationLimiter,
             playerRepository,
+            persistenceQueue,
             roomRepository,
             roomService,
             tickRegistry,
@@ -211,13 +214,14 @@ public record GameContext(
     private static MobRegistry createMobRegistry(
         PlayerEventBus playerEventBus,
         RoomService roomService,
-        PlayerRepository playerRepository
+        PlayerRepository playerRepository,
+        PersistenceQueue persistenceQueue
     ) {
         try {
             JsonMobTemplateRepository templateRepo = new JsonMobTemplateRepository();
             ItemRepository itemRepo = new JsonItemRepository();
             JsonAttackRepository attackRepo = new JsonAttackRepository();
-            return new MobRegistry(templateRepo, itemRepo, attackRepo, roomService, playerRepository, playerEventBus);
+            return new MobRegistry(templateRepo, itemRepo, attackRepo, roomService, playerRepository, persistenceQueue, playerEventBus);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
         }

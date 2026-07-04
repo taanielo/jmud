@@ -477,4 +477,41 @@ public class Player implements EffectTarget, Combatant {
     public Player withPracticePoints(int newPracticePoints) {
         return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold);
     }
+
+    /**
+     * Returns a fully independent copy of this player, safe to hand to another thread
+     * (e.g. the persistence write-behind queue).
+     *
+     * <p>Every other component of {@code Player} is immutable, but the active effects
+     * held in {@link PlayerCombatState} are mutable ({@link EffectInstance#tickDown()}
+     * and friends run every tick), so a plain field copy would let a background writer
+     * observe a mid-tick mutation. This method deep-copies the effect list so the
+     * returned snapshot is stable regardless of subsequent tick-thread activity on
+     * the original instance.
+     *
+     * @return an independent snapshot of this player's current state
+     */
+    public Player snapshotForPersistence() {
+        List<EffectInstance> effectsCopy = combatState.effects().stream().map(EffectInstance::copy).toList();
+        return new Player(
+            identity.user(),
+            identity.level(),
+            identity.experience(),
+            combatState.vitals(),
+            effectsCopy,
+            preferences.promptFormat(),
+            preferences.ansiEnabled(),
+            abilities.learned(),
+            identity.race(),
+            identity.classId(),
+            combatState.dead(),
+            inventory.items(),
+            equipment,
+            gold,
+            activeQuest,
+            totalKills,
+            practicePoints,
+            bankedGold
+        );
+    }
 }

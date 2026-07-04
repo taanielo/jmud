@@ -3,7 +3,6 @@ package io.taanielo.jmud.core.mob;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -11,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
 
-import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
@@ -79,7 +77,7 @@ class MobRegistryAggressiveMobTest {
         PlayerEventBus bus = new PlayerEventBus();
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo, MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
         registry.init();
         return registry;
     }

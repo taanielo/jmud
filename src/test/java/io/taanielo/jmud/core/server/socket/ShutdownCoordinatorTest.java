@@ -18,6 +18,7 @@ import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.messaging.Message;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.server.Client;
@@ -75,9 +76,10 @@ class ShutdownCoordinatorTest {
                 super.shutdown(timeout);
             }
         };
+        PersistenceQueue persistenceQueue = new PersistenceQueue(playerRepository, auditService);
 
         ShutdownCoordinator coordinator = new ShutdownCoordinator(
-            List.of(server), clientPool, tickScheduler, tickRegistry, playerRepository, auditService, Duration.ofMillis(200)
+            List.of(server), clientPool, tickScheduler, tickRegistry, persistenceQueue, auditService, Duration.ofMillis(200)
         );
 
         coordinator.shutdown();
@@ -130,9 +132,10 @@ class ShutdownCoordinatorTest {
             public void write(AuditEntry entry) {
             }
         }, java.time.Clock.systemUTC(), () -> 0L, () -> "corr");
+        PersistenceQueue persistenceQueue = new PersistenceQueue(playerRepository, auditService);
 
         ShutdownCoordinator coordinator = new ShutdownCoordinator(
-            List.of(), clientPool, tickScheduler, tickRegistry, playerRepository, auditService, Duration.ofMillis(200)
+            List.of(), clientPool, tickScheduler, tickRegistry, persistenceQueue, auditService, Duration.ofMillis(200)
         );
 
         coordinator.shutdown();

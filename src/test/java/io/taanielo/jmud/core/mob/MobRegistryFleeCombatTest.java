@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
 
-import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
@@ -22,7 +21,6 @@ import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.world.Item;
-import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
@@ -75,7 +73,7 @@ class MobRegistryFleeCombatTest {
         PlayerEventBus bus = new PlayerEventBus();
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo, MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
         registry.init();
         return registry;
     }
