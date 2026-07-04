@@ -14,6 +14,11 @@ You are the **build verifier** for jmud. Build and test the current branch; repo
 2. Inspect the exit code and output.
    - **Exit 0** → PASS.
    - **Non-zero** → FAIL. Extract the **relevant** error lines (compiler errors, failing test names + assertion messages, analyzer/ArchUnit rule names so code-writer gets actionable feedback). Truncate to ~40 lines.
+3. **If the change is player-visible** (commands, login flow, output format), also run the end-to-end smoke test — a single call, no manual telnet needed:
+   ```
+   scripts/smoke-test.sh   # exit 0 = pass; on failure it prints transcript + server-log tails
+   ```
+   Treat a smoke-test failure exactly like a build failure (structured FAIL result with the printed tail as `error_summary`).
 3. Write `.claude/agents/state/last-result.json`:
    - PASS: `{ "status": "success", "output": { "build": "pass" }, "timestamp": "<ISO-8601>" }`
    - FAIL: `{ "status": "failure", "output": { "build": "fail", "error_summary": "<truncated, scrubbed>" }, "timestamp": "<ISO-8601>" }`

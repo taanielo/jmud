@@ -238,6 +238,13 @@ Hot paths must be:
 
 If logic cannot be tested deterministically, the design must be revisited.
 
+### 10.1 End-to-End Smoke Test
+
+`scripts/smoke-test.sh` verifies the real server over telnet: it starts jmud on dedicated test ports, creates a user, runs SCORE/WHO, asserts on output and the server log, cleans up, and exits 0 (pass) / 1 (fail). Transcripts land in `build/smoke-test/`.
+
+* Run it after player-visible changes (login flow, commands, output) — **do not hand-roll ad-hoc `nc`/telnet sessions**; extend the script instead.
+* Useful facts encoded there: character creation expects race/class *names* (not menu numbers); the prompt has no trailing newline (don't `^`-anchor patterns that may share its line); commands execute on the next tick (~1s).
+
 ---
 
 ## 11. Change Safety Rules
