@@ -1,0 +1,4 @@
+#
+#Sat Jul 04 21:36:36 EEST 2026
+no\ classes\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['io.taanielo.jmud.command..',\ 'io.taanielo.jmud.core.command..'],\ because\ io.taanielo.jmud.command..\ and\ core.command..\ are\ dead\ code\ scheduled\ for\ deletion;\ no\ new\ dependencies\ on\ them\ are\ allowed\ (AGENTS.md\ \u00A73.3)=48b999fd-98a0-4566-b0d0-2d4225bee211
+no\ classes\ that\ reside\ outside\ of\ packages\ ['..dto..',\ '..repository.json..',\ '..messaging..']\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ 'com.fasterxml.jackson..',\ because\ Jackson\ is\ a\ JSON\ infrastructure\ concern;\ it\ must\ only\ be\ used\ at\ the\ dto/repository.json/messaging\ edges,\ never\ in\ domain\ code\ (AGENTS.md\ \u00A73.2)=236c68c0-eb56-4db5-9f62-dab33747c056
