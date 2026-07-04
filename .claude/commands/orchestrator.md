@@ -1,5 +1,5 @@
 ---
-description: Run one cycle of jmud's autonomous feature loop (pick issue → branch → code → build → PR → merge).
+description: Run one cycle of jmud's autonomous feature loop (pick issue → branch → code → verify with `./gradlew check` → PR → merge gated on CI).
 allowed-tools: Bash(git:*), Bash(gh:*), Bash(./gradlew:*), Bash(gradle:*), Bash(cat:*), Bash(date:*), Bash(mkdir:*), Bash(mv:*), Bash(rm:*), Bash(test:*), Read, Write, Edit, Task
 argument-hint: (no arguments)
 ---
@@ -40,12 +40,12 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
   Whatever was picked: `gh issue edit <N> --add-assignee @me`, set `current_issue`, `stage = CREATE_BRANCH`.
 - **CREATE_BRANCH** — spawn **branch-manager** (pass issue number + title). Success → `stage = WRITE_CODE`.
 - **WRITE_CODE** — spawn **code-writer** (pass the **full issue body** — architecture issues contain a binding "How (implementation guide)" section; if `build_retries > 0`, also pass the build error from `last-result.json`). Success → `stage = VERIFY_BUILD`.
-- **VERIFY_BUILD** — spawn **build-verifier**.
+- **VERIFY_BUILD** — spawn **build-verifier**, which runs `./gradlew check` (compile, tests, static analysis, ArchUnit, coverage — the full quality-gate suite, not just `build`).
   - PASS → `build_retries = 0`, `stage = CREATE_PR`.
   - FAIL and `build_retries < 2` → `build_retries += 1`, `stage = WRITE_CODE`.
   - FAIL and `build_retries >= 2` → `gh issue create --title "blocked: <title>" --body "<scrubbed error summary>" --label bug`; append the number to `blocked_issues`; notify (PushNotification if available); `build_retries = 0`, `current_issue = null`, `stage = FIND_ISSUE`.
 - **CREATE_PR** — spawn **pr-creator**. Success → `stage = MERGE_PR`.
-- **MERGE_PR** — spawn **pr-merger**.
+- **MERGE_PR** — spawn **pr-merger**, which additionally gates on GitHub CI status (`gh pr checks --watch`) before merging — local `check` success alone is not sufficient.
   - MERGED → append `{ "issue":N, "pr":M, "merged_at":"..." }` to `cycle-log.jsonl`; `cycles_since_last_optimization += 1`; `current_issue = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0.
 
 ## Step 2 — Persist & finish
