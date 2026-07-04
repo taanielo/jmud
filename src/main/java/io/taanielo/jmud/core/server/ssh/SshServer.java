@@ -7,6 +7,7 @@ import java.security.Security;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,6 +40,9 @@ public class SshServer implements Server {
     private final String host;
     private final GameContext context;
     private final ClientPool clientPool;
+    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
+    private volatile org.apache.sshd.server.SshServer sshdServer;
+    private volatile Thread runningThread;
 
     public SshServer(String host, int port, GameContext context, ClientPool clientPool) {
         this.host = Objects.requireNonNull(host, "Host is required");
@@ -51,6 +55,7 @@ public class SshServer implements Server {
     public void run() {
         ensureSecurityProviders();
         log.debug("Starting SSH server @ port {}", port);
+        runningThread = Thread.currentThread();
         org.apache.sshd.server.SshServer server = org.apache.sshd.server.SshServer.setUpDefaultServer();
         server.setHost(host);
         server.setPort(port);
@@ -66,7 +71,8 @@ public class SshServer implements Server {
             Files.createDirectories(hostKeyPath.getParent());
             server.setKeyPairProvider(buildHostKeyProvider(hostKeyPath));
             server.start();
-            while (!Thread.currentThread().isInterrupted()) {
+            sshdServer = server;
+            while (!Thread.currentThread().isInterrupted() && !stopRequested.get()) {
                 Thread.sleep(1000L);
             }
         } catch (IOException e) {
@@ -79,6 +85,26 @@ public class SshServer implements Server {
             } catch (IOException e) {
                 log.error("Failed to stop SSH server", e);
             }
+            sshdServer = null;
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (!stopRequested.compareAndSet(false, true)) {
+            return;
+        }
+        org.apache.sshd.server.SshServer server = sshdServer;
+        if (server != null) {
+            try {
+                server.stop();
+            } catch (IOException e) {
+                log.warn("Error stopping SSH server", e);
+            }
+        }
+        Thread thread = runningThread;
+        if (thread != null) {
+            thread.interrupt();
         }
     }
 

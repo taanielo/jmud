@@ -71,6 +71,14 @@ public class JsonlFileAuditSink implements AuditSink {
         return parent == null ? Path.of(dated) : parent.resolve(dated);
     }
 
+    /**
+     * Closes the underlying file writer, if open. Safe to call multiple times.
+     */
+    @Override
+    public synchronized void close() {
+        closeWriter();
+    }
+
     private void closeWriter() {
         if (writer == null) {
             return;

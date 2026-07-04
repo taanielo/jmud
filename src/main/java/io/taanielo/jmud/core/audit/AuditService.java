@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.audit;
 
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -9,6 +10,9 @@ import java.util.UUID;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class AuditService {
     public static final int SCHEMA_VERSION = 1;
 
@@ -64,6 +68,21 @@ public class AuditService {
 
     public String newCorrelationId() {
         return correlationSupplier.get();
+    }
+
+    /**
+     * Drains any buffered audit entries (bounded by {@code timeout}) and closes
+     * the underlying sink. Intended for use during orderly shutdown, after the
+     * tick scheduler has stopped, so no further events are emitted concurrently.
+     *
+     * @param timeout the maximum time to wait for buffered entries to flush
+     */
+    public void shutdown(Duration timeout) {
+        boolean drained = sink.flush(timeout);
+        if (!drained) {
+            log.warn("Audit sink did not fully drain within {} before shutdown", timeout);
+        }
+        sink.close();
     }
 
     private String normalizeCorrelationId(String correlationId) {

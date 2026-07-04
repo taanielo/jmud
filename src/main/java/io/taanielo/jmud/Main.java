@@ -1,5 +1,7 @@
 package io.taanielo.jmud;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +10,7 @@ import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
 import io.taanielo.jmud.core.server.socket.DefaultClientPool;
 import io.taanielo.jmud.core.server.socket.GameContext;
+import io.taanielo.jmud.core.server.socket.ShutdownCoordinator;
 import io.taanielo.jmud.core.server.socket.SocketServer;
 import io.taanielo.jmud.core.server.ssh.SshServer;
 
@@ -23,13 +26,27 @@ public class Main {
         ClientPool clientPool = new DefaultClientPool();
         GameContext context = GameContext.create();
         context.tickScheduler().start();
-        Runtime.getRuntime().addShutdownHook(Thread.ofVirtual().name("jmud-shutdown").unstarted(() -> {
-            context.tickScheduler().stop();
-            context.tickRegistry().clear();
-        }));
 
         Server telnetServer = telnetEnabled ? new SocketServer(telnetHost, telnetPort, context, clientPool) : null;
         Server sshServer = new SshServer(sshHost, sshPort, context, clientPool);
+        List<Server> servers = new ArrayList<>();
+        if (telnetServer != null) {
+            servers.add(telnetServer);
+        }
+        servers.add(sshServer);
+
+        ShutdownCoordinator shutdownCoordinator = new ShutdownCoordinator(
+            servers,
+            clientPool,
+            context.tickScheduler(),
+            context.tickRegistry(),
+            context.playerRepository(),
+            context.auditService()
+        );
+        Runtime.getRuntime().addShutdownHook(
+            Thread.ofVirtual().name("jmud-shutdown").unstarted(shutdownCoordinator::shutdown)
+        );
+
         log.info("Starting servers ..");
         if (telnetEnabled && !isLoopbackHost(telnetHost)) {
             log.warn("Telnet is enabled on non-loopback host {}. Telnet is unencrypted.", telnetHost);
