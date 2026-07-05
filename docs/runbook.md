@@ -18,6 +18,8 @@ See also: `readme.md` for prerequisites and configuration key reference.
 6. [Logs and audit trail](#6-logs-and-audit-trail)
 7. [Tick health](#7-tick-health)
 8. [Common failures](#8-common-failures)
+9. [Automated data backups](#9-automated-data-backups)
+10. [Validating game data (--validate-data)](#10-validating-game-data----validate-data)
 
 ---
 
@@ -599,3 +601,128 @@ network mount, or a very high player-command rate.
 
 Resolution: increase `jmud.audit.queue_size` (default 2048), move the
 `jmud.audit.path` to local fast storage, or reduce load.
+
+---
+
+## 9. Automated data backups
+
+`scripts/backup-data.sh` creates a compressed, timestamped archive of the entire
+`data/` tree and prunes archives older than a configurable number of days.
+
+### What it archives
+
+The script archives the entire `data/` directory, which includes all game content
+(rooms, items, mobs, races, classes, skills, attacks, quests, shops, banks) as
+well as the runtime-state directories (`users/`, `banks/`). Player save files
+live in `players/` at the project root and are **not** included in the archive —
+use a separate backup step for those if needed (see §3 Backup procedure).
+
+### Running the script
+
+```sh
+# Run from the project root with default 14-day retention
+./scripts/backup-data.sh
+
+# Override retention period (keep last 30 days)
+./scripts/backup-data.sh --retain-days 30
+```
+
+Archives are written to `backups/` in the project root (excluded from git).
+Each archive is named `data-YYYY-MM-DD-HHmmSS.tar.gz`.
+
+### Crontab example
+
+The script header contains a ready-to-use crontab line. To install it:
+
+```sh
+crontab -e
+```
+
+Then add (adjust the path and retention as needed):
+
+```
+0 3 * * * cd /opt/jmud && ./scripts/backup-data.sh --retain-days 14 >> /var/log/jmud-backup.log 2>&1
+```
+
+This runs every day at 03:00 and retains the last 14 daily archives.
+
+### Restore from archive
+
+```sh
+# Stop the server first to prevent concurrent writes
+sudo systemctl stop jmud
+
+# Move existing data aside in case you need to revert
+mv data data.old
+
+# Restore
+tar xzf backups/data-YYYY-MM-DD-HHmmSS.tar.gz
+
+# Verify then start
+ls data/
+sudo systemctl start jmud
+```
+
+If the restore looks correct, remove the old data:
+
+```sh
+rm -rf data.old
+```
+
+---
+
+## 10. Validating game data (--validate-data)
+
+The `--validate-data` startup flag instructs jmud to scan every JSON file in the
+`data/` tree and the `players/` directory, report per-domain counts, and exit
+without starting any servers. It does not require a running game instance.
+
+### Usage
+
+```sh
+# Via Gradle (recommended for development)
+./gradlew run --args='--validate-data'
+
+# Via the distribution binary
+/opt/jmud-1.0-SNAPSHOT/bin/jmud --validate-data
+```
+
+### Output
+
+On success (all files parse cleanly):
+
+```
+  [OK]   rooms         12 file(s)
+  [OK]   items         47 file(s)
+  ...
+
+Data validation PASSED: 134 file(s) across 13 domain(s)
+```
+
+On failure (one or more files are broken):
+
+```
+  [OK]   rooms         12 file(s)
+  [FAIL] items         1 error(s) / 47 file(s)
+         /opt/jmud/data/items/broken-sword.json
+         -> ... parse error detail ...
+  ...
+
+Data validation FAILED: 1 error(s) in 134 file(s) scanned
+```
+
+The exit code is `0` on success and `1` on failure. CI runs this step
+automatically for every pull request so broken data is caught before deployment.
+
+### When to run it
+
+- After manually editing any JSON file in `data/`
+- Before deploying a new content update
+- As a pre-flight check after restoring from a backup (see §9)
+
+### What it validates
+
+The validator checks every `*.json` file in the following domains (all relative
+to `data/`): `rooms`, `items`, `mobs`, `attacks`, `skills`, `classes`, `races`,
+`shops`, `quests`, `banks`, `users`, `characters`, plus all files under
+`players/`. A file that produces no parse error is considered valid.

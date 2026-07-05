@@ -1,11 +1,13 @@
 package io.taanielo.jmud;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.bootstrap.DataValidator;
 import io.taanielo.jmud.bootstrap.GameContext;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.Server;
@@ -18,6 +20,10 @@ import io.taanielo.jmud.core.server.ssh.SshServer;
 public class Main {
 
     public static void main(String[] args) {
+        if (hasFlag(args, "--validate-data")) {
+            System.exit(runDataValidation());
+        }
+
         boolean telnetEnabled = resolveBoolean(args, "--telnet-enabled", "JMUD_TELNET_ENABLED", true);
         String telnetHost = resolveHost(args, "--telnet-host", "JMUD_TELNET_HOST", "127.0.0.1");
         int telnetPort = resolvePort(args, "--telnet-port", "JMUD_TELNET_PORT", 4444);
@@ -154,5 +160,52 @@ public class Main {
     private static boolean isLoopbackHost(String host) {
         String normalized = host.trim().toLowerCase(Locale.ROOT);
         return "127.0.0.1".equals(normalized) || "localhost".equals(normalized) || "::1".equals(normalized);
+    }
+
+    private static boolean hasFlag(String[] args, String flagName) {
+        for (String arg : args) {
+            if (flagName.equals(arg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Runs the data-validation mode: constructs the data validator, scans every
+     * domain directory under {@code data/} and the player-save directory, and
+     * prints a per-domain summary.
+     *
+     * @return {@code 0} when all files parse successfully, {@code 1} if any file
+     *         failed to parse
+     */
+    private static int runDataValidation() {
+        log.info("Running data validation …");
+        DataValidator validator = new DataValidator();
+        DataValidator.ValidationReport report = validator.validate(Path.of("data"), Path.of("players"));
+
+        for (DataValidator.DomainResult domain : report.domains()) {
+            if (domain.clean()) {
+                System.out.printf("  [OK]   %-12s  %d file(s)%n", domain.domain(), domain.fileCount());
+            } else {
+                System.out.printf("  [FAIL] %-12s  %d error(s) / %d file(s)%n",
+                    domain.domain(), domain.errors().size(), domain.fileCount());
+                for (DataValidator.FileError error : domain.errors()) {
+                    System.out.printf("         %s%n", error.path());
+                    System.out.printf("         -> %s%n", error.error());
+                }
+            }
+        }
+
+        System.out.printf("%n");
+        if (report.clean()) {
+            System.out.printf("Data validation PASSED: %d file(s) across %d domain(s)%n",
+                report.totalFiles(), report.domains().size());
+            return 0;
+        } else {
+            System.out.printf("Data validation FAILED: %d error(s) in %d file(s) scanned%n",
+                report.totalErrors(), report.totalFiles());
+            return 1;
+        }
     }
 }
