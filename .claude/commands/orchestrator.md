@@ -58,3 +58,4 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 - Never skip the GUARD. Never advance two different issues at once.
 - On any unexpected error: write state, **release the LOCK**, notify, STOP — never leave a held LOCK behind.
 - Launching this loop is the human's standing authorization (see `AGENTS.md` §13): workers spawned here do not pause for per-change confirmation.
+- **After workflow-optimizer runs**: immediately commit and push any changes it made under `.claude/agents/` to `main` before releasing the LOCK (`git add .claude/agents/ && git commit -m "chore(agents): <optimizer summary>" && git push origin main`). Agent prompt improvements are shared configuration — leaving them unstaged means they are lost on session reset and invisible to other contributors.
