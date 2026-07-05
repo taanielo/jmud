@@ -183,8 +183,17 @@ public class PlayerSession {
         return playerTicker;
     }
 
-    public void enqueueCommand(Runnable command) {
-        commandQueue.enqueue(command);
+    /**
+     * Attempts to enqueue a command for execution on the tick thread. Safe to call
+     * from reader threads; never blocks.
+     *
+     * @param command the command to run on the tick thread
+     * @return {@code true} if the command was accepted; {@code false} if the
+     *     bounded queue is full and the command was dropped — the caller should
+     *     inform the player without touching game state (AGENTS.md §5)
+     */
+    public boolean enqueueCommand(Runnable command) {
+        return commandQueue.enqueue(command);
     }
 
     /**
