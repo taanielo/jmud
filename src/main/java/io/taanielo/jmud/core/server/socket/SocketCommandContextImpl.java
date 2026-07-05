@@ -573,6 +573,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (args != null && !args.isBlank()) {
             metadata.put("input", args.trim());
         }
+        // Include the per-encounter RNG seed so any fight can be replayed from the
+        // audit log: seed = mix(worldSeed, tick, actorId) — worldSeed is logged at boot.
+        Object rngSeed = result.metadata().get("rngSeed");
+        if (rngSeed != null) {
+            metadata.put("rngSeed", rngSeed);
+        }
         emitAudit(
             "combat.attack",
             AuditSubject.player(player.getUsername()),
