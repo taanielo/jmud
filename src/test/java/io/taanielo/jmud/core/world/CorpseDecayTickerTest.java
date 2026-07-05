@@ -18,16 +18,22 @@ import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 /**
  * Unit tests for {@link CorpseDecayTicker} and the corpse-tracking behaviour of
- * {@link RoomService#removeExpiredCorpses(Duration)}.
+ * {@link RoomItemService#removeExpiredCorpses(Duration)}.
  */
 class CorpseDecayTickerTest {
 
     private static final RoomId ROOM_ID = RoomId.of("arena");
 
-    /** Builds a RoomService whose starting room is {@code ROOM_ID}. */
-    private RoomService buildRoomService() {
+    /** Builds a {@link RoomItemService} and a {@link RoomService} sharing the same item state. */
+    private record Services(RoomItemService itemService, RoomService roomService) {}
+
+    private Services buildServices() {
         Room room = new Room(ROOM_ID, "Arena", "A sandy arena.", Map.of(), List.of(), List.of());
-        return new RoomService(new StubRoomRepository(Map.of(ROOM_ID, room)), ROOM_ID);
+        RoomRepository repo = new StubRoomRepository(Map.of(ROOM_ID, room));
+        RoomItemService itemService = new RoomItemService();
+        RoomService roomService = new RoomService(
+            new PlayerLocationService(repo, ROOM_ID), itemService, new RoomRenderer(), repo);
+        return new Services(itemService, roomService);
     }
 
     private Username username(String name) {
@@ -36,9 +42,11 @@ class CorpseDecayTickerTest {
 
     @Test
     void expiredCorpseIsRemovedFromRoomAfterTick() throws InterruptedException {
-        RoomService roomService = buildRoomService();
+        Services services = buildServices();
+        RoomItemService itemService = services.itemService();
+        RoomService roomService = services.roomService();
         // 1-nanosecond decay so any corpse spawned before tick is already expired
-        CorpseDecayTicker ticker = new CorpseDecayTicker(roomService, Duration.ofNanos(1));
+        CorpseDecayTicker ticker = new CorpseDecayTicker(itemService, Duration.ofNanos(1));
 
         Username viewer = username("viewer");
         roomService.ensurePlayerLocation(viewer); // places viewer in ROOM_ID
@@ -63,8 +71,10 @@ class CorpseDecayTickerTest {
 
     @Test
     void freshCorpseIsRetainedBeforeDecayExpires() {
-        RoomService roomService = buildRoomService();
-        CorpseDecayTicker ticker = new CorpseDecayTicker(roomService, Duration.ofMinutes(5));
+        Services services = buildServices();
+        RoomItemService itemService = services.itemService();
+        RoomService roomService = services.roomService();
+        CorpseDecayTicker ticker = new CorpseDecayTicker(itemService, Duration.ofMinutes(5));
 
         Username viewer = username("viewer2");
         roomService.ensurePlayerLocation(viewer);
@@ -82,20 +92,20 @@ class CorpseDecayTickerTest {
 
     @Test
     void constructorRejectsZeroDecayDuration() {
-        RoomService roomService = buildRoomService();
+        Services services = buildServices();
         assertThrows(IllegalArgumentException.class,
-            () -> new CorpseDecayTicker(roomService, Duration.ZERO));
+            () -> new CorpseDecayTicker(services.itemService(), Duration.ZERO));
     }
 
     @Test
     void constructorRejectsNegativeDecayDuration() {
-        RoomService roomService = buildRoomService();
+        Services services = buildServices();
         assertThrows(IllegalArgumentException.class,
-            () -> new CorpseDecayTicker(roomService, Duration.ofSeconds(-1)));
+            () -> new CorpseDecayTicker(services.itemService(), Duration.ofSeconds(-1)));
     }
 
     @Test
-    void constructorRejectsNullRoomService() {
+    void constructorRejectsNullRoomItemService() {
         assertThrows(NullPointerException.class,
             () -> new CorpseDecayTicker(null, Duration.ofMinutes(5)));
     }

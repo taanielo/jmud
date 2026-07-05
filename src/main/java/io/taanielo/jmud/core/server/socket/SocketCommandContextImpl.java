@@ -56,6 +56,7 @@ import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.DoorActionResult;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
@@ -1327,7 +1328,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
-        RoomService.DoorActionResult result = roomService.lock(
+        DoorActionResult result = roomService.lock(
             player.getUsername(), direction, player.getInventory());
         if (result.roomMessage() != null) {
             deliverRoomMessage(player.getUsername(), null, result.roomMessage());
@@ -1342,7 +1343,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
-        RoomService.DoorActionResult result = roomService.unlock(
+        DoorActionResult result = roomService.unlock(
             player.getUsername(), direction, player.getInventory());
         if (result.roomMessage() != null) {
             deliverRoomMessage(player.getUsername(), null, result.roomMessage());
