@@ -10,6 +10,10 @@ This MUD game is implemented in Java and supports both telnet and SSH connection
 
 Game data is stored as JSON under `data/`. See `docs/data-schema.md` for the current schema versions and examples.
 
+## Operations
+
+Start/stop, backup/restore, SSH host-key management, log locations, tick-health monitoring, and common failure guidance: see [`docs/runbook.md`](docs/runbook.md).
+
 ## Features (TODO)
 
 - Multiple users can connect and play simultaneously.
