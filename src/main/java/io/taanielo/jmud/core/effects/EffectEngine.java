@@ -1,6 +1,5 @@
 package io.taanielo.jmud.core.effects;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,12 +24,11 @@ public class EffectEngine {
         Objects.requireNonNull(sink, "Effect message sink is required");
 
         EffectDefinition definition = definitionOrThrow(id);
-        List<EffectInstance> effects = target.effects();
-        EffectInstance existing = findInstance(effects, id);
+        EffectInstance existing = findInstance(target.effects(), id);
         boolean applied = false;
         if (existing == null) {
             EffectInstance instance = EffectInstance.of(id, definition.durationTicks());
-            effects.add(instance);
+            target.addEffect(instance);
             applied = true;
         } else {
             applied = applyStacking(existing, definition);
@@ -44,17 +42,14 @@ public class EffectEngine {
     public void tick(EffectTarget target, EffectMessageSink sink) throws EffectRepositoryException {
         Objects.requireNonNull(target, "Effect target is required");
         Objects.requireNonNull(sink, "Effect message sink is required");
-        List<EffectInstance> effects = target.effects();
-        Iterator<EffectInstance> iterator = effects.iterator();
-        while (iterator.hasNext()) {
-            EffectInstance instance = iterator.next();
+        for (EffectInstance instance : target.effects()) {
             EffectDefinition definition = definitionOrThrow(instance.id());
             if (definition.isPermanent()) {
                 continue;
             }
             instance.tickDown();
             if (instance.remainingTicks() <= 0) {
-                iterator.remove();
+                target.removeEffect(instance);
                 sendMessages(target, definition, MessagePhase.EXPIRE, sink);
             }
         }

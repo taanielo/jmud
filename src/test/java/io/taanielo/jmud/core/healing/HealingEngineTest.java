@@ -118,8 +118,8 @@ class HealingEngineTest {
         assertEquals(21, boosted.getVitals().hp());
         assertEquals(20, boosted.getVitals().baseMaxHp());
 
-        boosted.effects().clear();
-        Player reverted = engine.apply(boosted, 1);
+        Player cleared = boosted.withoutEffects();
+        Player reverted = engine.apply(cleared, 1);
 
         assertEquals(20, reverted.getVitals().maxHp());
         assertEquals(20, reverted.getVitals().hp());
@@ -157,7 +157,7 @@ class HealingEngineTest {
 
         Player updated = engine.apply(player, 2);
 
-        assertSame(player.effects(), updated.effects());
+        assertSame(player, updated);
         assertEquals(1, updated.effects().size());
     }
 

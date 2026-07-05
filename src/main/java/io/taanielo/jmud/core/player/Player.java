@@ -344,6 +344,18 @@ public class Player implements EffectTarget, Combatant {
         return combatState.effects();
     }
 
+    /** {@inheritDoc} Tick-thread only (AGENTS.md §5). */
+    @Override
+    public void addEffect(EffectInstance instance) {
+        combatState.addEffect(instance);
+    }
+
+    /** {@inheritDoc} Tick-thread only (AGENTS.md §5). */
+    @Override
+    public boolean removeEffect(EffectInstance instance) {
+        return combatState.removeEffect(instance);
+    }
+
     @Override
     public Username username() {
         return getUsername();
