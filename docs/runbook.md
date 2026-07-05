@@ -178,7 +178,7 @@ Cross-reference: `readme.md` § Configuration has further detail and examples.
 | `users/` | Runtime state (auth credentials) | No |
 | `players/` | Runtime state (player character state) | No |
 | `banks/` | Runtime state (bank account balances) | No |
-| `ssh/hostkey.ser` | SSH host key | No |
+| `ssh/hostkey.pem` | SSH host key | No |
 
 Content directories (rooms, items, mobs, etc.) are versioned in git and do not
 need separate backup — use `git pull` to restore them.
@@ -315,16 +315,28 @@ overwritten by the new empty character.
 ### Location
 
 ```
-data/ssh/hostkey.ser
+data/ssh/hostkey.pem
 ```
 
-The file is serialized by Apache MINA sshd and contains the server's RSA host
-key pair.
+The file is written in the standard OpenSSH PEM format
+(`-----BEGIN OPENSSH PRIVATE KEY-----`) and contains the server's host key
+pair (Ed25519 when available, otherwise RSA-3072). It can be inspected with
+standard tooling, e.g. `ssh-keygen -l -f data/ssh/hostkey.pem`.
+
+### Legacy `hostkey.ser` cleanup
+
+Older versions stored the host key as a Java-serialized `data/ssh/hostkey.ser`
+file. On startup the server now deletes a leftover `hostkey.ser` automatically
+(logging a one-line notice) and generates a fresh PEM key at
+`data/ssh/hostkey.pem`. This is a one-time host key rotation: SSH clients will
+see a **host key changed** warning once and must refresh their known-hosts
+entry (see below). If you find a stray `hostkey.ser` in old backups, it can be
+deleted — it is never read or written anymore.
 
 ### What happens if it is deleted
 
 On the next startup, sshd generates a fresh key pair and writes a new
-`hostkey.ser`. Existing SSH clients will see a **host key changed** warning and
+`hostkey.pem`. Existing SSH clients will see a **host key changed** warning and
 refuse to connect until the known-hosts entry is updated or removed:
 
 ```sh
@@ -339,7 +351,7 @@ Telnet connections are unaffected.
 2. Delete the key file:
 
    ```sh
-   rm data/ssh/hostkey.ser
+   rm data/ssh/hostkey.pem
    ```
 
 3. Start the server — a new key is generated automatically.
