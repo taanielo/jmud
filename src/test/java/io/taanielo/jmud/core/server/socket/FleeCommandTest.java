@@ -17,7 +17,7 @@ import io.taanielo.jmud.core.world.Direction;
  * Unit tests for {@link FleeCommand}.
  *
  * <p>Guard logic (not-in-combat, no-exits) lives in
- * {@code SocketClient.SocketCommandContextImpl.fleeCombat()} and is exercised via
+ * {@link SocketCommandContextImpl#fleeCombat()} and is exercised via
  * integration paths. These tests verify token matching, command metadata, and
  * that a successful match delegates to {@link SocketCommandContext#fleeCombat()}.
  */

@@ -16,6 +16,7 @@ import io.taanielo.jmud.core.audit.AuditSubject;
 public class SocketCommandDispatcher {
     private final SocketCommandRegistry registry;
     private final AuditService auditService;
+    private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
 
     /**
      * Creates a dispatcher that reads commands from the provided registry.
@@ -26,6 +27,18 @@ public class SocketCommandDispatcher {
     }
 
     /**
+     * Returns the correlation id of the command currently being executed on this
+     * (tick) thread, or {@code null} when no command dispatch is in progress.
+     *
+     * <p>Set by {@link #dispatch} for the duration of a single command execution so
+     * that audit events emitted from within command handling (e.g. {@code
+     * SocketCommandContextImpl}) can be correlated with the originating input line.
+     */
+    public String currentCorrelationId() {
+        return currentCorrelationId.get();
+    }
+
+    /**
      * Parses the incoming line and executes the appropriate command.
      */
     public void dispatch(SocketCommandContext context, String clientInput, String correlationId) {
@@ -33,6 +46,15 @@ public class SocketCommandDispatcher {
         if (clientInput == null) {
             return;
         }
+        currentCorrelationId.set(correlationId);
+        try {
+            dispatchInternal(context, clientInput, correlationId);
+        } finally {
+            currentCorrelationId.remove();
+        }
+    }
+
+    private void dispatchInternal(SocketCommandContext context, String clientInput, String correlationId) {
         String trimmed = clientInput.trim();
         if (trimmed.isEmpty()) {
             context.sendPrompt();

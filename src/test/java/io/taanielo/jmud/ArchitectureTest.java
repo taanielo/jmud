@@ -143,4 +143,22 @@ class ArchitectureTest {
                     .resideInAnyPackage("io.taanielo.jmud.command..", "io.taanielo.jmud.core.command..")
                     .because("io.taanielo.jmud.command.. and core.command.. were deleted as dead code "
                             + "(AGENTS.md §3.3, issue #178); they must not be reintroduced");
+
+    /**
+     * SocketClient thin-transport guard: {@code SocketClient} is a pure transport adapter
+     * (AGENTS.md §3.3, issue #182) and must not depend on {@code GameActionService}. All game
+     * logic must live in {@code SocketCommandContextImpl} or domain/application services.
+     *
+     * <p>If this rule fires, you are adding game logic to the transport layer — move it to
+     * {@code SocketCommandContextImpl} or a domain service instead.
+     */
+    @ArchTest
+    static final ArchRule socket_client_no_game_action_dependency =
+            noClasses()
+                    .that().haveSimpleName("SocketClient")
+                    .should()
+                    .dependOnClassesThat()
+                    .haveSimpleName("GameActionService")
+                    .because("SocketClient is a thin transport adapter; game logic belongs in "
+                            + "SocketCommandContextImpl (AGENTS.md §3.3, issue #182)");
 }

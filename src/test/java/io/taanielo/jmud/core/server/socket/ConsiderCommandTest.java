@@ -22,7 +22,7 @@ import io.taanielo.jmud.core.world.Direction;
  * Unit tests for {@link ConsiderCommand}.
  *
  * <p>Danger-tier logic (the mapping from mob/player maxHp ratio to a qualitative
- * tier string) lives in {@link SocketClient}'s inner context impl and is
+ * tier string) lives in {@link SocketCommandContextImpl} and is
  * integration-tested separately. These tests verify token matching, command
  * metadata, and that a successful match delegates to
  * {@link SocketCommandContext#considerMob(String)}.
@@ -169,7 +169,7 @@ class ConsiderCommandTest {
 
     /**
      * Pure utility to expose the danger-tier classification for isolated unit tests.
-     * Mirrors the identical logic in {@code SocketClient.SocketCommandContextImpl#considerMob}.
+     * Mirrors the identical logic in {@link SocketCommandContextImpl#considerMob(String)}.
      */
     static final class DangerTier {
         private DangerTier() {}
