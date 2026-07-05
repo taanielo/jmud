@@ -21,7 +21,6 @@ import org.apache.sshd.common.util.security.SecurityUtils;
 import org.apache.sshd.core.CoreModuleProperties;
 import org.apache.sshd.server.auth.password.UserAuthPasswordFactory;
 import org.apache.sshd.server.forward.RejectAllForwardingFilter;
-import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import lombok.extern.slf4j.Slf4j;
@@ -66,10 +65,12 @@ public class SshServer implements Server {
         ));
         server.setShellFactory(new SshGameShellFactory(context, clientPool));
         configureSecurity(server);
-        Path hostKeyPath = Path.of("data/ssh/hostkey.ser");
+        Path hostKeyPath = Path.of("data/ssh/hostkey.pem");
+        Path legacyHostKeyPath = Path.of("data/ssh/hostkey.ser");
         try {
             Files.createDirectories(hostKeyPath.getParent());
-            server.setKeyPairProvider(buildHostKeyProvider(hostKeyPath));
+            PemHostKeyProvider.removeLegacySerializedKey(legacyHostKeyPath);
+            server.setKeyPairProvider(new PemHostKeyProvider(hostKeyPath));
             server.start();
             sshdServer = server;
             while (!Thread.currentThread().isInterrupted() && !stopRequested.get()) {
@@ -146,18 +147,6 @@ public class SshServer implements Server {
         if (!signatureFactories.isEmpty()) {
             server.setSignatureFactories(signatureFactories);
         }
-    }
-
-    private SimpleGeneratorHostKeyProvider buildHostKeyProvider(Path hostKeyPath) {
-        SimpleGeneratorHostKeyProvider provider = new SimpleGeneratorHostKeyProvider(hostKeyPath);
-        provider.setStrictFilePermissions(true);
-        if (SecurityUtils.isEDDSACurveSupported()) {
-            provider.setAlgorithm("Ed25519");
-        } else {
-            provider.setAlgorithm("RSA");
-            provider.setKeySize(3072);
-        }
-        return provider;
     }
 
     private List<NamedFactory<Cipher>> cipherFactories() {
