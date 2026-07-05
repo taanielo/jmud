@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.action;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -32,12 +33,12 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.EquipmentSlot;
-import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
  * Application-layer service that executes domain-level game actions.
@@ -152,7 +153,10 @@ public class GameActionService {
             GameActionResult deathResult = resolveDeathIfNeeded(result.target(), source);
             Player updatedTarget = deathResult.updatedTarget();
             messages.addAll(deathResult.messages());
-            return new GameActionResult(null, updatedTarget, messages);
+            Map<String, Object> meta = result.rngSeed() != 0L
+                ? Map.of("rngSeed", result.rngSeed())
+                : Map.of();
+            return new GameActionResult(null, updatedTarget, messages, meta);
         } catch (RepositoryException | EffectRepositoryException e) {
             return GameActionResult.error("Combat failed: " + e.getMessage());
         }

@@ -1,6 +1,8 @@
 package io.taanielo.jmud.bootstrap;
 
 import java.time.Clock;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.LongSupplier;
 
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
@@ -28,6 +30,7 @@ import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
@@ -149,7 +152,7 @@ public record GameContext(
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
         CombatEngine combatEngine =
-                createCombatEngine(effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository);
+                createCombatEngine(config, effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository, tickClock::currentTick);
 
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 
@@ -267,13 +270,24 @@ public record GameContext(
     }
 
     private static CombatEngine createCombatEngine(
+        GameConfig config,
         EffectRepository effectRepository,
         RaceArmorBonusResolver armorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
-        JsonAttackRepository attackRepository
+        JsonAttackRepository attackRepository,
+        LongSupplier tickSupplier
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
-        return new CombatEngine(attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
+        String rngMode = config.getString("jmud.combat.rng", "seeded");
+        if ("threadlocal".equalsIgnoreCase(rngMode)) {
+            return new CombatEngine(attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
+        }
+        // Default: seeded mode — derive world seed from config, or generate a random one.
+        // The SeededCombatRandomProvider constructor logs the effective seed at INFO so
+        // any session can be reconstructed; set jmud.world.seed to replay a specific session.
+        long worldSeed = config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong());
+        SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
+        return new CombatEngine(attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, provider, tickSupplier);
     }
 
     private static ItemRepository createItemRepository() {

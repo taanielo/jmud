@@ -158,6 +158,117 @@ class CombatEngineTest {
         assertTrue(result.hit());
     }
 
+    // ── Seeded / deterministic tests ──────────────────────────────────────
+
+    @Test
+    void seededEngineProducesIdenticalResultsForSameInputs() throws Exception {
+        AttackId attackId = AttackId.of("attack.seed-test");
+        AttackDefinition attack = new AttackDefinition(attackId, "seed-test", 2, 6, 0, 0, 0, List.of());
+        long worldSeed = 0xABCDEF01L;
+        long tick = 42L;
+        SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
+
+        CombatEngine engine1 = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            provider,
+            () -> tick
+        );
+        CombatEngine engine2 = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            provider,
+            () -> tick
+        );
+
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult r1 = engine1.resolve(attacker, target, attackId);
+        CombatResult r2 = engine2.resolve(attacker, target, attackId);
+
+        assertEquals(r1.hit(), r2.hit(), "Same seed should produce same hit result");
+        assertEquals(r1.crit(), r2.crit(), "Same seed should produce same crit result");
+        assertEquals(r1.damage(), r2.damage(), "Same seed should produce same damage");
+        assertEquals(r1.rngSeed(), r2.rngSeed(), "RNG seed should be recorded in result");
+        assertTrue(r1.rngSeed() != 0L, "Seeded engine should record a non-zero seed");
+    }
+
+    @Test
+    void seededEngineRecordsNonZeroSeedInResult() throws Exception {
+        AttackId attackId = AttackId.of("attack.record-seed");
+        AttackDefinition attack = new AttackDefinition(attackId, "record-seed", 1, 4, 0, 0, 0, List.of());
+        SeededCombatRandomProvider provider = new SeededCombatRandomProvider(999L);
+
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            provider,
+            () -> 1L
+        );
+
+        CombatResult result = engine.resolve(player("attacker", List.of()), player("target", List.of()), attackId);
+
+        assertTrue(result.rngSeed() != 0L,
+            "Seeded engine should record the per-encounter seed in the result");
+    }
+
+    @Test
+    void differentActorsProduceDifferentSeeds() throws Exception {
+        AttackId attackId = AttackId.of("attack.actors");
+        AttackDefinition attack = new AttackDefinition(attackId, "actors", 2, 6, 0, 0, 0, List.of());
+        SeededCombatRandomProvider provider = new SeededCombatRandomProvider(12345L);
+        long tick = 10L;
+
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            provider,
+            () -> tick
+        );
+
+        Player target = player("target", List.of());
+        CombatResult r1 = engine.resolve(player("alice", List.of()), target, attackId);
+        // Engine re-queries tick on each resolve; create separate engine to reset RNG state
+        CombatEngine engine2 = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            provider,
+            () -> tick
+        );
+        CombatResult r2 = engine2.resolve(player("bob", List.of()), target, attackId);
+
+        assertTrue(r1.rngSeed() != r2.rngSeed(),
+            "Different actors at the same tick should produce different seeds");
+    }
+
+    @Test
+    void legacyCombatRandomConstructorStillWorks() throws Exception {
+        AttackId attackId = AttackId.of("attack.legacy");
+        AttackDefinition attack = new AttackDefinition(attackId, "legacy", 2, 4, 0, 0, 0, List.of());
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(10, 3, 100)
+        );
+
+        CombatResult result = engine.resolve(player("attacker", List.of()), player("target", List.of()), attackId);
+
+        assertTrue(result.hit(), "Legacy constructor should still produce correct combat results");
+        assertEquals(3, result.damage(), "Legacy constructor should produce correct damage");
+        assertEquals(0L, result.rngSeed(), "Legacy fixed-random constructor records seed 0");
+    }
+
     private Player player(String username, List<EffectInstance> effects) {
         PlayerVitals vitals = PlayerVitals.defaults();
         return new Player(
