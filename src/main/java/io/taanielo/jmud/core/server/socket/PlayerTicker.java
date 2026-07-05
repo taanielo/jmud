@@ -180,6 +180,16 @@ public class PlayerTicker implements Tickable {
         return restingTicker != null;
     }
 
+    /**
+     * Returns the total number of commands pending in this player's command queue.
+     * Used by metrics infrastructure to aggregate across all connected players.
+     *
+     * @return current command queue depth; always &ge; 0
+     */
+    public int totalQueuedCommands() {
+        return commandQueue.size();
+    }
+
     // ── Package-private accessors (for testing) ───────────────────────────────
 
     /**

@@ -27,4 +27,13 @@ public class PlayerCommandQueue implements Tickable {
             task = queue.poll();
         }
     }
+
+    /**
+     * Returns the number of commands currently waiting in the queue.
+     *
+     * @return current queue depth; always &ge; 0
+     */
+    public int size() {
+        return queue.size();
+    }
 }
