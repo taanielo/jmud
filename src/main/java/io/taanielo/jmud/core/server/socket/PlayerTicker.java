@@ -17,7 +17,8 @@ import io.taanielo.jmud.core.tick.system.CooldownSystem;
  *
  * <p>Stage execution order (matches the former separate-subscription order):
  * <ol>
- *   <li><b>Command queue</b> — drains and executes all enqueued player commands</li>
+ *   <li><b>Command queue</b> — executes enqueued player commands (bounded per tick,
+ *       see {@link PlayerCommandQueue})</li>
  *   <li><b>Ability cooldowns</b> — decrements all in-flight ability cooldown counters</li>
  *   <li><b>Respawn</b> — counts down the respawn timer and triggers respawn when due</li>
  *   <li><b>Effects</b> — applies per-tick effect events (only when enabled via

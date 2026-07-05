@@ -277,7 +277,10 @@ public class SocketClient implements Client {
 
     private void handleCommand(String clientInput) {
         String cid = auditService.newCorrelationId();
-        session.enqueueCommand(() -> commandDispatcher.dispatch(commandContext, clientInput, cid));
+        boolean accepted = session.enqueueCommand(() -> commandDispatcher.dispatch(commandContext, clientInput, cid));
+        if (!accepted) {
+            connection.writeLine("You are entering commands too quickly.");
+        }
     }
     // Package-private accessors used by SocketCommandContextImpl
     Optional<Username> authenticatedUsername() {
