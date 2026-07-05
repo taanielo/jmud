@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.ThreadContext;
+
 import io.taanielo.jmud.core.audit.AuditEvent;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
@@ -14,9 +16,11 @@ import io.taanielo.jmud.core.audit.AuditSubject;
  * Dispatches socket command input to registered command handlers.
  */
 public class SocketCommandDispatcher {
+    /** MDC key used to propagate the per-command correlation id into Log4j2's {@link ThreadContext}. */
+    public static final String MDC_CORRELATION_ID = "correlationId";
+
     private final SocketCommandRegistry registry;
     private final AuditService auditService;
-    private final ThreadLocal<String> currentCorrelationId = new ThreadLocal<>();
 
     /**
      * Creates a dispatcher that reads commands from the provided registry.
@@ -30,27 +34,32 @@ public class SocketCommandDispatcher {
      * Returns the correlation id of the command currently being executed on this
      * (tick) thread, or {@code null} when no command dispatch is in progress.
      *
-     * <p>Set by {@link #dispatch} for the duration of a single command execution so
-     * that audit events emitted from within command handling (e.g. {@code
-     * SocketCommandContextImpl}) can be correlated with the originating input line.
+     * <p>Written by {@link #dispatch} into Log4j2's {@link ThreadContext} (MDC) for
+     * the duration of a single command execution so that both server log lines and
+     * audit events share the same id and can be correlated in post-processing.
      */
     public String currentCorrelationId() {
-        return currentCorrelationId.get();
+        return ThreadContext.get(MDC_CORRELATION_ID);
     }
 
     /**
      * Parses the incoming line and executes the appropriate command.
+     *
+     * <p>The {@code correlationId} is placed into Log4j2's {@link ThreadContext} under
+     * the key {@value #MDC_CORRELATION_ID} before dispatch and removed in a
+     * {@code finally} block, so server log lines emitted during execution carry the
+     * id and the tick thread is never left with a stale value.
      */
     public void dispatch(SocketCommandContext context, String clientInput, String correlationId) {
         Objects.requireNonNull(context, "Command context is required");
         if (clientInput == null) {
             return;
         }
-        currentCorrelationId.set(correlationId);
+        ThreadContext.put(MDC_CORRELATION_ID, correlationId);
         try {
             dispatchInternal(context, clientInput, correlationId);
         } finally {
-            currentCorrelationId.remove();
+            ThreadContext.remove(MDC_CORRELATION_ID);
         }
     }
 

@@ -99,6 +99,30 @@ Authentication settings are configured in `jmud.properties`:
 - `jmud.auth.lockout_seconds`
 - `jmud.auth.pbkdf2.iterations`
 
+### Logging
+
+jmud logs to both the console and `jmud.log` using Log4j2.
+
+Each log line includes a `correlationId` field (MDC key) that is populated while a player command executes on the tick thread. This makes server log lines joinable with the audit JSONL on the same field — any log line emitted during command handling will carry the same `correlationId` as the corresponding audit entry.
+
+**Default layout** (human-readable pattern, active automatically):
+
+```
+2024-01-01 12:00:00.000 [tick-thread] abc-123 Player sparky attacked goblin.
+```
+
+**JSON layout** (NDJSON / JSON-Lines, one object per line):
+
+Activate by passing `-Dlog4j2.configurationFile=log4j2-json.xml` to the JVM at startup:
+
+```sh
+./gradlew run --args="..." -Dlog4j2.configurationFile=log4j2-json.xml
+# or for the jar:
+java -Dlog4j2.configurationFile=log4j2-json.xml -jar jmud.jar
+```
+
+Each line is a JSON object with the fields `timestamp`, `level`, `thread`, `logger`, `message`, `correlationId`, and `thrown` (when an exception is present). The `correlationId` field is absent for log lines emitted outside a command scope.
+
 ## Basics of Java Telnet Socket Connection
 
 In this game, telnet is used as a simple protocol to handle text-based user interactions. The `ServerSocket` class in Java is used to create a server socket that listens on a specified port. When a client connects, a new `Socket` instance is created to handle the connection.
