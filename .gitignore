@@ -42,3 +42,6 @@ data/ssh/
 
 ### Claude Code agent runtime state ###
 .claude/agents/state/
+
+### Local data backups created by scripts/backup-data.sh ###
+backups/
