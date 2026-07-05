@@ -65,7 +65,10 @@ import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
+import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomId;
+import io.taanielo.jmud.core.world.RoomItemService;
+import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -131,13 +134,17 @@ public record GameContext(
         JsonClassRepository classRepository = createClassRepository();
 
         RoomRepository roomRepository = createRoomRepository(itemRepository);
-        RoomService roomService = new RoomService(roomRepository, RoomId.of("training-yard"));
+        RoomItemService roomItemService = new RoomItemService();
+        PlayerLocationService playerLocationService =
+            new PlayerLocationService(roomRepository, RoomId.of("training-yard"));
+        RoomService roomService = new RoomService(
+            playerLocationService, roomItemService, new RoomRenderer(), roomRepository);
 
         TickRegistry tickRegistry = new TickRegistry();
         TickClock tickClock = new TickClock();
         tickRegistry.register(tickClock);
         tickRegistry.register(new CorpseDecayTicker(
-            roomService,
+            roomItemService,
             java.time.Duration.ofSeconds(DeathSettings.corpseDecaySeconds())
         ));
         FixedRateTickScheduler tickScheduler = new FixedRateTickScheduler(tickRegistry);

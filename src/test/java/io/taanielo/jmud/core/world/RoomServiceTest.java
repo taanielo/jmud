@@ -1,6 +1,5 @@
 package io.taanielo.jmud.core.world;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -257,7 +256,7 @@ class RoomServiceTest {
         Username player = Username.of("Bob");
         service.ensurePlayerLocation(player);
 
-        RoomService.DoorActionResult unlockResult = service.unlock(player, Direction.NORTH, List.of(key));
+        DoorActionResult unlockResult = service.unlock(player, Direction.NORTH, List.of(key));
         assertTrue(unlockResult.success());
         assertTrue(unlockResult.playerMessage().contains("unlock"));
 
@@ -283,7 +282,7 @@ class RoomServiceTest {
         Username player = Username.of("Bob");
         service.ensurePlayerLocation(player);
 
-        RoomService.DoorActionResult result = service.unlock(player, Direction.NORTH, List.of());
+        DoorActionResult result = service.unlock(player, Direction.NORTH, List.of());
 
         assertFalse(result.success());
         assertTrue(result.playerMessage().contains("key"));
