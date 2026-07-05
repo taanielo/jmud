@@ -1,8 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -35,9 +33,14 @@ import io.taanielo.jmud.core.world.RoomService;
 /**
  * Manages the lifecycle of a connected player within a single session.
  *
- * <p>Holds player state, authentication flags, tick subscriptions for effects,
- * healing, cooldowns, and respawn. I/O callbacks are provided by the caller
- * so this class does not depend on socket internals directly.
+ * <p>Holds player state, authentication flags, and a single {@link PlayerTicker} that
+ * composes all per-player tick stages (command queue, cooldowns, respawn, effects,
+ * healing, resting). Exactly one {@link TickSubscription} is registered on login and
+ * unregistered on logout/disconnect, eliminating the previous per-stage
+ * register/unregister choreography.
+ *
+ * <p>I/O callbacks are provided by the caller so this class does not depend on
+ * socket internals directly.
  */
 @Slf4j
 public class PlayerSession {
@@ -47,7 +50,6 @@ public class PlayerSession {
     private final TickRegistry tickRegistry;
     private final PersistenceQueue persistenceQueue;
     private final RoomService roomService;
-    private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
     private final EffectEngine effectEngine;
     private final EffectRepository effectRepository;
     private final HealingEngine healingEngine;
@@ -61,19 +63,18 @@ public class PlayerSession {
 
     private final CooldownSystem abilityCooldowns = new CooldownSystem();
     private final AbilityCooldownTracker cooldownTracker = new CooldownTracker(abilityCooldowns);
+    private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
     private final PlayerRespawnTicker respawnTicker;
-    private TickSubscription cooldownSubscription;
-    private TickSubscription respawnSubscription;
-    private TickSubscription commandSubscription;
 
-    private final List<TickSubscription> effectSubscriptions = new ArrayList<>();
-    private boolean effectsInitialized;
+    /** Single composed ticker — one subscription per player session. */
+    private final PlayerTicker playerTicker;
+    private TickSubscription playerTickerSubscription;
+
+    /**
+     * Tracks the effect sink so that {@link #replacePlayer} can re-enable effects
+     * on the new player instance after a player-state replacement.
+     */
     private EffectMessageSink effectSink;
-
-    private TickSubscription healingSubscription;
-    private boolean healingInitialized;
-
-    private TickSubscription restingSubscription;
 
     /** Optional hook invoked (on the tick thread) whenever a player save fails, after logging. */
     private Consumer<Player> saveFailureHandler;
@@ -87,6 +88,7 @@ public class PlayerSession {
      * @param roomService the room service for location management
      * @param respawnCallback called when the player respawns after death
      * @param effectEngine effect engine for player effects
+     * @param effectRepository repository for effect definitions
      * @param healingEngine healing engine for player recovery
      * @param healingBaseResolver base resolver for healing calculations
      */
@@ -110,17 +112,16 @@ public class PlayerSession {
         this.respawnTicker = new PlayerRespawnTicker(
             this::getPlayer, respawnCallback, roomService, DeathSettings.respawnTicks()
         );
+        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker);
         this.textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
     }
 
     /**
-     * Registers global tick subscriptions (cooldowns and respawn).
-     * Must be called once after construction.
+     * Registers the single composed {@link PlayerTicker} subscription.
+     * Must be called once after construction, before the player enters the game.
      */
     public void startTicks() {
-        commandSubscription = tickRegistry.register(commandQueue);
-        cooldownSubscription = tickRegistry.register(abilityCooldowns);
-        respawnSubscription = tickRegistry.register(respawnTicker);
+        playerTickerSubscription = tickRegistry.register(playerTicker);
     }
 
     public Player getPlayer() {
@@ -175,6 +176,13 @@ public class PlayerSession {
         return respawnTicker;
     }
 
+    /**
+     * Returns the composed per-player ticker (primarily for testing or introspection).
+     */
+    public PlayerTicker getPlayerTicker() {
+        return playerTicker;
+    }
+
     public void enqueueCommand(Runnable command) {
         commandQueue.enqueue(command);
     }
@@ -208,8 +216,8 @@ public class PlayerSession {
     public void replacePlayer(Player updated) {
         player = updated;
         enqueueSave(player);
-        if (effectsInitialized) {
-            clearEffects();
+        if (playerTicker.isEffectsEnabled()) {
+            playerTicker.disableEffects();
             if (!player.isDead()) {
                 registerEffects(effectSink);
             }
@@ -218,40 +226,38 @@ public class PlayerSession {
     }
 
     /**
-     * Registers effect tick subscriptions for the current player.
+     * Enables the effect-tick stage for the current player inside the composed
+     * {@link PlayerTicker}. No-op when effects are globally disabled, already active,
+     * or when the player is absent or dead.
      *
      * @param sink the message sink for effect tick messages
      */
     public void registerEffects(EffectMessageSink sink) {
-        if (!EffectSettings.enabled() || effectsInitialized || player == null || player.isDead()) {
+        if (!EffectSettings.enabled() || playerTicker.isEffectsEnabled() || player == null || player.isDead()) {
             return;
         }
         this.effectSink = sink;
-        effectSubscriptions.add(tickRegistry.register(new PlayerEffectTicker(player, effectEngine, sink)));
-        effectsInitialized = true;
+        playerTicker.enableEffects(new PlayerEffectTicker(player, effectEngine, sink));
     }
 
     /**
-     * Unsubscribes all effect tick subscriptions.
+     * Disables the effect-tick stage inside the composed {@link PlayerTicker}.
      */
     public void clearEffects() {
-        for (TickSubscription subscription : effectSubscriptions) {
-            subscription.unsubscribe();
-        }
-        effectSubscriptions.clear();
-        effectsInitialized = false;
+        playerTicker.disableEffects();
     }
 
     /**
-     * Registers healing tick subscriptions for the current player.
+     * Enables the healing-tick stage inside the composed {@link PlayerTicker}.
+     * No-op when healing is globally disabled or already active.
      *
      * @param callback called when healing produces an updated player
      */
     public void registerHealing(Consumer<Player> callback) {
-        if (!HealingSettings.enabled() || healingInitialized) {
+        if (!HealingSettings.enabled() || playerTicker.isHealingEnabled()) {
             return;
         }
-        healingSubscription = tickRegistry.register(
+        playerTicker.enableHealing(
             new PlayerHealingTicker(
                 this::getPlayer,
                 callback,
@@ -261,38 +267,31 @@ public class PlayerSession {
                 effectSink
             )
         );
-        healingInitialized = true;
     }
 
     /**
-     * Unsubscribes the healing tick subscription.
+     * Disables the healing-tick stage inside the composed {@link PlayerTicker}.
      */
     public void clearHealing() {
-        if (healingSubscription != null) {
-            healingSubscription.unsubscribe();
-            healingSubscription = null;
-        }
-        healingInitialized = false;
+        playerTicker.disableHealing();
     }
 
     /**
-     * Registers a resting ticker for the current session.
+     * Enables the resting-tick stage inside the composed {@link PlayerTicker}.
+     * Replaces any existing resting ticker. Typically called by the REST command.
      *
-     * @param ticker the resting ticker to schedule
+     * @param ticker the resting ticker to activate
      */
     public void registerRestingTicker(RestingTicker ticker) {
-        clearRestingTicker();
-        restingSubscription = tickRegistry.register(ticker);
+        playerTicker.enableResting(ticker);
     }
 
     /**
-     * Unsubscribes the resting tick subscription, if any.
+     * Disables the resting-tick stage inside the composed {@link PlayerTicker}.
+     * Typically called by the WAKE command or when a mob interrupts rest.
      */
     public void clearRestingTicker() {
-        if (restingSubscription != null) {
-            restingSubscription.unsubscribe();
-            restingSubscription = null;
-        }
+        playerTicker.disableResting();
     }
 
     /**
@@ -310,7 +309,8 @@ public class PlayerSession {
     }
 
     /**
-     * Closes the session by unsubscribing all ticks and persisting the player.
+     * Closes the session by unsubscribing the single composed ticker and persisting
+     * the player.
      *
      * <p>Unlike normal in-play saves, disconnect has no further chance to persist,
      * so this enqueues the final save and then synchronously {@link
@@ -320,17 +320,8 @@ public class PlayerSession {
      */
     public void close() {
         connected = false;
-        clearEffects();
-        clearHealing();
-        clearRestingTicker();
-        if (cooldownSubscription != null) {
-            cooldownSubscription.unsubscribe();
-        }
-        if (respawnSubscription != null) {
-            respawnSubscription.unsubscribe();
-        }
-        if (commandSubscription != null) {
-            commandSubscription.unsubscribe();
+        if (playerTickerSubscription != null) {
+            playerTickerSubscription.unsubscribe();
         }
         if (authenticated && player != null) {
             long failuresBeforeSave = persistenceQueue.getFailureCount();
