@@ -11,6 +11,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.jspecify.annotations.Nullable;
 
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +55,8 @@ public class PersistenceQueue implements AutoCloseable {
     private final BlockingQueue<Username> dirtyUsernames = new LinkedBlockingQueue<>();
 
     private final AtomicLong failureCount = new AtomicLong();
+    private final Counter saveSuccessCounter;
+    private final Counter saveFailureCounter;
     /** Number of usernames currently being processed (dequeued but not yet saved/retried). */
     private final AtomicLong inFlight = new AtomicLong();
     private final AtomicReference<@Nullable Thread> workerThread = new AtomicReference<>();
@@ -59,13 +64,37 @@ public class PersistenceQueue implements AutoCloseable {
 
     /**
      * Creates a persistence queue backed by the given repository, starting its worker thread.
+     * Metrics are disabled (no-op registry).
      *
      * @param playerRepository the repository used to perform the actual writes
      * @param auditService audit sink used to record save failures
      */
     public PersistenceQueue(PlayerRepository playerRepository, AuditService auditService) {
+        this(playerRepository, auditService, new CompositeMeterRegistry());
+    }
+
+    /**
+     * Creates a persistence queue backed by the given repository, starting its worker thread,
+     * and registers save success/failure counters into the supplied {@link MeterRegistry}.
+     *
+     * @param playerRepository the repository used to perform the actual writes
+     * @param auditService     audit sink used to record save failures
+     * @param meterRegistry    the Micrometer registry to record save-outcome counters into;
+     *                         must not be null (pass an empty {@link CompositeMeterRegistry}
+     *                         for no-op behaviour)
+     */
+    public PersistenceQueue(PlayerRepository playerRepository, AuditService auditService, MeterRegistry meterRegistry) {
         this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
         this.auditService = Objects.requireNonNull(auditService, "Audit service is required");
+        Objects.requireNonNull(meterRegistry, "Meter registry is required");
+        this.saveSuccessCounter = Counter.builder("jmud.persistence.saves")
+            .tag("result", "success")
+            .description("Number of player saves that completed successfully")
+            .register(meterRegistry);
+        this.saveFailureCounter = Counter.builder("jmud.persistence.saves")
+            .tag("result", "failure")
+            .description("Number of player saves that ultimately failed (after retry)")
+            .register(meterRegistry);
         Thread thread = Thread.ofVirtual().name("persistence-queue-writer").start(this::runWorker);
         workerThread.set(thread);
     }
@@ -182,6 +211,7 @@ public class PersistenceQueue implements AutoCloseable {
     private void saveWithRetry(Player snapshot) {
         try {
             playerRepository.savePlayer(snapshot);
+            saveSuccessCounter.increment();
             return;
         } catch (RepositoryException e) {
             log.warn("Failed to save player {} (write-behind); retrying once", snapshot.getUsername(), e);
@@ -193,8 +223,10 @@ public class PersistenceQueue implements AutoCloseable {
         }
         try {
             playerRepository.savePlayer(snapshot);
+            saveSuccessCounter.increment();
         } catch (RepositoryException e) {
             failureCount.incrementAndGet();
+            saveFailureCounter.increment();
             log.error("Failed to save player {} (write-behind) after retry", snapshot.getUsername(), e);
             auditService.emit(new AuditEvent(
                 "player.save.failed",

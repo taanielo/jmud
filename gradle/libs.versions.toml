@@ -22,6 +22,7 @@ jacoco = "0.8.15"
 pitest = "1.19.1"
 pitestGradlePlugin = "1.19.0"
 pitestJunit5Plugin = "1.2.2"
+micrometer = "1.15.0"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
@@ -48,6 +49,9 @@ pitest-junit5-plugin = { module = "org.pitest:pitest-junit5-plugin", version.ref
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorproneCore" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+
+micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
+micrometer-registry-jmx = { module = "io.micrometer:micrometer-registry-jmx", version.ref = "micrometer" }
 
 [bundles]
 log4j = ["log4j-api", "log4j-core", "log4j-slf4j-impl"]

@@ -35,6 +35,9 @@ dependencies {
 
     implementation libs.jspecify
 
+    implementation libs.micrometer.core
+    implementation libs.micrometer.registry.jmx
+
     errorprone libs.errorprone.core
     errorprone libs.nullaway
 

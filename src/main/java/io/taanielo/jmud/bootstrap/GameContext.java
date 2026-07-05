@@ -120,9 +120,12 @@ public record GameContext(
      */
     public static GameContext create(ClientPool clientPool) {
         GameConfig config = GameConfig.load();
+        GameMetrics gameMetrics = GameMetrics.create(config);
+
         UserRegistry userRegistry = createUserRegistry();
         AuthenticationPolicy authenticationPolicy = AuthenticationPolicy.fromConfig(config);
-        AuthenticationLimiter authenticationLimiter = new AuthenticationLimiter(authenticationPolicy, Clock.systemUTC());
+        AuthenticationLimiter authenticationLimiter =
+            new AuthenticationLimiter(authenticationPolicy, Clock.systemUTC(), gameMetrics.registry());
         PlayerRepository playerRepository = new JsonPlayerRepository();
 
         // Shared repository instances: each Json*Repository is constructed exactly once here
@@ -147,11 +150,11 @@ public record GameContext(
             roomItemService,
             java.time.Duration.ofSeconds(DeathSettings.corpseDecaySeconds())
         ));
-        FixedRateTickScheduler tickScheduler = new FixedRateTickScheduler(tickRegistry);
+        FixedRateTickScheduler tickScheduler = new FixedRateTickScheduler(tickRegistry, gameMetrics.registry());
 
         AbilityRegistry abilityRegistry = loadAbilities();
         AuditService auditService = AuditService.create(tickClock::currentTick);
-        PersistenceQueue persistenceQueue = new PersistenceQueue(playerRepository, auditService);
+        PersistenceQueue persistenceQueue = new PersistenceQueue(playerRepository, auditService, gameMetrics.registry());
 
         EffectRepository effectRepository = createEffectRepository();
         EffectEngine effectEngine = new EffectEngine(effectRepository);
@@ -193,6 +196,8 @@ public record GameContext(
         }
 
         MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
+
+        gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
         return new GameContext(
             userRegistry,

@@ -7,6 +7,10 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+
 /**
  * Rate limiter for authentication attempts.
  */
@@ -14,10 +18,39 @@ public final class AuthenticationLimiter {
     private final AuthenticationPolicy policy;
     private final Clock clock;
     private final ConcurrentHashMap<String, AttemptState> attempts = new ConcurrentHashMap<>();
+    private final Counter failedAttemptsCounter;
+    private final Counter lockoutsCounter;
 
+    /**
+     * Creates a limiter with metrics disabled (no-op registry).
+     *
+     * @param policy the authentication policy defining attempt limits
+     * @param clock  the clock used to check and expire time windows
+     */
     public AuthenticationLimiter(AuthenticationPolicy policy, Clock clock) {
+        this(policy, clock, new CompositeMeterRegistry());
+    }
+
+    /**
+     * Creates a limiter that records authentication failures and lockouts into the
+     * supplied {@link MeterRegistry}.
+     *
+     * @param policy        the authentication policy defining attempt limits
+     * @param clock         the clock used to check and expire time windows
+     * @param meterRegistry the Micrometer registry to record auth-failure meters into;
+     *                      must not be null (pass an empty {@link CompositeMeterRegistry}
+     *                      for no-op behaviour)
+     */
+    public AuthenticationLimiter(AuthenticationPolicy policy, Clock clock, MeterRegistry meterRegistry) {
         this.policy = Objects.requireNonNull(policy, "Policy is required");
         this.clock = Objects.requireNonNull(clock, "Clock is required");
+        Objects.requireNonNull(meterRegistry, "Meter registry is required");
+        this.failedAttemptsCounter = Counter.builder("jmud.auth.failures")
+            .description("Number of failed authentication attempts")
+            .register(meterRegistry);
+        this.lockoutsCounter = Counter.builder("jmud.auth.lockouts")
+            .description("Number of accounts locked out due to excessive failed attempts")
+            .register(meterRegistry);
     }
 
     /**
@@ -41,18 +74,24 @@ public final class AuthenticationLimiter {
     }
 
     /**
-     * Records a failed authentication attempt.
+     * Records a failed authentication attempt. Increments the failure counter and,
+     * if this attempt triggers a lockout, also increments the lockout counter.
      */
     public void recordFailure(String key) {
         String normalized = normalizeKey(key);
         Instant now = clock.instant();
+        failedAttemptsCounter.increment();
         attempts.compute(normalized, (ignored, current) -> {
             AttemptState state = current;
             if (state == null || state.isWindowExpired(now, policy.attemptWindow()) || state.isBlockExpired(now)) {
                 state = AttemptState.start(now);
             }
             int nextAttempts = state.attempts() + 1;
-            Instant blockedUntil = nextAttempts >= policy.maxAttempts()
+            boolean triggersLockout = nextAttempts >= policy.maxAttempts();
+            if (triggersLockout) {
+                lockoutsCounter.increment();
+            }
+            Instant blockedUntil = triggersLockout
                 ? now.plus(policy.lockoutDuration())
                 : state.blockedUntil();
             return state.with(nextAttempts, blockedUntil);
