@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "crumbling-courtyard",
+  "name": "Crumbling Courtyard",
+  "description": "Weeds push up through cracked flagstones in what was once an open courtyard. Toppled statues, worn faceless by centuries of rain, lie half-buried in rubble. Rough tents and cookfires suggest the ruins have found new, unwelcome occupants.",
+  "item_ids": [],
+  "exits": {
+    "east": "ruins-gate",
+    "north": "collapsed-tower",
+    "west": "bandit-captains-den"
+  }
+}

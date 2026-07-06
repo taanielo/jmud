@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "bandit-captains-den",
+  "name": "Bandit Captain's Den",
+  "description": "A half-collapsed vault beneath the ruins, lit by guttering torches and stacked with looted crates and stolen goods. A battle-scarred bandit captain holds court here, daring any fool to challenge their claim on the ruins.",
+  "item_ids": [],
+  "exits": {
+    "east": "crumbling-courtyard"
+  }
+}
