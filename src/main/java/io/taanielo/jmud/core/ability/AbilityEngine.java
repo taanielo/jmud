@@ -284,6 +284,7 @@ public class AbilityEngine {
                 yield target.getUsername().getValue() + " " + verb + " " + effect.amount() + " " + stat + ".";
             }
             case EFFECT -> target.getUsername().getValue() + " is affected by " + effect.effectId() + ".";
+            case CURE -> target.getUsername().getValue() + " is cured of " + effect.effectId() + ".";
         };
     }
 

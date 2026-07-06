@@ -352,6 +352,123 @@ class GameActionServiceTest {
     }
 
     @Test
+    void quaffCurePotionRemovesPoisonEffect() {
+        EffectId poisonId = EffectId.of("poison");
+        EffectDefinition poisonDefinition = new EffectDefinition(
+            poisonId,
+            "Poison",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(new io.taanielo.jmud.core.messaging.MessageSpec(
+                io.taanielo.jmud.core.messaging.MessagePhase.EXPIRE,
+                io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                "The poison leaves your body."
+            ))
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(poisonId, poisonDefinition)));
+        service = new GameActionService(
+            testAbilityRegistry(),
+            new BasicAbilityCostResolver(),
+            effectEngine,
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService()
+        );
+        Item curePotion = new Item(
+            ItemId.of("cure-potion"),
+            "Cure Potion",
+            "A shimmering blue vial.",
+            ItemAttributes.empty(),
+            List.of(new io.taanielo.jmud.core.world.ItemEffect(
+                poisonId, 0, io.taanielo.jmud.core.world.ItemEffectOperation.REMOVE
+            )),
+            List.of(
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                    "You quaff {item}."
+                )
+            ),
+            null,
+            1,
+            1,
+            null
+        );
+        Player poisoned = attacker.addItem(curePotion);
+        poisoned.addEffect(new io.taanielo.jmud.core.effects.EffectInstance(poisonId, 5, 1));
+
+        GameActionResult result = service.quaffItem(poisoned, "cure potion");
+
+        assertTrue(result.updatedSource().effects().isEmpty());
+        assertTrue(result.messages().stream().anyMatch(message ->
+            message.text().equals("The poison leaves your body.")
+        ));
+    }
+
+    @Test
+    void quaffCurePotionOnHealthyPlayerDoesNotCrash() {
+        EffectId poisonId = EffectId.of("poison");
+        EffectDefinition poisonDefinition = new EffectDefinition(
+            poisonId,
+            "Poison",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of()
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(poisonId, poisonDefinition)));
+        service = new GameActionService(
+            testAbilityRegistry(),
+            new BasicAbilityCostResolver(),
+            effectEngine,
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService()
+        );
+        Item curePotion = new Item(
+            ItemId.of("cure-potion"),
+            "Cure Potion",
+            "A shimmering blue vial.",
+            ItemAttributes.empty(),
+            List.of(new io.taanielo.jmud.core.world.ItemEffect(
+                poisonId, 0, io.taanielo.jmud.core.world.ItemEffectOperation.REMOVE
+            )),
+            List.of(
+                new io.taanielo.jmud.core.messaging.MessageSpec(
+                    io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
+                    io.taanielo.jmud.core.messaging.MessageChannel.SELF,
+                    "You quaff {item}."
+                )
+            ),
+            null,
+            1,
+            1,
+            null
+        );
+        Player healthy = attacker.addItem(curePotion);
+
+        GameActionResult result = service.quaffItem(healthy, "cure potion");
+
+        assertTrue(result.updatedSource().effects().isEmpty());
+        assertEquals("You quaff Cure Potion.", result.messages().getFirst().text());
+    }
+
+    @Test
     void quaffItemHealsPlayerWhenHpStatIsPositive() {
         PlayerVitals lowVitals = new PlayerVitals(5, 20, 20, 20, 20, 20);
         Player injured = new Player(

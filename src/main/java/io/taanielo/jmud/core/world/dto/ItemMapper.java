@@ -11,6 +11,7 @@ import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
+import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
 
 public class ItemMapper {
@@ -19,7 +20,7 @@ public class ItemMapper {
         Objects.requireNonNull(item, "Item is required");
         ItemAttributesDto attributes = new ItemAttributesDto(item.getAttributes().getStats());
         List<ItemEffectDto> effects = item.getEffects().stream()
-            .map(effect -> new ItemEffectDto(effect.id().getValue(), effect.durationTicks()))
+            .map(effect -> new ItemEffectDto(effect.id().getValue(), effect.durationTicks(), effect.operation()))
             .toList();
         return new ItemDto(
             SchemaVersions.V3,
@@ -41,7 +42,11 @@ public class ItemMapper {
         ItemAttributesDto attributesDto = Objects.requireNonNull(dto.attributes(), "Item attributes are required");
         ItemAttributes attributes = new ItemAttributes(attributesDto.stats());
         List<ItemEffect> effects = dto.effects().stream()
-            .map(effect -> new ItemEffect(EffectId.of(effect.effectId()), effect.durationTicks()))
+            .map(effect -> new ItemEffect(
+                EffectId.of(effect.effectId()),
+                effect.durationTicks(),
+                effect.op() == null ? ItemEffectOperation.APPLY : effect.op()
+            ))
             .toList();
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         EquipmentSlot slot = EquipmentSlot.fromId(dto.equipSlot());

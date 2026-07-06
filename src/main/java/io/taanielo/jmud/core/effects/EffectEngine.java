@@ -39,6 +39,32 @@ public class EffectEngine {
         return applied;
     }
 
+    /**
+     * Removes an active effect from the target on demand, before it would naturally
+     * expire (e.g. a cure ability or potion). Sends the effect's {@code expire}
+     * messages when an instance is actually removed. Tick-thread only (AGENTS.md §5).
+     *
+     * @param target the effect target to cure
+     * @param id the id of the effect to remove
+     * @param sink message sink for expire messages
+     * @return {@code true} if a matching active effect was found and removed,
+     *     {@code false} if the target had no such effect active
+     */
+    public boolean remove(EffectTarget target, EffectId id, EffectMessageSink sink) throws EffectRepositoryException {
+        Objects.requireNonNull(target, "Effect target is required");
+        Objects.requireNonNull(id, "Effect id is required");
+        Objects.requireNonNull(sink, "Effect message sink is required");
+
+        EffectInstance existing = findInstance(target.effects(), id);
+        if (existing == null) {
+            return false;
+        }
+        EffectDefinition definition = definitionOrThrow(id);
+        target.removeEffect(existing);
+        sendMessages(target, definition, MessagePhase.EXPIRE, sink);
+        return true;
+    }
+
     public void tick(EffectTarget target, EffectMessageSink sink) throws EffectRepositoryException {
         Objects.requireNonNull(target, "Effect target is required");
         Objects.requireNonNull(sink, "Effect message sink is required");

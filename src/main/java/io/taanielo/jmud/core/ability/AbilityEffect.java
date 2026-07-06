@@ -17,7 +17,7 @@ public record AbilityEffect(
             if (amount <= 0) {
                 throw new IllegalArgumentException("Effect amount must be positive");
             }
-        } else if (kind == AbilityEffectKind.EFFECT) {
+        } else if (kind == AbilityEffectKind.EFFECT || kind == AbilityEffectKind.CURE) {
             String trimmed = Objects.requireNonNull(effectId, "Effect id is required").trim();
             if (trimmed.isEmpty()) {
                 throw new IllegalArgumentException("Effect id must not be blank");

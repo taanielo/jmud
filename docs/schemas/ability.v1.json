@@ -70,7 +70,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": ["VITALS", "EFFECT"]
+            "enum": ["VITALS", "EFFECT", "CURE"]
           },
           "stat": {
             "type": "string",
@@ -96,6 +96,10 @@
           },
           {
             "if": {"properties": {"kind": {"const": "EFFECT"}}},
+            "then": {"required": ["effect_id"]}
+          },
+          {
+            "if": {"properties": {"kind": {"const": "CURE"}}},
             "then": {"required": ["effect_id"]}
           }
         ]

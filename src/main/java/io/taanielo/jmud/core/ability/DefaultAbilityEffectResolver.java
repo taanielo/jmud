@@ -27,13 +27,21 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
     public void apply(AbilityEffect effect, AbilityContext context) {
         Objects.requireNonNull(effect, "Ability effect is required");
         Objects.requireNonNull(context, "Ability context is required");
-        if (effect.kind() == AbilityEffectKind.VITALS) {
-            applyVitals(effect, context);
-            listener.onApplied(effect, context);
-            return;
-        }
-        if (applyEffect(effect, context)) {
-            listener.onApplied(effect, context);
+        switch (effect.kind()) {
+            case VITALS -> {
+                applyVitals(effect, context);
+                listener.onApplied(effect, context);
+            }
+            case EFFECT -> {
+                if (applyEffect(effect, context)) {
+                    listener.onApplied(effect, context);
+                }
+            }
+            case CURE -> {
+                if (applyCure(effect, context)) {
+                    listener.onApplied(effect, context);
+                }
+            }
         }
     }
 
@@ -55,7 +63,25 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
     }
 
     private boolean applyEffect(AbilityEffect effect, AbilityContext context) {
-        io.taanielo.jmud.core.effects.EffectMessageSink sink = new io.taanielo.jmud.core.effects.EffectMessageSink() {
+        io.taanielo.jmud.core.effects.EffectMessageSink sink = effectMessageSink(context);
+        try {
+            return effectEngine.apply(context.target(), EffectId.of(effect.effectId()), sink);
+        } catch (EffectRepositoryException e) {
+            throw new IllegalStateException("Failed to apply effect " + effect.effectId() + ": " + e.getMessage(), e);
+        }
+    }
+
+    private boolean applyCure(AbilityEffect effect, AbilityContext context) {
+        io.taanielo.jmud.core.effects.EffectMessageSink sink = effectMessageSink(context);
+        try {
+            return effectEngine.remove(context.target(), EffectId.of(effect.effectId()), sink);
+        } catch (EffectRepositoryException e) {
+            throw new IllegalStateException("Failed to remove effect " + effect.effectId() + ": " + e.getMessage(), e);
+        }
+    }
+
+    private io.taanielo.jmud.core.effects.EffectMessageSink effectMessageSink(AbilityContext context) {
+        return new io.taanielo.jmud.core.effects.EffectMessageSink() {
             @Override
             public void sendToTarget(String message) {
                 messageSink.sendToTarget(context.target(), message);
@@ -66,10 +92,5 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
                 messageSink.sendToRoom(context.source(), context.target(), message);
             }
         };
-        try {
-            return effectEngine.apply(context.target(), EffectId.of(effect.effectId()), sink);
-        } catch (EffectRepositoryException e) {
-            throw new IllegalStateException("Failed to apply effect " + effect.effectId() + ": " + e.getMessage(), e);
-        }
     }
 }

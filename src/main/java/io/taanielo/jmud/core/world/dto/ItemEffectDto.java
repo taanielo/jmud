@@ -1,4 +1,6 @@
 package io.taanielo.jmud.core.world.dto;
 
-public record ItemEffectDto(String effectId, int durationTicks) {
+import io.taanielo.jmud.core.world.ItemEffectOperation;
+
+public record ItemEffectDto(String effectId, int durationTicks, ItemEffectOperation op) {
 }

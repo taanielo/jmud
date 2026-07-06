@@ -88,6 +88,77 @@ class EffectEngineTest {
         assertEquals(List.of("Shield fades."), sink.messages());
     }
 
+    @Test
+    void removesActiveEffectAndSendsExpireMessage() throws EffectRepositoryException {
+        EffectId id = EffectId.of("poison");
+        List<MessageSpec> messages = List.of(
+            new MessageSpec(MessagePhase.EXPIRE, MessageChannel.SELF, "The poison leaves your body.")
+        );
+        EffectDefinition definition = new EffectDefinition(
+            id,
+            "Poison",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            messages
+        );
+        EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
+        Player player = new Player(
+            User.of(Username.of("cara"), Password.hash("pw", 1000)),
+            1,
+            0,
+            PlayerVitals.defaults(),
+            new ArrayList<>(List.of(new EffectInstance(id, 1, 5))),
+            "HP {hp}/{maxHp}",
+            false,
+            List.of(),
+            null,
+            null
+        );
+        RecordingSink sink = new RecordingSink();
+
+        boolean removed = engine.remove(player, id, sink);
+
+        assertTrue(removed);
+        assertTrue(player.effects().isEmpty());
+        assertEquals(List.of("The poison leaves your body."), sink.messages());
+    }
+
+    @Test
+    void removeReturnsFalseWhenEffectNotActive() throws EffectRepositoryException {
+        EffectId id = EffectId.of("poison");
+        EffectDefinition definition = new EffectDefinition(
+            id,
+            "Poison",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of()
+        );
+        EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
+        Player player = new Player(
+            User.of(Username.of("dan"), Password.hash("pw", 1000)),
+            1,
+            0,
+            PlayerVitals.defaults(),
+            new ArrayList<>(),
+            "HP {hp}/{maxHp}",
+            false,
+            List.of(),
+            null,
+            null
+        );
+        RecordingSink sink = new RecordingSink();
+
+        boolean removed = engine.remove(player, id, sink);
+
+        assertTrue(player.effects().isEmpty());
+        assertEquals(List.of(), sink.messages());
+        assertEquals(false, removed);
+    }
+
     private static class InMemoryEffectRepository implements EffectRepository {
         private final EffectDefinition definition;
 

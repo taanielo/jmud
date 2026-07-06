@@ -35,6 +35,7 @@ import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemEffect;
+import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
@@ -311,8 +312,11 @@ public class GameActionService {
      *
      * <p>A positive {@code hp} stat in {@link io.taanielo.jmud.core.world.ItemAttributes} heals
      * the player (capped at max HP); a negative value deals damage. Item effects such as
-     * poison are applied after the stat change. An item that has neither an {@code hp} stat
-     * nor any effects results in a "Nothing happens." message.
+     * poison are applied after the stat change; an effect whose operation is
+     * {@link ItemEffectOperation#REMOVE} instead cures a matching active effect (e.g. a
+     * cure potion removing poison), silently doing nothing if the target has no such
+     * effect active. An item that has neither an {@code hp} stat nor any effects results
+     * in a "Nothing happens." message.
      *
      * @param source the player quaffing the item
      * @param itemInput the item name or id to quaff
@@ -352,7 +356,11 @@ public class GameActionService {
         );
         try {
             for (ItemEffect effect : item.getEffects()) {
-                abilityEffectEngine.apply(working, effect.id(), effectSink);
+                if (effect.operation() == ItemEffectOperation.REMOVE) {
+                    abilityEffectEngine.remove(working, effect.id(), effectSink);
+                } else {
+                    abilityEffectEngine.apply(working, effect.id(), effectSink);
+                }
             }
         } catch (EffectRepositoryException e) {
             return GameActionResult.error("You cannot use that item right now.");

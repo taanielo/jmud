@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.cure",
+  "name": "cure",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 4
+  },
+  "cooldown": {
+    "ticks": 3
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["cure poison"],
+  "effects": [
+    {
+      "kind": "CURE",
+      "effect_id": "poison"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You cast {ability} on {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} on you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} on {target}."
+    }
+  ]
+}
