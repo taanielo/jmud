@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
@@ -39,9 +40,12 @@ class JsonRaceRepositoryFindAllTest {
     }
 
     @Test
-    void findAll_returnsEmptyForEmptyDir() throws RaceRepositoryException {
-        // Requesting a non-existent data root must return empty rather than throw.
-        JsonRaceRepository repo = new JsonRaceRepository(Path.of("data-nonexistent-xyz"));
+    void findAll_returnsEmptyForEmptyDir(@TempDir Path tempDir) throws RaceRepositoryException {
+        // Requesting a data root with no race files must return empty rather than throw.
+        // A fresh temp subdirectory guarantees this holds on every machine and in CI,
+        // and keeps the repository working tree free of directories created by
+        // JsonRaceRepository's constructor.
+        JsonRaceRepository repo = new JsonRaceRepository(tempDir.resolve("missing-subdir"));
         List<Race> races = repo.findAll();
         assertTrue(races.isEmpty());
     }
