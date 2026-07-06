@@ -122,7 +122,8 @@ public class JsonRoomRepository implements RoomRepository {
         if (dto.schemaVersion() != SchemaVersions.V1
                 && dto.schemaVersion() != SchemaVersions.V2
                 && dto.schemaVersion() != SchemaVersions.V3
-                && dto.schemaVersion() != SchemaVersions.V4) {
+                && dto.schemaVersion() != SchemaVersions.V4
+                && dto.schemaVersion() != SchemaVersions.V5) {
             throw new RepositoryException("Unsupported room schema version " + dto.schemaVersion() + " in " + path);
         }
     }

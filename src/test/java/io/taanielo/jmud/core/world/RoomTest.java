@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.world;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,5 +51,34 @@ class RoomTest {
 
         assertTrue(room.exceedsLevel(4));
         assertTrue(room.exceedsLevel(1));
+    }
+
+    @Test
+    void hasNoNightDescriptionByDefault() {
+        Room room = new Room(RoomId.of("a"), "Room A", "A room.", Map.of(), List.of(), List.of());
+
+        assertNull(room.getNightDescription());
+        assertEquals("A room.", room.describeFor(TimeOfDay.DAY));
+        assertEquals("A room.", room.describeFor(TimeOfDay.NIGHT));
+    }
+
+    @Test
+    void describeForReturnsDayDescriptionAtDayEvenWhenNightDescriptionIsDefined() {
+        Room room = new Room(
+            RoomId.of("a"), "Room A", "A room by day.", Map.of(), List.of(), List.of(),
+            Map.of(), null, "A room by night."
+        );
+
+        assertEquals("A room by day.", room.describeFor(TimeOfDay.DAY));
+    }
+
+    @Test
+    void describeForReturnsNightDescriptionAtNightWhenDefined() {
+        Room room = new Room(
+            RoomId.of("a"), "Room A", "A room by day.", Map.of(), List.of(), List.of(),
+            Map.of(), null, "A room by night."
+        );
+
+        assertEquals("A room by night.", room.describeFor(TimeOfDay.NIGHT));
     }
 }

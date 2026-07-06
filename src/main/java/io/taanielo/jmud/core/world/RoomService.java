@@ -44,6 +44,11 @@ public class RoomService {
     private final RoomItemService itemService;
     private final RoomRenderer renderer;
     private final RoomRepository roomRepository;
+    /**
+     * Optional world clock used to select day/night room descriptions; {@code null} means the
+     * cycle is disabled and rooms always render their day description.
+     */
+    private @Nullable WorldClock worldClock;
 
     /**
      * Creates a room service façade wrapping the three focused services.
@@ -81,6 +86,15 @@ public class RoomService {
             new RoomRenderer(),
             roomRepository
         );
+    }
+
+    /**
+     * Registers the world clock consulted to pick day/night room descriptions.
+     *
+     * @param worldClock the world clock; may be null to disable the day/night cycle
+     */
+    public void setWorldClock(@Nullable WorldClock worldClock) {
+        this.worldClock = worldClock;
     }
 
     // ── Location delegation ──────────────────────────────────────────────────
@@ -185,7 +199,7 @@ public class RoomService {
         Room room = roomOpt.get();
         Room enriched = enrichRoom(room);
         Set<Direction> lockedExits = locationService.getLockedExits(room.getId());
-        return new LookResult(renderer.describeRoom(enriched, username, lockedExits), enriched);
+        return new LookResult(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay()), enriched);
     }
 
     /**
@@ -203,7 +217,7 @@ public class RoomService {
                 Set<Direction> lockedExits = locationService.getLockedExits(enriched.getId());
                 List<String> lines = new ArrayList<>();
                 lines.add("You move " + direction.label() + ".");
-                lines.addAll(renderer.describeRoom(enriched, username, lockedExits));
+                lines.addAll(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay()));
                 yield new MoveResult(true, lines, enriched);
             }
         };
@@ -244,6 +258,10 @@ public class RoomService {
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
+    private TimeOfDay currentTimeOfDay() {
+        return worldClock != null ? worldClock.timeOfDay() : TimeOfDay.DAY;
+    }
+
     private Room enrichRoom(Room room) {
         List<Username> occupants = locationService.getPlayersInRoom(room.getId());
         List<Item> items = itemService.mergeItems(room);
@@ -255,7 +273,8 @@ public class RoomService {
             items,
             occupants,
             room.getLockedExits(),
-            room.getMinLevel()
+            room.getMinLevel(),
+            room.getNightDescription()
         );
     }
 
@@ -285,7 +304,8 @@ public class RoomService {
             nextItems,
             room.getOccupants(),
             room.getLockedExits(),
-            room.getMinLevel()
+            room.getMinLevel(),
+            room.getNightDescription()
         );
         try {
             roomRepository.save(updated);
