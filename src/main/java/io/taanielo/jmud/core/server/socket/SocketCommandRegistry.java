@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.player.PlayerRepository;
 
 /**
  * Registry for socket command handlers.
@@ -22,13 +23,16 @@ public class SocketCommandRegistry {
      *
      * @param equipmentArmorResolver resolver for AC contributed by equipped armour
      * @param raceArmorBonusResolver resolver for AC contributed by the player's race
+     * @param playerRepository       repository used to enumerate all persisted players for {@code RANK}
      */
     public static SocketCommandRegistry createDefault(
         EquipmentArmorResolver equipmentArmorResolver,
-        RaceArmorBonusResolver raceArmorBonusResolver
+        RaceArmorBonusResolver raceArmorBonusResolver,
+        PlayerRepository playerRepository
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
+        Objects.requireNonNull(playerRepository, "Player repository is required");
         SocketCommandRegistry registry = new SocketCommandRegistry();
         new LookCommand(registry);
         new ExamineCommand(registry);
@@ -47,6 +51,7 @@ public class SocketCommandRegistry {
         new TellCommand(registry);
         new GossipCommand(registry);
         new WhoCommand(registry);
+        new RankCommand(registry, playerRepository);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver);
         new AbilityCommand(registry);
         new CastCommand(registry);

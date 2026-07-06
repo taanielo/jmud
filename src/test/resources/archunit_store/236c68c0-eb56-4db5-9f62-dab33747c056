@@ -56,6 +56,7 @@ Method <io.taanielo.jmud.core.effects.EffectInstance.stacks()> is annotated with
 Method <io.taanielo.jmud.core.mob.MobId.jsonValue()> is annotated with <com.fasterxml.jackson.annotation.JsonValue> in (MobId.java:0)
 Method <io.taanielo.jmud.core.mob.MobId.of(java.lang.String)> has annotation member of type <com.fasterxml.jackson.annotation.JsonCreator$Mode> in (MobId.java:0)
 Method <io.taanielo.jmud.core.mob.MobId.of(java.lang.String)> is annotated with <com.fasterxml.jackson.annotation.JsonCreator> in (MobId.java:0)
+Method <io.taanielo.jmud.core.player.JsonPlayerRepository.findAll()> calls method <com.fasterxml.jackson.databind.ObjectMapper.readValue(java.io.File, java.lang.Class)> in (JsonPlayerRepository.java:88)
 Method <io.taanielo.jmud.core.player.JsonPlayerRepository.loadPlayer(io.taanielo.jmud.core.authentication.Username)> calls method <com.fasterxml.jackson.databind.ObjectMapper.readValue(java.io.File, java.lang.Class)> in (JsonPlayerRepository.java:68)
 Method <io.taanielo.jmud.core.player.JsonPlayerRepository.savePlayer(io.taanielo.jmud.core.player.Player)> calls method <com.fasterxml.jackson.databind.ObjectMapper.writeValue(java.io.File, java.lang.Object)> in (JsonPlayerRepository.java:49)
 Method <io.taanielo.jmud.core.player.Player.getActiveQuest()> has annotation member of type <com.fasterxml.jackson.annotation.JsonProperty$Access> in (Player.java:0)

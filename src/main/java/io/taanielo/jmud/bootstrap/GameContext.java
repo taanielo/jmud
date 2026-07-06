@@ -172,7 +172,8 @@ public record GameContext(
         AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
         AbilityTargetResolver abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
 
-        SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(equipmentArmorResolver, raceArmorBonusResolver);
+        SocketCommandRegistry commandRegistry =
+            SocketCommandRegistry.createDefault(equipmentArmorResolver, raceArmorBonusResolver, playerRepository);
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
