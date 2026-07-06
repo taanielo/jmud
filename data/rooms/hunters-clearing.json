@@ -6,6 +6,7 @@
   "item_ids": [],
   "exits": {
     "south": "tangled-undergrowth",
-    "east": "trolls-hollow"
+    "east": "trolls-hollow",
+    "west": "ruins-gate"
   }
 }

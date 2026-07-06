@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "id": "attack.bandit",
+  "name": "bandit blade",
+  "min_damage": 7,
+  "max_damage": 16,
+  "hit_bonus": 1,
+  "crit_bonus": 1,
+  "damage_bonus": 2,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The bandit slashes at you with a notched blade for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The bandit lunges at you but you sidestep the blow."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The bandit finds an opening and cuts deep for {damage}!"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "collapsed-tower",
+  "name": "Collapsed Tower",
+  "description": "The upper floors of this watchtower have long since fallen in, leaving a jagged shell open to the sky. Splintered beams jut from the rubble, and crude rope ladders scavenged from the wreckage lead up to makeshift lookout posts.",
+  "item_ids": [],
+  "exits": {
+    "south": "crumbling-courtyard"
+  }
+}

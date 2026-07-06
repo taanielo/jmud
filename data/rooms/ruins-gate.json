@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "ruins-gate",
+  "name": "Ruins Gate",
+  "description": "A crumbling stone archway, half-swallowed by creeping vines, marks the boundary between the Darkwood and the wilderness ruins beyond. Broken columns lie scattered in the tall grass, and the wind carries a faint smell of woodsmoke from somewhere deeper in.",
+  "item_ids": [],
+  "exits": {
+    "east": "hunters-clearing",
+    "west": "crumbling-courtyard"
+  }
+}

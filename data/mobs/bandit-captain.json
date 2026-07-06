@@ -1,0 +1,22 @@
+{
+  "schema_version": 2,
+  "id": "bandit-captain",
+  "name": "Bandit Captain",
+  "max_hp": 100,
+  "attack_id": "attack.bandit-captain",
+  "special_attack_id": "attack.rally-cry",
+  "aggressive": true,
+  "spawn_room_id": "bandit-captains-den",
+  "max_count": 1,
+  "respawn_ticks": 60,
+  "loot": [
+    {
+      "item_id": "bandit-captains-seal",
+      "drop_chance": 0.9
+    }
+  ],
+  "gold_drop": {
+    "min": 25,
+    "max": 55
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "bandit-blade",
+  "name": "Bandit Blade",
+  "description": "A notched, poorly-maintained shortsword favored by the ruins' bandits. Battered, but still sharp enough to cut.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 3,
+  "value": 12
+}

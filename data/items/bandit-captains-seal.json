@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "bandit-captains-seal",
+  "name": "Bandit Captain's Seal",
+  "description": "A tarnished bronze seal bearing a crude sigil, once used to mark the bandit captain's stolen plunder as their own.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 35
+}

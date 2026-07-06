@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "id": "bandit",
+  "name": "Bandit",
+  "max_hp": 50,
+  "attack_id": "attack.bandit",
+  "aggressive": true,
+  "spawn_room_id": "crumbling-courtyard",
+  "max_count": 2,
+  "respawn_ticks": 30,
+  "loot": [
+    {
+      "item_id": "bandit-blade",
+      "drop_chance": 0.5
+    }
+  ],
+  "gold_drop": {
+    "min": 10,
+    "max": 22
+  }
+}
