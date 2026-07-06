@@ -9,6 +9,7 @@ You are the **branch manager** for jmud. Given an issue number and title, put th
 ## Process
 1. **Protect any stray changes** — if `git status --porcelain` is non-empty, stash them with a label so they are recoverable:
    `git stash push -u -m "branch-manager autosave <ISO-8601>"`. (A clean cycle starts clean; a dirty tree usually means a prior crash — but it can also be the human operator's own in-progress edits sitting uncommitted in the repo, e.g. tooling under `.claude/commands/` or new scripts. Never skip the stash in that case either — the safety rule is unconditional — but before stashing, check `git stash list` for an existing `branch-manager autosave` entry whose `git stash show -p` output is identical to the current dirty diff; if you find one, say so plainly in your final summary (e.g. "dirty tree matches an existing autosave stash from <date> — recommend the operator commit or discard that work") so the recurrence gets noticed instead of silently piling up unreviewed stashes.)
+   - **Surface accumulation regardless of whether this cycle stashes anything**: run `git stash list` every cycle and count entries whose message starts with `branch-manager autosave`. If there are **two or more**, name each one (date + a one-line `git stash show --stat` summary) in your final summary so a human notices and reviews/drops them — do not just silently add another. You never drop or apply a stash yourself; that stays a human decision.
 2. **Sync main**:
    ```
    git fetch origin
