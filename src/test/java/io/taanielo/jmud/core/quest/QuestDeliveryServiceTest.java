@@ -33,7 +33,8 @@ class QuestDeliveryServiceTest {
         "Bring 5 rat tails to the Guild Clerk.",
         null, 0,                  // no kill targets
         40, 100,                  // rewards
-        "rat-tail", 5             // delivery fields
+        "rat-tail", 5,            // delivery fields
+        null                      // no title reward
     );
 
     private QuestDeliveryService service;
@@ -191,6 +192,68 @@ class QuestDeliveryServiceTest {
         boolean hasClerkMsg = result.messages().stream()
             .anyMatch(m -> m.contains("Guild Clerk"));
         assertTrue(hasClerkMsg, "Expected Guild Clerk message in: " + result.messages());
+    }
+
+    // ── title granting ───────────────────────────────────────────────────
+
+    @Test
+    void deliverGrantsTitleWhenQuestHasOne() {
+        QuestId titledId = QuestId.of("titled-collector");
+        QuestTemplate titledQuest = new QuestTemplate(
+            titledId, "Titled Collector", "Bring 5 rat tails.",
+            null, 0, 40, 100, "rat-tail", 5, "Rat Slayer");
+        QuestRepository repo = new StubQuestRepository(List.of(titledQuest));
+        QuestDeliveryService svc = new QuestDeliveryService(repo);
+
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(titledId, 0));
+        Player with5 = withQuest;
+        for (int i = 0; i < 5; i++) {
+            with5 = with5.addItem(ratTail());
+        }
+
+        QuestDeliveryService.DeliverResult result = svc.deliver(with5);
+
+        assertTrue(result.success());
+        assertTrue(result.player().titles().has("Rat Slayer"));
+        assertTrue(result.messages().stream().anyMatch(m -> m.contains("You have earned the title: Rat Slayer!")));
+    }
+
+    @Test
+    void deliverDoesNotGrantTitleWhenQuestHasNone() {
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(COLLECTOR_ID, 0));
+        Player with5 = withQuest;
+        for (int i = 0; i < 5; i++) {
+            with5 = with5.addItem(ratTail());
+        }
+
+        QuestDeliveryService.DeliverResult result = service.deliver(with5);
+
+        assertTrue(result.success());
+        assertTrue(result.player().titles().earned().isEmpty());
+        assertFalse(result.messages().stream().anyMatch(m -> m.contains("You have earned the title")));
+    }
+
+    @Test
+    void deliverDoesNotGrantDuplicateTitle() {
+        QuestId titledId = QuestId.of("titled-collector");
+        QuestTemplate titledQuest = new QuestTemplate(
+            titledId, "Titled Collector", "Bring 5 rat tails.",
+            null, 0, 40, 100, "rat-tail", 5, "Rat Slayer");
+        QuestRepository repo = new StubQuestRepository(List.of(titledQuest));
+        QuestDeliveryService svc = new QuestDeliveryService(repo);
+
+        Player withQuest = basePlayer.grantTitle("Rat Slayer")
+            .withActiveQuest(new ActiveQuest(titledId, 0));
+        Player with5 = withQuest;
+        for (int i = 0; i < 5; i++) {
+            with5 = with5.addItem(ratTail());
+        }
+
+        QuestDeliveryService.DeliverResult result = svc.deliver(with5);
+
+        assertTrue(result.success());
+        assertEquals(1, result.player().titles().earned().size());
+        assertFalse(result.messages().stream().anyMatch(m -> m.contains("You have earned the title")));
     }
 
     // ── helpers ────────────────────────────────────────────────────────

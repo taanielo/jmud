@@ -6,6 +6,9 @@ package io.taanielo.jmud.core.quest.repository.json;
  * <p>Fields {@code dropItemId} and {@code requiredDropCount} are optional and
  * used only for delivery quests (schema version 2). Kill quests (schema version 1)
  * use {@code targetMobId} and {@code requiredKills} instead.
+ *
+ * <p>{@code titleReward} is optional for either quest type; when present, the
+ * player is granted this title on quest completion.
  */
 record QuestDto(
     int schemaVersion,
@@ -17,6 +20,7 @@ record QuestDto(
     int goldReward,
     int xpReward,
     String dropItemId,
-    int requiredDropCount
+    int requiredDropCount,
+    String titleReward
 ) {
 }

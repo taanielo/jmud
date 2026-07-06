@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -83,6 +84,10 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Kills : %d", player.getTotalKills()));
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
+        List<String> titles = player.titles().earned();
+        if (!titles.isEmpty()) {
+            context.writeLineSafe("Titles: " + String.join(", ", titles));
+        }
         context.sendPrompt();
     }
 }

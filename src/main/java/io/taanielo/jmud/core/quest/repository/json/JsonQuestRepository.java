@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
-import io.taanielo.jmud.core.quest.ActiveQuest;
 import io.taanielo.jmud.core.quest.QuestId;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
@@ -92,7 +91,8 @@ public class JsonQuestRepository implements QuestRepository {
                 dto.goldReward(),
                 dto.xpReward(),
                 dto.dropItemId(),
-                dto.requiredDropCount()
+                dto.requiredDropCount(),
+                dto.titleReward()
             );
         } catch (IllegalArgumentException e) {
             throw new QuestRepositoryException("Invalid quest data in " + source + ": " + e.getMessage(), e);
