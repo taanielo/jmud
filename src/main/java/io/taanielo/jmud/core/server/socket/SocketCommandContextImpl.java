@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.Nullable;
+
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.bootstrap.GameContext;
@@ -720,8 +722,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
         connection.writeLines(result.lines());
         if (result.moved()) {
             writeRoomOccupantLines(result.room());
+            warnIfRoomTooDangerous(player, result.room());
         }
         sendPrompt();
+    }
+
+    /**
+     * Sends an advisory warning if the destination room's recommended level exceeds the player's
+     * current level. Movement itself is never blocked or delayed by this check.
+     */
+    private void warnIfRoomTooDangerous(Player player, @Nullable Room room) {
+        if (room != null && room.exceedsLevel(player.getLevel())) {
+            connection.writeLine("This area seems more dangerous than you are prepared for.");
+        }
     }
 
     @Override

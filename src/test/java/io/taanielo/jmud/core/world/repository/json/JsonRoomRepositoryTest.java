@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.world.repository.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,6 +73,57 @@ class JsonRoomRepositoryTest {
 
         assertTrue(loaded.isPresent());
         assertEquals(room, loaded.get());
+    }
+
+    @Test
+    void savesAndLoadsRoomWithMinLevel() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Room room = new Room(
+            RoomId.of("catacombs"),
+            "Catacombs",
+            "A dank, dangerous passage.",
+            Map.of(),
+            List.of(),
+            List.of(),
+            Map.of(),
+            5
+        );
+        roomRepository.save(room);
+
+        // Use a fresh repository instance so the read goes through the JSON file, not the cache.
+        JsonRoomRepository reloadedRepository = new JsonRoomRepository(itemRepository, dataRoot);
+        Optional<Room> loaded = reloadedRepository.findById(RoomId.of("catacombs"));
+
+        assertTrue(loaded.isPresent());
+        assertEquals(Integer.valueOf(5), loaded.get().getMinLevel());
+    }
+
+    @Test
+    void loadsLegacyRoomWithoutMinLevelAsNull() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        Path roomsDir = dataRoot.resolve("rooms");
+        Files.createDirectories(roomsDir);
+        Files.writeString(roomsDir.resolve("legacy.json"), """
+            {
+              "schema_version": 2,
+              "id": "legacy",
+              "name": "Legacy Room",
+              "description": "An old room without a min level.",
+              "item_ids": [],
+              "exits": {}
+            }
+            """);
+
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Optional<Room> loaded = roomRepository.findById(RoomId.of("legacy"));
+
+        assertTrue(loaded.isPresent());
+        assertNull(loaded.get().getMinLevel());
     }
 
     @Test

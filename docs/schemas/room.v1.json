@@ -34,6 +34,11 @@
         "type": "string",
         "pattern": "^[a-z0-9-]+$"
       }
+    },
+    "min_level": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional recommended/minimum level to enter this room. Advisory only: it never blocks movement, it only triggers a warning message to players below this level. Omit for no restriction."
     }
   }
 }
