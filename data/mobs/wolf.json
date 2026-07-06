@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "wolf",
   "name": "Wolf",
   "max_hp": 30,
@@ -8,6 +8,7 @@
   "spawn_room_id": "hunters-clearing",
   "max_count": 3,
   "respawn_ticks": 20,
+  "night_respawn_ticks": 10,
   "loot": [
     {
       "item_id": "wolf-pelt",

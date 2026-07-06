@@ -123,4 +123,41 @@ class RoomRendererTest {
         int westIdx = exitsLine.indexOf("west");
         assertTrue(eastIdx < westIdx, "Exits should be sorted alphabetically (east before west)");
     }
+
+    @Test
+    void rendersDayDescriptionWhenTimeOfDayIsDay() {
+        Room room = new Room(ROOM_ID, "Town Square", "A busy square by day.",
+            Map.of(), List.of(), List.of(), Map.of(), null, "A quiet square by night.");
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of(), TimeOfDay.DAY);
+
+        assertTrue(lines.get(1).equals("A busy square by day."), "Day time should render the day description");
+    }
+
+    @Test
+    void rendersNightDescriptionWhenTimeOfDayIsNightAndOneIsDefined() {
+        Room room = new Room(ROOM_ID, "Town Square", "A busy square by day.",
+            Map.of(), List.of(), List.of(), Map.of(), null, "A quiet square by night.");
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of(), TimeOfDay.NIGHT);
+
+        assertTrue(lines.get(1).equals("A quiet square by night."), "Night time should render the night description");
+    }
+
+    @Test
+    void fallsBackToDayDescriptionAtNightWhenNoNightDescriptionIsDefined() {
+        Room room = new Room(ROOM_ID, "Cave", "Dark and quiet.", Map.of(), List.of(), List.of());
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of(), TimeOfDay.NIGHT);
+
+        assertTrue(lines.get(1).equals("Dark and quiet."),
+            "Rooms without a night description should render the day description at night");
+    }
+
+    @Test
+    void threeArgOverloadAlwaysRendersDayDescription() {
+        Room room = new Room(ROOM_ID, "Town Square", "A busy square by day.",
+            Map.of(), List.of(), List.of(), Map.of(), null, "A quiet square by night.");
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of());
+
+        assertTrue(lines.get(1).equals("A busy square by day."),
+            "The three-arg overload should default to the day description");
+    }
 }

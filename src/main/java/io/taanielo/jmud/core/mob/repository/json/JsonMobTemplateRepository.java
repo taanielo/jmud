@@ -17,7 +17,7 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 public class JsonMobTemplateRepository implements MobTemplateRepository {
 
-    private static final int SCHEMA_VERSION = 2;
+    private static final int SCHEMA_VERSION = 3;
     private static final String MOBS_DIR = "mobs";
 
     private final ObjectMapper objectMapper;

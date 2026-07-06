@@ -71,6 +71,8 @@ import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomItemService;
 import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.WorldClock;
+import io.taanielo.jmud.core.world.WorldClockSettings;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
@@ -111,7 +113,8 @@ public record GameContext(
     PartyService partyService,
     BankService bankService,
     MessageBroadcaster messageBroadcaster,
-    GossipHistory gossipHistory
+    GossipHistory gossipHistory,
+    WorldClock worldClock
 ) {
 
     /**
@@ -153,6 +156,9 @@ public record GameContext(
             roomItemService,
             java.time.Duration.ofSeconds(DeathSettings.corpseDecaySeconds())
         ));
+        WorldClock worldClock = new WorldClock(WorldClockSettings.ticksPerPhase());
+        tickRegistry.register(worldClock);
+        roomService.setWorldClock(worldClock);
         FixedRateTickScheduler tickScheduler = new FixedRateTickScheduler(tickRegistry, gameMetrics.registry());
 
         AbilityRegistry abilityRegistry = loadAbilities();
@@ -183,6 +189,7 @@ public record GameContext(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository);
         if (mobRegistry != null) {
             mobRegistry.setEffectEngine(effectEngine);
+            mobRegistry.setWorldClock(worldClock);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -234,7 +241,8 @@ public record GameContext(
             partyService,
             bankService,
             messageBroadcaster,
-            gossipHistory
+            gossipHistory,
+            worldClock
         );
     }
 

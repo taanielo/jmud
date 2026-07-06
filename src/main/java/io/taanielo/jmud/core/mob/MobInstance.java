@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.world.RoomId;
+import io.taanielo.jmud.core.world.TimeOfDay;
 
 /**
  * A live mob instance in the world.
@@ -80,9 +81,14 @@ public class MobInstance {
         return hp.updateAndGet(current -> Math.max(0, current - amount));
     }
 
-    /** Called once when the mob dies — starts the respawn countdown. */
-    public void scheduleRespawn() {
-        respawnTicksRemaining.set(template.respawnTicks());
+    /**
+     * Called once when the mob dies — starts the respawn countdown, using the day or night
+     * respawn delay from {@link MobTemplate#respawnTicks(TimeOfDay)} as appropriate.
+     *
+     * @param timeOfDay the current time of day, used to pick the respawn delay
+     */
+    public void scheduleRespawn(TimeOfDay timeOfDay) {
+        respawnTicksRemaining.set(template.respawnTicks(timeOfDay));
     }
 
     /**

@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "plague-rat",
   "name": "Plague Rat",
   "max_hp": 38,

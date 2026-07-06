@@ -25,6 +25,7 @@ import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.TimeOfDay;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
@@ -198,7 +199,7 @@ class MobRegistryWanderTest {
 
         // Kill it and run the respawn countdown
         mob.takeDamage(Integer.MAX_VALUE);
-        mob.scheduleRespawn();
+        mob.scheduleRespawn(TimeOfDay.DAY);
 
         // Tick through respawn countdown (10 ticks configured)
         for (int i = 0; i < 10; i++) {

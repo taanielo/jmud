@@ -80,6 +80,58 @@ class RoomServiceTest {
     }
 
     @Test
+    void lookShowsDayDescriptionWhenNoWorldClockIsRegistered() {
+        RoomId roomAId = RoomId.of("a");
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room by day.", Map.of(), List.of(), List.of(),
+            Map.of(), null, "A dark room by night."
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA)), roomAId);
+
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+        RoomService.LookResult lookResult = service.look(player);
+
+        assertTrue(lookResult.lines().get(1).equals("A quiet room by day."));
+    }
+
+    @Test
+    void lookShowsDayDescriptionWhenWorldClockIsDay() {
+        RoomId roomAId = RoomId.of("a");
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room by day.", Map.of(), List.of(), List.of(),
+            Map.of(), null, "A dark room by night."
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA)), roomAId);
+        service.setWorldClock(new WorldClock(100));
+
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+        RoomService.LookResult lookResult = service.look(player);
+
+        assertTrue(lookResult.lines().get(1).equals("A quiet room by day."));
+    }
+
+    @Test
+    void lookShowsNightDescriptionWhenWorldClockIsNight() {
+        RoomId roomAId = RoomId.of("a");
+        Room roomA = new Room(
+            roomAId, "Room A", "A quiet room by day.", Map.of(), List.of(), List.of(),
+            Map.of(), null, "A dark room by night."
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA)), roomAId);
+        WorldClock worldClock = new WorldClock(1);
+        worldClock.tick(); // flips to NIGHT after 1 tick
+        service.setWorldClock(worldClock);
+
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+        RoomService.LookResult lookResult = service.look(player);
+
+        assertTrue(lookResult.lines().get(1).equals("A dark room by night."));
+    }
+
+    @Test
     void rejectsInvalidMove() {
         RoomId roomAId = RoomId.of("a");
         Room roomA = new Room(

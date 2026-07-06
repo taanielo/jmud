@@ -20,7 +20,7 @@ import io.taanielo.jmud.core.authentication.Username;
 public class RoomRenderer {
 
     /**
-     * Returns the rendered look description lines for the given room.
+     * Returns the rendered look description lines for the given room at {@link TimeOfDay#DAY}.
      *
      * @param room        the room to describe (with occupants and merged items already embedded)
      * @param viewer      the player requesting the description (excluded from the occupants list)
@@ -28,12 +28,28 @@ public class RoomRenderer {
      * @return the list of output lines (name, description, exits, items, occupants)
      */
     public List<String> describeRoom(Room room, Username viewer, Set<Direction> lockedExits) {
+        return describeRoom(room, viewer, lockedExits, TimeOfDay.DAY);
+    }
+
+    /**
+     * Returns the rendered look description lines for the given room, selecting the room's
+     * alternate night description (see {@link Room#describeFor(TimeOfDay)}) when {@code timeOfDay}
+     * is {@link TimeOfDay#NIGHT} and one is defined.
+     *
+     * @param room        the room to describe (with occupants and merged items already embedded)
+     * @param viewer      the player requesting the description (excluded from the occupants list)
+     * @param lockedExits the set of currently locked exit directions in this room
+     * @param timeOfDay   the current time of day, used to pick the day or night description
+     * @return the list of output lines (name, description, exits, items, occupants)
+     */
+    public List<String> describeRoom(Room room, Username viewer, Set<Direction> lockedExits, TimeOfDay timeOfDay) {
         Objects.requireNonNull(room, "Room is required");
         Objects.requireNonNull(viewer, "Viewer is required");
         Objects.requireNonNull(lockedExits, "Locked exits set is required");
+        Objects.requireNonNull(timeOfDay, "Time of day is required");
         List<String> lines = new ArrayList<>();
         lines.add(room.getName());
-        lines.add(room.getDescription());
+        lines.add(room.describeFor(timeOfDay));
         lines.add("Exits: " + formatExits(room.getExits(), lockedExits));
         lines.add("Items: " + formatItems(room.getItems()));
         lines.add("Occupants: " + formatOccupants(room.getOccupants(), viewer));

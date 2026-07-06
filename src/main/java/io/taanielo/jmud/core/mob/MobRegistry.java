@@ -44,6 +44,8 @@ import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.TimeOfDay;
+import io.taanielo.jmud.core.world.WorldClock;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -71,6 +73,8 @@ public class MobRegistry implements Tickable {
     private PartyService partyService;
     /** Optional effect engine used to apply on-hit status effects (e.g. poison); may be null when disabled. */
     private EffectEngine effectEngine;
+    /** Optional world clock used to pick day/night respawn delays; may be null when disabled. */
+    private WorldClock worldClock;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -119,6 +123,20 @@ public class MobRegistry implements Tickable {
      */
     public void setPartyService(PartyService partyService) {
         this.partyService = partyService;
+    }
+
+    /**
+     * Registers the world clock consulted to pick day/night respawn delays
+     * (see {@link MobTemplate#respawnTicks(TimeOfDay)}).
+     *
+     * @param worldClock the world clock; may be null to disable the day/night cycle
+     */
+    public void setWorldClock(WorldClock worldClock) {
+        this.worldClock = worldClock;
+    }
+
+    private TimeOfDay currentTimeOfDay() {
+        return worldClock != null ? worldClock.timeOfDay() : TimeOfDay.DAY;
     }
 
     /**
@@ -269,7 +287,7 @@ public class MobRegistry implements Tickable {
                 messages.add(GameMessage.toSource(
                     "A " + dropped.getName() + " drops to the ground."));
             }
-            mob.scheduleRespawn();
+            mob.scheduleRespawn(currentTimeOfDay());
             endCombatForMob(mob);
 
             // Determine XP share: split equally among party members in the same room.
@@ -547,7 +565,7 @@ public class MobRegistry implements Tickable {
                     messages.add(GameMessage.toSource(
                         "A " + dropped.getName() + " drops to the ground."));
                 }
-                mob.scheduleRespawn();
+                mob.scheduleRespawn(currentTimeOfDay());
                 endCombatForMob(mob);
 
                 // Determine XP share: split equally among party members in the same room.

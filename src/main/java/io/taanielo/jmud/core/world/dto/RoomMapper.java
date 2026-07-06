@@ -29,14 +29,17 @@ public class RoomMapper {
         Map<String, String> lockedExits = new HashMap<>();
         room.getLockedExits().forEach((dir, keyId) -> lockedExits.put(dir.name().toLowerCase(), keyId.getValue()));
         Integer minLevel = room.getMinLevel();
+        String nightDescription = room.getNightDescription();
         int version;
-        if (minLevel != null) {
+        if (nightDescription != null) {
+            version = SchemaVersions.V5;
+        } else if (minLevel != null) {
             version = SchemaVersions.V4;
         } else {
             version = lockedExits.isEmpty() ? SchemaVersions.V2 : SchemaVersions.V3;
         }
         return new RoomDto(version, room.getId().getValue(), room.getName(), room.getDescription(), itemIds, exits,
-            lockedExits.isEmpty() ? null : lockedExits, minLevel);
+            lockedExits.isEmpty() ? null : lockedExits, minLevel, nightDescription);
     }
 
     /**
@@ -69,7 +72,8 @@ public class RoomMapper {
             items,
             List.of(),
             lockedExits,
-            dto.minLevel()
+            dto.minLevel(),
+            dto.nightDescription()
         );
     }
 }

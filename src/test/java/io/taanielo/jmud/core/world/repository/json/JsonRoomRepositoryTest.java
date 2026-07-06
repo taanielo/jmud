@@ -102,6 +102,34 @@ class JsonRoomRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsRoomWithNightDescription() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Room room = new Room(
+            RoomId.of("moonlit-glade"),
+            "Moonlit Glade",
+            "Sunlight dapples the grass.",
+            Map.of(),
+            List.of(),
+            List.of(),
+            Map.of(),
+            null,
+            "Moonlight dapples the grass."
+        );
+        roomRepository.save(room);
+
+        // Use a fresh repository instance so the read goes through the JSON file, not the cache.
+        JsonRoomRepository reloadedRepository = new JsonRoomRepository(itemRepository, dataRoot);
+        Optional<Room> loaded = reloadedRepository.findById(RoomId.of("moonlit-glade"));
+
+        assertTrue(loaded.isPresent());
+        assertEquals("Moonlight dapples the grass.", loaded.get().getNightDescription());
+        assertEquals("Sunlight dapples the grass.", loaded.get().getDescription());
+    }
+
+    @Test
     void loadsLegacyRoomWithoutMinLevelAsNull() throws Exception {
         Path dataRoot = tempDir.resolve("data");
         Path roomsDir = dataRoot.resolve("rooms");
