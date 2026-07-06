@@ -59,6 +59,7 @@ class MobRegistryKillTrackingTest {
             "Rat",
             maxHp,
             null,
+            null,
             false,
             List.of(),
             ROOM_ID,

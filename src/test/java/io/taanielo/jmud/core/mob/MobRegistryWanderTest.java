@@ -55,6 +55,7 @@ class MobRegistryWanderTest {
             "Giant Rat",
             20,
             null,
+            null,
             false,
             List.of(),
             SPAWN_ROOM,

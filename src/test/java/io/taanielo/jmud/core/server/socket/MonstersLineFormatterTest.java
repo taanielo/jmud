@@ -21,6 +21,7 @@ class MonstersLineFormatterTest {
             name,
             10,
             null,
+            null,
             false,
             List.of(),
             RoomId.of("test-room"),

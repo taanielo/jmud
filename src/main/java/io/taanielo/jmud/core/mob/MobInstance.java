@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import io.taanielo.jmud.core.authentication.Username;
@@ -28,6 +29,12 @@ public class MobInstance {
     private final AtomicInteger hp;
     private final AtomicInteger respawnTicksRemaining = new AtomicInteger(0);
     private final Set<Username> engagedPlayers = ConcurrentHashMap.newKeySet();
+    /**
+     * Whether this mob has already used its {@link MobTemplate#specialAttackId()} in the
+     * current combat encounter. Reset whenever the encounter ends (see {@link #disengage(Username)}
+     * and {@link #respawn()}).
+     */
+    private final AtomicBoolean specialAbilityUsed = new AtomicBoolean(false);
     /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
     private volatile RoomId currentRoomId;
 
@@ -93,10 +100,31 @@ public class MobInstance {
 
     public void disengage(Username player) {
         engagedPlayers.remove(player);
+        if (engagedPlayers.isEmpty()) {
+            specialAbilityUsed.set(false);
+        }
     }
 
     public Set<Username> engagedPlayers() {
         return Collections.unmodifiableSet(engagedPlayers);
+    }
+
+    /**
+     * Returns whether this mob has already used its special ability
+     * (see {@link MobTemplate#specialAttackId()}) in the current combat encounter.
+     *
+     * @return {@code true} if the special ability has already been used since the encounter began
+     */
+    public boolean specialAbilityUsed() {
+        return specialAbilityUsed.get();
+    }
+
+    /**
+     * Marks the special ability as used for the current combat encounter.
+     * Must only be called from the tick thread.
+     */
+    public void markSpecialAbilityUsed() {
+        specialAbilityUsed.set(true);
     }
 
     /** Resets the mob to full HP and returns it to its spawn room, ready to act again. */
@@ -104,6 +132,7 @@ public class MobInstance {
         hp.set(template.maxHp());
         respawnTicksRemaining.set(0);
         engagedPlayers.clear();
+        specialAbilityUsed.set(false);
         currentRoomId = template.spawnRoomId();
     }
 }

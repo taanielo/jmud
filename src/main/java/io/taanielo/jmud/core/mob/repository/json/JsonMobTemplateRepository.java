@@ -9,15 +9,15 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.mob.MobTemplate;
 import io.taanielo.jmud.core.mob.MobTemplateRepository;
 import io.taanielo.jmud.core.mob.dto.MobTemplateDto;
 import io.taanielo.jmud.core.mob.dto.MobTemplateDtoMapper;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 public class JsonMobTemplateRepository implements MobTemplateRepository {
 
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
     private static final String MOBS_DIR = "mobs";
 
     private final ObjectMapper objectMapper;

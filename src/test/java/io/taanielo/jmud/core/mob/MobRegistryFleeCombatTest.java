@@ -52,6 +52,7 @@ class MobRegistryFleeCombatTest {
             "Goblin",
             mobHp,
             null,
+            null,
             false,
             List.of(),
             ROOM_ID,

@@ -14,6 +14,12 @@ public record MobTemplate(
     String name,
     int maxHp,
     AttackId attackId,
+    /**
+     * Optional reference to a rarer, harder-hitting attack (e.g. a boss's "troll smash")
+     * that mob AI may use at most once per combat encounter instead of {@link #attackId()}.
+     * {@code null} means this mob has no special ability.
+     */
+    AttackId specialAttackId,
     boolean aggressive,
     List<LootEntry> lootTable,
     RoomId spawnRoomId,

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "crypt-warden",
   "name": "Crypt Warden",
   "max_hp": 40,

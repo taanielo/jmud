@@ -16,6 +16,7 @@ public class MobTemplateDtoMapper {
     public MobTemplate toDomain(MobTemplateDto dto) {
         Objects.requireNonNull(dto, "MobTemplateDto is required");
         AttackId attackId = dto.attackId() != null ? AttackId.of(dto.attackId()) : null;
+        AttackId specialAttackId = dto.specialAttackId() != null ? AttackId.of(dto.specialAttackId()) : null;
         List<LootEntry> loot = dto.loot() == null ? List.of() : dto.loot().stream()
             .map(e -> new LootEntry(ItemId.of(e.itemId()), e.dropChance()))
             .toList();
@@ -31,6 +32,7 @@ public class MobTemplateDtoMapper {
             dto.name(),
             dto.maxHp(),
             attackId,
+            specialAttackId,
             aggressive,
             loot,
             RoomId.of(dto.spawnRoomId()),
