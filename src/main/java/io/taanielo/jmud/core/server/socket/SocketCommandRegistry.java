@@ -47,6 +47,7 @@ public class SocketCommandRegistry {
         new MoveCommand(registry);
         new GetCommand(registry);
         new DropCommand(registry);
+        new GiveCommand(registry, roomService);
         new QuaffCommand(registry);
         new ReadCommand(registry);
         new WriteCommand(registry);

@@ -314,6 +314,63 @@ public class GameActionService {
     }
 
     /**
+     * Gives an item from the source player's inventory to another player in the same room.
+     *
+     * <p>The item is removed from the source's inventory (unequipping it first if worn, matching
+     * {@link #dropItem}'s behavior) and added to the recipient's inventory. Fails without any
+     * state change if the item is not in the source's inventory, or if giving it would leave the
+     * recipient {@linkplain EncumbranceService#isOverburdened(Player) overburdened}.
+     *
+     * @param source the player giving the item
+     * @param target the recipient player, already confirmed to be online and in the same room
+     * @param itemInput the item name or id to give
+     * @return result with updated source and target inventories
+     */
+    public GameActionResult giveItem(Player source, Player target, String itemInput) {
+        if (target == null) {
+            return GameActionResult.error("That player is not here.");
+        }
+        String normalized = itemInput == null ? "" : itemInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Give what?");
+        }
+        if (target.getUsername().equals(source.getUsername())) {
+            return GameActionResult.error("You cannot give an item to yourself.");
+        }
+        Item item = findInventoryItem(source, normalized);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        Player updatedTarget = target.addItem(item);
+        if (encumbranceService.isOverburdened(updatedTarget)) {
+            return GameActionResult.error(target.getUsername().getValue() + " cannot carry any more.");
+        }
+        PlayerEquipment equipment = source.getEquipment();
+        if (equipment.isEquipped(item.getId())) {
+            EquipmentSlot slot = equipment.equippedSlot(item.getId());
+            if (slot != null) {
+                equipment = equipment.unequip(slot);
+            }
+        }
+        Player updatedSource = source.removeItem(item).withEquipment(equipment);
+
+        String targetName = target.getUsername().getValue();
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You give " + item.getName() + " to " + targetName + "."));
+        messages.add(GameMessage.toPlayer(
+            target.getUsername(),
+            source.getUsername().getValue() + " gives you " + item.getName() + "."
+        ));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            target.getUsername(),
+            source.getUsername().getValue() + " gives " + item.getName() + " to " + targetName + "."
+        ));
+
+        return new GameActionResult(updatedSource, updatedTarget, messages);
+    }
+
+    /**
      * Consumes an item from inventory, applying its hp stat and any item effects to the player.
      *
      * <p>A positive {@code hp} stat in {@link io.taanielo.jmud.core.world.ItemAttributes} heals

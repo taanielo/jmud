@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.action;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -256,6 +257,113 @@ class GameActionServiceTest {
                 && message.text().equals("attacker drops Torch.")
         ));
         assertTrue(result.updatedSource().getInventory().isEmpty());
+    }
+
+    @Test
+    void giveItemReturnsErrorWhenTargetIsNull() {
+        GameActionResult result = service.giveItem(attacker, null, "torch");
+        assertEquals("That player is not here.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void giveItemReturnsErrorOnEmptyInput() {
+        GameActionResult result = service.giveItem(attacker, target, "");
+        assertEquals("Give what?", result.messages().getFirst().text());
+    }
+
+    @Test
+    void giveItemReturnsErrorWhenNotCarrying() {
+        GameActionResult result = service.giveItem(attacker, target, "torch");
+        assertEquals("You aren't carrying that.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void giveItemReturnsErrorOnSelfTarget() {
+        Item torch = torchItem();
+        Player withItem = attacker.addItem(torch);
+
+        GameActionResult result = service.giveItem(withItem, withItem, "torch");
+        assertEquals("You cannot give an item to yourself.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void giveItemTransfersItemBetweenPlayers() {
+        Item torch = torchItem();
+        Player withItem = attacker.addItem(torch);
+
+        GameActionResult result = service.giveItem(withItem, target, "torch");
+
+        assertEquals("You give Torch to target.", result.messages().getFirst().text());
+        assertTrue(result.messages().stream().anyMatch(message ->
+            message.type() == GameMessage.Type.PLAYER
+                && message.text().equals("attacker gives you Torch.")
+        ));
+        assertTrue(result.messages().stream().anyMatch(message ->
+            message.type() == GameMessage.Type.ROOM
+                && message.text().equals("attacker gives Torch to target.")
+        ));
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+        assertTrue(result.updatedTarget().getInventory().stream()
+            .anyMatch(i -> i.getId().equals(ItemId.of("torch"))));
+    }
+
+    @Test
+    void giveItemUnequipsWornItemBeforeGiving() {
+        Item torch = torchItem();
+        Player withItem = attacker.addItem(torch);
+        Player equipped = withItem.withEquipment(
+            withItem.getEquipment().equip(io.taanielo.jmud.core.world.EquipmentSlot.WEAPON, torch.getId())
+        );
+        assertTrue(equipped.getEquipment().isEquipped(torch.getId()));
+
+        GameActionResult result = service.giveItem(equipped, target, "torch");
+
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+        assertFalse(result.updatedSource().getEquipment().isEquipped(torch.getId()));
+    }
+
+    @Test
+    void giveItemFailsWhenRecipientWouldBeOverburdened() {
+        Item torch = torchItem();
+        Player withItem = attacker.addItem(torch);
+        service = new GameActionService(
+            testAbilityRegistry(), new BasicAbilityCostResolver(),
+            new EffectEngine(new StubEffectRepository(Map.of())),
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            new EncumbranceService(new StubRaceRepository(), new StubClassRepository()) {
+                @Override
+                public boolean isOverburdened(Player player) {
+                    return player.getUsername().equals(target.getUsername());
+                }
+            }
+        );
+
+        GameActionResult result = service.giveItem(withItem, target, "torch");
+
+        assertEquals("target cannot carry any more.", result.messages().getFirst().text());
+        assertTrue(withItem.getInventory().stream().anyMatch(i -> i.getId().equals(ItemId.of("torch"))));
+    }
+
+    private static Item torchItem() {
+        return new Item(
+            ItemId.of("torch"),
+            "Torch",
+            "A warm torch.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            io.taanielo.jmud.core.world.EquipmentSlot.WEAPON,
+            1,
+            5,
+            null
+        );
     }
 
     @Test

@@ -126,6 +126,23 @@ public interface SocketCommandContext extends Client {
     void dropItem(String args);
 
     /**
+     * Gives an item from the player's inventory to an already-resolved target player.
+     *
+     * <p>The caller ({@link GiveCommand}) is responsible for confirming the target is online
+     * and currently in the same room before calling this method; this method resolves the
+     * target's live in-session state, hands off to {@code GameActionService.giveItem}, and
+     * delivers the resulting messages/state updates. Fails with an explanatory message if the
+     * named item is not in the giver's inventory, or if the recipient would become overburdened.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param targetUsername the recipient, already confirmed online and in the same room
+     * @param itemInput the item name or id to give
+     */
+    default void giveItem(Username targetUsername, String itemInput) {}
+
+    /**
      * Executes a quaff command with the provided arguments.
      */
     void quaffItem(String args);

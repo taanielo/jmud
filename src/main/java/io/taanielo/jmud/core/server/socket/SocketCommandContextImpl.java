@@ -846,6 +846,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void giveItem(Username targetUsername, String itemInput) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to give items.");
+            return;
+        }
+        cancelRestIfActive();
+        Player source = session.getPlayer();
+        Player target = findOnlinePlayer(targetUsername);
+        if (target == null) {
+            writeLineWithPrompt(targetUsername.getValue() + " is not here.");
+            return;
+        }
+
+        GameActionResult result = gameActionService.giveItem(source, target, itemInput);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    /**
+     * Looks up the live in-session {@link Player} for a connected username, searching the
+     * client pool rather than the repository so the caller sees the most current state.
+     *
+     * @param username the username to look up
+     * @return the connected player, or {@code null} if no client is authenticated as that user
+     */
+    private @Nullable Player findOnlinePlayer(Username username) {
+        for (Client c : clientPool.clients()) {
+            if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
+                return sc.session().getPlayer();
+            }
+        }
+        return null;
+    }
+
+    @Override
     public void quaffItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to quaff.");
