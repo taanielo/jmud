@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "sewers-entrance",
+  "name": "Sewers Entrance",
+  "description": "A slick stone stairway descends from the crypts into a dripping, foul-smelling tunnel. Rusted grates line the walls, and the sound of trickling water echoes from somewhere below.",
+  "item_ids": [],
+  "exits": {
+    "up": "warden-chamber",
+    "east": "sewers-tunnel"
+  }
+}

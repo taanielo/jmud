@@ -5,6 +5,7 @@
   "description": "A vaulted burial chamber dominated by a stone sarcophagus in its center. Chains hang from the ceiling, and the air is thick with a cold, unnatural chill. Something powerful guards this place.",
   "item_ids": [],
   "exits": {
-    "north": "crypt-corridor"
+    "north": "crypt-corridor",
+    "down": "sewers-entrance"
   }
 }

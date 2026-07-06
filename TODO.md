@@ -69,7 +69,7 @@
 - [x] Add CURE ability/potion to remove poison and other negative status effects
 - [x] Add mob special ability: boss mobs can use a defined ability once per combat (e.g. troll smash)
 - [x] Add WRITE and READ commands with scroll items that teach a new ability on use
-- [ ] Add The Sewers zone with slimes and plague rats targeting mid-range players
+- [x] Add The Sewers zone with slimes and plague rats targeting mid-range players
 - [ ] Add The Ruins zone with bandits and a bandit captain boss for outdoor wilderness content
 - [ ] Add zone-level entry restriction: show a warning when a player enters a zone above their level
 - [ ] Add SCORE-visible kill counter and a global high-score WHO listing sorted by total kills

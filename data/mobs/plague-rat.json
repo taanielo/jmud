@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "id": "plague-rat",
+  "name": "Plague Rat",
+  "max_hp": 38,
+  "attack_id": "attack.plague-rat",
+  "aggressive": true,
+  "spawn_room_id": "sewers-cistern",
+  "max_count": 2,
+  "respawn_ticks": 30,
+  "loot": [
+    { "item_id": "poisonous-potion", "drop_chance": 0.35 },
+    { "item_id": "mana-potion", "drop_chance": 0.2 }
+  ],
+  "gold_drop": {
+    "min": 8,
+    "max": 20
+  }
+}
