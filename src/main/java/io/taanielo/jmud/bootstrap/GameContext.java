@@ -41,6 +41,7 @@ import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.messaging.GossipHistory;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.mob.MobRegistry;
@@ -109,7 +110,8 @@ public record GameContext(
     QuestRepository questRepository,
     PartyService partyService,
     BankService bankService,
-    MessageBroadcaster messageBroadcaster
+    MessageBroadcaster messageBroadcaster,
+    GossipHistory gossipHistory
 ) {
 
     /**
@@ -198,6 +200,7 @@ public record GameContext(
         }
 
         MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
+        GossipHistory gossipHistory = new GossipHistory();
 
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
@@ -230,7 +233,8 @@ public record GameContext(
             questRepository,
             partyService,
             bankService,
-            messageBroadcaster
+            messageBroadcaster,
+            gossipHistory
         );
     }
 

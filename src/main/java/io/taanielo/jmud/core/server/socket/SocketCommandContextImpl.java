@@ -988,9 +988,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     @Override
     public void gossip(String senderName, String message) {
+        String line = senderName + " gossips: " + message;
+        context.gossipHistory().record(line);
         // Skip the sender — they already see "You gossip: ..." from GossipCommand.
         context.messageBroadcaster().broadcastGlobal(
-            new PlainTextMessage(senderName + " gossips: " + message),
+            new PlainTextMessage(line),
             Set.of(Username.of(senderName))
         );
     }
@@ -1925,6 +1927,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         session.registerHealing(this::applyHealingUpdate);
         // Enqueue death-state check
         session.enqueueCommand(session::handleDeathState);
+        // Show recent gossip history exactly once, before any other post-login output.
+        sendGossipHistory();
         // Start character creation for brand-new players; dispatch look for returning ones
         if (isNew && context.characterCreationService() != null) {
             client.beginCharacterCreation();
@@ -1932,5 +1936,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             String correlationId = auditService.newCorrelationId();
             session.enqueueCommand(() -> dispatcher.dispatch(this, "look", correlationId));
         }
+    }
+
+    /**
+     * Shows the server-wide {@link io.taanielo.jmud.core.messaging.GossipHistory} to the
+     * connecting player exactly once, oldest-first, before any other post-login output.
+     * Does nothing when the history is empty.
+     */
+    private void sendGossipHistory() {
+        connection.writeLines(context.gossipHistory().renderForLogin());
     }
 }
