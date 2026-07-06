@@ -66,7 +66,7 @@
 - [x] Add armour items (chest, legs, head slots) with AC value reducing incoming damage in combat engine
 - [x] Add SCORE prompt stat: show current AC derived from equipped armour
 - [x] Add poison status effect applied by certain mob attacks (damage-over-time ticks)
-- [ ] Add CURE ability/potion to remove poison and other negative status effects
+- [x] Add CURE ability/potion to remove poison and other negative status effects
 - [ ] Add mob special ability: boss mobs can use a defined ability once per combat (e.g. troll smash)
 - [ ] Add WRITE and READ commands with scroll items that teach a new ability on use
 - [ ] Add The Sewers zone with slimes and plague rats targeting mid-range players

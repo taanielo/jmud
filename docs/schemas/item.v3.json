@@ -64,6 +64,11 @@
           "duration_ticks": {
             "type": "integer",
             "minimum": 0
+          },
+          "op": {
+            "type": "string",
+            "enum": ["APPLY", "REMOVE"],
+            "description": "Whether the item applies the effect (default) or removes it (a cure)."
           }
         }
       }
