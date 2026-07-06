@@ -47,6 +47,39 @@ class RoomServiceTest {
     }
 
     @Test
+    void movePreservesDestinationRoomMinLevel() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        Room roomA = new Room(
+            roomAId,
+            "Room A",
+            "A quiet room.",
+            Map.of(Direction.NORTH, roomBId),
+            List.of(),
+            List.of()
+        );
+        Room roomB = new Room(
+            roomBId,
+            "Room B",
+            "A dangerous room.",
+            Map.of(Direction.SOUTH, roomAId),
+            List.of(),
+            List.of(),
+            Map.of(),
+            5
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+        RoomService.MoveResult moveResult = service.move(player, Direction.NORTH);
+
+        assertTrue(moveResult.moved());
+        assertTrue(moveResult.room() != null && moveResult.room().exceedsLevel(4));
+        assertFalse(moveResult.room() != null && moveResult.room().exceedsLevel(5));
+    }
+
+    @Test
     void rejectsInvalidMove() {
         RoomId roomAId = RoomId.of("a");
         Room roomA = new Room(

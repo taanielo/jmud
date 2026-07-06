@@ -254,7 +254,8 @@ public class RoomService {
             room.getExits(),
             items,
             occupants,
-            room.getLockedExits()
+            room.getLockedExits(),
+            room.getMinLevel()
         );
     }
 
@@ -283,7 +284,8 @@ public class RoomService {
             room.getExits(),
             nextItems,
             room.getOccupants(),
-            room.getLockedExits()
+            room.getLockedExits(),
+            room.getMinLevel()
         );
         try {
             roomRepository.save(updated);
