@@ -845,6 +845,30 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void readItem(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to read.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.readItem(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void writeItem(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to write.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.writeItem(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void equipItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to equip items.");

@@ -6,14 +6,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.ability.Ability;
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityEffectListener;
 import io.taanielo.jmud.core.ability.AbilityEngine;
+import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityMessageSink;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
@@ -34,6 +38,7 @@ import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
@@ -66,6 +71,7 @@ public class GameActionService {
      */
     private final Predicate<Player> inCombatCheck;
     private final MessageEmitter messageEmitter = new MessageEmitter();
+    private final AtomicLong scrollCounter = new AtomicLong();
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -387,6 +393,132 @@ public class GameActionService {
         messages.addAll(messageEmitter.emit(item.getMessages(), MessagePhase.QUAFF, context));
         messages.addAll(effectSink.collected());
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Reads a scroll from inventory, permanently teaching the player the ability it references.
+     *
+     * <p>The scroll is consumed (removed from inventory) on success. Fails with a clear message
+     * if the named item teaches no ability, if the referenced ability no longer exists in the
+     * {@link AbilityRegistry}, or if the player already knows the ability.
+     *
+     * @param source the player reading the scroll
+     * @param itemInput the item name or id to read
+     * @return result with the updated learned-abilities list and the scroll removed
+     */
+    public GameActionResult readItem(Player source, String itemInput) {
+        String normalized = itemInput == null ? "" : itemInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Read what?");
+        }
+        Item item = findInventoryItem(source, normalized);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        AbilityId abilityId = item.getTeachesAbilityRef();
+        if (abilityId == null) {
+            return GameActionResult.error("There is nothing to learn from that.");
+        }
+        if (source.getLearnedAbilities().contains(abilityId)) {
+            return GameActionResult.error("You already know that ability.");
+        }
+        Optional<Ability> ability = abilityRegistry.findById(abilityId);
+        if (ability.isEmpty()) {
+            return GameActionResult.error("That scroll's magic has faded.");
+        }
+        List<AbilityId> learned = new ArrayList<>(source.getLearnedAbilities());
+        learned.add(abilityId);
+        Player updated = source.withLearnedAbilities(learned).removeItem(item);
+        List<GameMessage> messages = new ArrayList<>();
+        MessageContext context = new MessageContext(
+            source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            item.getName(),
+            null,
+            ability.get().name(),
+            null
+        );
+        List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), MessagePhase.READ, context);
+        if (emitted.isEmpty()) {
+            messages.add(GameMessage.toSource(
+                "You read " + item.getName() + " and learn " + ability.get().name() + "."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(),
+                null,
+                source.getUsername().getValue() + " reads " + item.getName() + "."
+            ));
+        } else {
+            messages.addAll(emitted);
+        }
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Inscribes a scroll for a known ability, adding the newly written scroll to the player's
+     * inventory. The scroll is an ephemeral item (not persisted to {@code data/items/}),
+     * analogous to how corpses are created dynamically by {@link RoomService}.
+     *
+     * @param source the player writing the scroll
+     * @param abilityInput the name of an ability the player already knows
+     * @return result with the new scroll added to the player's inventory
+     */
+    public GameActionResult writeItem(Player source, String abilityInput) {
+        String normalized = abilityInput == null ? "" : abilityInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Write what?");
+        }
+        Optional<AbilityMatch> match = abilityRegistry.findBestMatch(normalized, source.getLearnedAbilities());
+        if (match.isEmpty()) {
+            return GameActionResult.error("You don't know that ability.");
+        }
+        Ability ability = match.get().ability();
+        Item scroll = createScroll(ability);
+        Player updated = source.addItem(scroll);
+        List<GameMessage> messages = new ArrayList<>();
+        MessageContext context = new MessageContext(
+            source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            scroll.getName(),
+            null,
+            ability.name(),
+            null
+        );
+        List<GameMessage> emitted = messageEmitter.emit(scroll.getMessages(), MessagePhase.WRITE, context);
+        if (emitted.isEmpty()) {
+            messages.add(GameMessage.toSource("You write " + scroll.getName() + "."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(),
+                null,
+                source.getUsername().getValue() + " writes " + scroll.getName() + "."
+            ));
+        } else {
+            messages.addAll(emitted);
+        }
+        return new GameActionResult(updated, null, messages);
+    }
+
+    private Item createScroll(Ability ability) {
+        String id = "scroll-" + ability.id().getValue().toLowerCase(Locale.ROOT).replace('.', '-')
+            + "-" + scrollCounter.incrementAndGet();
+        String name = "a scroll of " + ability.name();
+        String description = "A hastily inscribed scroll teaching the " + ability.name() + " ability.";
+        return new Item(
+            ItemId.of(id),
+            name,
+            description,
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            0,
+            null,
+            ability.id()
+        );
     }
 
     /**

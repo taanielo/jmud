@@ -631,6 +631,140 @@ class GameActionServiceTest {
     }
 
     @Test
+    void readItemReturnsErrorOnEmptyInput() {
+        GameActionResult result = service.readItem(attacker, "");
+        assertEquals("Read what?", result.messages().getFirst().text());
+    }
+
+    @Test
+    void readItemReturnsErrorWhenNotCarrying() {
+        GameActionResult result = service.readItem(attacker, "scroll");
+        assertEquals("You aren't carrying that.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void readItemReturnsErrorWhenItemTeachesNoAbility() {
+        Item plainScroll = new Item(
+            ItemId.of("blank-scroll"),
+            "Blank Scroll",
+            "An unwritten scroll.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            1,
+            null
+        );
+        Player withItem = attacker.addItem(plainScroll);
+
+        GameActionResult result = service.readItem(withItem, "blank-scroll");
+        assertEquals("There is nothing to learn from that.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void readItemLearnsAbilityAndConsumesScroll() {
+        AbilityRegistry registry = testAbilityRegistryWithHeal();
+        service = new GameActionService(
+            registry, new BasicAbilityCostResolver(),
+            new EffectEngine(new StubEffectRepository(Map.of())),
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService()
+        );
+        AbilityId healId = AbilityId.of("spell.heal");
+        Item scroll = new Item(
+            ItemId.of("scroll-of-healing"),
+            "Scroll of Healing",
+            "A scroll teaching healing.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            1,
+            null,
+            healId
+        );
+        Player withItem = attacker.addItem(scroll);
+
+        GameActionResult result = service.readItem(withItem, "scroll of healing");
+
+        assertTrue(result.updatedSource().getLearnedAbilities().contains(healId));
+        assertTrue(result.updatedSource().getInventory().isEmpty());
+        assertEquals(
+            "You read Scroll of Healing and learn heal.",
+            result.messages().getFirst().text()
+        );
+    }
+
+    @Test
+    void readItemReturnsErrorWhenAbilityAlreadyLearned() {
+        AbilityRegistry registry = testAbilityRegistryWithHeal();
+        service = new GameActionService(
+            registry, new BasicAbilityCostResolver(),
+            new EffectEngine(new StubEffectRepository(Map.of())),
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService()
+        );
+        AbilityId healId = AbilityId.of("spell.heal");
+        Item scroll = new Item(
+            ItemId.of("scroll-of-healing"),
+            "Scroll of Healing",
+            "A scroll teaching healing.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            1,
+            null,
+            healId
+        );
+        Player alreadyKnows = attacker.withLearnedAbilities(List.of(healId)).addItem(scroll);
+
+        GameActionResult result = service.readItem(alreadyKnows, "scroll of healing");
+        assertEquals("You already know that ability.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void writeItemReturnsErrorOnEmptyInput() {
+        GameActionResult result = service.writeItem(attacker, "");
+        assertEquals("Write what?", result.messages().getFirst().text());
+    }
+
+    @Test
+    void writeItemReturnsErrorWhenAbilityUnknown() {
+        GameActionResult result = service.writeItem(attacker, "bash");
+        assertEquals("You don't know that ability.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void writeItemCreatesScrollForKnownAbility() {
+        Player withAbility = attacker.withLearnedAbilities(List.of(AbilityId.of("skill.bash")));
+
+        GameActionResult result = service.writeItem(withAbility, "bash");
+
+        assertEquals(1, result.updatedSource().getInventory().size());
+        Item scroll = result.updatedSource().getInventory().getFirst();
+        assertEquals(AbilityId.of("skill.bash"), scroll.getTeachesAbilityRef());
+        assertTrue(result.messages().getFirst().text().startsWith("You write"));
+    }
+
+    @Test
     void resolveDeathIfNeededDoesNothingWhenAlive() {
         GameActionResult result = service.resolveDeathIfNeeded(target, attacker);
 
@@ -690,6 +824,17 @@ class GameActionServiceTest {
             List.of()
         );
         return new AbilityRegistry(List.of(bash));
+    }
+
+    private AbilityRegistry testAbilityRegistryWithHeal() {
+        Ability heal = new AbilityDefinition(
+            AbilityId.of("spell.heal"), "heal", AbilityType.SPELL, 1,
+            new AbilityCost(4, 0), new AbilityCooldown(3),
+            AbilityTargeting.BENEFICIAL, List.of(),
+            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.INCREASE, 6, null)),
+            List.of()
+        );
+        return new AbilityRegistry(List.of(heal));
     }
 
     private static class TestCooldowns implements AbilityCooldownTracker {

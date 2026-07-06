@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.world.dto;
 import java.util.List;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
@@ -23,7 +24,7 @@ public class ItemMapper {
             .map(effect -> new ItemEffectDto(effect.id().getValue(), effect.durationTicks(), effect.operation()))
             .toList();
         return new ItemDto(
-            SchemaVersions.V3,
+            SchemaVersions.V4,
             item.getId().getValue(),
             item.getName(),
             item.getDescription(),
@@ -33,7 +34,8 @@ public class ItemMapper {
             item.getEquipSlot() == null ? null : item.getEquipSlot().id(),
             item.getWeight(),
             item.getValue(),
-            item.getAttackRef() == null ? null : item.getAttackRef().getValue()
+            item.getAttackRef() == null ? null : item.getAttackRef().getValue(),
+            item.getTeachesAbilityRef() == null ? null : item.getTeachesAbilityRef().getValue()
         );
     }
 
@@ -51,6 +53,7 @@ public class ItemMapper {
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         EquipmentSlot slot = EquipmentSlot.fromId(dto.equipSlot());
         AttackId attackRef = dto.attackRef() != null ? AttackId.of(dto.attackRef()) : null;
+        AbilityId teachesAbilityRef = dto.teachesAbilityRef() != null ? AbilityId.of(dto.teachesAbilityRef()) : null;
         return new Item(
             ItemId.of(dto.id()),
             dto.name(),
@@ -61,7 +64,8 @@ public class ItemMapper {
             slot,
             dto.weight(),
             dto.value(),
-            attackRef
+            attackRef,
+            teachesAbilityRef
         );
     }
 }

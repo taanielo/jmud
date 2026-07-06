@@ -11,11 +11,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.audit.AuditService;
+import io.taanielo.jmud.core.audit.NoOpAuditSink;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
-import io.taanielo.jmud.core.audit.AuditService;
-import io.taanielo.jmud.core.audit.NoOpAuditSink;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.server.Client;
@@ -193,6 +193,14 @@ class SocketCommandDispatcherTest {
 
         @Override
         public void quaffItem(String args) {
+        }
+
+        @Override
+        public void readItem(String args) {
+        }
+
+        @Override
+        public void writeItem(String args) {
         }
 
         @Override

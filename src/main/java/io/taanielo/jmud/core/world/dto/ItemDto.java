@@ -15,6 +15,7 @@ public record ItemDto(
     String equipSlot,
     int weight,
     int value,
-    String attackRef
+    String attackRef,
+    String teachesAbilityRef
 ) {
 }

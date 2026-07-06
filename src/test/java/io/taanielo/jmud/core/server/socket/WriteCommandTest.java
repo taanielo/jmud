@@ -18,33 +18,33 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
 
 /**
- * Unit tests for {@link QuaffCommand}.
+ * Unit tests for {@link WriteCommand}.
  */
-class QuaffCommandTest {
+class WriteCommandTest {
 
-    private QuaffCommand command;
+    private WriteCommand command;
 
     @BeforeEach
     void setUp() {
-        command = new QuaffCommand(new SocketCommandRegistry());
+        command = new WriteCommand(new SocketCommandRegistry());
     }
 
     @Test
-    void matchesQuaffToken() {
-        assertTrue(command.match("QUAFF potion").isPresent());
-        assertTrue(command.match("quaff potion").isPresent());
+    void matchesWriteToken() {
+        assertTrue(command.match("WRITE heal").isPresent());
+        assertTrue(command.match("write heal").isPresent());
     }
 
     @Test
-    void matchesQuAlias() {
-        assertTrue(command.match("QU potion").isPresent());
-        assertTrue(command.match("qu potion").isPresent());
+    void matchesWriAlias() {
+        assertTrue(command.match("WRI heal").isPresent());
+        assertTrue(command.match("wri heal").isPresent());
     }
 
     @Test
     void doesNotMatchOtherTokens() {
-        assertFalse(command.match("get potion").isPresent());
-        assertFalse(command.match("drop potion").isPresent());
+        assertFalse(command.match("read scroll").isPresent());
+        assertFalse(command.match("quaff potion").isPresent());
         assertFalse(command.match("").isPresent());
     }
 
@@ -53,23 +53,11 @@ class QuaffCommandTest {
         AtomicReference<String> captured = new AtomicReference<>();
         CapturingContext context = new CapturingContext(captured);
 
-        Optional<SocketCommandMatch> match = command.match("QUAFF health-potion");
+        Optional<SocketCommandMatch> match = command.match("WRITE heal");
         assertTrue(match.isPresent());
         match.get().execute(context);
 
-        assertEquals("health-potion", captured.get());
-    }
-
-    @Test
-    void passesArgsToContextViaAlias() {
-        AtomicReference<String> captured = new AtomicReference<>();
-        CapturingContext context = new CapturingContext(captured);
-
-        Optional<SocketCommandMatch> match = command.match("QU health-potion");
-        assertTrue(match.isPresent());
-        match.get().execute(context);
-
-        assertEquals("health-potion", captured.get());
+        assertEquals("heal", captured.get());
     }
 
     @Test
@@ -81,13 +69,13 @@ class QuaffCommandTest {
     @Test
     void hasLongDescription() {
         assertNotNull(command.longDescription());
-        assertTrue(command.longDescription().contains("QUAFF"));
-        assertTrue(command.longDescription().contains("QU"));
+        assertTrue(command.longDescription().contains("WRITE"));
+        assertTrue(command.longDescription().contains("WRI"));
     }
 
     @Test
-    void nameIsQuaff() {
-        assertEquals("quaff", command.name());
+    void nameIsWrite() {
+        assertEquals("write", command.name());
     }
 
     // --- helpers ---
@@ -99,9 +87,9 @@ class QuaffCommandTest {
             this.captured = captured;
         }
 
-        @Override public void quaffItem(String args) { captured.set(args); }
+        @Override public void writeItem(String args) { captured.set(args); }
         @Override public void readItem(String args) {}
-        @Override public void writeItem(String args) {}
+        @Override public void quaffItem(String args) {}
         @Override public boolean isAuthenticated() { return true; }
         @Override public Player getPlayer() { return null; }
         @Override public List<Client> clients() { return List.of(); }

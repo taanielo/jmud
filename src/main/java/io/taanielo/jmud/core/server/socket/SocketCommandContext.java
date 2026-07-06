@@ -3,9 +3,9 @@ package io.taanielo.jmud.core.server.socket;
 import java.util.List;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
-import io.taanielo.jmud.core.player.Player;
 
 /**
  * Command execution context for socket clients, providing safe access to actions and state.
@@ -129,6 +129,16 @@ public interface SocketCommandContext extends Client {
      * Executes a quaff command with the provided arguments.
      */
     void quaffItem(String args);
+
+    /**
+     * Executes a read command with the provided arguments.
+     */
+    void readItem(String args);
+
+    /**
+     * Executes a write command with the provided arguments.
+     */
+    void writeItem(String args);
 
     /**
      * Executes an equip command with the provided arguments.
