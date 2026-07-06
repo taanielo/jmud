@@ -1,14 +1,16 @@
 package io.taanielo.jmud.core.player;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.authentication.Username;
@@ -72,6 +74,28 @@ public class JsonPlayerRepository implements PlayerRepository {
             log.error("Failed to load player {}", username, e);
             return Optional.empty();
         }
+    }
+
+    @Override
+    public List<Player> findAll() {
+        if (!Files.exists(playersDirPath)) {
+            return List.of();
+        }
+        List<Player> players = new ArrayList<>();
+        try (var stream = Files.list(playersDirPath)) {
+            for (Path path : stream.filter(p -> p.toString().endsWith(".json")).toList()) {
+                try {
+                    Player player = objectMapper.readValue(path.toFile(), Player.class);
+                    players.add(player);
+                } catch (IOException e) {
+                    log.error("Failed to load player from {}", path, e);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to list players directory {}", playersDirPath, e);
+            return List.of();
+        }
+        return List.copyOf(players);
     }
 
     private Path getPlayerFilePath(Username username) {

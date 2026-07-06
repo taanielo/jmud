@@ -12,10 +12,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
-import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.effects.EffectId;
@@ -92,6 +92,27 @@ class JsonPlayerRepositoryTest {
         assertTrue(loaded.isPresent());
         assertEquals(0, loaded.get().getGold(),
             "Player with no gold field set should load as 0 gold");
+    }
+
+    @Test
+    void findAllReturnsEveryPersistedPlayer() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        Player alice = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1)), "%hp> ").withTotalKills(10);
+        Player bob = Player.of(User.of(Username.of("bob"), Password.hash("pw", 1)), "%hp> ").withTotalKills(3);
+
+        repository.savePlayer(alice);
+        repository.savePlayer(bob);
+
+        List<Player> all = repository.findAll();
+        assertEquals(2, all.size());
+        assertTrue(all.stream().anyMatch(p -> p.getUsername().getValue().equals("alice") && p.getTotalKills() == 10));
+        assertTrue(all.stream().anyMatch(p -> p.getUsername().getValue().equals("bob") && p.getTotalKills() == 3));
+    }
+
+    @Test
+    void findAllReturnsEmptyListWhenNoPlayersDirectoryExists() {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir.resolve("unused-root"));
+        assertEquals(List.of(), repository.findAll());
     }
 
     @Test
