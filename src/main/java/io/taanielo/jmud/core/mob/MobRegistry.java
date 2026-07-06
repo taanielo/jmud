@@ -18,9 +18,13 @@ import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
+import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.effects.EffectEngine;
+import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.LevelUpService;
@@ -59,6 +63,8 @@ public class MobRegistry implements Tickable {
     private QuestKillService questKillService;
     /** Optional party service for XP splitting; may be null when parties are disabled. */
     private PartyService partyService;
+    /** Optional effect engine used to apply on-hit status effects (e.g. poison); may be null when disabled. */
+    private EffectEngine effectEngine;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -88,6 +94,16 @@ public class MobRegistry implements Tickable {
      */
     public void setQuestKillService(QuestKillService questKillService) {
         this.questKillService = questKillService;
+    }
+
+    /**
+     * Registers the effect engine used to apply a mob attack's on-hit status effect
+     * (see {@link AttackDefinition#effectOnHit()}) to the player it hits.
+     *
+     * @param effectEngine the effect engine; may be null to disable on-hit effect application
+     */
+    public void setEffectEngine(EffectEngine effectEngine) {
+        this.effectEngine = effectEngine;
     }
 
     /**
@@ -349,7 +365,6 @@ public class MobRegistry implements Tickable {
         if (damagedPlayer.getVitals().hp() <= 0) {
             handleMobKill(mob, damagedPlayer, candidates);
         } else {
-            saveOrLog(damagedPlayer);
             List<GameMessage> messages = new ArrayList<>();
             if (firstEngagement) {
                 messages.add(GameMessage.toSource(
@@ -357,8 +372,66 @@ public class MobRegistry implements Tickable {
             }
             messages.add(GameMessage.toSource(
                 "The " + mob.template().name() + " hits you for " + damage + " damage!"));
+            applyOnHitEffect(attack, damagedPlayer, targetUsername, candidates, messages);
+            saveOrLog(damagedPlayer);
             playerEventBus.publish(targetUsername,
                 new GameActionResult(damagedPlayer, null, messages));
+        }
+    }
+
+    /**
+     * Applies a mob attack's on-hit status effect (see {@link AttackDefinition#effectOnHit()})
+     * to the player it hit, respecting the configured application chance.
+     *
+     * @param attack           the attack that just landed a hit
+     * @param target           the player hit by the attack; mutated in place with the new effect
+     * @param targetUsername   the target's username, used to route room messages
+     * @param roomOccupants     usernames of players in the mob's room, used to deliver room messages
+     * @param targetMessages    mutable list of self-facing messages to append to
+     */
+    private void applyOnHitEffect(
+        AttackDefinition attack,
+        Player target,
+        Username targetUsername,
+        List<Username> roomOccupants,
+        List<GameMessage> targetMessages
+    ) {
+        AttackEffectApplication effectApplication = attack.effectOnHit();
+        if (effectEngine == null || effectApplication == null) {
+            return;
+        }
+        int roll = ThreadLocalRandom.current().nextInt(1, 101);
+        if (roll > effectApplication.chancePercent()) {
+            return;
+        }
+        List<String> roomMessages = new ArrayList<>();
+        try {
+            effectEngine.apply(target, effectApplication.effectId(), new EffectMessageSink() {
+                @Override
+                public void sendToTarget(String message) {
+                    if (message != null && !message.isBlank()) {
+                        targetMessages.add(GameMessage.toSource(message));
+                    }
+                }
+
+                @Override
+                public void sendToRoom(String message) {
+                    if (message != null && !message.isBlank()) {
+                        roomMessages.add(message);
+                    }
+                }
+            });
+        } catch (EffectRepositoryException e) {
+            log.warn("Failed to apply on-hit effect {}: {}", effectApplication.effectId(), e.getMessage());
+            return;
+        }
+        for (String roomMessage : roomMessages) {
+            for (Username occupant : roomOccupants) {
+                if (!occupant.equals(targetUsername)) {
+                    playerEventBus.publish(occupant,
+                        new GameActionResult(null, null, List.of(GameMessage.toSource(roomMessage))));
+                }
+            }
         }
     }
 

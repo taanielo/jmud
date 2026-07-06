@@ -62,7 +62,7 @@ class WeaponTypeTest {
     @Test
     void mapperParsesBluntFromV3() {
         AttackDto dto = new AttackDto(
-            AttackSchemaVersions.V3, "attack.mace", "iron mace", 5, 10, 2, 2, 2, List.of(), "BLUNT"
+            AttackSchemaVersions.V3, "attack.mace", "iron mace", 5, 10, 2, 2, 2, List.of(), "BLUNT", null
         );
         AttackDefinition def = mapper.toDomain(dto);
         assertEquals(WeaponType.BLUNT, def.weaponType());
@@ -71,7 +71,7 @@ class WeaponTypeTest {
     @Test
     void mapperParsesPiercingFromV3() {
         AttackDto dto = new AttackDto(
-            AttackSchemaVersions.V3, "attack.dagger", "dagger", 1, 5, 8, 4, 0, List.of(), "PIERCING"
+            AttackSchemaVersions.V3, "attack.dagger", "dagger", 1, 5, 8, 4, 0, List.of(), "PIERCING", null
         );
         AttackDefinition def = mapper.toDomain(dto);
         assertEquals(WeaponType.PIERCING, def.weaponType());
@@ -80,7 +80,7 @@ class WeaponTypeTest {
     @Test
     void mapperParsesSlashingFromV3() {
         AttackDto dto = new AttackDto(
-            AttackSchemaVersions.V3, "attack.sword", "iron sword", 3, 8, 5, 1, 1, List.of(), "SLASHING"
+            AttackSchemaVersions.V3, "attack.sword", "iron sword", 3, 8, 5, 1, 1, List.of(), "SLASHING", null
         );
         AttackDefinition def = mapper.toDomain(dto);
         assertEquals(WeaponType.SLASHING, def.weaponType());
@@ -93,7 +93,7 @@ class WeaponTypeTest {
     @Test
     void mapperDefaultsToSlashingWhenWeaponTypeAbsentInV2() {
         AttackDto dto = new AttackDto(
-            AttackSchemaVersions.V2, "attack.old", "old sword", 2, 6, 3, 0, 0, List.of(), null
+            AttackSchemaVersions.V2, "attack.old", "old sword", 2, 6, 3, 0, 0, List.of(), null, null
         );
         AttackDefinition def = mapper.toDomain(dto);
         assertEquals(WeaponType.SLASHING, def.weaponType());
@@ -102,7 +102,7 @@ class WeaponTypeTest {
     @Test
     void mapperDefaultsToSlashingWhenWeaponTypeBlankInV3() {
         AttackDto dto = new AttackDto(
-            AttackSchemaVersions.V3, "attack.blank", "blank weapon", 1, 3, 0, 0, 0, List.of(), ""
+            AttackSchemaVersions.V3, "attack.blank", "blank weapon", 1, 3, 0, 0, 0, List.of(), "", null
         );
         AttackDefinition def = mapper.toDomain(dto);
         assertEquals(WeaponType.SLASHING, def.weaponType());
@@ -111,7 +111,7 @@ class WeaponTypeTest {
     @Test
     void mapperDefaultsToSlashingForUnknownWeaponType() {
         AttackDto dto = new AttackDto(
-            AttackSchemaVersions.V3, "attack.weird", "weird weapon", 1, 3, 0, 0, 0, List.of(), "UNKNOWN_TYPE"
+            AttackSchemaVersions.V3, "attack.weird", "weird weapon", 1, 3, 0, 0, 0, List.of(), "UNKNOWN_TYPE", null
         );
         AttackDefinition def = mapper.toDomain(dto);
         assertEquals(WeaponType.SLASHING, def.weaponType());

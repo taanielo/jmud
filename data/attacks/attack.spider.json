@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "attack.spider",
   "name": "spider fangs",
   "min_damage": 2,
@@ -7,6 +7,10 @@
   "hit_bonus": -5,
   "crit_bonus": 5,
   "damage_bonus": 0,
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 40
+  },
   "messages": [
     {
       "phase": "attack_hit",

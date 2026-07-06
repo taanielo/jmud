@@ -16,12 +16,16 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectDefinition;
+import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.effects.EffectModifier;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectStacking;
 import io.taanielo.jmud.core.effects.ModifierOperation;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -116,6 +120,97 @@ class CombatEngineTest {
 
         assertEquals(6, result.damage());
         assertEquals(14, result.target().getVitals().hp());
+    }
+
+    @Test
+    void appliesOnHitEffectWhenChanceRollSucceeds() throws Exception {
+        AttackId attackId = AttackId.of("attack.poisonous-bite");
+        EffectId poisonId = EffectId.of("poison");
+        EffectDefinition poison = new EffectDefinition(
+            poisonId,
+            "Poison",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(new MessageSpec(MessagePhase.APPLY, MessageChannel.SELF, "You are poisoned!"))
+        );
+        AttackDefinition attack = new AttackDefinition(
+            attackId, "poisonous bite", 2, 2, 0, 0, 0, List.of(), WeaponType.PIERCING,
+            new AttackEffectApplication(poisonId, 50)
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(poisonId, poison)));
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(10, 2, 100, 25),
+            effectEngine
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertEquals(1, result.target().effects().size());
+        assertEquals(poisonId, result.target().effects().getFirst().id());
+        assertEquals(List.of("You are poisoned!"), result.effectTargetMessages());
+    }
+
+    @Test
+    void doesNotApplyOnHitEffectWhenChanceRollFails() throws Exception {
+        AttackId attackId = AttackId.of("attack.poisonous-bite-fail");
+        EffectId poisonId = EffectId.of("poison");
+        EffectDefinition poison = new EffectDefinition(
+            poisonId, "Poison", 10, 1, EffectStacking.REFRESH, List.of(), null
+        );
+        AttackDefinition attack = new AttackDefinition(
+            attackId, "poisonous bite", 2, 2, 0, 0, 0, List.of(), WeaponType.PIERCING,
+            new AttackEffectApplication(poisonId, 50)
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(poisonId, poison)));
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(10, 2, 100, 75),
+            effectEngine
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertTrue(result.target().effects().isEmpty());
+        assertTrue(result.effectTargetMessages().isEmpty());
+    }
+
+    @Test
+    void doesNotApplyOnHitEffectWhenAttackMisses() throws Exception {
+        AttackId attackId = AttackId.of("attack.poisonous-bite-miss");
+        EffectId poisonId = EffectId.of("poison");
+        EffectDefinition poison = new EffectDefinition(
+            poisonId, "Poison", 10, 1, EffectStacking.REFRESH, List.of(), null
+        );
+        AttackDefinition attack = new AttackDefinition(
+            attackId, "poisonous bite", 2, 2, 0, 0, 0, List.of(), WeaponType.PIERCING,
+            new AttackEffectApplication(poisonId, 100)
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(poisonId, poison)));
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(100),
+            effectEngine
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertFalse(result.hit());
+        assertTrue(result.target().effects().isEmpty());
+        assertTrue(result.effectTargetMessages().isEmpty());
     }
 
     @Test
