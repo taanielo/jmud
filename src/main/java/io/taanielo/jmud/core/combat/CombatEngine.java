@@ -1,10 +1,13 @@
 package io.taanielo.jmud.core.combat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.LongSupplier;
 
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.effects.EffectEngine;
+import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
@@ -30,6 +33,7 @@ public class CombatEngine {
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final CombatRandomProvider randomProvider;
     private final LongSupplier tickSupplier;
+    private final EffectEngine effectEngine;
     private final MessageRenderer renderer = new MessageRenderer();
 
     // ── Legacy constructors (wrap a fixed CombatRandom; tick is always 0) ─────────
@@ -37,13 +41,28 @@ public class CombatEngine {
     /**
      * Creates a combat engine with the provided dependencies.
      * The supplied {@link CombatRandom} is used for every encounter (tick-independent).
+     * On-hit status effect application is disabled (no {@link EffectEngine} supplied).
      */
     public CombatEngine(
         AttackRepository attackRepository,
         CombatModifierResolver modifierResolver,
         CombatRandom random
     ) {
-        this(attackRepository, modifierResolver, RaceArmorBonusResolver.noOp(), EquipmentArmorResolver.noOp(), random);
+        this(attackRepository, modifierResolver, RaceArmorBonusResolver.noOp(), EquipmentArmorResolver.noOp(), random, null);
+    }
+
+    /**
+     * Creates a combat engine with the provided dependencies and an {@link EffectEngine}
+     * capable of applying on-hit status effects (see {@link AttackDefinition#effectOnHit()}).
+     * The supplied {@link CombatRandom} is used for every encounter (tick-independent).
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        CombatRandom random,
+        EffectEngine effectEngine
+    ) {
+        this(attackRepository, modifierResolver, RaceArmorBonusResolver.noOp(), EquipmentArmorResolver.noOp(), random, effectEngine);
     }
 
     /**
@@ -56,12 +75,13 @@ public class CombatEngine {
         RaceArmorBonusResolver armorBonusResolver,
         CombatRandom random
     ) {
-        this(attackRepository, modifierResolver, armorBonusResolver, EquipmentArmorResolver.noOp(), random);
+        this(attackRepository, modifierResolver, armorBonusResolver, EquipmentArmorResolver.noOp(), random, null);
     }
 
     /**
      * Creates a combat engine with both race and equipment armor resolution.
      * The supplied {@link CombatRandom} is used for every encounter (tick-independent).
+     * On-hit status effect application is disabled (no {@link EffectEngine} supplied).
      */
     public CombatEngine(
         AttackRepository attackRepository,
@@ -70,13 +90,30 @@ public class CombatEngine {
         EquipmentArmorResolver equipmentArmorResolver,
         CombatRandom random
     ) {
+        this(attackRepository, modifierResolver, armorBonusResolver, equipmentArmorResolver, random, null);
+    }
+
+    /**
+     * Creates a combat engine with both race and equipment armor resolution and an
+     * {@link EffectEngine} capable of applying on-hit status effects.
+     * The supplied {@link CombatRandom} is used for every encounter (tick-independent).
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        CombatRandom random,
+        EffectEngine effectEngine
+    ) {
         this(
             attackRepository,
             modifierResolver,
             armorBonusResolver,
             equipmentArmorResolver,
             (tick, actorId) -> random,
-            () -> 0L
+            () -> 0L,
+            effectEngine
         );
     }
 
@@ -85,6 +122,7 @@ public class CombatEngine {
     /**
      * Creates a combat engine that derives a per-encounter seed from the tick and
      * actor, using the provided {@link CombatRandomProvider} and tick source.
+     * On-hit status effect application is disabled (no {@link EffectEngine} supplied).
      *
      * @param attackRepository       source of attack definitions
      * @param modifierResolver       resolves combat modifier chains from player effects
@@ -101,12 +139,39 @@ public class CombatEngine {
         CombatRandomProvider randomProvider,
         LongSupplier tickSupplier
     ) {
+        this(attackRepository, modifierResolver, armorBonusResolver, equipmentArmorResolver, randomProvider, tickSupplier, null);
+    }
+
+    /**
+     * Creates a combat engine that derives a per-encounter seed from the tick and
+     * actor, using the provided {@link CombatRandomProvider} and tick source, and
+     * capable of applying on-hit status effects via the supplied {@link EffectEngine}.
+     *
+     * @param attackRepository       source of attack definitions
+     * @param modifierResolver       resolves combat modifier chains from player effects
+     * @param armorBonusResolver     resolves race-based AC bonuses on the target
+     * @param equipmentArmorResolver resolves equipment-based AC bonuses on the target
+     * @param randomProvider         produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier           supplies the current world tick number
+     * @param effectEngine           applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                               {@code null} disables on-hit effect application
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         this.randomProvider = Objects.requireNonNull(randomProvider, "Combat random provider is required");
         this.tickSupplier = Objects.requireNonNull(tickSupplier, "Tick supplier is required");
+        this.effectEngine = effectEngine;
     }
 
     /**
@@ -182,6 +247,30 @@ public class CombatEngine {
             ? target.withVitals(target.getVitals().damage(damage))
             : target;
 
+        List<String> effectTargetMessages = new ArrayList<>();
+        List<String> effectRoomMessages = new ArrayList<>();
+        if (hit && effectEngine != null && attack.effectOnHit() != null) {
+            AttackEffectApplication effectApplication = attack.effectOnHit();
+            int effectRoll = random.roll(1, 100);
+            if (effectRoll <= effectApplication.chancePercent()) {
+                effectEngine.apply(updatedTarget, effectApplication.effectId(), new EffectMessageSink() {
+                    @Override
+                    public void sendToTarget(String message) {
+                        if (message != null && !message.isBlank()) {
+                            effectTargetMessages.add(message);
+                        }
+                    }
+
+                    @Override
+                    public void sendToRoom(String message) {
+                        if (message != null && !message.isBlank()) {
+                            effectRoomMessages.add(message);
+                        }
+                    }
+                });
+            }
+        }
+
         String sourceMessage = null;
         String targetMessage = null;
         String roomMessage = null;
@@ -233,7 +322,7 @@ public class CombatEngine {
         }
 
         return new CombatResult(attacker, updatedTarget, hit, crit, damage,
-            sourceMessage, targetMessage, roomMessage, rngSeed);
+            sourceMessage, targetMessage, roomMessage, rngSeed, effectTargetMessages, effectRoomMessages);
     }
 
     private int clamp(int value, int min, int max) {

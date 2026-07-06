@@ -150,6 +150,12 @@ public class GameActionService {
             if (result.roomMessage() != null && !result.roomMessage().isBlank()) {
                 messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), result.roomMessage()));
             }
+            for (String effectTargetMessage : result.effectTargetMessages()) {
+                messages.add(GameMessage.toPlayer(target.getUsername(), effectTargetMessage));
+            }
+            for (String effectRoomMessage : result.effectRoomMessages()) {
+                messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), effectRoomMessage));
+            }
             GameActionResult deathResult = resolveDeathIfNeeded(result.target(), source);
             Player updatedTarget = deathResult.updatedTarget();
             messages.addAll(deathResult.messages());

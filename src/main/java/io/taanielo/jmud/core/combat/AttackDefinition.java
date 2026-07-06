@@ -20,9 +20,59 @@ public class AttackDefinition {
     private final int damageBonus;
     private final List<MessageSpec> messages;
     private final WeaponType weaponType;
+    private final AttackEffectApplication effectOnHit;
 
     /**
-     * Constructs an attack definition with explicit weapon type.
+     * Constructs an attack definition with explicit weapon type and an optional
+     * on-hit status effect application.
+     *
+     * @param id          unique identifier for this attack
+     * @param name        display name of the attack
+     * @param minDamage   minimum damage dealt on a hit (non-negative)
+     * @param maxDamage   maximum damage dealt on a hit (must be &gt;= minDamage)
+     * @param hitBonus    additive bonus to hit chance
+     * @param critBonus   additive bonus to critical hit chance
+     * @param damageBonus additive bonus applied to raw damage roll
+     * @param messages    flavour messages for hit, miss, and crit phases
+     * @param weaponType  classification of the weapon's damage style
+     * @param effectOnHit optional status effect to apply to the target on a successful hit;
+     *                    {@code null} means this attack applies no effect
+     */
+    public AttackDefinition(
+        AttackId id,
+        String name,
+        int minDamage,
+        int maxDamage,
+        int hitBonus,
+        int critBonus,
+        int damageBonus,
+        List<MessageSpec> messages,
+        WeaponType weaponType,
+        AttackEffectApplication effectOnHit
+    ) {
+        this.id = Objects.requireNonNull(id, "Attack id is required");
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Attack name must not be blank");
+        }
+        if (minDamage < 0 || maxDamage < 0) {
+            throw new IllegalArgumentException("Attack damage must be non-negative");
+        }
+        if (maxDamage < minDamage) {
+            throw new IllegalArgumentException("Attack max damage must be >= min damage");
+        }
+        this.name = name;
+        this.minDamage = minDamage;
+        this.maxDamage = maxDamage;
+        this.hitBonus = hitBonus;
+        this.critBonus = critBonus;
+        this.damageBonus = damageBonus;
+        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
+        this.weaponType = Objects.requireNonNullElse(weaponType, WeaponType.SLASHING);
+        this.effectOnHit = effectOnHit;
+    }
+
+    /**
+     * Constructs an attack definition with explicit weapon type and no on-hit effect.
      *
      * @param id          unique identifier for this attack
      * @param name        display name of the attack
@@ -45,28 +95,11 @@ public class AttackDefinition {
         List<MessageSpec> messages,
         WeaponType weaponType
     ) {
-        this.id = Objects.requireNonNull(id, "Attack id is required");
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Attack name must not be blank");
-        }
-        if (minDamage < 0 || maxDamage < 0) {
-            throw new IllegalArgumentException("Attack damage must be non-negative");
-        }
-        if (maxDamage < minDamage) {
-            throw new IllegalArgumentException("Attack max damage must be >= min damage");
-        }
-        this.name = name;
-        this.minDamage = minDamage;
-        this.maxDamage = maxDamage;
-        this.hitBonus = hitBonus;
-        this.critBonus = critBonus;
-        this.damageBonus = damageBonus;
-        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
-        this.weaponType = Objects.requireNonNullElse(weaponType, WeaponType.SLASHING);
+        this(id, name, minDamage, maxDamage, hitBonus, critBonus, damageBonus, messages, weaponType, null);
     }
 
     /**
-     * Constructs an attack definition defaulting to {@link WeaponType#SLASHING}.
+     * Constructs an attack definition defaulting to {@link WeaponType#SLASHING} and no on-hit effect.
      *
      * @param id          unique identifier for this attack
      * @param name        display name of the attack
@@ -87,7 +120,7 @@ public class AttackDefinition {
         int damageBonus,
         List<MessageSpec> messages
     ) {
-        this(id, name, minDamage, maxDamage, hitBonus, critBonus, damageBonus, messages, WeaponType.SLASHING);
+        this(id, name, minDamage, maxDamage, hitBonus, critBonus, damageBonus, messages, WeaponType.SLASHING, null);
     }
 
     /** @return unique identifier for this attack */
@@ -133,5 +166,10 @@ public class AttackDefinition {
     /** @return weapon type classifying this attack's damage style */
     public WeaponType weaponType() {
         return weaponType;
+    }
+
+    /** @return the on-hit status effect application, or {@code null} if this attack applies no effect */
+    public AttackEffectApplication effectOnHit() {
+        return effectOnHit;
     }
 }

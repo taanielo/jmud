@@ -4,17 +4,20 @@ import java.util.List;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.AttackDefinition;
+import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.WeaponType;
+import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 
 /**
  * Maps {@link AttackDto} instances to {@link AttackDefinition} domain objects.
  *
- * <p>Accepts both schema version 2 (no {@code weapon_type} field) and schema
- * version 3 (with optional {@code weapon_type} field).  When the field is absent
- * or unrecognised the weapon type defaults to {@link WeaponType#SLASHING}.
+ * <p>Accepts schema versions 2 through 4. Schema version 2 omits {@code weapon_type};
+ * the mapper defaults to {@link WeaponType#SLASHING} in that case. Schema version 4
+ * additionally accepts an optional {@code applies_effect} field describing an on-hit
+ * status effect application.
  */
 public class AttackMapper {
 
@@ -28,11 +31,13 @@ public class AttackMapper {
     public AttackDefinition toDomain(AttackDto dto) {
         Objects.requireNonNull(dto, "Attack DTO is required");
         if (dto.schemaVersion() != AttackSchemaVersions.V2
-            && dto.schemaVersion() != AttackSchemaVersions.V3) {
+            && dto.schemaVersion() != AttackSchemaVersions.V3
+            && dto.schemaVersion() != AttackSchemaVersions.V4) {
             throw new IllegalArgumentException("Unsupported attack schema version " + dto.schemaVersion());
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         WeaponType weaponType = parseWeaponType(dto.weaponType());
+        AttackEffectApplication effectOnHit = parseEffectOnHit(dto.appliesEffect());
         return new AttackDefinition(
             AttackId.of(dto.id()),
             dto.name(),
@@ -42,8 +47,16 @@ public class AttackMapper {
             dto.critBonus(),
             dto.damageBonus(),
             messages,
-            weaponType
+            weaponType,
+            effectOnHit
         );
+    }
+
+    private AttackEffectApplication parseEffectOnHit(AttackDto.AppliesEffectDto dto) {
+        if (dto == null || dto.effectId() == null || dto.effectId().isBlank()) {
+            return null;
+        }
+        return new AttackEffectApplication(EffectId.of(dto.effectId()), dto.chancePercent());
     }
 
     private WeaponType parseWeaponType(String raw) {

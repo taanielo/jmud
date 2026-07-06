@@ -162,7 +162,7 @@ public record GameContext(
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
         CombatEngine combatEngine =
-                createCombatEngine(config, effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository, tickClock::currentTick);
+                createCombatEngine(config, effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository, tickClock::currentTick, effectEngine);
 
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 
@@ -178,6 +178,7 @@ public record GameContext(
         MobRegistry mobRegistry = createMobRegistry(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository);
         if (mobRegistry != null) {
+            mobRegistry.setEffectEngine(effectEngine);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -287,19 +288,22 @@ public record GameContext(
         RaceArmorBonusResolver armorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
         JsonAttackRepository attackRepository,
-        LongSupplier tickSupplier
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
         String rngMode = config.getString("jmud.combat.rng", "seeded");
         if ("threadlocal".equalsIgnoreCase(rngMode)) {
-            return new CombatEngine(attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom());
+            return new CombatEngine(
+                attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom(), effectEngine);
         }
         // Default: seeded mode — derive world seed from config, or generate a random one.
         // The SeededCombatRandomProvider constructor logs the effective seed at INFO so
         // any session can be reconstructed; set jmud.world.seed to replay a specific session.
         long worldSeed = config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong());
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
-        return new CombatEngine(attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, provider, tickSupplier);
+        return new CombatEngine(
+            attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, provider, tickSupplier, effectEngine);
     }
 
     private static ItemRepository createItemRepository() {
