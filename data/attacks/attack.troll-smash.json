@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "id": "attack.troll-smash",
+  "name": "Troll Smash",
+  "min_damage": 18,
+  "max_damage": 32,
+  "hit_bonus": 0,
+  "crit_bonus": 2,
+  "damage_bonus": 6,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The forest troll rears back and unleashes a devastating troll smash on you for {damage}!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The forest troll's earth-shattering troll smash goes wide, missing you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The forest troll's troll smash connects with bone-crushing force for {damage}!"
+    }
+  ]
+}

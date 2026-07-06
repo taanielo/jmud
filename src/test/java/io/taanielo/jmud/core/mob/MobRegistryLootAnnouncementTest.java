@@ -76,6 +76,7 @@ class MobRegistryLootAnnouncementTest {
             "Goblin",
             maxHp,
             null,   // attackId – mob won't attack in these tests
+            null,
             false,
             List.of(guaranteedDrop),
             ROOM_ID,
@@ -190,6 +191,7 @@ class MobRegistryLootAnnouncementTest {
             MobId.of("mob.goblin"),
             "Goblin",
             1,
+            null,
             null,
             false,
             List.of(),   // empty loot table

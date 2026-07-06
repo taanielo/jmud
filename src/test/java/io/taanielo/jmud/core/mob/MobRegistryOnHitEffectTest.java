@@ -66,6 +66,7 @@ class MobRegistryOnHitEffectTest {
             "Giant Spider",
             100,
             ATTACK_ID,
+            null,
             true,
             List.of(),
             ROOM_ID,

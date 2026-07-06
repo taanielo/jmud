@@ -1,9 +1,10 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "forest-troll",
   "name": "Forest Troll",
   "max_hp": 90,
   "attack_id": "attack.forest-troll",
+  "special_attack_id": "attack.troll-smash",
   "aggressive": true,
   "spawn_room_id": "trolls-hollow",
   "max_count": 1,

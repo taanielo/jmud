@@ -25,6 +25,11 @@ import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessageContext;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageRenderer;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.LevelUpService;
@@ -59,6 +64,7 @@ public class MobRegistry implements Tickable {
     private final PersistenceQueue persistenceQueue;
     private final PlayerEventBus playerEventBus;
     private final LevelUpService levelUpService = new LevelUpService();
+    private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
     /** Optional party service for XP splitting; may be null when parties are disabled. */
@@ -350,12 +356,19 @@ public class MobRegistry implements Tickable {
         if (target == null || target.isDead()) {
             return;
         }
-        AttackDefinition attack = loadAttack(mob.template().attackId());
+        boolean firstEngagement = !mob.engagedPlayers().contains(targetUsername);
+        boolean useSpecial = mob.template().specialAttackId() != null
+            && !mob.specialAbilityUsed()
+            && firstEngagement;
+        AttackDefinition attack = loadAttack(
+            useSpecial ? mob.template().specialAttackId() : mob.template().attackId());
         if (attack == null) {
             return;
         }
+        if (useSpecial) {
+            mob.markSpecialAbilityUsed();
+        }
 
-        boolean firstEngagement = !mob.engagedPlayers().contains(targetUsername);
         mob.engage(targetUsername);
         playerCombatTargets.put(targetUsername, mob.instanceId());
 
@@ -366,17 +379,44 @@ public class MobRegistry implements Tickable {
             handleMobKill(mob, damagedPlayer, candidates);
         } else {
             List<GameMessage> messages = new ArrayList<>();
-            if (firstEngagement) {
+            if (firstEngagement && !useSpecial) {
                 messages.add(GameMessage.toSource(
                     "The " + mob.template().name() + " lunges at you!"));
             }
-            messages.add(GameMessage.toSource(
-                "The " + mob.template().name() + " hits you for " + damage + " damage!"));
+            messages.add(GameMessage.toSource(hitMessage(mob, attack, useSpecial, damage)));
             applyOnHitEffect(attack, damagedPlayer, targetUsername, candidates, messages);
             saveOrLog(damagedPlayer);
             playerEventBus.publish(targetUsername,
                 new GameActionResult(damagedPlayer, null, messages));
         }
+    }
+
+    /**
+     * Builds the self-facing message shown to a player hit by a mob's attack. When the attack
+     * carries a configured {@link MessageSpec} for the {@link MessagePhase#ATTACK_HIT} phase on the
+     * {@link MessageChannel#SELF} channel (e.g. a boss's special ability flavour text), that message
+     * is rendered and used instead of the generic damage line, so special-ability hits read
+     * distinctly from normal attacks.
+     *
+     * @param mob       the attacking mob
+     * @param attack    the attack definition that just landed a hit
+     * @param useSpecial whether this hit was the mob's special ability rather than its basic attack
+     * @param damage    the damage dealt, substituted into the {@code {damage}} placeholder
+     * @return the rendered message text to show the target player
+     */
+    private String hitMessage(MobInstance mob, AttackDefinition attack, boolean useSpecial, int damage) {
+        for (MessageSpec spec : attack.messages()) {
+            if (spec.phase() == MessagePhase.ATTACK_HIT && spec.channel() == MessageChannel.SELF) {
+                MessageContext context = new MessageContext(
+                    null, null, mob.template().name(), null, null, null, attack.name(), damage);
+                return messageRenderer.render(spec, context);
+            }
+        }
+        if (useSpecial) {
+            return "The " + mob.template().name() + " unleashes " + attack.name()
+                + " on you for " + damage + " damage!";
+        }
+        return "The " + mob.template().name() + " hits you for " + damage + " damage!";
     }
 
     /**

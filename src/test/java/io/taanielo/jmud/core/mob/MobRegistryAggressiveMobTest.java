@@ -56,6 +56,7 @@ class MobRegistryAggressiveMobTest {
             "Giant Spider",
             mobHp,
             DEFAULT_ATTACK,
+            null,
             true,   // aggressive
             List.of(),
             ROOM_ID,
