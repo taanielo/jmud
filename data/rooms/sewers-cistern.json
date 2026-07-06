@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "sewers-cistern",
+  "name": "Sewers Cistern",
+  "description": "A vast, vaulted cistern chamber where black water pools waist-deep around crumbling pillars. The stench of decay is overwhelming, and pale shapes writhe just beneath the surface.",
+  "item_ids": [],
+  "exits": {
+    "north": "sewers-tunnel"
+  }
+}

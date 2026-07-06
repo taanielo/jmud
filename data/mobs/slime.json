@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "id": "slime",
+  "name": "Slime",
+  "max_hp": 48,
+  "attack_id": "attack.slime",
+  "aggressive": true,
+  "spawn_room_id": "sewers-tunnel",
+  "max_count": 2,
+  "respawn_ticks": 35,
+  "loot": [
+    { "item_id": "cure-potion", "drop_chance": 0.3 },
+    { "item_id": "health-potion", "drop_chance": 0.4 }
+  ],
+  "gold_drop": {
+    "min": 10,
+    "max": 24
+  }
+}

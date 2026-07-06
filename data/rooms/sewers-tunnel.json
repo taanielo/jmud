@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "sewers-tunnel",
+  "name": "Sewers Tunnel",
+  "description": "A narrow brick tunnel half-flooded with stagnant, oily water. Something viscous glistens on the walls, and skittering echoes ahead in the dark.",
+  "item_ids": [],
+  "exits": {
+    "west": "sewers-entrance",
+    "south": "sewers-cistern"
+  }
+}
