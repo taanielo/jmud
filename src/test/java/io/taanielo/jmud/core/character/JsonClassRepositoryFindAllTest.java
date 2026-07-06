@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
@@ -40,8 +41,11 @@ class JsonClassRepositoryFindAllTest {
     }
 
     @Test
-    void findAll_returnsEmptyForEmptyDir() throws ClassRepositoryException {
-        JsonClassRepository repo = new JsonClassRepository(Path.of("data-nonexistent-xyz"));
+    void findAll_returnsEmptyForEmptyDir(@TempDir Path tempDir) throws ClassRepositoryException {
+        // A fresh temp subdirectory guarantees the path has no class files on every
+        // machine and in CI, and keeps the repository working tree free of
+        // directories created by JsonClassRepository's constructor.
+        JsonClassRepository repo = new JsonClassRepository(tempDir.resolve("missing-subdir"));
         List<ClassDefinition> classes = repo.findAll();
         assertTrue(classes.isEmpty());
     }
