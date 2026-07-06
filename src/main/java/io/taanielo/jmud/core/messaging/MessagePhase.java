@@ -9,6 +9,8 @@ public enum MessagePhase {
     EXAMINE,
     USE,
     QUAFF,
+    READ,
+    WRITE,
     PICKUP,
     DROP,
     ATTACK_HIT,

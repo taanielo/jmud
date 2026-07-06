@@ -263,6 +263,14 @@ class SocketCommandDispatcherMdcTest {
         }
 
         @Override
+        public void readItem(String args) {
+        }
+
+        @Override
+        public void writeItem(String args) {
+        }
+
+        @Override
         public void equipItem(String args) {
         }
 

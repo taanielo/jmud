@@ -1,0 +1,25 @@
+{
+  "schema_version": 4,
+  "id": "scroll-of-healing",
+  "name": "Scroll of Healing",
+  "description": "A brittle parchment inscribed with the healing spell.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "read",
+      "channel": "self",
+      "text": "You read {item} and the words burn into your memory."
+    },
+    {
+      "phase": "read",
+      "channel": "room",
+      "text": "{source} reads {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 20,
+  "teaches_ability_ref": "spell.heal"
+}

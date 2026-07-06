@@ -5,9 +5,7 @@ import java.util.Objects;
 
 import lombok.Value;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 
@@ -23,19 +21,26 @@ public class Item {
     int weight;
     int value;
     AttackId attackRef;
+    AbilityId teachesAbilityRef;
 
-    @JsonCreator
+    /**
+     * Constructs an item. Note this class is never bound directly by Jackson: JSON persistence
+     * goes through {@link io.taanielo.jmud.core.world.dto.ItemDto} and
+     * {@link io.taanielo.jmud.core.world.dto.ItemMapper}, which map fields explicitly, keeping
+     * this domain type free of JSON-infrastructure annotations (AGENTS.md §3.2).
+     */
     public Item(
-        @JsonProperty("id") ItemId id,
-        @JsonProperty("name") String name,
-        @JsonProperty("description") String description,
-        @JsonProperty("attributes") ItemAttributes attributes,
-        @JsonProperty("effects") List<ItemEffect> effects,
-        @JsonProperty("messages") List<MessageSpec> messages,
-        @JsonProperty("equipSlot") EquipmentSlot equipSlot,
-        @JsonProperty("weight") int weight,
-        @JsonProperty("value") int value,
-        @JsonProperty("attackRef") AttackId attackRef
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef,
+        AbilityId teachesAbilityRef
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -56,5 +61,25 @@ public class Item {
         }
         this.value = value;
         this.attackRef = attackRef;
+        this.teachesAbilityRef = teachesAbilityRef;
+    }
+
+    /**
+     * Convenience constructor for items that teach no ability, preserving existing call sites
+     * that predate {@link #teachesAbilityRef}.
+     */
+    public Item(
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef
+    ) {
+        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef, null);
     }
 }

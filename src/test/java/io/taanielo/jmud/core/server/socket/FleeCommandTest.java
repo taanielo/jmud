@@ -128,6 +128,8 @@ class FleeCommandTest {
         @Override public void getItem(String a) {}
         @Override public void dropItem(String a) {}
         @Override public void quaffItem(String a) {}
+        @Override public void readItem(String a) {}
+        @Override public void writeItem(String a) {}
         @Override public void equipItem(String a) {}
         @Override public void unequipItem(String a) {}
         @Override public void killMob(String a) {}
