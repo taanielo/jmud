@@ -144,6 +144,7 @@ public record GameContext(
             new PlayerLocationService(roomRepository, RoomId.of("training-yard"));
         RoomService roomService = new RoomService(
             playerLocationService, roomItemService, new RoomRenderer(), roomRepository);
+        MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
 
         TickRegistry tickRegistry = new TickRegistry();
         TickClock tickClock = new TickClock();
@@ -174,8 +175,8 @@ public record GameContext(
         AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
         AbilityTargetResolver abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
 
-        SocketCommandRegistry commandRegistry =
-            SocketCommandRegistry.createDefault(equipmentArmorResolver, raceArmorBonusResolver, playerRepository);
+        SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
+            equipmentArmorResolver, raceArmorBonusResolver, playerRepository, roomService, messageBroadcaster);
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
@@ -199,7 +200,6 @@ public record GameContext(
             mobRegistry.setPartyService(partyService);
         }
 
-        MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
         GossipHistory gossipHistory = new GossipHistory();
 
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);

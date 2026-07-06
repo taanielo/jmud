@@ -75,7 +75,7 @@
 - [x] Add SCORE-visible kill counter and a global high-score WHO listing sorted by total kills
 - [x] Add player title system: automatically grant titles (Rat Slayer, Goblin Crusher) on quest completion
 - [x] Add GOSSIP channel history: store the last 10 gossip lines and show them on login
-- [ ] Add SAY emote variants: SHOUT broadcasts to adjacent rooms; WHISPER is visible only to one target
+- [x] Add SAY emote variants: SHOUT broadcasts to adjacent rooms; WHISPER is visible only to one target
 - [ ] Add GIVE command so players can hand items to other players or NPCs in the same room
 - [ ] Add time-of-day tick cycle (day/night) that changes room descriptions and affects mob spawn rates
 - [ ] Add player alias system: ALIAS command lets players bind short custom strings to longer commands
