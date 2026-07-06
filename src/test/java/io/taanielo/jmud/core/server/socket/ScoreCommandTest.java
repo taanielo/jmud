@@ -115,6 +115,36 @@ class ScoreCommandTest {
     }
 
     @Test
+    void doesNotShowTitlesLineWhenNoneEarned() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty());
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertFalse(context.lines.stream().anyMatch(l -> l.startsWith("Titles:")),
+            "No Titles line expected when none earned, got: " + context.lines);
+    }
+
+    @Test
+    void showsTitlesLineWhenEarned() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty()).grantTitle("Rat Slayer");
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Titles: Rat Slayer")),
+            "Expected 'Titles: Rat Slayer' in output, got: " + context.lines);
+    }
+
+    @Test
     void unauthenticatedPlayerGetsErrorMessage() {
         ScoreCommand cmd = makeCommand(EquipmentArmorResolver.noOp(), RaceArmorBonusResolver.noOp());
         CapturingContext context = new CapturingContext(null, false);

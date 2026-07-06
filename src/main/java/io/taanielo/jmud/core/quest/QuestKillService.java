@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
 
 /**
@@ -82,10 +83,54 @@ public class QuestKillService {
     }
 
     /**
+     * Grants the gold, XP, and any title reward for completing a finished kill quest.
+     *
+     * <p>Callers are responsible for validating that the quest is actually complete
+     * (i.e. {@code player.getActiveQuest().isComplete()}) and clearing/leaving the
+     * active quest as needed before calling this method; this method itself always
+     * clears the active quest as part of granting the reward.
+     *
+     * @param player   the player completing the quest; must not be null
+     * @param template the quest template being completed; must not be null
+     * @return a {@link CompletionResult} bundling the updated player, whether the
+     *     player leveled up, and messages describing the reward
+     */
+    public CompletionResult grantCompletionReward(Player player, QuestTemplate template) {
+        Objects.requireNonNull(player, "player is required");
+        Objects.requireNonNull(template, "template is required");
+
+        Player rewarded = player.withActiveQuest(null).addGold(template.goldReward());
+        LevelUpService levelUpService = new LevelUpService();
+        LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(rewarded, template.xpReward());
+        rewarded = lvResult.player();
+
+        List<String> messages = new ArrayList<>();
+        messages.add("The Guild Clerk nods approvingly. Contract complete: " + template.name() + ".");
+        messages.add("You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
+
+        String titleReward = template.titleReward();
+        if (titleReward != null && !rewarded.titles().has(titleReward)) {
+            rewarded = rewarded.grantTitle(titleReward);
+            messages.add("You have earned the title: " + titleReward + "!");
+        }
+
+        return new CompletionResult(rewarded, lvResult.leveledUp(), List.copyOf(messages));
+    }
+
+    /**
      * Result of a quest kill record operation.
      *
      * @param player   the updated player with decremented quest counter
      * @param messages progress messages to deliver to the player
      */
     public record KillResult(Player player, List<String> messages) {}
+
+    /**
+     * Result of granting a kill-quest completion reward.
+     *
+     * @param player    the updated player with reward applied and active quest cleared
+     * @param leveledUp {@code true} when the XP reward caused a level-up
+     * @param messages  messages describing the reward (and any title earned)
+     */
+    public record CompletionResult(Player player, boolean leveledUp, List<String> messages) {}
 }

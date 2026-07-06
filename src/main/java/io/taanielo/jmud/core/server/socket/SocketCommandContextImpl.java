@@ -42,7 +42,6 @@ import io.taanielo.jmud.core.party.Party;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.EncumbranceService;
-import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
@@ -50,6 +49,7 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.quest.ActiveQuest;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
+import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.QuestTemplate;
@@ -1802,20 +1802,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
             session.replacePlayer(player.withActiveQuest(null));
             return;
         }
-        Player rewarded = player
-            .withActiveQuest(null)
-            .addGold(template.goldReward());
-        // Award XP via LevelUpService to trigger any level-up logic
-        LevelUpService levelUpSvc = new LevelUpService();
-        LevelUpService.LevelUpResult lvResult = levelUpSvc.awardXp(rewarded, template.xpReward());
-        rewarded = lvResult.player();
+        QuestKillService questKillSvc = new QuestKillService(questRepo);
+        QuestKillService.CompletionResult result = questKillSvc.grantCompletionReward(player, template);
+        Player rewarded = result.player();
         session.replacePlayer(rewarded);
-        connection.writeLine(
-            "The Guild Clerk nods approvingly. Contract complete: " + template.name() + ".");
-        connection.writeLine(
-            "You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
-        if (lvResult.leveledUp()) {
+        List<String> messages = result.messages();
+        // Reward/gold/xp messages first, then any level-up notice, then the title message (if any).
+        connection.writeLine(messages.get(0));
+        connection.writeLine(messages.get(1));
+        if (result.leveledUp()) {
             connection.writeLine("You have advanced to level " + rewarded.getLevel() + "!");
+        }
+        for (int i = 2; i < messages.size(); i++) {
+            connection.writeLine(messages.get(i));
         }
         sendPrompt();
     }

@@ -22,6 +22,7 @@ import java.util.Objects;
  * @param xpReward          bonus XP awarded on completion
  * @param dropItemId        item id that must be collected and turned in (delivery quests only)
  * @param requiredDropCount number of drop items needed to complete the quest (delivery quests only)
+ * @param titleReward       title granted to the player on completion, or {@code null} when none is granted
  */
 public record QuestTemplate(
     QuestId id,
@@ -32,7 +33,8 @@ public record QuestTemplate(
     int goldReward,
     int xpReward,
     String dropItemId,
-    int requiredDropCount
+    int requiredDropCount,
+    String titleReward
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
@@ -73,7 +75,7 @@ public record QuestTemplate(
         int goldReward,
         int xpReward
     ) {
-        this(id, name, description, targetMobId, requiredKills, goldReward, xpReward, null, 0);
+        this(id, name, description, targetMobId, requiredKills, goldReward, xpReward, null, 0, null);
     }
 
     /**

@@ -129,6 +129,12 @@ public class QuestDeliveryService {
         messages.add("The Guild Clerk nods approvingly. Contract complete: " + template.name() + ".");
         messages.add("You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
 
+        String titleReward = template.titleReward();
+        if (titleReward != null && !updated.titles().has(titleReward)) {
+            updated = updated.grantTitle(titleReward);
+            messages.add("You have earned the title: " + titleReward + "!");
+        }
+
         return DeliverResult.success(updated, messages);
     }
 

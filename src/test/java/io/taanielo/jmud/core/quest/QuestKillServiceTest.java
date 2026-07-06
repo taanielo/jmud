@@ -33,6 +33,19 @@ class QuestKillServiceTest {
         30,
         75
     );
+    private static final QuestId GOBLIN_THRASHER_ID = QuestId.of("goblin-thrasher");
+    private static final QuestTemplate GOBLIN_THRASHER = new QuestTemplate(
+        GOBLIN_THRASHER_ID,
+        "Goblin Thrasher",
+        "Kill 5 goblins.",
+        "goblin",
+        5,
+        60,
+        150,
+        null,
+        0,
+        "Goblin Crusher"
+    );
 
     private QuestKillService service;
     private Player basePlayer;
@@ -107,6 +120,37 @@ class QuestKillServiceTest {
         // other player state should be preserved
         assertEquals(basePlayer.getUsername(), updated.getUsername());
         assertEquals(basePlayer.getGold(), updated.getGold());
+    }
+
+    // ── Completion reward / title granting ─────────────────────────────────
+
+    @Test
+    void grantCompletionRewardGrantsTitleWhenQuestHasOne() {
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(GOBLIN_THRASHER_ID, 0));
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, GOBLIN_THRASHER);
+
+        assertTrue(result.player().titles().has("Goblin Crusher"));
+        assertNull(result.player().getActiveQuest());
+        assertTrue(result.messages().stream().anyMatch(m -> m.contains("You have earned the title: Goblin Crusher!")));
+    }
+
+    @Test
+    void grantCompletionRewardDoesNotGrantTitleWhenQuestHasNone() {
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, RAT_CATCHER);
+
+        assertTrue(result.player().titles().earned().isEmpty());
+        assertFalse(result.messages().stream().anyMatch(m -> m.contains("You have earned the title")));
+    }
+
+    @Test
+    void grantCompletionRewardDoesNotGrantDuplicateTitle() {
+        Player withTitleAlready = basePlayer.grantTitle("Goblin Crusher")
+            .withActiveQuest(new ActiveQuest(GOBLIN_THRASHER_ID, 0));
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withTitleAlready, GOBLIN_THRASHER);
+
+        assertEquals(1, result.player().titles().earned().size());
+        assertFalse(result.messages().stream().anyMatch(m -> m.contains("You have earned the title")));
     }
 
     // ── Stub ──────────────────────────────────────────────────────────────

@@ -224,7 +224,8 @@ class TrainCommandTest {
             null,
             0L,
             practicePoints,
-            0
+            0,
+            null
         );
     }
 
