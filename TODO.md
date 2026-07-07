@@ -1,81 +1,49 @@
 # TODO
 
-## Implemented
-- [x] Telnet server with socket-based client connections
-- [x] SSH server alongside telnet
-- [x] User registration and authentication with JSON persistence
-- [x] Authentication rate limiting
-- [x] Character creation flow (race and class selection at first login)
-- [x] Races and classes with stats, healing modifiers, and starting abilities
-- [x] Room navigation with MOVE command and directional exits
-- [x] LOOK command showing room description, exits, items, mobs, and players
-- [x] SAY command for in-room chat
-- [x] GOSSIP command for server-wide broadcast chat
-- [x] TELL command for private cross-room player messaging
-- [x] EMOTE command for free-form action expressions
-- [x] WHO command listing online players
-- [x] HELP command listing available commands
-- [x] QUIT command
-- [x] ANSI color toggle per player preference
-- [x] Player inventory with GET and DROP commands
-- [x] Equipment slots with EQUIP, UNEQUIP, and EQUIPMENT commands
-- [x] INVENTORY command to inspect carried items
-- [x] Item weight and encumbrance system
-- [x] EXAMINE command for item descriptions
-- [x] QUAFF command for potion consumption (HP restore)
-- [x] Tick-based engine with fixed-rate scheduler
-- [x] REST and WAKE commands with tick-based HP/mana/move regeneration
-- [x] Ability system with cooldowns, costs, and effects
-- [x] Class-specific starting abilities and ABILITIES list command
-- [x] Status effects engine with duration and modifier stacking
-- [x] Combat engine with weapon-based attacks and combat modifiers
-- [x] KILL/ATTACK command to initiate combat with mobs
-- [x] FLEE command to escape active combat
-- [x] Aggressive mob system (mobs attack players on sight)
-- [x] CONSIDER command to assess mob danger
-- [x] XP award on mob kill with level-up and stat gains
-- [x] Mob loot drops announced to the killing player
-- [x] Gold currency, mob gold drops, GOLD command
-- [x] Shop NPC system with LIST, BUY, and SELL commands
-- [x] Kill-quest NPC system with QUEST command
-- [x] Rat, goblin, kobold, and spider kill quests
-- [x] Player death and respawn with corpse decay
-- [x] Corpse left on death with item decay timer
-- [x] JSON file persistence for all data (rooms, items, mobs, players, shops, quests, abilities)
-- [x] Audit logging (async JSONL file sink)
-- [x] Unified messaging system with ANSI/plain-text styling
-- [x] Starter zone rooms (courtyard, training yard, armory, sparring pit, etc.)
-- [x] The Catacombs dungeon zone with skeleton and crypt-warden mobs
-- [x] The Darkwood zone with wolves, dire wolves, and forest troll boss
-- [x] Dwarf race with high carry capacity and natural armour bonus
-- [x] Rogue class with backstab skill that deals bonus damage on first strike
-- [x] Cleric class with group heal spell and turn undead ability
+Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 
-## Planned
-- [x] Add SCORE command enhancements: show current level, XP to next level, and total kills
-- [x] Add TRAIN command and trainer NPC so players can spend practice points on skills
-- [x] Add multi-kill quest: deliver a fixed number of drops (e.g. rat tails) to an NPC for a reward
-- [x] Add PARTY system: players can form a group to share XP and see party HP in prompt
-- [x] Add mob respawn with wander: mobs randomly move between linked rooms on tick
-- [x] Add LOCK and UNLOCK commands with key items for gated doors between zones
-- [x] Add CAST command as an explicit spell-use alias alongside the existing ability system
-- [x] Add mana potions with QUAFF restoring mana and add them to shops and mob loot tables
-- [x] Add BANK NPC with DEPOSIT and WITHDRAW commands for safe gold storage
-- [x] Add item sell-value and item description visible in LIST so players can compare gear
-- [x] Add weapon type variety: blunt, piercing, slashing with different damage dice and attack messages
-- [x] Add armour items (chest, legs, head slots) with AC value reducing incoming damage in combat engine
-- [x] Add SCORE prompt stat: show current AC derived from equipped armour
-- [x] Add poison status effect applied by certain mob attacks (damage-over-time ticks)
-- [x] Add CURE ability/potion to remove poison and other negative status effects
-- [x] Add mob special ability: boss mobs can use a defined ability once per combat (e.g. troll smash)
-- [x] Add WRITE and READ commands with scroll items that teach a new ability on use
-- [x] Add The Sewers zone with slimes and plague rats targeting mid-range players
-- [x] Add The Ruins zone with bandits and a bandit captain boss for outdoor wilderness content
-- [x] Add zone-level entry restriction: show a warning when a player enters a zone above their level
-- [x] Add SCORE-visible kill counter and a global high-score WHO listing sorted by total kills
-- [x] Add player title system: automatically grant titles (Rat Slayer, Goblin Crusher) on quest completion
-- [x] Add GOSSIP channel history: store the last 10 gossip lines and show them on login
-- [x] Add SAY emote variants: SHOUT broadcasts to adjacent rooms; WHISPER is visible only to one target
-- [x] Add GIVE command so players can hand items to other players or NPCs in the same room
-- [x] Add time-of-day tick cycle (day/night) that changes room descriptions and affects mob spawn rates
-- [x] Add player alias system: ALIAS command lets players bind short custom strings to longer commands
+## Planned — Gameplay & Content
+
+- [ ] Add hunger and thirst: EAT and DRINK commands, food/drink items in shops, slow regen penalty when starving
+- [ ] Add container items (bags, chests) with PUT and GET FROM commands and their own capacity
+- [ ] Add light sources and dark rooms: torches/lanterns required to see room contents in unlit areas
+- [ ] Add item durability: gear degrades in combat and a blacksmith NPC offers a REPAIR command
+- [ ] Add item rarity tiers (common/uncommon/rare) with stat affixes and colored names in LOOK/INVENTORY
+- [ ] Add unidentified magic items and an IDENTIFY scroll/NPC service to reveal their stats
+- [ ] Add locked treasure chests with trap chance and a rogue PICK skill to open them
+- [ ] Add SNEAK and HIDE stealth commands so rogues can avoid aggressive mobs and set up backstab
+- [ ] Add STEAL skill for rogues to pickpocket gold from NPCs, with failure aggro consequence
+- [ ] Add ranged weapons (bows, throwing knives) usable on mobs in adjacent rooms before they close in
+- [ ] Add buff spells (bless, stoneskin, haste) as timed status effects castable on self and party members
+- [ ] Add area-of-effect spells that hit every hostile mob in the room, with mana cost scaling
+- [ ] Add summonable companions: a necromancer-style SUMMON ability that spawns a temporary pet mob fighting for the player
+- [ ] Add a pet/charm system: tamed mobs follow their owner between rooms and assist in combat
+- [ ] Add Elf race (high mana, low carry) and Orc race (high strength, healing penalty) with matching starting stats
+- [ ] Add Ranger class with TRACK skill that points toward the nearest mob of a named type
+- [ ] Add Paladin class with a self-heal, an undead-damage bonus, and heavy armour proficiency
+- [ ] Add NPC dialogue trees: TALK command with numbered responses driven by JSON dialogue data
+- [ ] Add mob factions and reputation: killing one faction's mobs shifts standing and changes NPC prices/aggression
+- [ ] Add delivery quests: NPC hands the player a package to carry to another NPC in a different zone
+- [ ] Add exploration quests and achievements for visiting a defined set of rooms (e.g. all Catacombs rooms)
+- [ ] Add daily quests: one rotating repeatable quest per day (tick-cycle based) with bonus gold/XP
+- [ ] Add achievements system: track milestones (first kill, 100 kills, level 10) shown via ACHIEVEMENTS command
+- [ ] Add consensual PvP duels: DUEL/ACCEPT commands, fight to near-death in-room, no item/gold loss
+- [ ] Add an arena zone with a spectator stand and periodic announced duel events
+- [ ] Add player bulletin boards: BOARD/NOTE commands with persistent per-room note storage
+- [ ] Add weather system on the tick cycle (rain, fog, storm) shown in outdoor room descriptions with small combat/visibility modifiers
+- [ ] Add ambient room messages: zones emit occasional atmospheric lines (dripping water, distant howls) on tick
+- [ ] Add MAP command rendering an ASCII minimap of explored rooms around the player
+- [ ] Add RECALL scroll/command teleporting the player back to the starter zone, with combat lockout
+- [ ] Add boats/ferries: a scheduled transport room that moves between docks on a tick timetable
+- [ ] Add The Frozen Peaks high-level zone with ice mobs, a dragon boss, and cold-damage attacks
+- [ ] Add customizable prompt: PROMPT command with tokens for HP/mana/moves/XP and color choices
+- [ ] Add IGNORE command to mute tells/says from a specific player, persisted per player
+
+## Planned — Technical & Architecture
+
+- [ ] Add graceful shutdown: SIGTERM handler broadcasts a warning, saves all players, and stops the tick loop cleanly
+- [ ] Add reconnect support: a dropped connection keeps the player linkdead in-world for N ticks and a new login reattaches to the live session
+- [ ] Add tick health metrics: measure per-tick duration and per-Tickable cost, log overruns, expose a wizard-only STATS command
+- [ ] Add admin/wizard command set (GOTO, SPAWN, PURGE, SHUTDOWN) gated by a role flag on the user record
+- [ ] Add hot-reload of JSON game data: wizard RELOAD command re-reads rooms/items/mobs safely on the tick thread
+- [ ] Add a bot-based load test script that connects N telnet clients running scripted commands and asserts tick stability
