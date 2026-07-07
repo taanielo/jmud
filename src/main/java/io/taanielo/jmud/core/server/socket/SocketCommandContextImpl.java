@@ -249,6 +249,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 case SOURCE -> connection.writeLine(msg.text());
                 case PLAYER -> sendToUsername(msg.targetExclude(), msg.text());
                 case ROOM -> deliverRoomMessage(msg.sourceExclude(), msg.targetExclude(), msg.text());
+                case ROOM_AT -> {
+                    Set<Username> excludeSet = msg.targetExclude() == null ? Set.of() : Set.of(msg.targetExclude());
+                    context.messageBroadcaster().broadcastToRoom(
+                        msg.roomId(), new PlainTextMessage(msg.text()), excludeSet);
+                }
             }
         }
     }
@@ -993,6 +998,23 @@ class SocketCommandContextImpl implements SocketCommandContext {
         connection.writeLine("You flee to the " + chosen.label() + "!");
         context.mobRegistry().fleeCombat(player.getUsername());
         sendMove(chosen);
+    }
+
+    @Override
+    public void recall() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to recall.");
+            return;
+        }
+        Player player = session.getPlayer();
+        GameActionResult result = gameActionService.recall(player);
+        deliverResult(result);
+        if (result.metadata().containsKey("recalled")) {
+            RoomService.LookResult look = roomService.look(player.getUsername());
+            connection.writeLines(look.lines());
+            writeRoomOccupantLines(look.room());
+        }
+        sendPrompt();
     }
 
     @Override

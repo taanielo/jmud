@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.ability.Ability;
@@ -29,6 +30,7 @@ import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.ability.AbilityType;
 import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
+import io.taanielo.jmud.core.ability.CooldownTracker;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -55,6 +57,8 @@ import io.taanielo.jmud.core.effects.EffectStacking;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
+import io.taanielo.jmud.core.tick.system.CooldownSystem;
+import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
@@ -906,6 +910,111 @@ class GameActionServiceTest {
         GameActionResult result = service.resolveDeathIfNeeded(alreadyDead, attacker);
 
         assertTrue(result.messages().isEmpty());
+    }
+
+    // ── recall ───────────────────────────────────────────────────────────
+
+    @Nested
+    class RecallTests {
+
+        private static final RoomId ROOM_TOWN = RoomId.of("town");
+        private static final RoomId ROOM_DUNGEON = RoomId.of("dungeon");
+
+        private RoomService recallRoomService;
+        private CooldownSystem cooldownSystem;
+        private boolean inCombat;
+        private GameActionService recallService;
+        private Player player;
+
+        @BeforeEach
+        void setUpRecall() {
+            Room town = new Room(
+                ROOM_TOWN, "Town Square", "The town square.",
+                Map.of(Direction.NORTH, ROOM_DUNGEON), List.of(), List.of()
+            );
+            Room dungeon = new Room(
+                ROOM_DUNGEON, "Dungeon", "A dark dungeon.",
+                Map.of(Direction.SOUTH, ROOM_TOWN), List.of(), List.of()
+            );
+            recallRoomService = new RoomService(
+                new TestRoomRepository(Map.of(ROOM_TOWN, town, ROOM_DUNGEON, dungeon)), ROOM_TOWN
+            );
+            cooldownSystem = new CooldownSystem();
+            inCombat = false;
+
+            player = player("wanderer");
+            recallRoomService.ensurePlayerLocation(player.getUsername());
+            recallRoomService.move(player.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_DUNGEON, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+
+            recallService = new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                recallRoomService,
+                (source, input) -> Optional.empty(),
+                new CooldownTracker(cooldownSystem),
+                testEncumbranceService(),
+                p -> inCombat
+            );
+        }
+
+        @Test
+        void successfulRecallTeleportsPlayerToStartingRoom() {
+            GameActionResult result = recallService.recall(player);
+
+            assertEquals(ROOM_TOWN, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertTrue(result.metadata().containsKey("recalled"));
+            assertTrue(result.messages().stream().anyMatch(m -> m.type() == GameMessage.Type.SOURCE));
+            long roomAtMessages = result.messages().stream()
+                .filter(m -> m.type() == GameMessage.Type.ROOM_AT)
+                .count();
+            assertEquals(2, roomAtMessages, "Expected a departure message to the dungeon and an arrival message to town");
+        }
+
+        @Test
+        void recallIsBlockedWhileInCombat() {
+            inCombat = true;
+
+            GameActionResult result = recallService.recall(player);
+
+            assertEquals(ROOM_DUNGEON, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertEquals(1, result.messages().size());
+            assertTrue(result.messages().getFirst().text().contains("FLEE"));
+            assertFalse(result.metadata().containsKey("recalled"));
+        }
+
+        @Test
+        void recallIsBlockedOnCooldown() {
+            recallService.recall(player);
+            recallRoomService.move(player.getUsername(), Direction.NORTH);
+
+            GameActionResult result = recallService.recall(player);
+
+            assertEquals(ROOM_DUNGEON, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertEquals(1, result.messages().size());
+            assertTrue(result.messages().getFirst().text().contains("recovering"));
+            assertFalse(result.metadata().containsKey("recalled"));
+        }
+
+        @Test
+        void recallSucceedsAgainAfterCooldownExpires() {
+            recallService.recall(player);
+            recallRoomService.move(player.getUsername(), Direction.NORTH);
+
+            for (int i = 0; i < 30; i++) {
+                cooldownSystem.tick();
+            }
+
+            GameActionResult result = recallService.recall(player);
+
+            assertEquals(ROOM_TOWN, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertTrue(result.metadata().containsKey("recalled"));
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

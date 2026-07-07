@@ -204,6 +204,18 @@ public interface SocketCommandContext extends Client {
     void fleeCombat();
 
     /**
+     * Attempts to teleport the player back to the starting/town room.
+     *
+     * <p>Blocked while the player is in active combat (use FLEE first) or while recall is on
+     * cooldown; on success, departure and arrival messages are broadcast to the old and new
+     * rooms respectively.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     */
+    default void recall() {}
+
+    /**
      * Assesses the danger of a mob in the same room and prints a qualitative tier message.
      *
      * <p>The default implementation is a no-op so that existing test stubs
