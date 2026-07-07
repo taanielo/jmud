@@ -55,12 +55,12 @@ public class CharacterCreationService {
     public String buildRacePrompt() throws CharacterCreationException {
         List<Race> races = loadRaces();
         StringBuilder sb = new StringBuilder();
-        sb.append("Choose your race:\n");
+        sb.append("Choose your race:\r\n");
         for (Race race : races) {
             sb.append("  ").append(race.id().getValue())
               .append(" - ").append(race.name());
             appendRaceHint(sb, race);
-            sb.append('\n');
+            sb.append("\r\n");
         }
         sb.append("Enter race name: ");
         return sb.toString();
@@ -75,12 +75,12 @@ public class CharacterCreationService {
     public String buildClassPrompt() throws CharacterCreationException {
         List<ClassDefinition> classes = loadClasses();
         StringBuilder sb = new StringBuilder();
-        sb.append("Choose your class:\n");
+        sb.append("Choose your class:\r\n");
         for (ClassDefinition cd : classes) {
             sb.append("  ").append(cd.id().getValue())
               .append(" - ").append(cd.name());
             appendClassHint(sb, cd);
-            sb.append('\n');
+            sb.append("\r\n");
         }
         sb.append("Enter class name: ");
         return sb.toString();
