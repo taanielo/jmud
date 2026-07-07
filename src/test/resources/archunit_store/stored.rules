@@ -1,3 +1,0 @@
-#
-#Sat Jul 04 21:36:36 EEST 2026
-no\ classes\ that\ reside\ outside\ of\ packages\ ['..dto..',\ '..repository.json..',\ '..messaging..']\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ 'com.fasterxml.jackson..',\ because\ Jackson\ is\ a\ JSON\ infrastructure\ concern;\ it\ must\ only\ be\ used\ at\ the\ dto/repository.json/messaging\ edges,\ never\ in\ domain\ code\ (AGENTS.md\ \u00A73.2)=236c68c0-eb56-4db5-9f62-dab33747c056
