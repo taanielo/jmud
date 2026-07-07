@@ -4,7 +4,6 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 
 ## Planned — Gameplay & Content
 
-- [ ] Add hunger and thirst: EAT and DRINK commands, food/drink items in shops, slow regen penalty when starving
 - [ ] Add container items (bags, chests) with PUT and GET FROM commands and their own capacity
 - [ ] Add light sources and dark rooms: torches/lanterns required to see room contents in unlit areas
 - [ ] Add item durability: gear degrades in combat and a blacksmith NPC offers a REPAIR command
