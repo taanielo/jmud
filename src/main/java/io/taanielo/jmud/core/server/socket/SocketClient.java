@@ -162,6 +162,11 @@ public class SocketClient implements Client {
     }
 
     @Override
+    public boolean isInWorld() {
+        return creationState == null && currentPlayer().isPresent();
+    }
+
+    @Override
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;

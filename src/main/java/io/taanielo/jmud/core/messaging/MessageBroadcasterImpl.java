@@ -63,6 +63,9 @@ public class MessageBroadcasterImpl implements MessageBroadcaster {
         Objects.requireNonNull(message, "Message is required");
         Set<Username> excluded = exclude == null ? Set.of() : exclude;
         for (Client client : clientPool.clients()) {
+            if (!client.isInWorld()) {
+                continue;
+            }
             client.currentPlayer()
                 .map(Player::getUsername)
                 .filter(username -> !excluded.contains(username))
@@ -72,6 +75,7 @@ public class MessageBroadcasterImpl implements MessageBroadcaster {
 
     private Optional<Client> findClient(Username username) {
         return clientPool.clients().stream()
+            .filter(Client::isInWorld)
             .filter(client -> client.currentPlayer()
                 .map(player -> player.getUsername().equals(username))
                 .orElse(false))
