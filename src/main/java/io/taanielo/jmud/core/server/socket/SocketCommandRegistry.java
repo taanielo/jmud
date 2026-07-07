@@ -71,6 +71,7 @@ public class SocketCommandRegistry {
         new KillCommand(registry);
         new ConsiderCommand(registry);
         new FleeCommand(registry);
+        new RecallCommand(registry);
         new RestCommand(registry);
         new WakeCommand(registry);
         new AnsiCommand(registry);

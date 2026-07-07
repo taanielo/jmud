@@ -73,6 +73,11 @@ public class GameActionService {
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final AtomicLong scrollCounter = new AtomicLong();
 
+    /** Cooldown key used to rate-limit {@link #recall}. Not a real ability id, but reuses the tracker. */
+    private static final AbilityId RECALL_COOLDOWN_KEY = AbilityId.of("recall");
+    /** Number of ticks a player must wait between successful recalls. */
+    private static final int RECALL_COOLDOWN_TICKS = 30;
+
     /**
      * Creates a game action service with the given domain dependencies.
      * The in-combat check defaults to {@code false} (never in combat), which disables
@@ -120,6 +125,50 @@ public class GameActionService {
         this.cooldownTracker = Objects.requireNonNull(cooldownTracker, "Cooldown tracker is required");
         this.encumbranceService = Objects.requireNonNull(encumbranceService, "Encumbrance service is required");
         this.inCombatCheck = Objects.requireNonNull(inCombatCheck, "In-combat check is required");
+    }
+
+    /**
+     * Teleports the player back to the starting/town room used by {@link RoomService} for
+     * new-character placement and respawn.
+     *
+     * <p>Fails without teleporting if the player is currently in combat (mirrors the
+     * {@code inCombatCheck} used by {@link #useAbility}; the player should FLEE first) or if
+     * recall is still on cooldown from a previous use. On success, starts a fixed-length
+     * cooldown so recall cannot be spammed as a defensive teleport, and returns a departure
+     * message for the old room and an arrival message for the destination room, in addition to
+     * a confirmation message to the player. The result's metadata contains a {@code "recalled"}
+     * entry on success so callers can distinguish it from a rejected attempt.
+     *
+     * @param source the player attempting to recall
+     * @return result with recall messages; {@link GameActionResult#updatedSource()} is always
+     *         {@code null} since recall does not otherwise modify the player
+     */
+    public GameActionResult recall(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        if (inCombatCheck.test(source)) {
+            return GameActionResult.error("You are in combat! You must FLEE before you can recall.");
+        }
+        if (cooldownTracker.isOnCooldown(RECALL_COOLDOWN_KEY)) {
+            int remaining = cooldownTracker.remainingTicks(RECALL_COOLDOWN_KEY);
+            return GameActionResult.error(
+                "You are still recovering from your last recall (" + remaining + " ticks remaining).");
+        }
+        RoomService.LookResult currentLook = roomService.look(source.getUsername());
+        Room oldRoom = currentLook.room();
+        var destinationId = roomService.respawnPlayer(source.getUsername());
+        cooldownTracker.startCooldown(RECALL_COOLDOWN_KEY, RECALL_COOLDOWN_TICKS);
+
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You recall to town in a flash of light."));
+        String playerName = source.getUsername().getValue();
+        if (oldRoom != null && !oldRoom.getId().equals(destinationId)) {
+            messages.add(GameMessage.toRoomAt(
+                oldRoom.getId(), source.getUsername(), playerName + " vanishes in a flash of light."));
+        }
+        messages.add(GameMessage.toRoomAt(
+            destinationId, source.getUsername(), playerName + " arrives in a flash of light."));
+
+        return new GameActionResult(null, null, messages, Map.of("recalled", Boolean.TRUE));
     }
 
     /**
