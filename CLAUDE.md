@@ -29,15 +29,17 @@ Every cycle persists its state to `.claude/agents/state/`, so no conversation me
 One cycle, headless, from the repo root:
 
 ```bash
-claude -p "/orchestrator" --permission-mode acceptEdits
+claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits
 ```
 
 Crontab (`crontab -e`) — cron's minimal PATH lacks `~/.local/bin`, where `claude` lives:
 
 ```cron
 PATH=/home/taaniel/.local/bin:/usr/local/bin:/usr/bin:/bin
-*/30 * * * * cd /home/taaniel/repos/jmud && flock -n .claude/agents/state/cron.flock claude -p "/orchestrator" --permission-mode acceptEdits >> .claude/agents/state/cron.log 2>&1
+*/30 * * * * cd /home/taaniel/repos/jmud && flock -n .claude/agents/state/cron.flock claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits >> .claude/agents/state/cron.log 2>&1
 ```
+
+Model/effort policy: the orchestrator session runs on **Sonnet** (it only dispatches scripts and composes commit titles); each subagent pins its own model in its frontmatter — **code-writer on Opus** (the one real engineering task per cycle), game-designer/workflow-optimizer on Sonnet, issue-creator on Haiku. Effort `high` is inherited by subagents and is the recommended default for Opus coding work — don't raise it to `xhigh`/`max` loop-wide, and don't run the loop session on a Fable/max configuration; the quality gates (local `check`, CI, retries), not model ceiling, are what protect main.
 
 Notes:
 - `flock -n` skips a firing while the previous cycle is still running; the orchestrator's own `LOCK`/`PAUSE` guards remain the second line of defense.
