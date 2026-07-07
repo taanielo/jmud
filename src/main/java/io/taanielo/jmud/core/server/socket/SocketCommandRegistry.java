@@ -89,6 +89,7 @@ public class SocketCommandRegistry {
         new QuitCommand(registry);
         new HelpCommand(registry);
         new AliasCommand(registry);
+        new MailCommand(registry);
         return registry;
     }
 

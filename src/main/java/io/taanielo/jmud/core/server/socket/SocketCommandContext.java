@@ -401,4 +401,18 @@ public interface SocketCommandContext extends Client {
      */
     default void manageAlias(String args) {}
 
+    /**
+     * Executes a MAIL sub-command: lists the player's mail when {@code args} is blank,
+     * shows a full message with {@code READ <n>}, removes a message with {@code DELETE <n>},
+     * or leaves a message for a named player (who may be offline) with
+     * {@code <playername> <message>}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "READ 2"} or
+     *             {@code "Alice hello there"})
+     */
+    default void manageMail(String args) {}
+
 }

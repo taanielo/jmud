@@ -43,8 +43,10 @@ import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.AliasResult;
 import io.taanielo.jmud.core.player.EncumbranceService;
+import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerMailService;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
@@ -96,6 +98,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final PromptRenderer promptRenderer;
     private final SocketCommandDispatcher dispatcher;
     private final PlayerAliasService playerAliasService;
+    private final PlayerMailService playerMailService;
 
     /**
      * Creates a command context by extracting all game-logic dependencies from the provided
@@ -130,6 +133,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         this.persistenceQueue = Objects.requireNonNull(context.persistenceQueue(), "Persistence queue is required");
         this.promptRenderer = new PromptRenderer();
         this.playerAliasService = new PlayerAliasService();
+        this.playerMailService = new PlayerMailService();
         this.gameActionService = new GameActionService(
             abilityRegistry,
             context.abilityCostResolver(),
@@ -1572,6 +1576,119 @@ class SocketCommandContextImpl implements SocketCommandContext {
         writeLineWithPrompt(result.message());
     }
 
+    @Override
+    public void manageMail(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use mail.");
+            return;
+        }
+        String normalizedArgs = args == null ? "" : args.trim();
+        long currentTick = context.tickClock().currentTick();
+
+        if (normalizedArgs.isEmpty()) {
+            applyOwnMailResult(playerMailService.list(player, currentTick), "Your mail:");
+            return;
+        }
+
+        String[] parts = normalizedArgs.split("\\s+", 2);
+        String firstToken = parts[0].toUpperCase(Locale.ROOT);
+        if ("READ".equals(firstToken) || "DELETE".equals(firstToken)) {
+            if (parts.length < 2 || parts[1].isBlank()) {
+                writeLineWithPrompt("Usage: MAIL " + firstToken + " <n>");
+                return;
+            }
+            Integer index = parseMailIndex(parts[1].trim());
+            if (index == null) {
+                writeLineWithPrompt("'" + parts[1].trim() + "' is not a valid mail number.");
+                return;
+            }
+            MailResult result = "READ".equals(firstToken)
+                ? playerMailService.read(player, index)
+                : playerMailService.delete(player, index);
+            applyOwnMailResult(result, null);
+            return;
+        }
+
+        handleSendMail(player, parts, currentTick);
+    }
+
+    private void handleSendMail(Player sender, String[] parts, long currentTick) {
+        if (parts.length < 2 || parts[1].isBlank()) {
+            writeLineWithPrompt("Usage: MAIL <playername> <message>");
+            return;
+        }
+        String targetName = parts[0];
+        String message = parts[1].trim();
+        Username targetUsername = Username.of(targetName);
+        if (targetUsername.equals(sender.getUsername())) {
+            writeLineWithPrompt("You cannot mail yourself.");
+            return;
+        }
+        Player recipient = resolvePlayerByUsername(targetUsername);
+        if (recipient == null) {
+            writeLineWithPrompt("No such player: " + targetName);
+            return;
+        }
+        MailResult result = playerMailService.send(recipient, sender.getUsername().getValue(), currentTick, message);
+        if (result.success() && result.updatedPlayer() != null) {
+            updateTarget(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    /** Parses a one-based mail index, returning {@code null} if the text is not a positive integer. */
+    private Integer parseMailIndex(String text) {
+        try {
+            int value = Integer.parseInt(text);
+            return value > 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Resolves a player by username, preferring the live in-session state of a currently
+     * connected client and falling back to the player repository for offline players. Returns
+     * {@code null} when no such player exists, online or persisted.
+     *
+     * @param username the username to resolve
+     */
+    private @Nullable Player resolvePlayerByUsername(Username username) {
+        for (Client c : clientPool.clients()) {
+            if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
+                Player p = sc.session().getPlayer();
+                if (p != null) {
+                    return p;
+                }
+            }
+        }
+        return context.playerRepository().loadPlayer(username).orElse(null);
+    }
+
+    /** Applies a {@link MailResult} that affects only the invoking player's own mailbox. */
+    private void applyOwnMailResult(MailResult result, @Nullable String header) {
+        if (!result.lines().isEmpty()) {
+            if (header != null) {
+                connection.writeLine(header);
+            }
+            for (String line : result.lines()) {
+                connection.writeLine(line);
+            }
+            if (result.updatedPlayer() != null) {
+                session.replacePlayer(result.updatedPlayer());
+                saveOrWarn(result.updatedPlayer());
+            }
+            sendPrompt();
+            return;
+        }
+        if (result.updatedPlayer() != null) {
+            session.replacePlayer(result.updatedPlayer());
+            saveOrWarn(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
     private void handlePartyForm(Player player, PartyService partyService) {
         PartyService.PartyResult result = partyService.form(player.getUsername());
         writeLineWithPrompt(result.message());
@@ -2035,6 +2152,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         session.enqueueCommand(session::handleDeathState);
         // Show recent gossip history exactly once, before any other post-login output.
         sendGossipHistory();
+        // Notify of any unread mail waiting in the player's mailbox.
+        sendMailNotice();
         // Start character creation for brand-new players; dispatch look for returning ones
         if (isNew && context.characterCreationService() != null) {
             client.beginCharacterCreation();
@@ -2051,5 +2170,22 @@ class SocketCommandContextImpl implements SocketCommandContext {
      */
     private void sendGossipHistory() {
         connection.writeLines(context.gossipHistory().renderForLogin());
+    }
+
+    /**
+     * Shows a one-line unread-mail count notice to the connecting player when they have
+     * unread mail waiting, mirroring {@link #sendGossipHistory()}. Does nothing when there
+     * is no unread mail.
+     */
+    private void sendMailNotice() {
+        Player player = session.getPlayer();
+        if (player == null) {
+            return;
+        }
+        long unread = player.mailbox().unreadCount();
+        if (unread == 0) {
+            return;
+        }
+        connection.writeLine("You have " + unread + " new message(s). Type MAIL to read them.");
     }
 }

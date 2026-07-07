@@ -122,6 +122,35 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsMailbox() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("mailee"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ")
+            .withMailbox(PlayerMailbox.empty().add(new PlayerMailMessage("sender", 5, "Hi there!", false)));
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertEquals(1, loaded.get().mailbox().messages().size());
+        assertEquals("sender", loaded.get().mailbox().messages().get(0).sender());
+        assertEquals("Hi there!", loaded.get().mailbox().messages().get(0).body());
+    }
+
+    @Test
+    void loadingOldSaveFileWithoutMailboxDefaultsToEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("nomail"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().mailbox().isEmpty());
+    }
+
+    @Test
     void findAllReturnsEveryPersistedPlayer() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         Player alice = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1)), "%hp> ").withTotalKills(10);
