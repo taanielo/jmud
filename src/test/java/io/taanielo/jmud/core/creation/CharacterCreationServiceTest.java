@@ -16,9 +16,7 @@ import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
-import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
-import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 
 /**
  * Unit tests for {@link CharacterCreationService} using stub repositories.
@@ -120,6 +118,47 @@ class CharacterCreationServiceTest {
         assertTrue(prompt.contains("warrior"), "Prompt should contain 'warrior'");
         assertTrue(prompt.contains("mage"), "Prompt should contain 'mage'");
         assertTrue(prompt.contains("adventurer"), "Prompt should contain 'adventurer'");
+    }
+
+    @Test
+    void buildRacePrompt_rendersAsSeparateBoundedLines() throws CharacterCreationException {
+        String prompt = service.buildRacePrompt();
+
+        // Every line break must be a full CR+LF pair, matching the telnet protocol
+        // convention used by MessageWriter#writeLine; a bare '\n' renders as a
+        // "staircase" on real terminals instead of a clean list.
+        assertFalse(prompt.replace("\r\n", "").contains("\n"),
+            "Prompt must not contain bare '\\n' line breaks");
+
+        String[] lines = prompt.split("\r\n");
+        assertEquals(5, lines.length, "Expected a header line, three race lines, and the input prompt");
+        assertEquals("Choose your race:", lines[0]);
+        assertTrue(lines[1].contains("elf"));
+        assertTrue(lines[2].contains("human"));
+        assertTrue(lines[3].contains("troll"));
+        assertEquals("Enter race name: ", lines[4]);
+        for (String line : lines) {
+            assertTrue(line.length() < 80, "Each rendered line should fit a normal terminal width: " + line);
+        }
+    }
+
+    @Test
+    void buildClassPrompt_rendersAsSeparateBoundedLines() throws CharacterCreationException {
+        String prompt = service.buildClassPrompt();
+
+        assertFalse(prompt.replace("\r\n", "").contains("\n"),
+            "Prompt must not contain bare '\\n' line breaks");
+
+        String[] lines = prompt.split("\r\n");
+        assertEquals(5, lines.length, "Expected a header line, three class lines, and the input prompt");
+        assertEquals("Choose your class:", lines[0]);
+        assertTrue(lines[1].contains("adventurer"));
+        assertTrue(lines[2].contains("mage"));
+        assertTrue(lines[3].contains("warrior"));
+        assertEquals("Enter class name: ", lines[4]);
+        for (String line : lines) {
+            assertTrue(line.length() < 80, "Each rendered line should fit a normal terminal width: " + line);
+        }
     }
 
     @Test
