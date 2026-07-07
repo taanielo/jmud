@@ -78,4 +78,4 @@
 - [x] Add SAY emote variants: SHOUT broadcasts to adjacent rooms; WHISPER is visible only to one target
 - [x] Add GIVE command so players can hand items to other players or NPCs in the same room
 - [x] Add time-of-day tick cycle (day/night) that changes room descriptions and affects mob spawn rates
-- [ ] Add player alias system: ALIAS command lets players bind short custom strings to longer commands
+- [x] Add player alias system: ALIAS command lets players bind short custom strings to longer commands
