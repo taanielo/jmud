@@ -32,10 +32,9 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 ## Step 1 — Dispatch by `state.stage`
 - **FIND_ISSUE** — pick work in this priority order (skip anything in `blocked_issues`):
   1. **Assigned in-flight work**: `gh issue list --assignee @me --state open --json number,title,labels` — if an issue exists, use it (resume).
-  2. **Architecture backlog**: run `NEXT_ISSUE_EXCLUDE="<space-separated blocked_issues>" scripts/next-issue.sh` — it prints `<number>\t<title>` of the lowest-numbered open `architecture` issue whose `Depends on:`/`Do after:` dependencies are all closed (exit 1 = none eligible). **Do not list and sort issues yourself** — `gh issue list` returns newest-first and picking from the top starts the roadmap from the wrong end. These issues fix correctness bugs and guard rails — they outrank new features.
-  3. **Other open unassigned issues**: `NEXT_ISSUE_EXCLUDE="..." scripts/next-issue.sh enhancement` (same deterministic pick).
-  4. `TODO.md` has an unchecked `- [ ]` line → spawn **issue-creator** (pass that line).
-  5. Else → spawn **game-designer**. Failure/skip → print `STANDBY`, release LOCK, STOP.
+  2. **Any open issue, lowest number first**: run `NEXT_ISSUE_EXCLUDE="<space-separated blocked_issues>" scripts/next-issue.sh ""` — it prints `<number>\t<title>` of the lowest-numbered open issue (any label) whose `Depends on:`/`Do after:` dependencies are all closed (exit 1 = none eligible). **Do not list and sort issues yourself** — `gh issue list` returns newest-first and picking from the top starts the roadmap from the wrong end. Issue number is the sole priority signal now — no label outranks another.
+  3. `TODO.md` has an unchecked `- [ ]` line → spawn **issue-creator** (pass that line).
+  4. Else → spawn **game-designer**. Failure/skip → print `STANDBY`, release LOCK, STOP.
 
   Whatever was picked: `gh issue edit <N> --add-assignee @me`, set `current_issue`, `stage = CREATE_BRANCH`.
 - **CREATE_BRANCH** — spawn **branch-manager** (pass issue number + title). Success → `stage = WRITE_CODE`.
