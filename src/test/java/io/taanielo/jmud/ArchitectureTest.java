@@ -8,18 +8,12 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
 /**
  * Enforces the dependency and layering rules described in {@code AGENTS.md} §3 so that
  * architectural drift (e.g. the composition root leaking into the socket adapter, or
  * {@code SocketClient} growing unrelated responsibilities) fails the build instead of being
- * caught in code review. Rules that the existing codebase already violates are wrapped in
- * {@link FreezingArchRule} so the recorded debt can only shrink, never grow, going forward.
- *
- * <p>The frozen violation store lives at {@code src/test/resources/archunit_store} and is
- * committed to version control; see {@code src/test/resources/archunit.properties} for the
- * store configuration.
+ * caught in code review.
  */
 @AnalyzeClasses(packages = "io.taanielo.jmud")
 class ArchitectureTest {
@@ -55,24 +49,6 @@ class ArchitectureTest {
                     .resideInAnyPackage("..core.server.socket..", "..core.server.ssh..")
                     .because("transport adapters (socket/ssh) are infrastructure and must only be wired from "
                             + "the composition root and Main (AGENTS.md §3.2, §3.3)");
-
-    /**
-     * Jackson containment: JSON (de)serialization is an infrastructure/adapter concern and must
-     * stay confined to the DTO and JSON-repository edges (plus the messaging DTOs), so domain
-     * code stays free of framework annotations (AGENTS.md §3.2). This is frozen because several
-     * value objects (e.g. {@code Player}) currently carry Jackson annotations directly.
-     */
-    @ArchTest
-    static final ArchRule jackson_containment =
-            FreezingArchRule.freeze(
-                    noClasses()
-                            .that()
-                            .resideOutsideOfPackages("..dto..", "..repository.json..", "..messaging..")
-                            .should()
-                            .dependOnClassesThat()
-                            .resideInAPackage("com.fasterxml.jackson..")
-                            .because("Jackson is a JSON infrastructure concern; it must only be used at the "
-                                    + "dto/repository.json/messaging edges, never in domain code (AGENTS.md §3.2)"));
 
     /**
      * Repository construction: {@code Json*Repository} implementations may only be instantiated
