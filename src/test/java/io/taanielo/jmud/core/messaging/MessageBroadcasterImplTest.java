@@ -108,6 +108,39 @@ class MessageBroadcasterImplTest {
         assertEquals(List.of(message), carol.received);
     }
 
+    @Test
+    void broadcastGlobalSkipsConnectionsStillInCharacterCreation() {
+        FakeClient bob = fakeClient("Bob");
+        FakeClient dave = fakeClient("Dave");
+        dave.inWorld = false;
+        MessageBroadcaster broadcaster = broadcaster(List.of(bob, dave), twoRoomService());
+
+        Message message = new PlainTextMessage("gossip: hi everyone");
+        broadcaster.broadcastGlobal(message, Set.of());
+
+        assertEquals(List.of(message), bob.received);
+        assertTrue(dave.received.isEmpty(),
+            "A connection still in character creation must not receive a GOSSIP broadcast");
+    }
+
+    @Test
+    void broadcastToRoomSkipsConnectionsStillInCharacterCreation() {
+        RoomService roomService = twoRoomService();
+        FakeClient alice = fakeClient("Alice");
+        FakeClient dave = fakeClient("Dave");
+        dave.inWorld = false;
+        roomService.ensurePlayerLocation(alice.player.getUsername());
+        roomService.ensurePlayerLocation(dave.player.getUsername());
+        MessageBroadcaster broadcaster = broadcaster(List.of(alice, dave), roomService);
+
+        Message message = new PlainTextMessage("Alice says hi");
+        broadcaster.broadcastToRoom(ROOM_ONE, message, Set.of());
+
+        assertEquals(List.of(message), alice.received);
+        assertTrue(dave.received.isEmpty(),
+            "A connection still in character creation must not receive a room broadcast");
+    }
+
     // --- helpers ---
 
     private static MessageBroadcaster broadcaster(List<Client> clients, RoomService roomService) {
@@ -146,6 +179,7 @@ class MessageBroadcasterImplTest {
     private static final class FakeClient implements Client {
         private final Player player;
         private final List<Message> received = new ArrayList<>();
+        private boolean inWorld = true;
 
         private FakeClient(Player player) {
             this.player = player;
@@ -163,6 +197,11 @@ class MessageBroadcasterImplTest {
         @Override
         public Optional<Player> currentPlayer() {
             return Optional.of(player);
+        }
+
+        @Override
+        public boolean isInWorld() {
+            return inWorld;
         }
 
         @Override
