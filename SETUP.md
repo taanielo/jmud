@@ -61,7 +61,7 @@ uses **SSH**, so a push can succeed while API calls fail — auth status alone i
   | Permission     | Used for                                  |
   | -------------- | ----------------------------------------- |
   | **Issues**     | game-designer / issue-creator create issues |
-  | **Pull requests** | pr-creator opens, pr-merger merges      |
+  | **Pull requests** | `scripts/agent/pr-create.sh` opens, `scripts/agent/merge.sh` merges |
   | **Contents**   | squash-merge writes the merged commit to `main` |
   | Metadata       | (default, read) repo access               |
 
@@ -77,8 +77,9 @@ uses **SSH**, so a push can succeed while API calls fail — auth status alone i
 
 ### 1.3 Build gate
 
-`build-verifier` is the **only** quality gate (this repo has no CI). A run must start from a green
-build:
+`scripts/agent/verify.sh` (`./gradlew check`) is the local quality gate; `scripts/agent/merge.sh`
+additionally gates on GitHub CI (`gh pr checks --watch`) before merging. A run must start from a
+green build:
 
 ```bash
 ./gradlew build test --console=plain   # expect: BUILD SUCCESSFUL
@@ -96,7 +97,10 @@ For a **detached / unattended** loop, the session must not stall on permission p
     "allow": [
       "Bash(git:*)", "Bash(gh:*)", "Bash(./gradlew:*)", "Bash(gradle:*)",
       "Bash(cat:*)", "Bash(date:*)", "Bash(mkdir:*)", "Bash(mv:*)",
-      "Bash(test:*)", "Bash(ls:*)", "Read", "Write", "Edit", "Task"
+      "Bash(test:*)", "Bash(ls:*)", "Bash(scripts/next-issue.sh:*)",
+      "Bash(scripts/agent/branch.sh:*)", "Bash(scripts/agent/verify.sh:*)",
+      "Bash(scripts/agent/pr-create.sh:*)", "Bash(scripts/agent/merge.sh:*)",
+      "Read", "Write", "Edit", "Task"
     ]
   }
 }
@@ -110,7 +114,8 @@ loop commit, push, and squash-merge to `main` unattended with only the local bui
 ## 2. Running `/loop /orchestrator`
 
 > Launch from **inside `~/repos/jmud`** so the worker agents in `.claude/agents/` resolve as native
-> subagents (`game-designer`, `branch-manager`, …).
+> subagents (`game-designer`, `code-writer`, …) and the step scripts in `scripts/agent/` resolve
+> by relative path.
 
 ### One supervised cycle (recommended for the first run)
 
@@ -168,7 +173,7 @@ If a run is interrupted, a leftover `LOCK` younger than 60 min will make the nex
 
 ## 3. Known robustness gaps (read before unattended use)
 
-- **build-verifier can't distinguish infra failures from code failures.** A missing JDK, a stale
+- **The verify step (`scripts/agent/verify.sh`) can't distinguish infra failures from code failures.** A missing JDK, a stale
   daemon, or a dependency-resolution error looks like a build failure, so the loop would waste its
   WRITE_CODE retries rewriting correct code and then file a bogus `blocked:` issue. The preflight in
   §1 is what prevents this — **do not skip it**.

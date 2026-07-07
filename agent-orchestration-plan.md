@@ -1,6 +1,6 @@
 # Plan: Multi-Agent Orchestration System for jmud
 
-> **Status (2026-07-04): historical design document.** The system it describes is built and lives in `.claude/commands/orchestrator.md` + `.claude/agents/*.md` — **those files are authoritative** and have evolved past this plan (issue-priority order, CI gating, architecture guardrails). Engineering rules: `AGENTS.md` / `CLAUDE.md`. Architecture direction: `docs/architecture-review-and-improvement-plan.md` and issues #168–#189. Do not implement from this document.
+> **Status (2026-07-04): historical design document.** The system it describes is built and lives in `.claude/commands/orchestrator.md` + `.claude/agents/*.md` — **those files are authoritative** and have evolved past this plan (issue-priority order, CI gating, architecture guardrails; the mechanical stages — branch/verify/PR/merge — were later converted from agents to deterministic scripts under `scripts/agent/`). Engineering rules: `AGENTS.md` / `CLAUDE.md`. Architecture direction: `docs/architecture-review-and-improvement-plan.md` and issues #168–#189. Do not implement from this document.
 
 ## Context
 
