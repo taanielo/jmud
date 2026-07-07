@@ -377,4 +377,16 @@ public interface SocketCommandContext extends Client {
      */
     default void withdrawFromBank(String args) {}
 
+    /**
+     * Executes an ALIAS sub-command: lists the player's aliases when {@code args} is
+     * blank, removes an alias with {@code -d <name>}, or defines/overwrites an alias
+     * with {@code <name> <expansion>}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "k kill"} or {@code "-d k"})
+     */
+    default void manageAlias(String args) {}
+
 }

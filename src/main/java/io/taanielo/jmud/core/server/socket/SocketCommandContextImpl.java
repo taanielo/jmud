@@ -41,8 +41,10 @@ import io.taanielo.jmud.core.output.TextStylers;
 import io.taanielo.jmud.core.party.Party;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
+import io.taanielo.jmud.core.player.AliasResult;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerAliasService;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
@@ -93,6 +95,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final PersistenceQueue persistenceQueue;
     private final PromptRenderer promptRenderer;
     private final SocketCommandDispatcher dispatcher;
+    private final PlayerAliasService playerAliasService;
 
     /**
      * Creates a command context by extracting all game-logic dependencies from the provided
@@ -126,6 +129,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         this.auditService = Objects.requireNonNull(context.auditService(), "Audit service is required");
         this.persistenceQueue = Objects.requireNonNull(context.persistenceQueue(), "Persistence queue is required");
         this.promptRenderer = new PromptRenderer();
+        this.playerAliasService = new PlayerAliasService();
         this.gameActionService = new GameActionService(
             abilityRegistry,
             context.abilityCostResolver(),
@@ -1497,6 +1501,51 @@ class SocketCommandContextImpl implements SocketCommandContext {
         BankTransactionResult result = context.bankService().withdraw(player, amount);
         if (result.success()) {
             session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void manageAlias(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to manage aliases.");
+            return;
+        }
+        String normalizedArgs = args == null ? "" : args.trim();
+        AliasResult result;
+        if (normalizedArgs.isEmpty()) {
+            result = playerAliasService.list(player);
+        } else if (normalizedArgs.equalsIgnoreCase("-d") || normalizedArgs.toLowerCase(Locale.ROOT).startsWith("-d ")) {
+            String name = normalizedArgs.length() > 2 ? normalizedArgs.substring(2).trim() : "";
+            result = playerAliasService.remove(player, name);
+        } else {
+            String[] parts = normalizedArgs.split("\\s+", 2);
+            String name = parts[0];
+            if (parts.length < 2 || parts[1].isBlank()) {
+                writeLineWithPrompt("Usage: ALIAS  |  ALIAS <name> <expansion>  |  ALIAS -d <name>");
+                return;
+            }
+            Set<String> builtinCommandNames = context.commandRegistry().commands().stream()
+                .map(SocketCommandHandler::name)
+                .collect(Collectors.toSet());
+            result = playerAliasService.define(player, name, parts[1].trim(), builtinCommandNames);
+        }
+        applyAliasResult(result);
+    }
+
+    private void applyAliasResult(AliasResult result) {
+        if (!result.lines().isEmpty()) {
+            connection.writeLine("Your aliases:");
+            for (String line : result.lines()) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        if (result.updatedPlayer() != null) {
+            session.replacePlayer(result.updatedPlayer());
+            saveOrWarn(result.updatedPlayer());
         }
         writeLineWithPrompt(result.message());
     }

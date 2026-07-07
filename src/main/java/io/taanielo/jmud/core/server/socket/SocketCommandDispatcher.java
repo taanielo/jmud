@@ -11,6 +11,7 @@ import org.apache.logging.log4j.ThreadContext;
 import io.taanielo.jmud.core.audit.AuditEvent;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
+import io.taanielo.jmud.core.player.Player;
 
 /**
  * Dispatches socket command input to registered command handlers.
@@ -69,6 +70,7 @@ public class SocketCommandDispatcher {
             context.sendPrompt();
             return;
         }
+        trimmed = expandAlias(context, trimmed);
         AuditSubject actor = resolveActor(context);
         auditService.emit(new AuditEvent(
             "command.received",
@@ -139,6 +141,34 @@ public class SocketCommandDispatcher {
             Map.of("command", match.command().name())
         ));
         match.execute(context);
+    }
+
+    /**
+     * Expands the first word of {@code trimmed} to its stored expansion if it matches
+     * one of the acting player's aliases (defined via {@code ALIAS}), before the input
+     * reaches {@link SocketCommandRegistry} lookup.
+     *
+     * <p>Expansion happens at most once per dispatch (no recursive re-expansion), and
+     * {@link SocketCommandContextImpl#manageAlias} already rejects aliases whose
+     * expansion starts with the alias's own name, so this is safe even without an
+     * explicit loop guard here.
+     *
+     * @param context the command context, used to resolve the acting player's aliases
+     * @param trimmed the already-trimmed raw input line
+     * @return the expanded input, or the original input unchanged when no alias matches
+     */
+    private String expandAlias(SocketCommandContext context, String trimmed) {
+        Player player = context.getPlayer();
+        if (player == null) {
+            return trimmed;
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String expansion = player.aliases().expansionOf(parts[0]);
+        if (expansion == null) {
+            return trimmed;
+        }
+        String rest = parts.length > 1 ? parts[1] : "";
+        return rest.isEmpty() ? expansion : expansion + " " + rest;
     }
 
     private AuditSubject resolveActor(SocketCommandContext context) {

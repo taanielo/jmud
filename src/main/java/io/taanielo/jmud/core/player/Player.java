@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.player;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -40,6 +41,8 @@ public class Player implements EffectTarget, Combatant {
     private final int bankedGold;
     /** Titles earned by the player, e.g. via quest completion; defaults to empty for existing players. */
     private final PlayerTitles titles;
+    /** Custom command aliases defined by the player; defaults to empty for existing players. */
+    private final PlayerAliases aliases;
 
     public static Player of(User user, String promptFormat) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of(), null, null);
@@ -85,6 +88,7 @@ public class Player implements EffectTarget, Combatant {
             null,
             null,
             null,
+            null,
             null
         );
     }
@@ -109,7 +113,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("totalKills") Long totalKills,
         @JsonProperty("practicePoints") Integer practicePoints,
         @JsonProperty("bankedGold") Integer bankedGold,
-        @JsonProperty("titles") List<String> titles
+        @JsonProperty("titles") List<String> titles,
+        @JsonProperty("aliases") Map<String, String> aliases
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId),
@@ -124,7 +129,8 @@ public class Player implements EffectTarget, Combatant {
             totalKills == null ? 0L : totalKills,
             practicePoints == null ? 0 : Math.max(0, practicePoints),
             bankedGold == null ? 0 : Math.max(0, bankedGold),
-            new PlayerTitles(titles)
+            new PlayerTitles(titles),
+            new PlayerAliases(aliases)
         );
     }
 
@@ -136,7 +142,7 @@ public class Player implements EffectTarget, Combatant {
         PlayerInventory inventory,
         PlayerEquipment equipment
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, false, 0, null, 0L, 0, 0, PlayerTitles.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, false, 0, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty());
     }
 
     private Player(
@@ -149,7 +155,7 @@ public class Player implements EffectTarget, Combatant {
         boolean resting,
         int gold
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, null, 0L, 0, 0, PlayerTitles.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty());
     }
 
     private Player(
@@ -163,7 +169,7 @@ public class Player implements EffectTarget, Combatant {
         int gold,
         ActiveQuest activeQuest
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, 0L, 0, 0, PlayerTitles.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty());
     }
 
     private Player(
@@ -178,7 +184,7 @@ public class Player implements EffectTarget, Combatant {
         ActiveQuest activeQuest,
         long totalKills
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, 0, 0, PlayerTitles.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, 0, 0, PlayerTitles.empty(), PlayerAliases.empty());
     }
 
     private Player(
@@ -194,7 +200,8 @@ public class Player implements EffectTarget, Combatant {
         long totalKills,
         int practicePoints,
         int bankedGold,
-        PlayerTitles titles
+        PlayerTitles titles,
+        PlayerAliases aliases
     ) {
         this.identity = Objects.requireNonNull(identity, "Identity is required");
         this.combatState = Objects.requireNonNull(combatState, "Combat state is required");
@@ -209,6 +216,7 @@ public class Player implements EffectTarget, Combatant {
         this.practicePoints = Math.max(0, practicePoints);
         this.bankedGold = Math.max(0, bankedGold);
         this.titles = Objects.requireNonNullElse(titles, PlayerTitles.empty());
+        this.aliases = Objects.requireNonNullElse(aliases, PlayerAliases.empty());
     }
 
     @JsonProperty("user")
@@ -306,6 +314,11 @@ public class Player implements EffectTarget, Combatant {
         return titles.earned();
     }
 
+    @JsonProperty("aliases")
+    public Map<String, String> getAliases() {
+        return aliases.expansions();
+    }
+
     public PlayerIdentity identity() {
         return identity;
     }
@@ -332,6 +345,10 @@ public class Player implements EffectTarget, Combatant {
 
     public PlayerTitles titles() {
         return titles;
+    }
+
+    public PlayerAliases aliases() {
+        return aliases;
     }
 
     @JsonIgnore
@@ -382,31 +399,31 @@ public class Player implements EffectTarget, Combatant {
             return this;
         }
         // Dying always clears the resting flag.
-        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player respawn() {
-        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player withoutEffects() {
-        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player withAnsiEnabled(boolean enabled) {
-        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player withVitals(PlayerVitals updatedVitals) {
-        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player withDead(boolean dead) {
-        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player withLearnedAbilities(List<AbilityId> learnedAbilities) {
-        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -415,7 +432,7 @@ public class Player implements EffectTarget, Combatant {
      * @param earnedTitles the new titles list
      */
     public Player withTitles(List<String> earnedTitles) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withEarned(earnedTitles));
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withEarned(earnedTitles), aliases);
     }
 
     /**
@@ -425,30 +442,50 @@ public class Player implements EffectTarget, Combatant {
      * @param title the title to grant; must not be null
      */
     public Player grantTitle(String title) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.grant(title));
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.grant(title), aliases);
+    }
+
+    /**
+     * Returns a copy of this player with the given alias defined or overwritten.
+     *
+     * @param name      the alias name; case-insensitive, must not be blank
+     * @param expansion the command line the alias expands to; must not be blank
+     */
+    public Player defineAlias(String name, String expansion) {
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.define(name, expansion));
+    }
+
+    /**
+     * Returns a copy of this player with the given alias removed, unchanged if it did
+     * not exist.
+     *
+     * @param name the alias name to remove; case-insensitive
+     */
+    public Player removeAlias(String name) {
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.remove(name));
     }
 
     public Player withInventory(List<Item> items) {
-        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player addItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player removeItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     public Player withEquipment(PlayerEquipment nextEquipment) {
-        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
      * Returns a copy of this player with the given identity (level and experience).
      */
     public Player withIdentity(PlayerIdentity nextIdentity) {
-        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -459,7 +496,7 @@ public class Player implements EffectTarget, Combatant {
      * @param resting {@code true} to enter a resting state, {@code false} to wake up
      */
     public Player withResting(boolean resting) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -468,7 +505,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newGold the new gold amount; negative values are clamped to 0
      */
     public Player withGold(int newGold) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, newGold, activeQuest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, newGold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -486,7 +523,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newBankedGold the new banked gold amount; negative values are clamped to 0
      */
     public Player withBankedGold(int newBankedGold) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, newBankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, newBankedGold, titles, aliases);
     }
 
     /**
@@ -504,7 +541,7 @@ public class Player implements EffectTarget, Combatant {
      * @param quest the quest to set, or {@code null} to clear the active quest
      */
     public Player withActiveQuest(ActiveQuest quest) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, quest, totalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, quest, totalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -513,7 +550,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newTotalKills the new kill count; negative values are clamped to 0
      */
     public Player withTotalKills(long newTotalKills) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, newTotalKills, practicePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, newTotalKills, practicePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -522,7 +559,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newPracticePoints the new practice point count; negative values are clamped to 0
      */
     public Player withPracticePoints(int newPracticePoints) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold, titles);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold, titles, aliases);
     }
 
     /**
@@ -559,7 +596,8 @@ public class Player implements EffectTarget, Combatant {
             totalKills,
             practicePoints,
             bankedGold,
-            titles.earned()
+            titles.earned(),
+            aliases.expansions()
         );
     }
 }

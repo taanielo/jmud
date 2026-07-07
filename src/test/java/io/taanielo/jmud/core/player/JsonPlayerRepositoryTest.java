@@ -95,6 +95,33 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsAliases() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("aliaser"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ").defineAlias("k", "kill").defineAlias("l", "look");
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertEquals("kill", loaded.get().aliases().expansionOf("k"));
+        assertEquals("look", loaded.get().aliases().expansionOf("l"));
+    }
+
+    @Test
+    void loadingOldSaveFileWithoutAliasesDefaultsToEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("noaliases"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().aliases().expansions().isEmpty());
+    }
+
+    @Test
     void findAllReturnsEveryPersistedPlayer() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         Player alice = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1)), "%hp> ").withTotalKills(10);
