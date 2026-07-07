@@ -137,10 +137,48 @@ CREATE_PR → MERGE_PR`. State persists in `.claude/agents/state/` between calls
 No interval — the next cycle starts only after the previous one returns (prevents overlapping runs
 that would race on the single git checkout and shared state).
 
-### Leaving it running in the background
+### Scheduled runs via cron (preferred for unattended use)
 
-The loop runs inside an interactive session; "background" means a detached terminal that stays
-alive (the machine must stay on and online):
+Every cycle persists its state to `.claude/agents/state/`, so no conversation memory is needed
+between cycles. Running each cycle as a **fresh headless session** keeps context (and token cost)
+constant, unlike a long-lived `/loop` session whose context grows with every iteration.
+
+One cycle, headless, from the repo root:
+
+```bash
+claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits
+```
+
+Crontab (`crontab -e`) — cron's minimal PATH lacks `~/.local/bin`, where `claude` lives:
+
+```cron
+PATH=/home/taaniel/.local/bin:/usr/local/bin:/usr/bin:/bin
+*/30 * * * * cd /home/taaniel/repos/jmud && flock -n .claude/agents/state/cron.flock claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits >> .claude/agents/state/cron.log 2>&1
+```
+
+Notes:
+
+- `flock -n` skips a firing while the previous cycle is still running; the orchestrator's own
+  `LOCK`/`PAUSE` guards remain the second line of defense.
+- Unattended runs need the §1.4 permission allow-list in `.claude/settings.local.json`, including
+  `Bash(scripts/agent/*)` for the step scripts — headless tool calls fail instead of prompting.
+- `cron.log` grows unbounded; truncate it occasionally (`: > .claude/agents/state/cron.log`).
+- Don't run cron and an interactive `/loop` at the same time — the LOCK guard serializes them,
+  but there's no reason to pay for both.
+
+**Model/effort policy:** the orchestrator session runs on **Sonnet** (it only dispatches scripts
+and composes commit titles); each subagent pins its own model in its frontmatter — **code-writer
+on Opus** (the one real engineering task per cycle), game-designer/workflow-optimizer on Sonnet,
+issue-creator on Haiku. Effort `high` is inherited by subagents and is the recommended default for
+Opus coding work — don't raise it to `xhigh`/`max` loop-wide, and don't run the loop session on a
+Fable/max configuration; the quality gates (local `check`, CI, retries), not model ceiling, are
+what protect `main`.
+
+### Leaving an interactive loop running in the background (alternative to cron)
+
+The `/loop` runs inside an interactive session; "background" means a detached terminal that stays
+alive (the machine must stay on and online). Context grows each cycle, so prefer cron above for
+long unattended stretches:
 
 ```bash
 tmux new -s jmud-loop

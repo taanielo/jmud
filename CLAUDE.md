@@ -20,29 +20,4 @@ The authoritative engineering rules for this repository live in AGENTS.md and ar
 
 ## Autonomous loop
 
-`.claude/commands/orchestrator.md` runs the human-authorized autonomous cycle (AGENTS.md §13). Worker agents spawned by the orchestrator do not pause for per-change confirmation but must obey every rule above — autonomy never relaxes architecture rules, only the confirmation gate.
-
-### Scheduled runs via cron (preferred over a long-lived `/loop` session)
-
-Every cycle persists its state to `.claude/agents/state/`, so no conversation memory is needed between cycles. Running each cycle as a **fresh headless session** keeps context (and token cost) constant instead of growing with every loop iteration.
-
-One cycle, headless, from the repo root:
-
-```bash
-claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits
-```
-
-Crontab (`crontab -e`) — cron's minimal PATH lacks `~/.local/bin`, where `claude` lives:
-
-```cron
-PATH=/home/taaniel/.local/bin:/usr/local/bin:/usr/bin:/bin
-*/30 * * * * cd /home/taaniel/repos/jmud && flock -n .claude/agents/state/cron.flock claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits >> .claude/agents/state/cron.log 2>&1
-```
-
-Model/effort policy: the orchestrator session runs on **Sonnet** (it only dispatches scripts and composes commit titles); each subagent pins its own model in its frontmatter — **code-writer on Opus** (the one real engineering task per cycle), game-designer/workflow-optimizer on Sonnet, issue-creator on Haiku. Effort `high` is inherited by subagents and is the recommended default for Opus coding work — don't raise it to `xhigh`/`max` loop-wide, and don't run the loop session on a Fable/max configuration; the quality gates (local `check`, CI, retries), not model ceiling, are what protect main.
-
-Notes:
-- `flock -n` skips a firing while the previous cycle is still running; the orchestrator's own `LOCK`/`PAUSE` guards remain the second line of defense.
-- **Stop the loop**: `touch .claude/agents/state/PAUSE` (and/or comment out the crontab line). Remove the file to resume.
-- Unattended runs need the permission allow-list from `SETUP.md` §1.4 in `.claude/settings.local.json`, including `Bash(scripts/agent/*)` for the step scripts — headless tool calls fail instead of prompting.
-- `cron.log` grows unbounded; truncate it occasionally (`: > .claude/agents/state/cron.log`).
+`.claude/commands/orchestrator.md` runs the human-authorized autonomous cycle (AGENTS.md §13). Worker agents spawned by the orchestrator do not pause for per-change confirmation but must obey every rule above — autonomy never relaxes architecture rules, only the confirmation gate. Operational guide (cron scheduling, model/effort policy, pausing): `SETUP.md` §2.
