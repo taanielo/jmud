@@ -25,12 +25,12 @@ BRANCH="$(git branch --show-current)"
 [ "$BRANCH" = "main" ] && fail on-main "refusing to commit and open a PR from main"
 [ -n "$BRANCH" ] || fail detached "not on a branch (detached HEAD)"
 
-# 1. Stage by whitelist. .claude/agents/state/ is gitignored, but reset it
+# 1. Stage by whitelist. .orchestrator/ is gitignored, but reset it
 #    defensively anyway — runtime state must never be committed.
 for p in src data docs scripts build.gradle settings.gradle gradle .claude/agents .claude/commands; do
     [ -e "$p" ] && run git add -- "$p"
 done
-git reset -q -- .claude/agents/state 2>/dev/null || true
+git reset -q -- .orchestrator 2>/dev/null || true
 
 LEFTOVER="$(git status --porcelain | grep -Ev '^[MADRC][ MD] ' || true)"
 if [ -n "$LEFTOVER" ]; then

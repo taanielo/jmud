@@ -6,11 +6,11 @@ argument-hint: (no arguments)
 
 You are the **orchestrator** for jmud's autonomous development loop. You run in the **main session** and drive one full cycle. The **mechanical stages are shell scripts** under `scripts/agent/` (run them with Bash — never spawn an agent for them); only the stages that need judgment (writing code, designing features, formalizing issues, optimizing the workflow) spawn subagents. You alone may spawn subagents (workers cannot). Persist all progress to disk so any cycle can resume after an interruption.
 
-**Step-script contract** (`scripts/agent/branch.sh`, `verify.sh`, `pr-create.sh`, `merge.sh`): each prints optional `WARN ...` lines plus exactly one `OK ...` / `FAIL reason=<slug> ...` line, writes `last-result.json` itself, and logs detail to `.claude/agents/state/<step>.log`. Trust the OK/FAIL line; read the step log **only on FAIL**. Relay any WARN lines in your end-of-cycle summary — they exist so a human notices (e.g. piling autosave stashes).
+**Step-script contract** (`scripts/agent/branch.sh`, `verify.sh`, `pr-create.sh`, `merge.sh`): each prints optional `WARN ...` lines plus exactly one `OK ...` / `FAIL reason=<slug> ...` line, writes `last-result.json` itself, and logs detail to `.orchestrator/<step>.log`. Trust the OK/FAIL line; read the step log **only on FAIL**. Relay any WARN lines in your end-of-cycle summary — they exist so a human notices (e.g. piling autosave stashes).
 
 Run this command on a self-paced `/loop` (no fixed interval) so the next cycle starts only after this one returns.
 
-## State directory: `.claude/agents/state/` (create if missing)
+## State directory: `.orchestrator/` (create if missing)
 - `orchestrator-state.json` — the state machine (schema below)
 - `last-result.json` — the last worker's structured result: `{ "status": "success|failure", "output": {...}, "timestamp": "<ISO-8601>" }`
 - `cycle-log.jsonl` — one JSON line per completed cycle
@@ -26,7 +26,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 ```
 
 ## Step 0 — GUARD (always first)
-1. If `.claude/agents/state/PAUSE` exists → print `PAUSED (remove .claude/agents/state/PAUSE to resume)` and STOP.
+1. If `.orchestrator/PAUSE` exists → print `PAUSED (remove .orchestrator/PAUSE to resume)` and STOP.
 2. If `LOCK` exists and its `started_at` is **younger than 60 min** → another run is active; print `LOCK held, skipping` and STOP. Otherwise (no lock, or stale) write a fresh `LOCK`.
 3. Read `orchestrator-state.json` (create with defaults if missing).
 4. **Usage-limit check**: the system prompt contains a `<total_tokens>N tokens left</total_tokens>` tag. Parse N. If N ≤ 20000 (i.e. ≥ 90 % of the context window consumed) → print `usage limit reached (≤20k tokens remaining)`, release LOCK, STOP.
@@ -40,8 +40,8 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 
   Whatever was picked: `gh issue edit <N> --add-assignee @me`, set `current_issue`, `stage = CREATE_BRANCH`.
 - **CREATE_BRANCH** — run `scripts/agent/branch.sh <N> "<issue title>"`. OK → `stage = WRITE_CODE`.
-- **WRITE_CODE** — spawn **code-writer** (pass the **full issue body** — architecture issues contain a binding "How (implementation guide)" section; if `build_retries > 0`, also pass the contents of `.claude/agents/state/build-error.txt`). Success → `stage = VERIFY_BUILD`.
-- **VERIFY_BUILD** — run `scripts/agent/verify.sh --expect-branch <branch>`, adding `--smoke` when the change is player-visible (commands, login flow, output format). It runs `./gradlew check` (the full quality-gate suite, not just `build`) and, on failure, leaves an actionable excerpt in `.claude/agents/state/build-error.txt`.
+- **WRITE_CODE** — spawn **code-writer** (pass the **full issue body** — architecture issues contain a binding "How (implementation guide)" section; if `build_retries > 0`, also pass the contents of `.orchestrator/build-error.txt`). Success → `stage = VERIFY_BUILD`.
+- **VERIFY_BUILD** — run `scripts/agent/verify.sh --expect-branch <branch>`, adding `--smoke` when the change is player-visible (commands, login flow, output format). It runs `./gradlew check` (the full quality-gate suite, not just `build`) and, on failure, leaves an actionable excerpt in `.orchestrator/build-error.txt`.
   - OK → `build_retries = 0`, `stage = CREATE_PR`.
   - FAIL and `build_retries < 2` → `build_retries += 1`, `stage = WRITE_CODE`.
   - FAIL and `build_retries >= 2` → `gh issue create --title "blocked: <title>" --body "<scrubbed error summary from build-error.txt>" --label bug`; append the number to `blocked_issues`; notify (PushNotification if available); `build_retries = 0`, `current_issue = null`, `stage = FIND_ISSUE`.
@@ -49,11 +49,11 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 - **MERGE_PR** — run `scripts/agent/merge.sh <N>`. It gates on GitHub CI status (`gh pr checks --watch`) before squash-merging — local `check` success alone is not sufficient.
   - OK → append `{ "issue":N, "pr":M, "merged_at":"..." }` to `cycle-log.jsonl`; `cycles_since_last_optimization += 1`; `current_issue = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0.
   - `FAIL reason=conflicts` → set `parked_pr`, notify, `current_issue = null`, `stage = FIND_ISSUE` (a human resolves the conflict).
-  - `FAIL reason=ci` or `reason=ci-timeout` → treat like a local build failure: copy the failing-check detail from `.claude/agents/state/merge.log` into `.claude/agents/state/build-error.txt` and apply the VERIFY_BUILD retry/blocked logic above (`stage = WRITE_CODE` or block).
+  - `FAIL reason=ci` or `reason=ci-timeout` → treat like a local build failure: copy the failing-check detail from `.orchestrator/merge.log` into `.orchestrator/build-error.txt` and apply the VERIFY_BUILD retry/blocked logic above (`stage = WRITE_CODE` or block).
 
 ## Step 2 — Persist & finish
 - Write `orchestrator-state.json` **atomically**: write `orchestrator-state.json.tmp`, then `mv` over the real file. Update `last_updated` (ISO-8601).
-- Release the LOCK (`rm .claude/agents/state/LOCK`).
+- Release the LOCK (`rm .orchestrator/LOCK`).
 - Print a one-line summary of what this cycle did.
 
 ## Rules

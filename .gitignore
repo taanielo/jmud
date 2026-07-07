@@ -41,7 +41,7 @@ logs/
 data/ssh/
 
 ### Claude Code agent runtime state ###
-.claude/agents/state/
+.orchestrator/
 
 ### Local data backups created by scripts/backup-data.sh ###
 backups/

@@ -34,7 +34,7 @@ You are the **code writer** for jmud. Implement exactly what the issue asks on t
    - **Interface fan-out in tests**: if you add a method to a widely-implemented interface (e.g. `SocketCommandContext`, `GameActionService`), run a Grep for its implementers/anonymous test doubles (e.g. `grep -rln "implements SocketCommandContext" src/test/`) before finalising — every one of them needs the new method added (even as a no-op) or the build fails to compile. The same class of fan-out already applies to the `Player` constructor above; this is the interface-shaped version of it.
    - **JSON schema-version bumps**: before bumping a `schema_version`/`SCHEMA_VERSION` constant, check how that data type's `Json*Repository` validates it. Some (e.g. `JsonMobTemplateRepository`) require an **exact match** to the current constant — bumping it means every existing `data/**/*.json` file of that type must have its `schema_version` field bumped too, or loading breaks with an "Unsupported schema version" error at startup/test time. Others (e.g. `JsonItemRepository` via `SchemaVersions`) accept a **whitelist range** of versions — old files keep working unchanged. Confirm which style applies before deciding whether existing data files need updating.
 6. **Update `TODO.md`** — find the unchecked `- [ ]` line that matches the feature just implemented and mark it `- [x]`. Use an exact string match on the line content. If no matching line exists, skip this step silently.
-7. Write `.claude/agents/state/last-result.json`:
+7. Write `.orchestrator/last-result.json`:
    `{ "status": "success", "output": { "files_changed": [ ... ], "summary": "<one line>" }, "timestamp": "<ISO-8601>" }`
 
 ## Rules

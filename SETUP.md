@@ -126,7 +126,7 @@ Run the command **without** `/loop` so it does one stage and stops; inspect, the
 ```
 
 Each invocation advances one stage: `FIND_ISSUE → CREATE_BRANCH → WRITE_CODE → VERIFY_BUILD →
-CREATE_PR → MERGE_PR`. State persists in `.claude/agents/state/` between calls.
+CREATE_PR → MERGE_PR`. State persists in `.orchestrator/` between calls.
 
 ### Continuous (self-paced) loop
 
@@ -139,7 +139,7 @@ that would race on the single git checkout and shared state).
 
 ### Scheduled runs via cron (preferred for unattended use)
 
-Every cycle persists its state to `.claude/agents/state/`, so no conversation memory is needed
+Every cycle persists its state to `.orchestrator/`, so no conversation memory is needed
 between cycles. Running each cycle as a **fresh headless session** keeps context (and token cost)
 constant, unlike a long-lived `/loop` session whose context grows with every iteration.
 
@@ -153,7 +153,7 @@ Crontab (`crontab -e`) — cron's minimal PATH lacks `~/.local/bin`, where `clau
 
 ```cron
 PATH=/home/taaniel/.local/bin:/usr/local/bin:/usr/bin:/bin
-*/30 * * * * cd /home/taaniel/repos/jmud && flock -n .claude/agents/state/cron.flock claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits >> .claude/agents/state/cron.log 2>&1
+*/30 * * * * cd /home/taaniel/repos/jmud && flock -n .orchestrator/cron.flock claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits >> .orchestrator/cron.log 2>&1
 ```
 
 Notes:
@@ -162,7 +162,7 @@ Notes:
   `LOCK`/`PAUSE` guards remain the second line of defense.
 - Unattended runs need the §1.4 permission allow-list in `.claude/settings.local.json`, including
   `Bash(scripts/agent/*)` for the step scripts — headless tool calls fail instead of prompting.
-- `cron.log` grows unbounded; truncate it occasionally (`: > .claude/agents/state/cron.log`).
+- `cron.log` grows unbounded; truncate it occasionally (`: > .orchestrator/cron.log`).
 - Don't run cron and an interactive `/loop` at the same time — the LOCK guard serializes them,
   but there's no reason to pay for both.
 
@@ -190,11 +190,11 @@ claude            # then inside Claude:  /loop /orchestrator
 ### Stopping / pausing (kill switch)
 
 ```bash
-touch .claude/agents/state/PAUSE     # next cycle exits cleanly at the GUARD step
-rm    .claude/agents/state/PAUSE     # resume
+touch .orchestrator/PAUSE     # next cycle exits cleanly at the GUARD step
+rm    .orchestrator/PAUSE     # resume
 ```
 
-### State directory (`.claude/agents/state/`, git-ignored)
+### State directory (`.orchestrator/`, git-ignored)
 
 | File                       | Purpose                                              |
 | -------------------------- | ---------------------------------------------------- |

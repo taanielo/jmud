@@ -4,8 +4,8 @@
 # Contract every step script follows (so the orchestrator can stay cheap):
 #   - stdout: optional "WARN ..." lines, then exactly ONE "OK ..." or
 #     "FAIL reason=<slug> ..." line
-#   - detail: appended to .claude/agents/state/<step>.log — read it only on FAIL
-#   - result: .claude/agents/state/last-result.json (same schema the worker
+#   - detail: appended to .orchestrator/<step>.log — read it only on FAIL
+#   - result: .orchestrator/last-result.json (same schema the worker
 #     agents used: { status, output, timestamp })
 #   - exit:   0 = OK, non-zero = FAIL
 #
@@ -13,7 +13,7 @@
 # results (AGENTS.md: never log security keys/tokens).
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-STATE_DIR="$REPO_ROOT/.claude/agents/state"
+STATE_DIR="$REPO_ROOT/.orchestrator"
 mkdir -p "$STATE_DIR"
 STEP_NAME="$(basename "${0%.sh}")"
 STEP_LOG="$STATE_DIR/$STEP_NAME.log"
@@ -54,6 +54,6 @@ fail() {
     local reason="$1"; shift
     log "FAIL $reason: $*"
     write_result failure "$(jq -n --arg r "$reason" --arg d "$*" '{reason: $r, detail: $d}')"
-    echo "FAIL reason=$reason detail=$* (log: .claude/agents/state/$STEP_NAME.log)"
+    echo "FAIL reason=$reason detail=$* (log: .orchestrator/$STEP_NAME.log)"
     exit 1
 }

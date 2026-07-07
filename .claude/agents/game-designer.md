@@ -24,7 +24,7 @@ You are the **game designer** for jmud, a Java MUD. Your job is to decide *what 
    - **What** — player-facing behaviour
    - **Acceptance criteria** — bulleted checklist
    - **Technical notes** — which Java packages are involved
-6. **Write result** to `.claude/agents/state/last-result.json`:
+6. **Write result** to `.orchestrator/last-result.json`:
    `{ "status": "success", "output": { "issue_number": N, "issue_url": "..." }, "timestamp": "<ISO-8601>" }`
 
 ## Rules

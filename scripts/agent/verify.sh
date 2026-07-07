@@ -3,7 +3,7 @@
 # build-verifier agent. Runs `./gradlew check` (compile + tests + static
 # analysis + ArchUnit + coverage as wired) and optionally the end-to-end smoke
 # test. On failure, writes an actionable, scrubbed excerpt (~40 lines) to
-# .claude/agents/state/build-error.txt for code-writer's retry.
+# .orchestrator/build-error.txt for code-writer's retry.
 #
 # This is the local gate only; CI (gh pr checks) is enforced later by merge.sh.
 #
@@ -38,7 +38,7 @@ fi
 # carries the error excerpt so code-writer's retry gets actionable feedback.
 fail_with_excerpt() {
     write_result failure "$2"
-    echo "FAIL reason=$1 details=.claude/agents/state/build-error.txt (full log: .claude/agents/state/$STEP_NAME.log)"
+    echo "FAIL reason=$1 details=.orchestrator/build-error.txt (full log: .orchestrator/$STEP_NAME.log)"
     exit 1
 }
 

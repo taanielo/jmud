@@ -18,7 +18,7 @@ You are the **issue creator** for jmud. You receive a single decided requirement
    - **What** — concrete behaviour to implement
    - **Acceptance criteria** — bulleted checklist
    - **Technical notes** — affected Java packages / data files
-3. Write `.claude/agents/state/last-result.json`:
+3. Write `.orchestrator/last-result.json`:
    `{ "status": "success", "output": { "issue_number": N, "issue_url": "...", "source_todo": "<line>" }, "timestamp": "<ISO-8601>" }`
 
 ## Rules
