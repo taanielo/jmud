@@ -4,7 +4,6 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 
 ## Planned — Gameplay & Content
 
-- [ ] Add container items (bags, chests) with PUT and GET FROM commands and their own capacity
 - [ ] Add light sources and dark rooms: torches/lanterns required to see room contents in unlit areas
 - [ ] Add item durability: gear degrades in combat and a blacksmith NPC offers a REPAIR command
 - [ ] Add item rarity tiers (common/uncommon/rare) with stat affixes and colored names in LOOK/INVENTORY
