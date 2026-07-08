@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import io.taanielo.jmud.core.output.PlainTextStyler;
+import io.taanielo.jmud.core.output.TextStyler;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
@@ -21,15 +23,13 @@ public final class EquipmentListing {
 
     private static final String HEADER = "You are wearing:";
     private static final String EMPTY_SLOT = "(empty)";
+    private static final TextStyler PLAIN = new PlainTextStyler();
 
     private EquipmentListing() {
     }
 
     /**
-     * Formats the equipment slots into display lines.
-     *
-     * <p>Every {@link EquipmentSlot} is shown in declaration order. Equipped
-     * slots display the item name; empty slots display {@code (empty)}.
+     * Formats the equipment slots into display lines without rarity coloring.
      *
      * @param slots    the map of currently equipped item ids keyed by slot
      * @param itemById a lookup function mapping an {@link ItemId} to an {@link Item},
@@ -37,8 +37,28 @@ public final class EquipmentListing {
      * @return the lines to render, never empty
      */
     public static List<String> format(Map<EquipmentSlot, ItemId> slots, Function<ItemId, Item> itemById) {
+        return format(slots, itemById, PLAIN);
+    }
+
+    /**
+     * Formats the equipment slots into display lines, coloring each equipped item name by its
+     * rarity tier through the supplied {@link TextStyler}.
+     *
+     * <p>Every {@link EquipmentSlot} is shown in declaration order. Equipped
+     * slots display the item name (rarity-colored and composing with the {@code (damaged)}
+     * annotation from {@link Item#durabilityDisplayName()}); empty slots display {@code (empty)}.
+     *
+     * @param slots    the map of currently equipped item ids keyed by slot
+     * @param itemById a lookup function mapping an {@link ItemId} to an {@link Item},
+     *                 used to resolve the display name; returns {@code null} when unknown
+     * @param styler   the styler used to color item names by rarity
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(
+        Map<EquipmentSlot, ItemId> slots, Function<ItemId, Item> itemById, TextStyler styler) {
         Objects.requireNonNull(slots, "Slots are required");
         Objects.requireNonNull(itemById, "Item lookup is required");
+        Objects.requireNonNull(styler, "Styler is required");
         List<String> lines = new ArrayList<>(EquipmentSlot.values().length + 1);
         lines.add(HEADER);
         for (EquipmentSlot slot : EquipmentSlot.values()) {
@@ -48,7 +68,9 @@ public final class EquipmentListing {
                 lines.add(String.format("  %-8s : %s", label, EMPTY_SLOT));
             } else {
                 Item item = itemById.apply(equipped);
-                String itemName = item != null ? item.durabilityDisplayName() : equipped.getValue();
+                String itemName = item != null
+                    ? styler.rarity(item.durabilityDisplayName(), item.getRarity())
+                    : equipped.getValue();
                 lines.add(String.format("  %-8s : %s", label, itemName));
             }
         }

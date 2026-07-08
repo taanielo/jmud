@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "affixes": [
+    {
+      "id": "of-the-bear",
+      "label": "of the Bear",
+      "stats": {
+        "strength": 2
+      },
+      "allowed_rarities": ["uncommon", "rare"]
+    },
+    {
+      "id": "of-the-fox",
+      "label": "of the Fox",
+      "stats": {
+        "dexterity": 2
+      },
+      "allowed_rarities": ["uncommon", "rare"]
+    },
+    {
+      "id": "of-the-owl",
+      "label": "of the Owl",
+      "stats": {
+        "intelligence": 2
+      },
+      "allowed_rarities": ["uncommon", "rare"]
+    },
+    {
+      "id": "of-vitality",
+      "label": "of Vitality",
+      "stats": {
+        "hp": 10
+      },
+      "allowed_rarities": ["rare"]
+    },
+    {
+      "id": "of-the-titan",
+      "label": "of the Titan",
+      "stats": {
+        "strength": 3,
+        "hp": 5
+      },
+      "allowed_rarities": ["rare"]
+    }
+  ]
+}

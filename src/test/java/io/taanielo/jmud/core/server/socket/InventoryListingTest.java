@@ -7,11 +7,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.output.AnsiTextStyler;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.Rarity;
 
 class InventoryListingTest {
+
+    private static final String ESC = String.valueOf((char) 27);
 
     private static Item item(String id, String name, int weight) {
         return new Item(
@@ -91,5 +96,18 @@ class InventoryListingTest {
         List<String> lines = InventoryListing.format(List.of(heavy), 40, 50);
 
         assertTrue(lines.getLast().contains("40 / 50 lbs"), "Footer: " + lines.getLast());
+    }
+
+    @Test
+    void rareItemNameIsColoredUnderAnsiStyler() {
+        Item blade = new Item(
+            ItemId.of("blade"), "Runed Blade", "A glowing blade.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 0, null, null, null,
+            List.of(), null, null, null, Rarity.RARE, List.of());
+
+        List<String> lines = InventoryListing.format(List.of(blade), 5, 50, new AnsiTextStyler());
+
+        assertTrue(lines.get(1).contains(ESC + "[36m"), "Rare item should be cyan-wrapped: " + lines.get(1));
+        assertTrue(lines.get(1).contains("Runed Blade"), "Should still contain the item name");
     }
 }

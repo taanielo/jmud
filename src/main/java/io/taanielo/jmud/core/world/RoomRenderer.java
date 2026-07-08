@@ -9,6 +9,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.output.PlainTextStyler;
+import io.taanielo.jmud.core.output.TextStyler;
 
 /**
  * Stateless service that composes the look description for a room.
@@ -19,6 +21,8 @@ import io.taanielo.jmud.core.authentication.Username;
  */
 public class RoomRenderer {
 
+    private static final TextStyler PLAIN = new PlainTextStyler();
+
     /**
      * Returns the rendered look description lines for the given room at {@link TimeOfDay#DAY}.
      *
@@ -28,7 +32,7 @@ public class RoomRenderer {
      * @return the list of output lines (name, description, exits, items, occupants)
      */
     public List<String> describeRoom(Room room, Username viewer, Set<Direction> lockedExits) {
-        return describeRoom(room, viewer, lockedExits, TimeOfDay.DAY);
+        return describeRoom(room, viewer, lockedExits, TimeOfDay.DAY, PLAIN);
     }
 
     /**
@@ -43,15 +47,32 @@ public class RoomRenderer {
      * @return the list of output lines (name, description, exits, items, occupants)
      */
     public List<String> describeRoom(Room room, Username viewer, Set<Direction> lockedExits, TimeOfDay timeOfDay) {
+        return describeRoom(room, viewer, lockedExits, timeOfDay, PLAIN);
+    }
+
+    /**
+     * Returns the rendered look description lines for the given room, coloring each room item name
+     * by its rarity tier through the supplied {@link TextStyler}.
+     *
+     * @param room        the room to describe (with occupants and merged items already embedded)
+     * @param viewer      the player requesting the description (excluded from the occupants list)
+     * @param lockedExits the set of currently locked exit directions in this room
+     * @param timeOfDay   the current time of day, used to pick the day or night description
+     * @param styler      the styler used to color item names by rarity
+     * @return the list of output lines (name, description, exits, items, occupants)
+     */
+    public List<String> describeRoom(
+        Room room, Username viewer, Set<Direction> lockedExits, TimeOfDay timeOfDay, TextStyler styler) {
         Objects.requireNonNull(room, "Room is required");
         Objects.requireNonNull(viewer, "Viewer is required");
         Objects.requireNonNull(lockedExits, "Locked exits set is required");
         Objects.requireNonNull(timeOfDay, "Time of day is required");
+        Objects.requireNonNull(styler, "Styler is required");
         List<String> lines = new ArrayList<>();
         lines.add(room.getName());
         lines.add(room.describeFor(timeOfDay));
         lines.add("Exits: " + formatExits(room.getExits(), lockedExits));
-        lines.add("Items: " + formatItems(room.getItems()));
+        lines.add("Items: " + formatItems(room.getItems(), styler));
         lines.add("Occupants: " + formatOccupants(room.getOccupants(), viewer));
         return lines;
     }
@@ -66,12 +87,12 @@ public class RoomRenderer {
             .collect(Collectors.joining(", "));
     }
 
-    private String formatItems(List<Item> items) {
+    private String formatItems(List<Item> items, TextStyler styler) {
         if (items.isEmpty()) {
             return "none";
         }
         return items.stream()
-            .map(Item::displayName)
+            .map(item -> styler.rarity(item.durabilityDisplayName(), item.getRarity()))
             .collect(Collectors.joining(", "));
     }
 

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:affix:v1",
+  "title": "Item affix definitions (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "affixes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "affixes": {
+      "type": "array",
+      "description": "The available stat affixes that can be attached to items.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "stats",
+          "allowed_rarities"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Unique affix identifier referenced by items."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable label, e.g. 'of the Bear'."
+          },
+          "stats": {
+            "type": "object",
+            "description": "Additive stat bonuses granted by this affix, keyed by stat name.",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "allowed_rarities": {
+            "type": "array",
+            "description": "Rarity tiers on which this affix may roll.",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["common", "uncommon", "rare"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

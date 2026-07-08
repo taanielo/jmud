@@ -21,6 +21,8 @@ public record ItemDto(
     List<ItemDto> contents,
     Integer lightRadius,
     Integer maxDurability,
-    Integer durability
+    Integer durability,
+    String rarity,
+    List<String> affixes
 ) {
 }

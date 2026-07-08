@@ -58,6 +58,18 @@ public class Item {
      * {@link #maxDurability} when a breakable item is created without an explicit value.
      */
     @Nullable Integer durability;
+    /**
+     * Rarity tier of this item, governing its colored display name and which affixes it may carry.
+     * Never {@code null}; defaults to {@link Rarity#COMMON} for items created without an explicit
+     * tier, keeping legacy item data (which has no {@code rarity} field) fully backward compatible.
+     */
+    Rarity rarity;
+    /**
+     * Ids of the stat affixes attached to this item, resolved into bonus stats by
+     * {@link io.taanielo.jmud.core.world.ItemAffixService}. Always empty for plain items; the base
+     * {@link #attributes} are never mutated to fold these in.
+     */
+    List<AffixId> affixes;
 
     /**
      * Constructs an item. Note this class is never bound directly by Jackson for item-definition
@@ -76,6 +88,8 @@ public class Item {
      * @param durability        the current durability, or {@code null} to default to
      *                          {@code maxDurability}; must satisfy {@code 0 <= durability <= maxDurability}
      *                          and must be {@code null} when {@code maxDurability} is {@code null}
+     * @param rarity            the rarity tier, or {@code null} to default to {@link Rarity#COMMON}
+     * @param affixes           the ids of stat affixes attached to this item, or {@code null} for none
      */
     public Item(
         ItemId id,
@@ -93,7 +107,9 @@ public class Item {
         List<Item> containedItems,
         @Nullable Integer lightRadius,
         @Nullable Integer maxDurability,
-        @Nullable Integer durability
+        @Nullable Integer durability,
+        @Nullable Rarity rarity,
+        @Nullable List<AffixId> affixes
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -156,6 +172,35 @@ public class Item {
             this.maxDurability = maxDurability;
             this.durability = current;
         }
+        this.rarity = Objects.requireNonNullElse(rarity, Rarity.COMMON);
+        this.affixes = List.copyOf(Objects.requireNonNullElse(affixes, List.of()));
+    }
+
+    /**
+     * Convenience constructor for durability-aware call sites that predate {@link #rarity} and
+     * {@link #affixes}: builds an item with an optional light radius and durability tracking but no
+     * rarity tier or affixes (i.e. a {@link Rarity#COMMON} item).
+     */
+    public Item(
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef,
+        AbilityId teachesAbilityRef,
+        Integer containerCapacity,
+        List<Item> containedItems,
+        @Nullable Integer lightRadius,
+        @Nullable Integer maxDurability,
+        @Nullable Integer durability
+    ) {
+        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
+            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability, null, null);
     }
 
     /**
@@ -180,7 +225,7 @@ public class Item {
         @Nullable Integer lightRadius
     ) {
         this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, lightRadius, null, null);
+            teachesAbilityRef, containerCapacity, containedItems, lightRadius, null, null, null, null);
     }
 
     /**
@@ -203,7 +248,7 @@ public class Item {
         List<Item> containedItems
     ) {
         this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, null, null, null);
+            teachesAbilityRef, containerCapacity, containedItems, null, null, null, null, null);
     }
 
     /**
@@ -339,7 +384,8 @@ public class Item {
      */
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
-            attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability);
+            attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
+            rarity, affixes);
     }
 
     /**
@@ -372,7 +418,8 @@ public class Item {
         }
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
-            attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped);
+            attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
+            rarity, affixes);
     }
 
     /**

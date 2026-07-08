@@ -130,6 +130,49 @@ class JsonItemRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsRareItemWithAffixes() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository repository = new JsonItemRepository(dataRoot);
+
+        Item blade = new Item(
+            ItemId.of("runed-blade"),
+            "Runed Blade",
+            "A blade humming with power.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            io.taanielo.jmud.core.world.EquipmentSlot.WEAPON,
+            5,
+            120,
+            null,
+            null,
+            null,
+            List.of(),
+            null,
+            null,
+            null,
+            io.taanielo.jmud.core.world.Rarity.RARE,
+            List.of(
+                io.taanielo.jmud.core.world.AffixId.of("of-the-bear"),
+                io.taanielo.jmud.core.world.AffixId.of("of-vitality"))
+        );
+        repository.save(blade);
+
+        // Fresh repository (no cache) so the values come back off disk.
+        Optional<Item> loaded = new JsonItemRepository(dataRoot).findById(ItemId.of("runed-blade"));
+
+        assertTrue(loaded.isPresent());
+        Item reloaded = loaded.get();
+        assertEquals(io.taanielo.jmud.core.world.Rarity.RARE, reloaded.getRarity());
+        assertEquals(
+            List.of(
+                io.taanielo.jmud.core.world.AffixId.of("of-the-bear"),
+                io.taanielo.jmud.core.world.AffixId.of("of-vitality")),
+            reloaded.getAffixes());
+        assertEquals(blade, reloaded);
+    }
+
+    @Test
     void throwsOnInvalidJson() throws Exception {
         Path dataRoot = tempDir.resolve("data");
         Path itemsDir = dataRoot.resolve("items");
