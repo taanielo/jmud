@@ -22,7 +22,7 @@ jacoco = "0.8.15"
 pitest = "1.19.1"
 pitestGradlePlugin = "1.19.0"
 pitestJunit5Plugin = "1.2.2"
-micrometer = "1.15.0"
+micrometer = "1.17.0"
 
 [libraries]
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
