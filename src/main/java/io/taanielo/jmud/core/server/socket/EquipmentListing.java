@@ -48,7 +48,7 @@ public final class EquipmentListing {
                 lines.add(String.format("  %-8s : %s", label, EMPTY_SLOT));
             } else {
                 Item item = itemById.apply(equipped);
-                String itemName = item != null ? item.getName() : equipped.getValue();
+                String itemName = item != null ? item.durabilityDisplayName() : equipped.getValue();
                 lines.add(String.format("  %-8s : %s", label, itemName));
             }
         }

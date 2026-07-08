@@ -974,7 +974,8 @@ public class GameActionService {
         ItemId weaponId = attacker.getEquipment().equipped(EquipmentSlot.WEAPON);
         if (weaponId != null) {
             for (Item item : attacker.getInventory()) {
-                if (item.getId().equals(weaponId) && item.getAttackRef() != null) {
+                // A broken weapon cannot be used in combat; fall back to the unarmed attack.
+                if (item.getId().equals(weaponId) && item.getAttackRef() != null && !item.isBroken()) {
                     return item.getAttackRef();
                 }
             }

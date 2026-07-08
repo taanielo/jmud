@@ -41,6 +41,7 @@ import io.taanielo.jmud.core.tick.Tickable;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
@@ -75,6 +76,8 @@ public class MobRegistry implements Tickable {
     private EffectEngine effectEngine;
     /** Optional world clock used to pick day/night respawn delays; may be null when disabled. */
     private WorldClock worldClock;
+    /** Optional durability service used to wear down equipped gear on hit; may be null when disabled. */
+    private ItemDurabilityService itemDurabilityService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -133,6 +136,16 @@ public class MobRegistry implements Tickable {
      */
     public void setWorldClock(WorldClock worldClock) {
         this.worldClock = worldClock;
+    }
+
+    /**
+     * Registers the durability service that wears down a player's equipped gear each time a mob
+     * hits them (see {@link ItemDurabilityService#degradeEquipped}).
+     *
+     * @param itemDurabilityService the durability service; may be null to disable gear wear
+     */
+    public void setItemDurabilityService(ItemDurabilityService itemDurabilityService) {
+        this.itemDurabilityService = itemDurabilityService;
     }
 
     private TimeOfDay currentTimeOfDay() {
@@ -403,6 +416,7 @@ public class MobRegistry implements Tickable {
             }
             messages.add(GameMessage.toSource(hitMessage(mob, attack, useSpecial, damage)));
             applyOnHitEffect(attack, damagedPlayer, targetUsername, candidates, messages);
+            damagedPlayer = degradeEquippedGear(damagedPlayer, messages);
             saveOrLog(damagedPlayer);
             playerEventBus.publish(targetUsername,
                 new GameActionResult(damagedPlayer, null, messages));
@@ -692,12 +706,32 @@ public class MobRegistry implements Tickable {
         ItemId weaponId = attacker.getEquipment().equipped(EquipmentSlot.WEAPON);
         if (weaponId != null) {
             for (Item item : attacker.getInventory()) {
-                if (item.getId().equals(weaponId) && item.getAttackRef() != null) {
+                // A broken weapon cannot be used in combat; fall back to the unarmed attack.
+                if (item.getId().equals(weaponId) && item.getAttackRef() != null && !item.isBroken()) {
                     return item.getAttackRef();
                 }
             }
         }
         return CombatSettings.defaultAttackId();
+    }
+
+    /**
+     * Wears down the player's equipped gear after a mob hit, appending any break messages to the
+     * player's self-facing message list. A no-op when no durability service is configured.
+     *
+     * @param player   the player who was just hit
+     * @param messages the mutable self-facing message list to append break notices to
+     * @return the player with worn-down gear applied (or unchanged when durability is disabled)
+     */
+    private Player degradeEquippedGear(Player player, List<GameMessage> messages) {
+        if (itemDurabilityService == null) {
+            return player;
+        }
+        ItemDurabilityService.DegradeResult result = itemDurabilityService.degradeEquipped(player);
+        for (String message : result.messages()) {
+            messages.add(GameMessage.toSource(message));
+        }
+        return result.player();
     }
 
     private MobInstance findMobByName(List<MobInstance> mobs, String input) {

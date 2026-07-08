@@ -65,6 +65,7 @@ import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.DoorActionResult;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
@@ -1436,6 +1437,43 @@ class SocketCommandContextImpl implements SocketCommandContext {
             session.replacePlayer(result.updatedPlayer());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void repairItem(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to repair items.");
+            return;
+        }
+        if (context.itemDurabilityService() == null) {
+            writeLineWithPrompt("There is no blacksmith here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isBlacksmithPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no blacksmith here to repair your gear.");
+            return;
+        }
+        ItemDurabilityService.RepairOutcome outcome =
+            context.itemDurabilityService().repair(player, args);
+        if (outcome.success()) {
+            session.replacePlayer(outcome.updatedPlayer());
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    /** Returns whether a blacksmith NPC (tagged {@code blacksmith}) is alive in the given room. */
+    private boolean isBlacksmithPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("blacksmith"));
     }
 
     @Override

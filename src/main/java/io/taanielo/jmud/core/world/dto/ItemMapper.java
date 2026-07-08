@@ -26,7 +26,14 @@ public class ItemMapper {
         List<ItemDto> contents = item.getContainedItems().isEmpty()
             ? null
             : item.getContainedItems().stream().map(this::toDto).toList();
-        int version = item.getLightRadius() != null ? SchemaVersions.V6 : SchemaVersions.V5;
+        int version;
+        if (item.getMaxDurability() != null) {
+            version = SchemaVersions.V7;
+        } else if (item.getLightRadius() != null) {
+            version = SchemaVersions.V6;
+        } else {
+            version = SchemaVersions.V5;
+        }
         return new ItemDto(
             version,
             item.getId().getValue(),
@@ -42,7 +49,9 @@ public class ItemMapper {
             item.getTeachesAbilityRef() == null ? null : item.getTeachesAbilityRef().getValue(),
             item.getContainerCapacity(),
             contents,
-            item.getLightRadius()
+            item.getLightRadius(),
+            item.getMaxDurability(),
+            item.getDurability()
         );
     }
 
@@ -78,7 +87,9 @@ public class ItemMapper {
             teachesAbilityRef,
             dto.containerCapacity(),
             contents,
-            dto.lightRadius()
+            dto.lightRadius(),
+            dto.maxDurability(),
+            dto.durability()
         );
     }
 }

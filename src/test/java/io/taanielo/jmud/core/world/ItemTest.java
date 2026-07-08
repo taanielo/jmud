@@ -127,4 +127,64 @@ class ItemTest {
             ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null, List.of(), 0
         ));
     }
+
+    private static Item durable(String id, String name, Integer maxDurability, Integer durability) {
+        return new Item(
+            ItemId.of(id), name, "A blade.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
+            List.of(), null, maxDurability, durability
+        );
+    }
+
+    @Test
+    void plainItemIsNotBreakable() {
+        Item item = plain("rock", "a rock");
+        assertFalse(item.isBreakable());
+        assertFalse(item.isBroken());
+    }
+
+    @Test
+    void breakableItemDefaultsToFullDurability() {
+        Item sword = durable("sword", "a sword", 50, null);
+        assertTrue(sword.isBreakable());
+        assertFalse(sword.isBroken());
+        assertEquals(50, sword.getDurability());
+        assertEquals(50, sword.getMaxDurability());
+    }
+
+    @Test
+    void durabilityAboveMaxIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> durable("sword", "a sword", 10, 11));
+    }
+
+    @Test
+    void durabilityWithoutMaxIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> durable("sword", "a sword", null, 5));
+    }
+
+    @Test
+    void withDurabilityClampsToRange() {
+        Item sword = durable("sword", "a sword", 50, 50);
+        assertEquals(0, sword.withDurability(-5).getDurability());
+        assertEquals(50, sword.withDurability(999).getDurability());
+        assertEquals(20, sword.withDurability(20).getDurability());
+    }
+
+    @Test
+    void brokenItemAnnotatesDisplayName() {
+        Item sword = durable("sword", "a sword", 50, 0);
+        assertTrue(sword.isBroken());
+        assertEquals("a sword (damaged)", sword.durabilityDisplayName());
+    }
+
+    @Test
+    void healthyBreakableItemHasPlainDisplayName() {
+        Item sword = durable("sword", "a sword", 50, 50);
+        assertEquals("a sword", sword.durabilityDisplayName());
+    }
+
+    @Test
+    void withDurabilityOnUnbreakableItemIsRejected() {
+        assertThrows(IllegalStateException.class, () -> plain("rock", "a rock").withDurability(1));
+    }
 }

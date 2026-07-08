@@ -66,6 +66,7 @@ import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
+import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomItemService;
@@ -114,7 +115,8 @@ public record GameContext(
     BankService bankService,
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
-    WorldClock worldClock
+    WorldClock worldClock,
+    ItemDurabilityService itemDurabilityService
 ) {
 
     /**
@@ -184,12 +186,16 @@ public record GameContext(
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, playerRepository, roomService, messageBroadcaster);
 
+        ItemDurabilityService itemDurabilityService =
+            new ItemDurabilityService(config.getInt("jmud.combat.durability_loss_per_hit", 1));
+
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository);
         if (mobRegistry != null) {
             mobRegistry.setEffectEngine(effectEngine);
             mobRegistry.setWorldClock(worldClock);
+            mobRegistry.setItemDurabilityService(itemDurabilityService);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -242,7 +248,8 @@ public record GameContext(
             bankService,
             messageBroadcaster,
             gossipHistory,
-            worldClock
+            worldClock,
+            itemDurabilityService
         );
     }
 
