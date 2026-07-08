@@ -247,7 +247,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         session.replacePlayer(updated);
         connection.writeLine("You awaken in the starting room.");
         Player player = session.getPlayer();
-        RoomService.LookResult result = roomService.look(player.getUsername());
+        RoomService.LookResult result = roomService.look(player.getUsername(), session.getTextStyler());
         emitAudit(
             "player.respawn",
             AuditSubject.player(player.getUsername()),
@@ -677,7 +677,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to look around.");
             return;
         }
-        RoomService.LookResult result = roomService.look(session.getPlayer().getUsername());
+        RoomService.LookResult result =
+            roomService.look(session.getPlayer().getUsername(), session.getTextStyler());
         Room room = result.room();
         if (room != null && !lightingService.canSeeRoom(session.getPlayer(), room)) {
             connection.writeLines(lightingService.darknessLines());
@@ -729,10 +730,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You are carrying too much to do that.");
             return;
         }
-        RoomService.LookResult currentLook = roomService.look(player.getUsername());
+        RoomService.LookResult currentLook = roomService.look(player.getUsername(), session.getTextStyler());
         Room oldRoom = currentLook.room();
         String fromRoom = resolveRoomId(player);
-        RoomService.MoveResult result = roomService.move(player.getUsername(), direction);
+        RoomService.MoveResult result =
+            roomService.move(player.getUsername(), direction, session.getTextStyler());
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("direction", direction.label());
         metadata.put("fromRoom", fromRoom);
@@ -888,7 +890,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (playerAfterPickup == null) {
             return;
         }
-        RoomService.LookResult look = roomService.look(playerAfterPickup.getUsername());
+        RoomService.LookResult look =
+            roomService.look(playerAfterPickup.getUsername(), session.getTextStyler());
         Room room = look.room();
         if (room == null || !room.requiresLight()) {
             return;
@@ -1094,7 +1097,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You are not in combat.");
             return;
         }
-        RoomService.LookResult lookResult = roomService.look(player.getUsername());
+        RoomService.LookResult lookResult = roomService.look(player.getUsername(), session.getTextStyler());
         Room currentRoom = lookResult.room();
         if (currentRoom == null || currentRoom.getExits().isEmpty()) {
             writeLineWithPrompt("There is nowhere to flee!");
@@ -1117,7 +1120,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GameActionResult result = gameActionService.recall(player);
         deliverResult(result);
         if (result.metadata().containsKey("recalled")) {
-            RoomService.LookResult look = roomService.look(player.getUsername());
+            RoomService.LookResult look = roomService.look(player.getUsername(), session.getTextStyler());
             connection.writeLines(look.lines());
             writeRoomOccupantLines(look.room());
         }
@@ -1133,7 +1136,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         int carried = encumbranceService.carriedWeight(player);
         int maxCarry = encumbranceService.maxCarry(player);
-        for (String line : InventoryListing.format(player.getInventory(), carried, maxCarry)) {
+        for (String line : InventoryListing.format(player.getInventory(), carried, maxCarry, session.getTextStyler())) {
             connection.writeLine(line);
         }
         sendPrompt();
@@ -1148,7 +1151,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         Map<ItemId, Item> inventoryIndex = player.getInventory().stream()
             .collect(Collectors.toMap(Item::getId, i -> i, (a, b) -> a));
-        for (String line : EquipmentListing.format(player.getEquipment().slots(), inventoryIndex::get)) {
+        for (String line : EquipmentListing.format(
+                player.getEquipment().slots(), inventoryIndex::get, session.getTextStyler())) {
             connection.writeLine(line);
         }
         sendPrompt();
@@ -1218,7 +1222,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         // Search inventory first, then room items.
         Item found = matchItemByName(player.getInventory(), args);
         if (found == null) {
-            RoomService.LookResult look = roomService.look(player.getUsername());
+            RoomService.LookResult look = roomService.look(player.getUsername(), session.getTextStyler());
             if (look.room() != null) {
                 found = matchItemByName(look.room().getItems(), args);
             }

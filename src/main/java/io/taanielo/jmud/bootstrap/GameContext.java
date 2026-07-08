@@ -66,6 +66,7 @@ import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
+import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomId;
@@ -74,9 +75,11 @@ import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.WorldClock;
 import io.taanielo.jmud.core.world.WorldClockSettings;
+import io.taanielo.jmud.core.world.repository.AffixRepository;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonAffixRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
 
@@ -116,7 +119,8 @@ public record GameContext(
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
     WorldClock worldClock,
-    ItemDurabilityService itemDurabilityService
+    ItemDurabilityService itemDurabilityService,
+    ItemAffixService itemAffixService
 ) {
 
     /**
@@ -189,6 +193,9 @@ public record GameContext(
         ItemDurabilityService itemDurabilityService =
             new ItemDurabilityService(config.getInt("jmud.combat.durability_loss_per_hit", 1));
 
+        AffixRepository affixRepository = new JsonAffixRepository();
+        ItemAffixService itemAffixService = new ItemAffixService(affixRepository);
+
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository);
@@ -249,7 +256,8 @@ public record GameContext(
             messageBroadcaster,
             gossipHistory,
             worldClock,
-            itemDurabilityService
+            itemDurabilityService,
+            itemAffixService
         );
     }
 

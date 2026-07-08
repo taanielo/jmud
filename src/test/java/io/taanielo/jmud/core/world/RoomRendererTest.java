@@ -10,12 +10,14 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.output.AnsiTextStyler;
 
 /**
  * Golden-output unit tests for {@link RoomRenderer}.
  */
 class RoomRendererTest {
 
+    private static final String ESC = String.valueOf((char) 27);
     private static final RoomId ROOM_ID = RoomId.of("town-square");
     private static final RoomId NORTH_ROOM = RoomId.of("market");
     private static final RoomRenderer RENDERER = new RoomRenderer();
@@ -24,6 +26,13 @@ class RoomRendererTest {
         return new Item(
             ItemId.of(id), name, name + " description.",
             ItemAttributes.empty(), List.of(), List.of(), null, 1, 0, null);
+    }
+
+    private static Item rareItem(String id, String name) {
+        return new Item(
+            ItemId.of(id), name, name + " description.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 1, 0, null, null, null,
+            List.of(), null, null, null, Rarity.RARE, List.of());
     }
 
     @Test
@@ -90,6 +99,18 @@ class RoomRendererTest {
 
         assertTrue(itemsLine.contains("a leather bag (1/5)"),
             "Container should be rendered with its fill level but was: " + itemsLine);
+    }
+
+    @Test
+    void rendersRareItemColoredUnderAnsiStyler() {
+        Room room = new Room(ROOM_ID, "Cave", "Dark.",
+            Map.of(), List.of(rareItem("blade", "Runed Blade")), List.of());
+        List<String> lines = RENDERER.describeRoom(
+            room, Username.of("alice"), Set.of(), TimeOfDay.DAY, new AnsiTextStyler());
+        String itemsLine = lines.stream().filter(l -> l.startsWith("Items:")).findFirst().orElse("");
+
+        assertTrue(itemsLine.contains(ESC + "[36m"), "Rare item should be cyan-wrapped: " + itemsLine);
+        assertTrue(itemsLine.contains("Runed Blade"), "Should still contain the item name");
     }
 
     @Test

@@ -8,12 +8,14 @@ import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.messaging.MessageSpecMapper;
+import io.taanielo.jmud.core.world.AffixId;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.Rarity;
 
 public class ItemMapper {
 
@@ -26,14 +28,21 @@ public class ItemMapper {
         List<ItemDto> contents = item.getContainedItems().isEmpty()
             ? null
             : item.getContainedItems().stream().map(this::toDto).toList();
+        boolean hasRarity = item.getRarity() != null && !item.getRarity().isCommon();
+        boolean hasAffixes = !item.getAffixes().isEmpty();
         int version;
-        if (item.getMaxDurability() != null) {
+        if (hasRarity || hasAffixes) {
+            version = SchemaVersions.V8;
+        } else if (item.getMaxDurability() != null) {
             version = SchemaVersions.V7;
         } else if (item.getLightRadius() != null) {
             version = SchemaVersions.V6;
         } else {
             version = SchemaVersions.V5;
         }
+        List<String> affixIds = hasAffixes
+            ? item.getAffixes().stream().map(AffixId::getValue).toList()
+            : null;
         return new ItemDto(
             version,
             item.getId().getValue(),
@@ -51,7 +60,9 @@ public class ItemMapper {
             contents,
             item.getLightRadius(),
             item.getMaxDurability(),
-            item.getDurability()
+            item.getDurability(),
+            hasRarity ? item.getRarity().id() : null,
+            affixIds
         );
     }
 
@@ -73,6 +84,10 @@ public class ItemMapper {
         List<Item> contents = dto.contents() == null
             ? List.of()
             : dto.contents().stream().map(this::toDomain).toList();
+        Rarity rarity = Rarity.fromId(dto.rarity());
+        List<AffixId> affixes = dto.affixes() == null
+            ? List.of()
+            : dto.affixes().stream().map(AffixId::of).toList();
         return new Item(
             ItemId.of(dto.id()),
             dto.name(),
@@ -89,7 +104,9 @@ public class ItemMapper {
             contents,
             dto.lightRadius(),
             dto.maxDurability(),
-            dto.durability()
+            dto.durability(),
+            rarity,
+            affixes
         );
     }
 }

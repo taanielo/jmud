@@ -12,6 +12,8 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.output.PlainTextStyler;
+import io.taanielo.jmud.core.output.TextStyler;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
@@ -27,6 +29,8 @@ import io.taanielo.jmud.core.world.repository.RoomRepository;
  * sub-services internally and is provided for legacy call sites (primarily tests).
  */
 public class RoomService {
+
+    private static final TextStyler PLAIN = new PlainTextStyler();
 
     /**
      * Result of a look action, including rendered lines and the resolved room.
@@ -191,7 +195,20 @@ public class RoomService {
      * Produces a look description for the player's current room.
      */
     public LookResult look(Username username) {
+        return look(username, PLAIN);
+    }
+
+    /**
+     * Produces a look description for the player's current room, coloring room item names by their
+     * rarity tier through the supplied {@link TextStyler}.
+     *
+     * @param username the player looking
+     * @param styler   the styler used to color item names by rarity
+     * @return the rendered look result
+     */
+    public LookResult look(Username username, TextStyler styler) {
         Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(styler, "Styler is required");
         Optional<Room> roomOpt = locationService.loadRoomForPlayer(username);
         if (roomOpt.isEmpty()) {
             return new LookResult(List.of("You are nowhere. The world feels unfinished."), null);
@@ -199,15 +216,30 @@ public class RoomService {
         Room room = roomOpt.get();
         Room enriched = enrichRoom(room);
         Set<Direction> lockedExits = locationService.getLockedExits(room.getId());
-        return new LookResult(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay()), enriched);
+        return new LookResult(
+            renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay(), styler), enriched);
     }
 
     /**
      * Attempts to move the player in the provided direction.
      */
     public MoveResult move(Username username, Direction direction) {
+        return move(username, direction, PLAIN);
+    }
+
+    /**
+     * Attempts to move the player in the provided direction, coloring room item names in the
+     * destination's look description by their rarity tier through the supplied {@link TextStyler}.
+     *
+     * @param username  the player moving
+     * @param direction the direction to move
+     * @param styler    the styler used to color item names by rarity
+     * @return the rendered move result
+     */
+    public MoveResult move(Username username, Direction direction, TextStyler styler) {
         Objects.requireNonNull(username, "Username is required");
         Objects.requireNonNull(direction, "Direction is required");
+        Objects.requireNonNull(styler, "Styler is required");
         PlayerLocationService.MoveAttempt attempt = locationService.attemptMove(username, direction);
         return switch (attempt) {
             case PlayerLocationService.MoveAttempt.Failed f ->
@@ -217,7 +249,7 @@ public class RoomService {
                 Set<Direction> lockedExits = locationService.getLockedExits(enriched.getId());
                 List<String> lines = new ArrayList<>();
                 lines.add("You move " + direction.label() + ".");
-                lines.addAll(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay()));
+                lines.addAll(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay(), styler));
                 yield new MoveResult(true, lines, enriched);
             }
         };

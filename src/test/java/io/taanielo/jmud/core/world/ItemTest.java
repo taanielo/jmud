@@ -187,4 +187,45 @@ class ItemTest {
     void withDurabilityOnUnbreakableItemIsRejected() {
         assertThrows(IllegalStateException.class, () -> plain("rock", "a rock").withDurability(1));
     }
+
+    @Test
+    void plainItemDefaultsToCommonRarityWithNoAffixes() {
+        Item item = plain("rock", "a rock");
+        assertEquals(Rarity.COMMON, item.getRarity());
+        assertTrue(item.getAffixes().isEmpty());
+    }
+
+    @Test
+    void itemRetainsRarityAndAffixes() {
+        Item item = new Item(
+            ItemId.of("blade"), "a blade", "A fine blade.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
+            List.of(), null, null, null, Rarity.RARE, List.of(AffixId.of("of-the-bear"), AffixId.of("of-vitality"))
+        );
+        assertEquals(Rarity.RARE, item.getRarity());
+        assertEquals(List.of(AffixId.of("of-the-bear"), AffixId.of("of-vitality")), item.getAffixes());
+    }
+
+    @Test
+    void nullRarityDefaultsToCommon() {
+        Item item = new Item(
+            ItemId.of("blade"), "a blade", "A fine blade.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
+            List.of(), null, null, null, null, null
+        );
+        assertEquals(Rarity.COMMON, item.getRarity());
+        assertTrue(item.getAffixes().isEmpty());
+    }
+
+    @Test
+    void rarityAndAffixesSurviveWithContainedItemsCopy() {
+        Item chest = new Item(
+            ItemId.of("chest"), "a chest", "A sturdy chest.",
+            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, 3,
+            List.of(), null, null, null, Rarity.UNCOMMON, List.of(AffixId.of("of-the-fox"))
+        );
+        Item withItem = chest.withContainedItem(plain("a", "an apple"));
+        assertEquals(Rarity.UNCOMMON, withItem.getRarity());
+        assertEquals(List.of(AffixId.of("of-the-fox")), withItem.getAffixes());
+    }
 }
