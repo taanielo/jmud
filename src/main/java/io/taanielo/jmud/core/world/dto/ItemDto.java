@@ -16,6 +16,8 @@ public record ItemDto(
     int weight,
     int value,
     String attackRef,
-    String teachesAbilityRef
+    String teachesAbilityRef,
+    Integer containerCapacity,
+    List<ItemDto> contents
 ) {
 }

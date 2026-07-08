@@ -79,6 +79,20 @@ class RoomRendererTest {
     }
 
     @Test
+    void rendersContainerWithFillLevel() {
+        Item apple = item("apple", "an apple");
+        Item bag = new Item(
+            ItemId.of("leather-bag"), "a leather bag", "A supple leather bag.",
+            ItemAttributes.empty(), List.of(), List.of(), null, 1, 0, null, null, 5, List.of(apple));
+        Room room = new Room(ROOM_ID, "Cave", "Dark.", Map.of(), List.of(bag), List.of());
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of());
+        String itemsLine = lines.stream().filter(l -> l.startsWith("Items:")).findFirst().orElse("");
+
+        assertTrue(itemsLine.contains("a leather bag (1/5)"),
+            "Container should be rendered with its fill level but was: " + itemsLine);
+    }
+
+    @Test
     void rendersNoItemsWhenRoomIsEmpty() {
         Room room = new Room(ROOM_ID, "Cave", "Dark.", Map.of(), List.of(), List.of());
         List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of());

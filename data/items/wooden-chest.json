@@ -1,0 +1,14 @@
+{
+  "schema_version": 5,
+  "id": "wooden-chest",
+  "name": "a wooden chest",
+  "description": "A sturdy oak chest bound with iron bands, heavy but capacious.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 20,
+  "value": 60,
+  "container_capacity": 10
+}

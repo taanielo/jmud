@@ -420,6 +420,135 @@ public class GameActionService {
     }
 
     /**
+     * Places an item from the player's inventory into a container the player is carrying.
+     *
+     * <p>Validation happens before any state change: the container must be carried and actually be
+     * a {@linkplain Item#isContainer() container}, the item must be carried, it may not be the
+     * container itself nor another container (nesting is not supported), and the container must not
+     * be {@linkplain Item#isFull() full}. On success the item leaves the top-level inventory and is
+     * packed inside the container (contents are weightless while stored). A worn item is unequipped
+     * first, mirroring {@link #dropItem}.
+     *
+     * @param source        the player performing the PUT
+     * @param itemInput      the item name or id to place inside the container
+     * @param containerInput the container name or id to place the item into
+     * @return result with the updated source inventory, or an error with no state change
+     */
+    public GameActionResult putItem(Player source, String itemInput, String containerInput) {
+        String itemNorm = itemInput == null ? "" : itemInput.trim();
+        String containerNorm = containerInput == null ? "" : containerInput.trim();
+        if (itemNorm.isEmpty() || containerNorm.isEmpty()) {
+            return GameActionResult.error("Usage: put <item> into <container>");
+        }
+        Item container = findInventoryItem(source, containerNorm);
+        if (container == null) {
+            return GameActionResult.error("You aren't carrying " + containerNorm + ".");
+        }
+        if (!container.isContainer()) {
+            return GameActionResult.error(container.getName() + " is not a container.");
+        }
+        Item item = findInventoryItem(source, itemNorm);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        if (item.getId().equals(container.getId())) {
+            return GameActionResult.error("You can't put something inside itself.");
+        }
+        if (item.isContainer()) {
+            return GameActionResult.error("You can't put a container inside another container.");
+        }
+        if (container.isFull()) {
+            return GameActionResult.error(container.getName() + " is full.");
+        }
+        Item updatedContainer = container.withContainedItem(item);
+        List<Item> next = new ArrayList<>();
+        boolean itemRemoved = false;
+        boolean containerReplaced = false;
+        for (Item inv : source.getInventory()) {
+            if (!itemRemoved && inv == item) {
+                itemRemoved = true;
+                continue;
+            }
+            if (!containerReplaced && inv == container) {
+                next.add(updatedContainer);
+                containerReplaced = true;
+                continue;
+            }
+            next.add(inv);
+        }
+        PlayerEquipment equipment = source.getEquipment();
+        if (equipment.isEquipped(item.getId())) {
+            EquipmentSlot slot = equipment.equippedSlot(item.getId());
+            if (slot != null) {
+                equipment = equipment.unequip(slot);
+            }
+        }
+        Player updated = source.withInventory(next).withEquipment(equipment);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You put " + item.getName() + " into " + container.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " puts " + item.getName() + " into " + container.getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Removes an item from a container the player is carrying and moves it into the top-level
+     * inventory.
+     *
+     * <p>Validation happens before any state change: the container must be carried and actually be
+     * a {@linkplain Item#isContainer() container}, and it must hold an item matching
+     * {@code itemInput}. On success the item is added back to the carried inventory (regaining its
+     * carry weight) and removed from the container's contents.
+     *
+     * @param source        the player performing the GET FROM
+     * @param itemInput      the item name or id to retrieve from the container
+     * @param containerInput the container name or id to retrieve the item from
+     * @return result with the updated source inventory, or an error with no state change
+     */
+    public GameActionResult getFromContainer(Player source, String itemInput, String containerInput) {
+        String itemNorm = itemInput == null ? "" : itemInput.trim();
+        String containerNorm = containerInput == null ? "" : containerInput.trim();
+        if (itemNorm.isEmpty() || containerNorm.isEmpty()) {
+            return GameActionResult.error("Usage: get <item> from <container>");
+        }
+        Item container = findInventoryItem(source, containerNorm);
+        if (container == null) {
+            return GameActionResult.error("You aren't carrying " + containerNorm + ".");
+        }
+        if (!container.isContainer()) {
+            return GameActionResult.error(container.getName() + " is not a container.");
+        }
+        Item contained = matchItem(container.getContainedItems(), itemNorm);
+        if (contained == null) {
+            return GameActionResult.error("There is no " + itemNorm + " in " + container.getName() + ".");
+        }
+        Item updatedContainer = container.withoutContainedItem(contained.getId());
+        List<Item> next = new ArrayList<>();
+        boolean containerReplaced = false;
+        for (Item inv : source.getInventory()) {
+            if (!containerReplaced && inv == container) {
+                next.add(updatedContainer);
+                containerReplaced = true;
+                continue;
+            }
+            next.add(inv);
+        }
+        next.add(contained);
+        Player updated = source.withInventory(next);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You get " + contained.getName() + " from " + container.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " gets " + contained.getName() + " from " + container.getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
      * Consumes an item from inventory, applying its hp stat and any item effects to the player.
      *
      * <p>A positive {@code hp} stat in {@link io.taanielo.jmud.core.world.ItemAttributes} heals
@@ -854,8 +983,16 @@ public class GameActionService {
     }
 
     private Item findInventoryItem(Player player, String input) {
+        return matchItem(player.getInventory(), input);
+    }
+
+    /**
+     * Finds the first item in {@code items} whose name or id equals or is prefixed by
+     * {@code input} (case-insensitive), or {@code null} when none match.
+     */
+    private static Item matchItem(List<Item> items, String input) {
         String normalized = input.trim().toLowerCase(Locale.ROOT);
-        for (Item item : player.getInventory()) {
+        for (Item item : items) {
             String name = item.getName().toLowerCase(Locale.ROOT);
             if (name.equals(normalized) || name.startsWith(normalized)) {
                 return item;
