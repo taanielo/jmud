@@ -58,7 +58,7 @@ public final class InventoryListing {
         } else {
             for (Item item : items) {
                 Objects.requireNonNull(item, "Item must not be null");
-                String name = styler.rarity(item.durabilityDisplayName(), item.getRarity());
+                String name = styler.rarity(item.presentationName(), item.presentationRarity());
                 lines.add(String.format("  %-30s %d lb", name, item.getWeight()));
             }
         }

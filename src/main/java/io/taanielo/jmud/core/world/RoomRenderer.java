@@ -92,7 +92,7 @@ public class RoomRenderer {
             return "none";
         }
         return items.stream()
-            .map(item -> styler.rarity(item.durabilityDisplayName(), item.getRarity()))
+            .map(item -> styler.rarity(item.presentationName(), item.presentationRarity()))
             .collect(Collectors.joining(", "));
     }
 

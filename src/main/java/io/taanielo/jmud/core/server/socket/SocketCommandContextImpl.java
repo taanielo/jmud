@@ -1024,6 +1024,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void identifyItem(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to identify items.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.identifyItem(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void writeItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to write.");
@@ -1231,7 +1243,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You don't see '" + args.trim() + "' here.");
             return;
         }
-        connection.writeLine(found.getName());
+        if (!found.isIdentified()) {
+            connection.writeLine(session.getTextStyler().rarity(
+                found.presentationName(), found.presentationRarity()));
+            connection.writeLine("You cannot make out its true nature. Identify it to reveal its properties.");
+            sendPrompt();
+            return;
+        }
+        connection.writeLine(session.getTextStyler().rarity(found.getName(), found.getRarity()));
         connection.writeLine(found.getDescription());
         if (found.getEquipSlot() != null) {
             connection.writeLine("Slot: " + found.getEquipSlot().id());

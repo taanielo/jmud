@@ -9,6 +9,7 @@ public final class SchemaVersions {
     public static final int V6 = 6;
     public static final int V7 = 7;
     public static final int V8 = 8;
+    public static final int V9 = 9;
 
     private SchemaVersions() {
     }

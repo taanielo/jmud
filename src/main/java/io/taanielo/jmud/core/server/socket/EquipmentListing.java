@@ -69,7 +69,7 @@ public final class EquipmentListing {
             } else {
                 Item item = itemById.apply(equipped);
                 String itemName = item != null
-                    ? styler.rarity(item.durabilityDisplayName(), item.getRarity())
+                    ? styler.rarity(item.presentationName(), item.presentationRarity())
                     : equipped.getValue();
                 lines.add(String.format("  %-8s : %s", label, itemName));
             }

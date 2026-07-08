@@ -30,8 +30,11 @@ public class ItemMapper {
             : item.getContainedItems().stream().map(this::toDto).toList();
         boolean hasRarity = item.getRarity() != null && !item.getRarity().isCommon();
         boolean hasAffixes = !item.getAffixes().isEmpty();
+        boolean unidentified = !item.isIdentified();
         int version;
-        if (hasRarity || hasAffixes) {
+        if (unidentified) {
+            version = SchemaVersions.V9;
+        } else if (hasRarity || hasAffixes) {
             version = SchemaVersions.V8;
         } else if (item.getMaxDurability() != null) {
             version = SchemaVersions.V7;
@@ -62,7 +65,8 @@ public class ItemMapper {
             item.getMaxDurability(),
             item.getDurability(),
             hasRarity ? item.getRarity().id() : null,
-            affixIds
+            affixIds,
+            unidentified ? Boolean.FALSE : null
         );
     }
 
@@ -106,7 +110,8 @@ public class ItemMapper {
             dto.maxDurability(),
             dto.durability(),
             rarity,
-            affixes
+            affixes,
+            dto.identified()
         );
     }
 }

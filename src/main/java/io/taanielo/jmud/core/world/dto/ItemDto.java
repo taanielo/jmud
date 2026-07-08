@@ -23,6 +23,7 @@ public record ItemDto(
     Integer maxDurability,
     Integer durability,
     String rarity,
-    List<String> affixes
+    List<String> affixes,
+    Boolean identified
 ) {
 }

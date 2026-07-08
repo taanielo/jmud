@@ -54,6 +54,7 @@ public class SocketCommandRegistry {
         new EatCommand(registry);
         new DrinkCommand(registry);
         new ReadCommand(registry);
+        new IdentifyCommand(registry);
         new WriteCommand(registry);
         new EquipCommand(registry);
         new UnequipCommand(registry);
