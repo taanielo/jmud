@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 7,
   "id": "iron-sword",
   "name": "Iron Sword",
   "description": "A plain iron sword with a worn leather grip.",
@@ -13,5 +13,7 @@
   "equip_slot": "weapon",
   "weight": 5,
   "value": 25,
-  "attack_ref": "attack.iron-sword"
+  "attack_ref": "attack.iron-sword",
+  "max_durability": 50,
+  "durability": 50
 }

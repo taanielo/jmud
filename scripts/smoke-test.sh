@@ -138,6 +138,19 @@ run_session "$T2" "$TEST_USER" "$TEST_PASS" "who" "quit"
 expect "$T2" "re-login reaches prompt"            '\[[0-9]+/[0-9]+hp .*\]'
 expect "$T2" "WHO lists the test user"            "$TEST_USER"
 
+# ── phase 2b: item durability / REPAIR command ───────────────────────────────
+# The REPAIR command (issue #271) is served by a blacksmith NPC in the armory.
+# A brand-new character starts in the training-yard with no gold, so rather than
+# scripting a fragile buy/navigate/fight-until-broken flow we assert the command
+# is wired up and gives its expected "no blacksmith here" guidance when invoked
+# away from a forge. The break-in-combat and repair maths are covered by the
+# ItemDurabilityService unit tests.
+log "Phase 2b: REPAIR command wiring"
+T2B="$OUT_DIR/phase2b-repair.txt"
+run_session "$T2B" "$TEST_USER" "$TEST_PASS" "repair iron sword" "quit"
+
+expect "$T2B" "REPAIR without a blacksmith is handled" 'no blacksmith here'
+
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).
 # Broken-pipe writes to just-disconnected clients are demoted to warnings —

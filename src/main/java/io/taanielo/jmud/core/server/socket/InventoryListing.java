@@ -39,7 +39,7 @@ public final class InventoryListing {
         } else {
             for (Item item : items) {
                 Objects.requireNonNull(item, "Item must not be null");
-                lines.add(String.format("  %-30s %d lb", item.displayName(), item.getWeight()));
+                lines.add(String.format("  %-30s %d lb", item.durabilityDisplayName(), item.getWeight()));
             }
         }
         lines.add(String.format("Carrying %d / %d lbs.", carriedWeight, maxCarry));

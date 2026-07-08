@@ -19,6 +19,8 @@ public record ItemDto(
     String teachesAbilityRef,
     Integer containerCapacity,
     List<ItemDto> contents,
-    Integer lightRadius
+    Integer lightRadius,
+    Integer maxDurability,
+    Integer durability
 ) {
 }

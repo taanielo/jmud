@@ -83,6 +83,7 @@ public class SocketCommandRegistry {
         new ListCommand(registry);
         new BuyCommand(registry);
         new SellCommand(registry);
+        new RepairCommand(registry);
         new QuestCommand(registry);
         new TrainCommand(registry);
         new PartyCommand(registry);

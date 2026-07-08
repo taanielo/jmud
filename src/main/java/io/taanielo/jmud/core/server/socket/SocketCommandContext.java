@@ -332,6 +332,17 @@ public interface SocketCommandContext extends Client {
     default void sellToShop(String args) {}
 
     /**
+     * Repairs the named damaged item in the player's possession, provided a blacksmith is present
+     * in the current room. Charges gold proportional to the item's value and damage.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the item name to repair
+     */
+    default void repairItem(String args) {}
+
+    /**
      * Executes a QUEST sub-command (LIST, ACCEPT, STATUS, COMPLETE, ABANDON).
      *
      * <p>The default implementation is a no-op so that existing test stubs

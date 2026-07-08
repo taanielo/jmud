@@ -94,6 +94,42 @@ class JsonItemRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsDurableItem() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository repository = new JsonItemRepository(dataRoot);
+
+        Item sword = new Item(
+            ItemId.of("iron-sword"),
+            "Iron Sword",
+            "A plain iron sword.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            io.taanielo.jmud.core.world.EquipmentSlot.WEAPON,
+            5,
+            25,
+            null,
+            null,
+            null,
+            List.of(),
+            null,
+            50,
+            30
+        );
+        repository.save(sword);
+
+        // Fresh repository (no cache) so the values come back off disk.
+        Optional<Item> loaded = new JsonItemRepository(dataRoot).findById(ItemId.of("iron-sword"));
+
+        assertTrue(loaded.isPresent());
+        Item reloaded = loaded.get();
+        assertTrue(reloaded.isBreakable());
+        assertEquals(Integer.valueOf(50), reloaded.getMaxDurability());
+        assertEquals(Integer.valueOf(30), reloaded.getDurability());
+        assertEquals(sword, reloaded);
+    }
+
+    @Test
     void throwsOnInvalidJson() throws Exception {
         Path dataRoot = tempDir.resolve("data");
         Path itemsDir = dataRoot.resolve("items");

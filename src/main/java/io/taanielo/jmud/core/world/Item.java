@@ -45,6 +45,19 @@ public class Item {
      * {@link io.taanielo.jmud.core.player.LightingService}; not stored on the room.
      */
     @Nullable Integer lightRadius;
+    /**
+     * Maximum durability of this equippable item, or {@code null} when the item is unbreakable.
+     * A positive value marks the item as breakable gear that wears down as its wearer takes damage
+     * in combat; see {@link #isBreakable()}. Durability logic lives in
+     * {@link io.taanielo.jmud.core.world.ItemDurabilityService}.
+     */
+    @Nullable Integer maxDurability;
+    /**
+     * Current durability of this item, from {@code 0} (broken, unusable in combat) up to
+     * {@link #maxDurability}. Always {@code null} for unbreakable items; defaults to
+     * {@link #maxDurability} when a breakable item is created without an explicit value.
+     */
+    @Nullable Integer durability;
 
     /**
      * Constructs an item. Note this class is never bound directly by Jackson for item-definition
@@ -58,6 +71,11 @@ public class Item {
      *                          and never exceed {@code containerCapacity}
      * @param lightRadius       the radius of light emitted while carried, or {@code null} for a
      *                          non-light-emitting item; must be positive when present
+     * @param maxDurability     the maximum durability, or {@code null} for an unbreakable item;
+     *                          must be positive when present
+     * @param durability        the current durability, or {@code null} to default to
+     *                          {@code maxDurability}; must satisfy {@code 0 <= durability <= maxDurability}
+     *                          and must be {@code null} when {@code maxDurability} is {@code null}
      */
     public Item(
         ItemId id,
@@ -73,7 +91,9 @@ public class Item {
         AbilityId teachesAbilityRef,
         Integer containerCapacity,
         List<Item> containedItems,
-        @Nullable Integer lightRadius
+        @Nullable Integer lightRadius,
+        @Nullable Integer maxDurability,
+        @Nullable Integer durability
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -119,6 +139,48 @@ public class Item {
             throw new IllegalArgumentException("Light radius must be positive");
         }
         this.lightRadius = lightRadius;
+        if (maxDurability == null) {
+            if (durability != null) {
+                throw new IllegalArgumentException("Only breakable items may track durability");
+            }
+            this.maxDurability = null;
+            this.durability = null;
+        } else {
+            if (maxDurability <= 0) {
+                throw new IllegalArgumentException("Max durability must be positive");
+            }
+            int current = durability == null ? maxDurability : durability;
+            if (current < 0 || current > maxDurability) {
+                throw new IllegalArgumentException("Durability must be between 0 and max durability");
+            }
+            this.maxDurability = maxDurability;
+            this.durability = current;
+        }
+    }
+
+    /**
+     * Convenience constructor for breakable-agnostic call sites: builds an item with an optional
+     * light radius but no durability tracking, preserving call sites that predate
+     * {@link #maxDurability}.
+     */
+    public Item(
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef,
+        AbilityId teachesAbilityRef,
+        Integer containerCapacity,
+        List<Item> containedItems,
+        @Nullable Integer lightRadius
+    ) {
+        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
+            teachesAbilityRef, containerCapacity, containedItems, lightRadius, null, null);
     }
 
     /**
@@ -141,7 +203,7 @@ public class Item {
         List<Item> containedItems
     ) {
         this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, null);
+            teachesAbilityRef, containerCapacity, containedItems, null, null, null);
     }
 
     /**
@@ -277,6 +339,51 @@ public class Item {
      */
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
-            attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius);
+            attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability);
+    }
+
+    /**
+     * Returns whether this item tracks durability (i.e. has a positive {@link #maxDurability}) and
+     * can therefore wear down and break. Unbreakable items always return {@code false}.
+     */
+    public boolean isBreakable() {
+        return maxDurability != null;
+    }
+
+    /**
+     * Returns whether this item is broken, i.e. it is breakable and its current {@link #durability}
+     * has reached {@code 0}. Broken items are unusable in combat until repaired.
+     */
+    public boolean isBroken() {
+        return maxDurability != null && durability != null && durability <= 0;
+    }
+
+    /**
+     * Returns a copy of this item with its current durability set to the given value, clamped to
+     * the range {@code [0, maxDurability]}.
+     *
+     * @param newDurability the desired durability
+     * @return a new item instance with the updated durability
+     * @throws IllegalStateException if this item is not breakable
+     */
+    public Item withDurability(int newDurability) {
+        if (maxDurability == null) {
+            throw new IllegalStateException("This item is not breakable");
+        }
+        int clamped = Math.max(0, Math.min(maxDurability, newDurability));
+        return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
+            attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped);
+    }
+
+    /**
+     * Returns this item's name annotated with {@code (damaged)} when it is broken, so broken gear
+     * reads distinctly in inventory, equipment and room listings. Non-broken items return their
+     * plain {@link #displayName()}.
+     */
+    public String durabilityDisplayName() {
+        if (isBroken()) {
+            return displayName() + " (damaged)";
+        }
+        return displayName();
     }
 }
