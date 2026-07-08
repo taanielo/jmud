@@ -440,6 +440,19 @@ public interface SocketCommandContext extends Client {
     default void sneak(String args) {}
 
     /**
+     * Attempts the rogue STEAL skill to pickpocket gold from a target NPC in the current room.
+     *
+     * <p>Only rogues may steal. A success roll scaling with rogue level either transfers gold from
+     * the NPC to the thief or, on failure, is caught and turns the NPC hostile (aggressing the
+     * thief).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the NPC name to steal from
+     */
+    default void steal(String args) {}
+
+    /**
      * Deposits the specified amount of gold from the player's carried balance into the bank.
      *
      * <p>Requires the player to be in the same room as a bank NPC.

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameMessage;
+import io.taanielo.jmud.core.action.NpcStealPort;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
@@ -57,7 +59,7 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
  * delivered via {@link PlayerEventBus} so no transport code lives here.
  */
 @Slf4j
-public class MobRegistry implements Tickable {
+public class MobRegistry implements Tickable, NpcStealPort {
 
     private final MobTemplateRepository templateRepository;
     private final ItemRepository itemRepository;
@@ -369,6 +371,63 @@ public class MobRegistry implements Tickable {
             }
         }
         return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Finds a live mob in the given room matching {@code nameInput} and wraps it as a
+     * {@link NpcStealPort.StealVictim} for the rogue STEAL skill. Backs
+     * {@link io.taanielo.jmud.core.action.GameActionService#steal(Player, String)}: the game rule
+     * (success roll, validation, messages) lives in the action service, while this port exposes only
+     * the mob-owned operations (reading stealable gold, turning hostile).
+     *
+     * @param roomId    the room the thief is in
+     * @param nameInput the raw NPC-name input (case-insensitive, prefix match)
+     * @return the matched victim, or empty when no live mob in the room matches
+     */
+    @Override
+    public Optional<StealVictim> findStealTarget(RoomId roomId, String nameInput) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (nameInput == null || nameInput.isBlank()) {
+            return Optional.empty();
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), nameInput);
+        return mob == null ? Optional.empty() : Optional.of(new MobStealVictim(mob));
+    }
+
+    /**
+     * Adapter exposing a {@link MobInstance} to the STEAL skill through the {@link NpcStealPort}
+     * contract, so the action service never depends on the concrete mob type. All mutations run on
+     * the tick thread via the player command queue (AGENTS.md §5).
+     */
+    private final class MobStealVictim implements StealVictim {
+        private final MobInstance mob;
+
+        private MobStealVictim(MobInstance mob) {
+            this.mob = mob;
+        }
+
+        @Override
+        public String name() {
+            return mob.template().name();
+        }
+
+        @Override
+        public boolean hasStealableGold() {
+            GoldDrop goldDrop = mob.template().goldDrop();
+            return goldDrop != null && goldDrop.max() > 0;
+        }
+
+        @Override
+        public int stealGold() {
+            GoldDrop goldDrop = mob.template().goldDrop();
+            return goldDrop == null ? 0 : goldDrop.roll(random);
+        }
+
+        @Override
+        public void turnHostile(Username thief) {
+            mob.engage(thief);
+            playerCombatTargets.put(thief, mob.instanceId());
+        }
     }
 
     // ── Mob AI ────────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.ItemIdentificationService;
 import io.taanielo.jmud.core.world.Room;
+import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -93,6 +94,12 @@ public class GameActionService {
      * {@link io.taanielo.jmud.core.mob.MobRegistry} directly. Defaults to a no-op.
      */
     private final Consumer<Player> combatDisengage;
+    /**
+     * Port used by the rogue STEAL skill to find a target NPC in the room, read its stealable gold,
+     * and turn it hostile on a failed attempt, without depending on the concrete mob layer. Defaults
+     * to {@link NpcStealPort#NONE} (never finds a target) when no mob layer is wired.
+     */
+    private final NpcStealPort npcStealPort;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -105,6 +112,12 @@ public class GameActionService {
     private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
     /** Extra damage a BACKSTAB deals when the attacker strikes from stealth. */
     private static final int STEALTH_BACKSTAB_BONUS_DAMAGE = 10;
+    /** Base percentage chance (out of 100) that a rogue STEAL attempt succeeds, before the level bonus. */
+    private static final int STEAL_BASE_SUCCESS_PERCENT = 45;
+    /** Additional STEAL success percentage granted per rogue level. */
+    private static final int STEAL_SUCCESS_PERCENT_PER_LEVEL = 3;
+    /** Maximum STEAL success percentage, regardless of rogue level. */
+    private static final int STEAL_MAX_SUCCESS_PERCENT = 90;
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -197,7 +210,7 @@ public class GameActionService {
     ) {
         this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
             roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
-            containerLockingService, new ThreadLocalCombatRandom(), _ -> { });
+            containerLockingService, new ThreadLocalCombatRandom(), _ -> { }, NpcStealPort.NONE);
     }
 
     /**
@@ -225,7 +238,38 @@ public class GameActionService {
     ) {
         this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
             roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
-            new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage);
+            new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage,
+            NpcStealPort.NONE);
+    }
+
+    /**
+     * Creates a game action service with an explicit in-combat predicate, seeded world RNG,
+     * combat-disengage callback, and NPC steal port. This is the production constructor used when
+     * the mob layer is available to back the rogue STEAL skill.
+     *
+     * @param inCombatCheck   returns {@code true} when the given player is already engaged in combat
+     * @param worldRandom     seeded RNG port for world/game rolls (flee direction, steal success)
+     * @param combatDisengage disengages the given player from active combat when they flee
+     * @param npcStealPort    port used by the STEAL skill to find/steal-from/aggro a target NPC
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        Predicate<Player> inCombatCheck,
+        CombatRandom worldRandom,
+        Consumer<Player> combatDisengage,
+        NpcStealPort npcStealPort
+    ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
+            new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage,
+            npcStealPort);
     }
 
     /**
@@ -238,6 +282,7 @@ public class GameActionService {
      * @param containerLockingService the service governing pick-lock success, trap, and damage rolls
      * @param worldRandom             seeded RNG port for world/game rolls (flee direction)
      * @param combatDisengage         disengages the given player from active combat when they flee
+     * @param npcStealPort            port used by the rogue STEAL skill to find/steal-from/aggro an NPC
      */
     public GameActionService(
         AbilityRegistry abilityRegistry,
@@ -251,7 +296,8 @@ public class GameActionService {
         Predicate<Player> inCombatCheck,
         ContainerLockingService containerLockingService,
         CombatRandom worldRandom,
-        Consumer<Player> combatDisengage
+        Consumer<Player> combatDisengage,
+        NpcStealPort npcStealPort
     ) {
         this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         this.abilityCostResolver = Objects.requireNonNull(abilityCostResolver, "Ability cost resolver is required");
@@ -266,6 +312,7 @@ public class GameActionService {
             Objects.requireNonNull(containerLockingService, "Container locking service is required");
         this.worldRandom = Objects.requireNonNull(worldRandom, "World random is required");
         this.combatDisengage = Objects.requireNonNull(combatDisengage, "Combat disengage callback is required");
+        this.npcStealPort = Objects.requireNonNull(npcStealPort, "NPC steal port is required");
     }
 
     /**
@@ -867,6 +914,92 @@ public class GameActionService {
                 source.getUsername().getValue() + " steps out of the shadows."));
         }
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Attempts the rogue STEAL skill to pickpocket gold from a target NPC in the player's current
+     * room.
+     *
+     * <p>Only rogues of level 1 or higher may steal. The named target must be a live mob in the
+     * room; a mob carrying no gold ("nothing worth stealing") is rejected before any roll. A single
+     * success roll — whose chance scales with rogue level, capped at
+     * {@link #STEAL_MAX_SUCCESS_PERCENT}% and rolled through the seeded {@link CombatRandom} port for
+     * determinism (§5) — resolves the attempt:
+     * <ul>
+     *   <li>on success, gold is transferred from the NPC to the thief and a discreet-lift message
+     *       is returned;</li>
+     *   <li>on failure, the NPC is {@linkplain NpcStealPort.StealVictim#turnHostile(io.taanielo.jmud.core.authentication.Username)
+     *       turned hostile} (aggressing the thief on the next tick) and a discovery message is
+     *       returned.</li>
+     * </ul>
+     *
+     * @param source   the player attempting the theft
+     * @param npcInput the NPC name to steal from
+     * @return result with the (possibly gold-richer) source player and outcome messages, or an error
+     */
+    public GameActionResult steal(Player source, String npcInput) {
+        Objects.requireNonNull(source, "Source is required");
+        String normalized = npcInput == null ? "" : npcInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Steal from whom?");
+        }
+        if (!isRogue(source)) {
+            return GameActionResult.error("Only rogues know how to pick pockets.");
+        }
+        if (source.isDead()) {
+            return GameActionResult.error("You cannot do that right now.");
+        }
+        int level = source.getLevel();
+        if (level < 1) {
+            return GameActionResult.error("You are not skilled enough to steal.");
+        }
+        Optional<RoomId> roomId = roomService.findPlayerLocation(source.getUsername());
+        if (roomId.isEmpty()) {
+            return GameActionResult.error("You don't see " + normalized + " here.");
+        }
+        Optional<NpcStealPort.StealVictim> found = npcStealPort.findStealTarget(roomId.get(), normalized);
+        if (found.isEmpty()) {
+            return GameActionResult.error("You don't see " + normalized + " here.");
+        }
+        NpcStealPort.StealVictim victim = found.get();
+        if (!victim.hasStealableGold()) {
+            return GameActionResult.error("The " + victim.name() + " has nothing worth stealing.");
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        if (rollStealSuccess(level)) {
+            int gold = victim.stealGold();
+            if (gold <= 0) {
+                return GameActionResult.error("The " + victim.name() + " has nothing worth stealing.");
+            }
+            Player updated = source.addGold(gold);
+            messages.add(GameMessage.toSource(
+                "You deftly lift " + gold + " gold coin" + (gold == 1 ? "" : "s")
+                    + " from the " + victim.name() + "."));
+            return new GameActionResult(updated, null, messages);
+        }
+        victim.turnHostile(source.getUsername());
+        messages.add(GameMessage.toSource(
+            "You are caught red-handed! The " + victim.name() + " turns on you!"));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(), null,
+            source.getUsername().getValue() + " is caught trying to rob the " + victim.name() + "!"));
+        return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Rolls whether a STEAL attempt by a rogue of the given level succeeds. The success chance is
+     * {@link #STEAL_BASE_SUCCESS_PERCENT}% plus {@link #STEAL_SUCCESS_PERCENT_PER_LEVEL}% per level,
+     * capped at {@link #STEAL_MAX_SUCCESS_PERCENT}%, rolled through the seeded {@link CombatRandom}
+     * port so the outcome is deterministic under a world seed (AGENTS.md §5).
+     *
+     * @param level the thief's level (at least 1)
+     * @return {@code true} when the pickpocket succeeds
+     */
+    private boolean rollStealSuccess(int level) {
+        int chance = Math.min(
+            STEAL_MAX_SUCCESS_PERCENT,
+            STEAL_BASE_SUCCESS_PERCENT + STEAL_SUCCESS_PERCENT_PER_LEVEL * level);
+        return worldRandom.roll(1, 100) <= chance;
     }
 
     /**
