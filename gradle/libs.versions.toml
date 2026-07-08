@@ -14,7 +14,7 @@ junitPlatformLauncher = "6.1.1"
 # has it; revisit once a NullAway release compatible with newer Error Prone ships.
 errorproneCore = "2.48.0"
 errorpronePlugin = "5.1.0"
-nullaway = "0.12.7"
+nullaway = "0.13.7"
 jspecify = "1.0.0"
 spotless = "8.8.0"
 archunit = "1.4.2"
