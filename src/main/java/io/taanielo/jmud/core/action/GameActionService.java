@@ -1139,19 +1139,11 @@ public class GameActionService {
             + "-" + scrollCounter.incrementAndGet();
         String name = "a scroll of " + ability.name();
         String description = "A hastily inscribed scroll teaching the " + ability.name() + " ability.";
-        return new Item(
-            ItemId.of(id),
-            name,
-            description,
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            0,
-            null,
-            ability.id()
-        );
+        return Item.builder(ItemId.of(id), name, description, ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .teachesAbilityRef(ability.id())
+            .build();
     }
 
     /**

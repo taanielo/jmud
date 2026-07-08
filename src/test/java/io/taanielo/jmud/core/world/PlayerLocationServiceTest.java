@@ -24,8 +24,10 @@ class PlayerLocationServiceTest {
     private static final RoomId ROOM_A = RoomId.of("a");
     private static final RoomId ROOM_B = RoomId.of("b");
     private static final ItemId KEY_ID = ItemId.of("iron-key");
-    private static final Item KEY = new Item(
-        KEY_ID, "Iron Key", "A key.", ItemAttributes.empty(), List.of(), List.of(), null, 1, 0, null);
+    private static final Item KEY = Item.builder(KEY_ID, "Iron Key", "A key.", ItemAttributes.empty())
+        .weight(1)
+        .value(0)
+        .build();
 
     private static Room basicRoom(RoomId id, Map<Direction, RoomId> exits) {
         return new Room(id, "Room " + id.getValue(), "A room.", exits, List.of(), List.of());

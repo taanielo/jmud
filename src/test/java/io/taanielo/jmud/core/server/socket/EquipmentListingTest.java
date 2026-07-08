@@ -14,24 +14,18 @@ import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Rarity;
+import io.taanielo.jmud.core.world.RarityProfile;
 
 class EquipmentListingTest {
 
     private static final String ESC = String.valueOf((char) 27);
 
     private static Item item(String id, String name, EquipmentSlot slot) {
-        return new Item(
-            ItemId.of(id),
-            name,
-            "A " + name + ".",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            slot,
-            1,
-            0,
-            null
-        );
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())
+            .equipSlot(slot)
+            .weight(1)
+            .value(0)
+            .build();
     }
 
     @Test
@@ -103,10 +97,12 @@ class EquipmentListingTest {
     @Test
     void uncommonItemNameIsColoredUnderAnsiStyler() {
         ItemId swordId = ItemId.of("sword");
-        Item sword = new Item(
-            swordId, "Keen Sword", "A keen sword.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 1, 0, null, null, null,
-            List.of(), null, null, null, Rarity.UNCOMMON, List.of());
+        Item sword = Item.builder(swordId, "Keen Sword", "A keen sword.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(1)
+            .value(0)
+            .rarity(RarityProfile.of(Rarity.UNCOMMON, List.of()))
+            .build();
 
         List<String> lines = EquipmentListing.format(
             Map.of(EquipmentSlot.WEAPON, swordId),

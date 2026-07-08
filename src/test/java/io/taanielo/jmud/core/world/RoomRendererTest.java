@@ -23,16 +23,19 @@ class RoomRendererTest {
     private static final RoomRenderer RENDERER = new RoomRenderer();
 
     private static Item item(String id, String name) {
-        return new Item(
-            ItemId.of(id), name, name + " description.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 0, null);
+        return Item.builder(ItemId.of(id), name, name + " description.", ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .build();
     }
 
     private static Item rareItem(String id, String name) {
-        return new Item(
-            ItemId.of(id), name, name + " description.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 1, 0, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, List.of());
+        return Item.builder(ItemId.of(id), name, name + " description.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(1)
+            .value(0)
+            .rarity(RarityProfile.of(Rarity.RARE, List.of()))
+            .build();
     }
 
     @Test
@@ -90,9 +93,12 @@ class RoomRendererTest {
     @Test
     void rendersContainerWithFillLevel() {
         Item apple = item("apple", "an apple");
-        Item bag = new Item(
-            ItemId.of("leather-bag"), "a leather bag", "A supple leather bag.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 0, null, null, 5, List.of(apple));
+        Item bag = Item.builder(
+            ItemId.of("leather-bag"), "a leather bag", "A supple leather bag.", ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .container(ContainerState.of(5, List.of(apple)))
+            .build();
         Room room = new Room(ROOM_ID, "Cave", "Dark.", Map.of(), List.of(bag), List.of());
         List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of());
         String itemsLine = lines.stream().filter(l -> l.startsWith("Items:")).findFirst().orElse("");

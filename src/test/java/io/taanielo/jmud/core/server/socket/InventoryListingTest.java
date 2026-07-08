@@ -8,29 +8,23 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.output.AnsiTextStyler;
+import io.taanielo.jmud.core.world.ContainerState;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Rarity;
+import io.taanielo.jmud.core.world.RarityProfile;
 
 class InventoryListingTest {
 
     private static final String ESC = String.valueOf((char) 27);
 
     private static Item item(String id, String name, int weight) {
-        return new Item(
-            ItemId.of(id),
-            name,
-            "A " + name + ".",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            weight,
-            0,
-            null
-        );
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())
+            .weight(weight)
+            .value(0)
+            .build();
     }
 
     @Test
@@ -68,21 +62,12 @@ class InventoryListingTest {
     @Test
     void containerShownWithFillLevel() {
         Item contained = item("apple", "an apple", 1);
-        Item bag = new Item(
-            ItemId.of("leather-bag"),
-            "a leather bag",
-            "A supple leather bag.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            0,
-            null,
-            null,
-            5,
-            List.of(contained)
-        );
+        Item bag = Item.builder(
+            ItemId.of("leather-bag"), "a leather bag", "A supple leather bag.", ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .container(ContainerState.of(5, List.of(contained)))
+            .build();
 
         List<String> lines = InventoryListing.format(List.of(bag), 1, 50);
 
@@ -100,10 +85,12 @@ class InventoryListingTest {
 
     @Test
     void rareItemNameIsColoredUnderAnsiStyler() {
-        Item blade = new Item(
-            ItemId.of("blade"), "Runed Blade", "A glowing blade.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 0, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, List.of());
+        Item blade = Item.builder(ItemId.of("blade"), "Runed Blade", "A glowing blade.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(0)
+            .rarity(RarityProfile.of(Rarity.RARE, List.of()))
+            .build();
 
         List<String> lines = InventoryListing.format(List.of(blade), 5, 50, new AnsiTextStyler());
 

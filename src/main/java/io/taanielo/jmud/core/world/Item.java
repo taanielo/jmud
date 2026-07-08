@@ -90,9 +90,12 @@ public class Item {
     boolean locked;
 
     /**
-     * Constructs an item. Note this class is never bound directly by Jackson for item-definition
-     * files: that persistence goes through {@link io.taanielo.jmud.core.world.dto.ItemDto} and
-     * {@link io.taanielo.jmud.core.world.dto.ItemMapper}, which map fields explicitly, keeping
+     * Constructs an item from its flattened field set. This is the single, private canonical
+     * constructor: all call sites build items through {@link #builder(ItemId, String, String, ItemAttributes)}
+     * (which groups the optional facets into {@link ContainerState}, {@link LightSource},
+     * {@link Durability}, {@link RarityProfile} and {@link Identification} value objects), while the
+     * persistence layer ({@link io.taanielo.jmud.core.world.dto.ItemMapper}) maps the flat DTO fields
+     * onto that builder. Keeping the flat layout here preserves the getter-based read API and keeps
      * this domain type free of JSON-infrastructure annotations (AGENTS.md §3.2).
      *
      * @param containerCapacity max slots when this item is a container, or {@code null} for a
@@ -114,7 +117,7 @@ public class Item {
      *                          {@code false} (unlocked); must be {@code null}/{@code false} for
      *                          non-container items
      */
-    public Item(
+    private Item(
         ItemId id,
         String name,
         String description,
@@ -208,180 +211,158 @@ public class Item {
     }
 
     /**
-     * Convenience constructor for identification-aware call sites that predate {@link #locked}: builds
-     * an item with an explicit identification status but an unlocked lock state, preserving call sites
-     * created before locked containers existed.
+     * Starts building an item from its required core fields. Optional facets are supplied through the
+     * component records ({@link ContainerState}, {@link LightSource}, {@link Durability},
+     * {@link RarityProfile}, {@link Identification}), each of which defaults to a "none"/plain value.
+     * This is the single canonical construction entry point; adding a new item feature means adding a
+     * field to the relevant component record and a setter here, leaving unrelated call sites untouched.
+     *
+     * @param id          the item's id
+     * @param name        the item's display name; must not be blank
+     * @param description the item's description
+     * @param attributes  the item's base attributes
+     * @return a new builder seeded with the required fields
      */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef,
-        Integer containerCapacity,
-        List<Item> containedItems,
-        @Nullable Integer lightRadius,
-        @Nullable Integer maxDurability,
-        @Nullable Integer durability,
-        @Nullable Rarity rarity,
-        @Nullable List<AffixId> affixes,
-        @Nullable Boolean identified
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, null);
+    public static Builder builder(ItemId id, String name, String description, ItemAttributes attributes) {
+        return new Builder(id, name, description, attributes);
     }
 
     /**
-     * Convenience constructor for rarity-aware call sites that predate {@link #identified}: builds an
-     * item with a rarity tier and affixes that is fully identified (its true nature already known),
-     * preserving call sites created before unidentified items existed.
+     * Fluent builder for {@link Item}. Required fields are supplied to
+     * {@link Item#builder(ItemId, String, String, ItemAttributes)}; every other facet has a sensible
+     * default (empty effects/messages, no slot, zero weight/value, no container, no light, unbreakable,
+     * {@link Rarity#COMMON}, identified) and is overridden only by call sites that care.
      */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef,
-        Integer containerCapacity,
-        List<Item> containedItems,
-        @Nullable Integer lightRadius,
-        @Nullable Integer maxDurability,
-        @Nullable Integer durability,
-        @Nullable Rarity rarity,
-        @Nullable List<AffixId> affixes
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, null, null);
-    }
+    public static final class Builder {
+        private final ItemId id;
+        private final String name;
+        private final String description;
+        private final ItemAttributes attributes;
+        private List<ItemEffect> effects = List.of();
+        private List<MessageSpec> messages = List.of();
+        @Nullable
+        private EquipmentSlot equipSlot;
+        private int weight;
+        private int value;
+        @Nullable
+        private AttackId attackRef;
+        @Nullable
+        private AbilityId teachesAbilityRef;
+        private ContainerState container = ContainerState.none();
+        private LightSource light = LightSource.none();
+        private Durability durability = Durability.none();
+        private RarityProfile rarity = RarityProfile.common();
+        private Identification identification = Identification.known();
 
-    /**
-     * Convenience constructor for durability-aware call sites that predate {@link #rarity} and
-     * {@link #affixes}: builds an item with an optional light radius and durability tracking but no
-     * rarity tier or affixes (i.e. a {@link Rarity#COMMON} item).
-     */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef,
-        Integer containerCapacity,
-        List<Item> containedItems,
-        @Nullable Integer lightRadius,
-        @Nullable Integer maxDurability,
-        @Nullable Integer durability
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            null, null, null, null);
-    }
+        private Builder(ItemId id, String name, String description, ItemAttributes attributes) {
+            this.id = id;
+            this.name = name;
+            this.description = description;
+            this.attributes = attributes;
+        }
 
-    /**
-     * Convenience constructor for breakable-agnostic call sites: builds an item with an optional
-     * light radius but no durability tracking, preserving call sites that predate
-     * {@link #maxDurability}.
-     */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef,
-        Integer containerCapacity,
-        List<Item> containedItems,
-        @Nullable Integer lightRadius
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, lightRadius, null, null, null, null);
-    }
+        /** Sets the item's effects (defaults to none). */
+        public Builder effects(List<ItemEffect> effects) {
+            this.effects = effects;
+            return this;
+        }
 
-    /**
-     * Convenience constructor for items with no light-emitting radius, preserving call sites that
-     * predate {@link #lightRadius}.
-     */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef,
-        Integer containerCapacity,
-        List<Item> containedItems
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, null, null, null, null, null);
-    }
+        /** Sets the item's message specs (defaults to none). */
+        public Builder messages(List<MessageSpec> messages) {
+            this.messages = messages;
+            return this;
+        }
 
-    /**
-     * Convenience constructor for non-container items that teach an ability (or not), preserving
-     * call sites that predate the container fields.
-     */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, null, List.of());
-    }
+        /** Sets the item's equipment slot (defaults to none). */
+        public Builder equipSlot(@Nullable EquipmentSlot equipSlot) {
+            this.equipSlot = equipSlot;
+            return this;
+        }
 
-    /**
-     * Convenience constructor for items that teach no ability, preserving existing call sites
-     * that predate {@link #teachesAbilityRef}.
-     */
-    public Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef
-    ) {
-        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef, null);
+        /** Sets the item's weight (defaults to 0). */
+        public Builder weight(int weight) {
+            this.weight = weight;
+            return this;
+        }
+
+        /** Sets the item's value (defaults to 0). */
+        public Builder value(int value) {
+            this.value = value;
+            return this;
+        }
+
+        /** Sets the attack this weapon references (defaults to none). */
+        public Builder attackRef(@Nullable AttackId attackRef) {
+            this.attackRef = attackRef;
+            return this;
+        }
+
+        /** Sets the ability this item teaches (defaults to none). */
+        public Builder teachesAbilityRef(@Nullable AbilityId teachesAbilityRef) {
+            this.teachesAbilityRef = teachesAbilityRef;
+            return this;
+        }
+
+        /** Sets the container facet (defaults to {@link ContainerState#none()}). */
+        public Builder container(ContainerState container) {
+            this.container = Objects.requireNonNull(container, "Container state is required");
+            return this;
+        }
+
+        /** Sets the light-source facet (defaults to {@link LightSource#none()}). */
+        public Builder light(LightSource light) {
+            this.light = Objects.requireNonNull(light, "Light source is required");
+            return this;
+        }
+
+        /** Sets the durability facet (defaults to {@link Durability#none()}). */
+        public Builder durability(Durability durability) {
+            this.durability = Objects.requireNonNull(durability, "Durability is required");
+            return this;
+        }
+
+        /** Sets the rarity facet (defaults to {@link RarityProfile#common()}). */
+        public Builder rarity(RarityProfile rarity) {
+            this.rarity = Objects.requireNonNull(rarity, "Rarity profile is required");
+            return this;
+        }
+
+        /** Sets the identification facet (defaults to {@link Identification#known()}). */
+        public Builder identification(Identification identification) {
+            this.identification = Objects.requireNonNull(identification, "Identification is required");
+            return this;
+        }
+
+        /**
+         * Assembles the item, validating every facet's invariants through {@link Item}'s canonical
+         * constructor.
+         *
+         * @return the constructed item
+         */
+        public Item build() {
+            return new Item(
+                id,
+                name,
+                description,
+                attributes,
+                effects,
+                messages,
+                equipSlot,
+                weight,
+                value,
+                attackRef,
+                teachesAbilityRef,
+                container.capacity(),
+                container.contents(),
+                light.radius(),
+                durability.max(),
+                durability.current(),
+                rarity.rarity(),
+                rarity.affixes(),
+                identification.identified(),
+                container.locked()
+            );
+        }
     }
 
     /**

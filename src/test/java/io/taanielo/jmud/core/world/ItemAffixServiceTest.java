@@ -38,10 +38,12 @@ class ItemAffixServiceTest {
     }
 
     private static Item itemWith(Map<String, Integer> baseStats, List<AffixId> affixes) {
-        return new Item(
-            ItemId.of("blade"), "a blade", "A fine blade.",
-            new ItemAttributes(baseStats), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, affixes);
+        return Item.builder(ItemId.of("blade"), "a blade", "A fine blade.", new ItemAttributes(baseStats))
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .rarity(RarityProfile.of(Rarity.RARE, affixes))
+            .build();
     }
 
     @Test

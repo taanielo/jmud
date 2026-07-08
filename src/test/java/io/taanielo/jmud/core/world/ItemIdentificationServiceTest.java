@@ -17,11 +17,13 @@ class ItemIdentificationServiceTest {
     private final ItemIdentificationService service = new ItemIdentificationService();
 
     private static Item unidentified(String id, String name) {
-        return new Item(
-            ItemId.of(id), name, "A mysterious item.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, List.of(AffixId.of("of-the-titan")), false
-        );
+        return Item.builder(ItemId.of(id), name, "A mysterious item.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .rarity(RarityProfile.of(Rarity.RARE, List.of(AffixId.of("of-the-titan"))))
+            .identification(Identification.unidentified())
+            .build();
     }
 
     @Test
@@ -38,18 +40,18 @@ class ItemIdentificationServiceTest {
 
     @Test
     void identifyAlreadyIdentifiedReturnsSameInstance() {
-        Item item = new Item(
-            ItemId.of("rock"), "a rock", "A rock.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null
-        );
+        Item item = Item.builder(ItemId.of("rock"), "a rock", "A rock.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
         assertSame(item, service.identify(item));
     }
 
     @Test
     void identifyInInventoryReplacesMatchingItemPreservingOrder() {
-        Item first = new Item(ItemId.of("a"), "a", "A.", ItemAttributes.empty(), List.of(), List.of(), null, 1, 1, null);
+        Item first = Item.builder(ItemId.of("a"), "a", "A.", ItemAttributes.empty()).weight(1).value(1).build();
         Item target = unidentified("blade", "a runed longsword");
-        Item last = new Item(ItemId.of("z"), "z", "Z.", ItemAttributes.empty(), List.of(), List.of(), null, 1, 1, null);
+        Item last = Item.builder(ItemId.of("z"), "z", "Z.", ItemAttributes.empty()).weight(1).value(1).build();
         List<Item> inventory = List.of(first, target, last);
 
         List<Item> next = service.identifyInInventory(inventory, target);
@@ -63,7 +65,7 @@ class ItemIdentificationServiceTest {
 
     @Test
     void identifyInInventoryReturnsOriginalWhenAbsent() {
-        Item present = new Item(ItemId.of("a"), "a", "A.", ItemAttributes.empty(), List.of(), List.of(), null, 1, 1, null);
+        Item present = Item.builder(ItemId.of("a"), "a", "A.", ItemAttributes.empty()).weight(1).value(1).build();
         Item missing = unidentified("blade", "a runed longsword");
         List<Item> inventory = List.of(present);
 

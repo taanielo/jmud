@@ -18,6 +18,7 @@ import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.LightSource;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 
@@ -43,10 +44,11 @@ class LightingServiceTest {
     }
 
     private static Item lightSource(String id, int radius) {
-        return new Item(
-            ItemId.of(id), id, "A light source.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null, List.of(), radius
-        );
+        return Item.builder(ItemId.of(id), id, "A light source.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .light(LightSource.of(radius))
+            .build();
     }
 
     private static Room room(Integer lightLevel) {

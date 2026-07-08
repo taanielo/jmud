@@ -125,18 +125,11 @@ class EquipmentArmorResolverTest {
 
     private Item armourItem(ItemId id, EquipmentSlot slot, int ac) {
         Map<String, Integer> stats = ac > 0 ? Map.of("ac", ac) : Map.of();
-        return new Item(
-            id,
-            "Test Armour",
-            "A test armour piece.",
-            new ItemAttributes(stats),
-            List.of(),
-            List.of(),
-            slot,
-            1,
-            0,
-            null
-        );
+        return Item.builder(id, "Test Armour", "A test armour piece.", new ItemAttributes(stats))
+            .equipSlot(slot)
+            .weight(1)
+            .value(0)
+            .build();
     }
 
     private ItemRepository emptyItemRepository() {

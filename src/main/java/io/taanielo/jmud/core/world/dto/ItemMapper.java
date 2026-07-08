@@ -9,13 +9,18 @@ import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 import io.taanielo.jmud.core.world.AffixId;
+import io.taanielo.jmud.core.world.ContainerState;
+import io.taanielo.jmud.core.world.Durability;
 import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.Identification;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.LightSource;
 import io.taanielo.jmud.core.world.Rarity;
+import io.taanielo.jmud.core.world.RarityProfile;
 
 public class ItemMapper {
 
@@ -96,27 +101,25 @@ public class ItemMapper {
         List<AffixId> affixes = dto.affixes() == null
             ? List.of()
             : dto.affixes().stream().map(AffixId::of).toList();
-        return new Item(
-            ItemId.of(dto.id()),
-            dto.name(),
-            dto.description(),
-            attributes,
-            effects,
-            messages,
-            slot,
-            dto.weight(),
-            dto.value(),
-            attackRef,
-            teachesAbilityRef,
-            dto.containerCapacity(),
-            contents,
-            dto.lightRadius(),
-            dto.maxDurability(),
-            dto.durability(),
-            rarity,
-            affixes,
-            dto.identified(),
-            dto.locked()
-        );
+        boolean locked = dto.locked() != null && dto.locked();
+        // Assemble the container facet from the same flat fields regardless of whether this is a
+        // container; the Item constructor validates the invariants (e.g. non-containers may not be
+        // locked or hold contents), preserving the pre-refactor loading behaviour.
+        ContainerState container = new ContainerState(dto.containerCapacity(), contents, locked);
+        boolean identified = dto.identified() == null || dto.identified();
+        return Item.builder(ItemId.of(dto.id()), dto.name(), dto.description(), attributes)
+            .effects(effects)
+            .messages(messages)
+            .equipSlot(slot)
+            .weight(dto.weight())
+            .value(dto.value())
+            .attackRef(attackRef)
+            .teachesAbilityRef(teachesAbilityRef)
+            .container(container)
+            .light(new LightSource(dto.lightRadius()))
+            .durability(new Durability(dto.maxDurability(), dto.durability()))
+            .rarity(new RarityProfile(rarity, affixes))
+            .identification(Identification.of(identified))
+            .build();
     }
 }

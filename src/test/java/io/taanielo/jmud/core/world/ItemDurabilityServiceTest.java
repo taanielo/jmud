@@ -23,18 +23,19 @@ class ItemDurabilityServiceTest {
     private final ItemDurabilityService service = new ItemDurabilityService(1);
 
     private static Item sword(int maxDurability, Integer durability) {
-        return new Item(
-            ItemId.of("iron-sword"), "Iron Sword", "A blade.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, maxDurability, durability
-        );
+        return Item.builder(ItemId.of("iron-sword"), "Iron Sword", "A blade.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .durability(Durability.of(maxDurability, durability))
+            .build();
     }
 
     private static Item unbreakable() {
-        return new Item(
-            ItemId.of("torch"), "a torch", "A torch.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null
-        );
+        return Item.builder(ItemId.of("torch"), "a torch", "A torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
     }
 
     private static Player playerWithEquippedSword(Item swordItem, int gold) {
