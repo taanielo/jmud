@@ -1,0 +1,43 @@
+{
+  "schema_version": 10,
+  "id": "treasure-chest-locked",
+  "name": "a treasure chest",
+  "description": "An iron-banded treasure chest, its heavy lock scarred by failed attempts to force it open.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 25,
+  "value": 120,
+  "container_capacity": 5,
+  "locked": true,
+  "contents": [
+    {
+      "schema_version": 5,
+      "id": "jeweled-goblet",
+      "name": "a jeweled goblet",
+      "description": "A golden goblet studded with glittering gemstones.",
+      "attributes": {
+        "stats": {}
+      },
+      "effects": [],
+      "messages": [],
+      "weight": 2,
+      "value": 200
+    },
+    {
+      "schema_version": 5,
+      "id": "silver-ring",
+      "name": "a silver ring",
+      "description": "A finely wrought silver ring.",
+      "attributes": {
+        "stats": {}
+      },
+      "effects": [],
+      "messages": [],
+      "weight": 1,
+      "value": 75
+    }
+  ]
+}

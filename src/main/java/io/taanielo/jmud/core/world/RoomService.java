@@ -278,6 +278,81 @@ public class RoomService {
     }
 
     /**
+     * Finds an item in the player's current room by name or id prefix, searching both static
+     * (room-defined) and transient items.
+     *
+     * @param username the player whose room is searched
+     * @param input    the item name or id prefix to match (case-insensitive)
+     * @return the matched item, or empty if none matches
+     */
+    public Optional<Item> findItem(Username username, String input) {
+        Objects.requireNonNull(username, "Username is required");
+        if (input == null || input.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<Room> roomOpt = locationService.loadRoomForPlayer(username);
+        if (roomOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        List<Item> merged = itemService.mergeItems(roomOpt.get());
+        return Optional.ofNullable(matchItem(merged, input));
+    }
+
+    /**
+     * Replaces an item in the player's current room with a new copy carrying the same id, used to
+     * apply in-place state changes such as unlocking a container. Static (room-defined) items are
+     * persisted through the room repository; transient items are swapped in place.
+     *
+     * @param username    the player whose room holds the item
+     * @param itemId      the id of the item to replace
+     * @param replacement the replacement item (must share {@code itemId})
+     * @return {@code true} if an item was replaced, {@code false} if none matched
+     */
+    public boolean replaceItem(Username username, ItemId itemId, Item replacement) {
+        Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(itemId, "Item id is required");
+        Objects.requireNonNull(replacement, "Replacement item is required");
+        Optional<Room> roomOpt = locationService.loadRoomForPlayer(username);
+        if (roomOpt.isEmpty()) {
+            return false;
+        }
+        Room room = roomOpt.get();
+        boolean isStatic = room.getItems().stream().anyMatch(item -> item.getId().equals(itemId));
+        if (isStatic) {
+            List<Item> nextItems = new ArrayList<>();
+            for (Item item : room.getItems()) {
+                nextItems.add(item.getId().equals(itemId) ? replacement : item);
+            }
+            Room updated = new Room(
+                room.getId(),
+                room.getName(),
+                room.getDescription(),
+                room.getExits(),
+                nextItems,
+                room.getOccupants(),
+                room.getLockedExits(),
+                room.getMinLevel(),
+                room.getNightDescription(),
+                room.getLightLevel()
+            );
+            try {
+                roomRepository.save(updated);
+            } catch (RepositoryException e) {
+                // fallback: no-op if room persistence fails
+            }
+            return true;
+        }
+        boolean isTransient = itemService.getTransientItems(room.getId()).stream()
+            .anyMatch(item -> item.getId().equals(itemId));
+        if (isTransient) {
+            itemService.removeTransientItemById(room.getId(), itemId);
+            itemService.addItem(room.getId(), replacement);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Drops an item into the player's current room.
      */
     public boolean dropItem(Username username, Item item) {

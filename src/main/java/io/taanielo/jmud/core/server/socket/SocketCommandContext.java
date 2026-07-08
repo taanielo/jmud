@@ -414,6 +414,19 @@ public interface SocketCommandContext extends Client {
     default void unlockExit(Direction direction) {}
 
     /**
+     * Attempts the rogue PICK skill on a locked container in the player's current room.
+     *
+     * <p>Only rogues of level 1 or higher may pick locks. Rolls an independent pick-success and trap
+     * chance; a sprung trap damages the rogue, and a successful pick unlocks the container.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs
+     * do not need to be updated.
+     *
+     * @param args the container name or id to pick
+     */
+    default void pickLock(String args) {}
+
+    /**
      * Deposits the specified amount of gold from the player's carried balance into the bank.
      *
      * <p>Requires the player to be in the same room as a bank NPC.

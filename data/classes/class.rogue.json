@@ -6,5 +6,5 @@
     "base_modifier": 1
   },
   "carry_bonus": 8,
-  "ability_ids": ["skill.backstab"]
+  "ability_ids": ["skill.backstab", "skill.pick"]
 }

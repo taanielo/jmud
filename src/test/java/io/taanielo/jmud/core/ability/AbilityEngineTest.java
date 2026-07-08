@@ -151,7 +151,38 @@ class AbilityEngineTest {
         assertEquals("You lack the resources to use that ability.", result.messages().getFirst());
     }
 
+    @Test
+    void refusesCommandOnlyAbilityViaGenericUse() {
+        messageSink.clear();
+        Player source = Player.of(User.of(Username.of("rogue"), Password.hash("pw", 1000)), "prompt", false);
+        Player target = Player.of(User.of(Username.of("victim"), Password.hash("pw", 1000)), "prompt", false);
+        int targetHpBefore = target.getVitals().hp();
+        AbilityTargetResolver resolver = (player, input) -> Optional.of(target);
+        TestCooldowns cooldowns = new TestCooldowns();
+        List<AbilityId> learned = List.of(AbilityId.of("skill.pick"));
+
+        AbilityUseResult result = engine.use(source, "pick victim", learned, resolver, cooldowns);
+
+        assertEquals("That skill can't be used that way — it has its own command.",
+            result.messages().getFirst());
+        // The command-only skill must never touch the resolved target through the generic path.
+        assertEquals(targetHpBefore, result.target().getVitals().hp());
+        assertTrue(messageSink.sourceMessages.isEmpty());
+    }
+
     private AbilityRegistry testRegistry() {
+        Ability pick = new AbilityDefinition(
+            AbilityId.of("skill.pick"),
+            "pick",
+            AbilityType.SKILL,
+            1,
+            new AbilityCost(0, 0),
+            new AbilityCooldown(0),
+            AbilityTargeting.NONE,
+            List.of(),
+            List.of(),
+            List.of()
+        );
         Ability bash = new AbilityDefinition(
             AbilityId.of("skill.bash"),
             "bash",
@@ -200,7 +231,7 @@ class AbilityEngineTest {
             List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.INCREASE, 6, null)),
             List.of(new MessageSpec(MessagePhase.USE, MessageChannel.SELF, "You cast {ability} on {target}."))
         );
-        return new AbilityRegistry(List.of(bash, fireball, greaterFireball, heal));
+        return new AbilityRegistry(List.of(bash, fireball, greaterFireball, heal, pick));
     }
 
     private static class TestCooldowns implements AbilityCooldownTracker {

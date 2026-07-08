@@ -134,6 +134,15 @@ public class AbilityEngine {
         Ability ability = match.get().ability();
         String targetInput = match.get().remainingTarget();
 
+        // Command-only utility abilities cannot be activated through the generic USE/CAST path;
+        // they are invoked exclusively via their own dedicated command (e.g. PICK). Refusing here,
+        // before any target resolution or effect application, prevents such an ability from ever
+        // touching another player generically.
+        if (ability.targeting() == AbilityTargeting.NONE) {
+            return new AbilityUseResult(source, source,
+                List.of("That skill can't be used that way — it has its own command."));
+        }
+
         if (ability.targeting() == AbilityTargeting.HARMFUL_OPENER && inCombatCheck.test(source)) {
             return new AbilityUseResult(source, source,
                 List.of("You can only backstab as an opener — you are already in combat."));

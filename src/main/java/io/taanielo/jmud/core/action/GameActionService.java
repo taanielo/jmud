@@ -27,6 +27,7 @@ import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatResult;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
@@ -36,6 +37,7 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
+import io.taanielo.jmud.core.world.ContainerLockingService;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
@@ -71,6 +73,11 @@ public class GameActionService {
      * {@link io.taanielo.jmud.core.ability.AbilityTargeting#HARMFUL_OPENER} abilities.
      */
     private final Predicate<Player> inCombatCheck;
+    /**
+     * Domain service governing the rogue PICK skill: pick-success and trap rolls and container
+     * unlocking. Defaults to a {@link ThreadLocalCombatRandom}-backed instance when not supplied.
+     */
+    private final ContainerLockingService containerLockingService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -101,6 +108,29 @@ public class GameActionService {
     }
 
     /**
+     * Creates a game action service with an explicit container-locking service, allowing tests to
+     * inject a deterministic RNG for the rogue PICK skill. All other dependencies match the primary
+     * constructors; the in-combat check defaults to {@code false}.
+     *
+     * @param containerLockingService the service governing pick-lock success, trap, and damage rolls
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        ContainerLockingService containerLockingService
+    ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService,
+            _ -> false, containerLockingService);
+    }
+
+    /**
      * Creates a game action service with an explicit in-combat predicate.
      *
      * @param inCombatCheck returns {@code true} when the given player is already engaged in combat;
@@ -118,6 +148,33 @@ public class GameActionService {
         EncumbranceService encumbranceService,
         Predicate<Player> inCombatCheck
     ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
+            new ContainerLockingService(new ThreadLocalCombatRandom()));
+    }
+
+    /**
+     * Creates a game action service with both an explicit in-combat predicate and a container-locking
+     * service. This is the primary constructor all others delegate to.
+     *
+     * @param inCombatCheck           returns {@code true} when the given player is already engaged in
+     *                                combat; used to block
+     *                                {@link io.taanielo.jmud.core.ability.AbilityTargeting#HARMFUL_OPENER}
+     *                                abilities mid-combat
+     * @param containerLockingService the service governing pick-lock success, trap, and damage rolls
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        Predicate<Player> inCombatCheck,
+        ContainerLockingService containerLockingService
+    ) {
         this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         this.abilityCostResolver = Objects.requireNonNull(abilityCostResolver, "Ability cost resolver is required");
         this.abilityEffectEngine = Objects.requireNonNull(abilityEffectEngine, "Ability effect engine is required");
@@ -127,6 +184,8 @@ public class GameActionService {
         this.cooldownTracker = Objects.requireNonNull(cooldownTracker, "Cooldown tracker is required");
         this.encumbranceService = Objects.requireNonNull(encumbranceService, "Encumbrance service is required");
         this.inCombatCheck = Objects.requireNonNull(inCombatCheck, "In-combat check is required");
+        this.containerLockingService =
+            Objects.requireNonNull(containerLockingService, "Container locking service is required");
     }
 
     /**
@@ -523,6 +582,9 @@ public class GameActionService {
         if (!container.isContainer()) {
             return GameActionResult.error(container.getName() + " is not a container.");
         }
+        if (container.isLocked()) {
+            return GameActionResult.error(container.getName() + " is locked.");
+        }
         Item contained = matchItem(container.getContainedItems(), itemNorm);
         if (contained == null) {
             return GameActionResult.error("There is no " + itemNorm + " in " + container.getName() + ".");
@@ -548,6 +610,86 @@ public class GameActionService {
             source.getUsername().getValue() + " gets " + contained.getName() + " from " + container.getName() + "."
         ));
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Attempts the rogue PICK skill on a locked container in the player's current room.
+     *
+     * <p>Only rogues of level 1 or higher may pick locks. The named target must be a container in
+     * the room that is currently locked. Two independent rolls resolve the attempt (§5 determinism —
+     * both go through {@link ContainerLockingService}'s injected RNG):
+     * <ul>
+     *   <li>a pick-success roll whose chance scales with rogue level; on success the container is
+     *       unlocked in place (persisted for static room items, swapped for transient ones);</li>
+     *   <li>a trap roll, independent of the pick outcome; when it triggers, the rogue takes
+     *       {@code 5–15} HP of damage. A failed pick by itself never deals damage.</li>
+     * </ul>
+     *
+     * @param source         the player attempting the pick
+     * @param containerInput the container name or id to pick
+     * @return result with the (possibly damaged) source player and outcome messages, or an error
+     */
+    public GameActionResult pickLock(Player source, String containerInput) {
+        String normalized = containerInput == null ? "" : containerInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Pick what?");
+        }
+        if (!isRogue(source)) {
+            return GameActionResult.error("Only rogues know how to pick locks.");
+        }
+        int level = source.getLevel();
+        if (level < 1) {
+            return GameActionResult.error("You are not skilled enough to pick locks.");
+        }
+        Optional<Item> found = roomService.findItem(source.getUsername(), normalized);
+        if (found.isEmpty()) {
+            return GameActionResult.error("You don't see " + normalized + " here.");
+        }
+        Item container = found.get();
+        if (!container.isContainer()) {
+            return GameActionResult.error(container.getName() + " is not a container.");
+        }
+        if (!container.isLocked()) {
+            return GameActionResult.error(container.getName() + " isn't locked.");
+        }
+        boolean pickSucceeded = containerLockingService.rollPickSuccess(level);
+        boolean trapTriggered = containerLockingService.shouldTrapTrigger();
+        List<GameMessage> messages = new ArrayList<>();
+        Player updated = source;
+        if (trapTriggered) {
+            int damage = containerLockingService.rollTrapDamage();
+            PlayerVitals damaged = source.getVitals().damage(damage);
+            updated = source.withVitals(damaged);
+            messages.add(GameMessage.toSource(
+                "A hidden trap on " + container.getName() + " springs, dealing " + damage + " damage!"));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(),
+                null,
+                source.getUsername().getValue() + " springs a trap while fiddling with " + container.getName() + "."
+            ));
+        }
+        if (pickSucceeded) {
+            Item unlocked = containerLockingService.unlockContainer(container);
+            roomService.replaceItem(source.getUsername(), container.getId(), unlocked);
+            messages.add(GameMessage.toSource("You deftly pick the lock on " + container.getName() + "."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(),
+                null,
+                source.getUsername().getValue() + " picks the lock on " + container.getName() + "."
+            ));
+        } else {
+            messages.add(GameMessage.toSource("You fail to pick the lock on " + container.getName() + "."));
+        }
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Returns whether the given player belongs to the rogue class, the only class permitted to use
+     * the PICK skill.
+     */
+    private static boolean isRogue(Player player) {
+        return player.getClassId() != null
+            && "rogue".equalsIgnoreCase(player.getClassId().getValue());
     }
 
     /**
