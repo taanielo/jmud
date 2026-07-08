@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "spell.chain-lightning",
+  "name": "chain-lightning",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 4,
+    "mana_per_target": 2
+  },
+  "cooldown": {
+    "ticks": 4
+  },
+  "targeting": "AoE",
+  "aliases": ["chain", "lightning"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "Arcs of lightning leap from your fingertips as you unleash {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "Arcs of lightning erupt around {source} as they unleash {ability}!"
+    }
+  ]
+}

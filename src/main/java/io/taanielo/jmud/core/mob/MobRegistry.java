@@ -13,6 +13,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityEffect;
+import io.taanielo.jmud.core.ability.AbilityEffectKind;
+import io.taanielo.jmud.core.ability.AbilityOperation;
+import io.taanielo.jmud.core.ability.AbilityStat;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.NpcStealPort;
@@ -319,6 +324,33 @@ public class MobRegistry implements Tickable, NpcStealPort {
      * @param messages the mutable attacker-facing message list to append reward messages to
      */
     private void awardMobKill(MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
+        Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
+        Player rewarded = applyMobKillRewards(mob, reloaded, roomId, messages);
+        saveOrLog(rewarded);
+    }
+
+    /**
+     * Applies the shared post-kill rewards to {@code attacker} <em>in memory</em> and returns the
+     * updated player without persisting it, so the caller controls when and how the result is saved.
+     *
+     * <p>Unlike {@link #awardMobKill}, this method does not reload the player from the repository:
+     * it awards XP, gold, quest-kill credit, and the kill count on top of the exact {@code attacker}
+     * instance passed in. This lets area-of-effect casters ({@link #processPlayerAoeSpell}) chain
+     * multiple kills through a single evolving player object that already carries an unpersisted
+     * mana deduction, without a stale reload clobbering that deduction. Loot drops, respawn
+     * scheduling, combat teardown, and per-member party XP (which is saved and published for other
+     * members) are handled here identically to {@link #awardMobKill}. Runs entirely on the tick
+     * thread (AGENTS.md §5).
+     *
+     * @param mob      the slain mob
+     * @param attacker the player who landed the killing blow, already carrying any pending in-memory
+     *                 changes (e.g. a mana deduction) the caller wants preserved
+     * @param roomId   the room used to resolve the attacker's party members for XP sharing
+     * @param messages the mutable attacker-facing message list to append reward messages to
+     * @return the attacker with all rewards applied, not yet persisted
+     */
+    private Player applyMobKillRewards(
+        MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
         messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
         for (Item dropped : dropLoot(mob)) {
             messages.add(GameMessage.toSource(
@@ -335,8 +367,7 @@ public class MobRegistry implements Tickable, NpcStealPort {
         int xpPerMember = (int) Math.floor(
             (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
 
-        Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
-        LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
+        LevelUpResult levelUpResult = levelUpService.awardXp(attacker, xpPerMember);
         Player afterXp = levelUpResult.player();
         if (mob.template().goldDrop() != null) {
             int gold = mob.template().goldDrop().roll(random);
@@ -357,7 +388,6 @@ public class MobRegistry implements Tickable, NpcStealPort {
             }
         }
         afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
-        saveOrLog(afterXp);
         messages.add(GameMessage.toSource(
             "You gain " + xpPerMember + " experience points."));
         if (levelUpResult.leveledUp()) {
@@ -388,6 +418,7 @@ public class MobRegistry implements Tickable, NpcStealPort {
             }
             playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
         }
+        return afterXp;
     }
 
     /**
@@ -487,6 +518,104 @@ public class MobRegistry implements Tickable, NpcStealPort {
                     + direction.label() + "."))));
         }
         return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Processes an area-of-effect spell cast, striking every hostile mob in the caster's room in a
+     * single cast (AGENTS.md §5 — all mutation runs on the tick thread via the caster's command
+     * queue). Backs {@link io.taanielo.jmud.core.ability.AbilityTargeting#AoE} spells (e.g.
+     * chain-lightning) routed here from the CAST/USE command because hostile mobs, not players, are
+     * the targets.
+     *
+     * <p>Resolution: every live, attackable (non-{@code "npc"}-tagged) mob in {@code roomId} is a
+     * target. If none are present, the cast fails with no mana spent. Otherwise the mana cost scales
+     * with the crowd — {@link io.taanielo.jmud.core.ability.AbilityCost#totalMana(int)} charges the
+     * spell's base mana plus its {@code mana_per_target} once per target — and the cast is refused
+     * (again spending nothing) if the caster cannot pay the scaled total. On success the caster's
+     * mana is deducted once, then each mob takes the spell's summed HP-decrease damage; slain mobs
+     * award their normal kill rewards (loot, XP, gold, quest credit), accumulated onto the caster so
+     * a single persisted snapshot carries both the mana deduction and every reward.
+     *
+     * @param caster the casting player
+     * @param spell  the resolved AoE spell ability
+     * @param roomId the caster's current room
+     * @return result whose {@code updatedSource} is the caster with mana (and any kill rewards)
+     *         applied, plus per-target and roll-up messages; or an error with no state change
+     */
+    public GameActionResult processPlayerAoeSpell(Player caster, Ability spell, RoomId roomId) {
+        Objects.requireNonNull(caster, "Caster is required");
+        Objects.requireNonNull(spell, "Spell is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+
+        List<MobInstance> targets = getMobsInRoom(roomId).stream()
+            .filter(m -> !m.template().hasTag("npc"))
+            .toList();
+        if (targets.isEmpty()) {
+            return GameActionResult.error("There are no enemies here to strike.");
+        }
+
+        int scaledMana = spell.cost().totalMana(targets.size());
+        if (caster.getVitals().getMana() < scaledMana) {
+            return GameActionResult.error(
+                "You lack the mana to unleash " + spell.name() + " (" + scaledMana + " needed).");
+        }
+        int damage = aoeSpellDamage(spell);
+
+        Player updated = caster.withVitals(caster.getVitals().consumeMana(scaledMana));
+
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You unleash " + spell.name() + ", striking "
+            + targets.size() + (targets.size() == 1 ? " enemy" : " enemies") + "!"));
+        String casterName = caster.getUsername().getValue();
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(caster.getUsername())) {
+                continue;
+            }
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource(casterName + " unleashes " + spell.name()
+                    + " across the room!"))));
+        }
+
+        UUID firstSurvivor = null;
+        for (MobInstance mob : targets) {
+            String mobName = mob.template().name();
+            int remaining = mob.takeDamage(damage);
+            messages.add(GameMessage.toSource("Your " + spell.name() + " strikes the " + mobName
+                + " for " + damage + " damage. (" + remaining + " HP remaining)"));
+            if (!mob.isAlive()) {
+                updated = applyMobKillRewards(mob, updated, roomId, messages);
+                continue;
+            }
+            mob.engage(caster.getUsername());
+            if (firstSurvivor == null) {
+                firstSurvivor = mob.instanceId();
+            }
+        }
+        if (firstSurvivor != null) {
+            playerCombatTargets.put(caster.getUsername(), firstSurvivor);
+        }
+
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Returns the damage an AoE spell deals to each target: the sum of its HP-decreasing
+     * {@link io.taanielo.jmud.core.ability.AbilityEffectKind#VITALS} effects. Non-damage effects
+     * (status effects, cures) are ignored on the mob path, which has no persistent effect model.
+     *
+     * @param spell the AoE spell
+     * @return the per-target damage (zero when the spell defines no HP-decrease effect)
+     */
+    private static int aoeSpellDamage(Ability spell) {
+        int damage = 0;
+        for (AbilityEffect effect : spell.effects()) {
+            if (effect.kind() == AbilityEffectKind.VITALS
+                && effect.stat() == AbilityStat.HP
+                && effect.operation() == AbilityOperation.DECREASE) {
+                damage += effect.amount();
+            }
+        }
+        return damage;
     }
 
     /**

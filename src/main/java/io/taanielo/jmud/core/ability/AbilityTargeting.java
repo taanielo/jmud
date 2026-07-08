@@ -21,6 +21,15 @@ public enum AbilityTargeting {
      */
     HARMFUL_UNDEAD,
     /**
+     * Area-of-effect targeting: applies the ability's harmful effects to every hostile mob in the
+     * caster's room in a single cast. No explicit target is required. The mana cost scales with the
+     * number of enemies struck — {@link AbilityCost#mana()} is the base cost and
+     * {@link AbilityCost#manaPerTarget()} is added once per target hit (see
+     * {@link AbilityCost#totalMana(int)}). Resolution and damage application live in the mob layer
+     * ({@code MobRegistry.processPlayerAoeSpell}) since hostile mobs, not players, are the targets.
+     */
+    AoE,
+    /**
      * Command-only utility ability with no generic target and no generic effects.
      *
      * <p>Such an ability is invoked exclusively through its own dedicated command (for example

@@ -32,7 +32,8 @@ public class AbilityMapper {
             ability.name(),
             ability.type(),
             ability.level(),
-            new AbilityCostDto(ability.cost().mana(), ability.cost().move()),
+            new AbilityCostDto(
+                ability.cost().mana(), ability.cost().move(), ability.cost().manaPerTarget()),
             new AbilityCooldownDto(ability.cooldown().ticks()),
             ability.targeting(),
             ability.aliases(),
@@ -51,12 +52,16 @@ public class AbilityMapper {
             .toList();
         int manaCost = 0;
         int moveCost = 0;
+        int manaPerTargetCost = 0;
         if (costDto != null) {
             if (costDto.mana() != null) {
                 manaCost = costDto.mana();
             }
             if (costDto.move() != null) {
                 moveCost = costDto.move();
+            }
+            if (costDto.manaPerTarget() != null) {
+                manaPerTargetCost = costDto.manaPerTarget();
             }
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
@@ -65,7 +70,7 @@ public class AbilityMapper {
             dto.name(),
             dto.type(),
             dto.level(),
-            new AbilityCost(manaCost, moveCost),
+            new AbilityCost(manaCost, moveCost, manaPerTargetCost),
             new AbilityCooldown(cooldownDto.ticks()),
             dto.targeting(),
             dto.aliases(),

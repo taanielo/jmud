@@ -22,6 +22,7 @@ import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
+import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.action.FleeResult;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
@@ -820,10 +821,59 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player player = session.getPlayer();
         AbilityMatch match = abilityRegistry
             .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
+        if (handleAoeCastIfApplicable(match, args, player)) {
+            return;
+        }
         GameActionResult result = gameActionService.useAbility(player, args);
         auditAbilityUse(match, result, args);
         deliverResult(result);
         sendPrompt();
+    }
+
+    /**
+     * Routes an area-of-effect spell (targeting {@link AbilityTargeting#AoE}) to the mob layer, which
+     * strikes every hostile mob in the caster's room and scales the mana cost with the crowd. Ordinary
+     * single-target and group abilities are left to {@link GameActionService#useAbility(Player, String)},
+     * so this returns {@code false} for them and the caller proceeds normally.
+     *
+     * <p>Enforces the spell's cooldown through the same per-session tracker the ability engine uses,
+     * starting it only when the cast actually resolved (a non-null updated source signals that mana
+     * was spent, distinguishing it from a "no enemies here" / "not enough mana" rejection).
+     *
+     * @param match  the resolved ability match, or {@code null} when the input matched no ability
+     * @param args   the raw command arguments, forwarded to the audit log
+     * @param player the casting player
+     * @return {@code true} when the input was an AoE spell and has been fully handled here
+     */
+    private boolean handleAoeCastIfApplicable(AbilityMatch match, String args, Player player) {
+        if (match == null || match.ability().targeting() != AbilityTargeting.AoE) {
+            return false;
+        }
+        Ability spell = match.ability();
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(spell.id())) {
+            writeLineWithPrompt("Ability is on cooldown ("
+                + cooldowns.remainingTicks(spell.id()) + " ticks remaining).");
+            return true;
+        }
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("There are no enemies here to strike.");
+            return true;
+        }
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return true;
+        }
+        GameActionResult result = context.mobRegistry()
+            .processPlayerAoeSpell(player, spell, roomIdOpt.get());
+        if (result.updatedSource() != null && spell.cooldown().ticks() > 0) {
+            cooldowns.startCooldown(spell.id(), spell.cooldown().ticks());
+        }
+        auditAbilityUse(match, result, args);
+        deliverResult(result);
+        sendPrompt();
+        return true;
     }
 
     @Override
@@ -838,6 +888,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
         if (match != null && match.ability().type() != io.taanielo.jmud.core.ability.AbilityType.SPELL) {
             writeLineWithPrompt("That is not a spell.");
+            return;
+        }
+        if (handleAoeCastIfApplicable(match, args, player)) {
             return;
         }
         GameActionResult result = gameActionService.useAbility(player, args);

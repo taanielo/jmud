@@ -41,7 +41,8 @@
       "minProperties": 1,
       "properties": {
         "mana": {"type": "integer", "minimum": 0},
-        "move": {"type": "integer", "minimum": 0}
+        "move": {"type": "integer", "minimum": 0},
+        "mana_per_target": {"type": "integer", "minimum": 0}
       }
     },
     "cooldown": {
@@ -54,7 +55,15 @@
     },
     "targeting": {
       "type": "string",
-      "enum": ["HARMFUL", "BENEFICIAL"]
+      "enum": [
+        "HARMFUL",
+        "BENEFICIAL",
+        "HARMFUL_OPENER",
+        "BENEFICIAL_GROUP",
+        "HARMFUL_UNDEAD",
+        "AoE",
+        "NONE"
+      ]
     },
     "aliases": {
       "type": "array",
