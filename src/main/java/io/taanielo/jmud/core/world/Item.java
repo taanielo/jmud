@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.world;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -70,6 +71,15 @@ public class Item {
      * {@link #attributes} are never mutated to fold these in.
      */
     List<AffixId> affixes;
+    /**
+     * Whether this item's true nature — its {@link #rarity} tier and {@link #affixes} — is known to
+     * its holder. Unidentified items display generically (e.g. {@code "an unidentified longsword"})
+     * and hide their rarity coloring and affix stats until revealed by the IDENTIFY command or by
+     * reading the item; see {@link #presentationName()} and {@link #presentationRarity()}. Defaults
+     * to {@code true} so plain items and legacy item data (which has no {@code identified} field)
+     * are identified out of the box.
+     */
+    boolean identified;
 
     /**
      * Constructs an item. Note this class is never bound directly by Jackson for item-definition
@@ -90,6 +100,8 @@ public class Item {
      *                          and must be {@code null} when {@code maxDurability} is {@code null}
      * @param rarity            the rarity tier, or {@code null} to default to {@link Rarity#COMMON}
      * @param affixes           the ids of stat affixes attached to this item, or {@code null} for none
+     * @param identified        whether the item's rarity and affixes are revealed, or {@code null} to
+     *                          default to {@code true} (identified) for backward compatibility
      */
     public Item(
         ItemId id,
@@ -109,7 +121,8 @@ public class Item {
         @Nullable Integer maxDurability,
         @Nullable Integer durability,
         @Nullable Rarity rarity,
-        @Nullable List<AffixId> affixes
+        @Nullable List<AffixId> affixes,
+        @Nullable Boolean identified
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -174,6 +187,37 @@ public class Item {
         }
         this.rarity = Objects.requireNonNullElse(rarity, Rarity.COMMON);
         this.affixes = List.copyOf(Objects.requireNonNullElse(affixes, List.of()));
+        this.identified = identified == null || identified;
+    }
+
+    /**
+     * Convenience constructor for rarity-aware call sites that predate {@link #identified}: builds an
+     * item with a rarity tier and affixes that is fully identified (its true nature already known),
+     * preserving call sites created before unidentified items existed.
+     */
+    public Item(
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef,
+        AbilityId teachesAbilityRef,
+        Integer containerCapacity,
+        List<Item> containedItems,
+        @Nullable Integer lightRadius,
+        @Nullable Integer maxDurability,
+        @Nullable Integer durability,
+        @Nullable Rarity rarity,
+        @Nullable List<AffixId> affixes
+    ) {
+        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
+            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
+            rarity, affixes, null);
     }
 
     /**
@@ -200,7 +244,8 @@ public class Item {
         @Nullable Integer durability
     ) {
         this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
-            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability, null, null);
+            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
+            null, null, null);
     }
 
     /**
@@ -385,7 +430,7 @@ public class Item {
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
-            rarity, affixes);
+            rarity, affixes, identified);
     }
 
     /**
@@ -419,7 +464,68 @@ public class Item {
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
-            rarity, affixes);
+            rarity, affixes, identified);
+    }
+
+    /**
+     * Returns a copy of this item with its identification status set to {@code newIdentified},
+     * revealing (or re-hiding) its {@link #rarity} tier and {@link #affixes} for display. All other
+     * state — including durability and container contents — is preserved. Returns {@code this}
+     * unchanged when the status already matches.
+     *
+     * @param newIdentified whether the copy should be identified
+     * @return a new item instance with the updated identification status, or {@code this} if unchanged
+     */
+    public Item withIdentified(boolean newIdentified) {
+        if (this.identified == newIdentified) {
+            return this;
+        }
+        return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
+            attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
+            rarity, affixes, newIdentified);
+    }
+
+    /**
+     * Returns the name to display for this item to a holder, hiding its true identity while it is
+     * unidentified. Identified items return their full {@link #durabilityDisplayName()} (composing
+     * container fill and {@code (damaged)} annotations); unidentified items return a generic
+     * {@code "an unidentified <noun>"} label that reveals neither rarity nor affixes.
+     *
+     * @return the holder-facing display name
+     */
+    public String presentationName() {
+        if (identified) {
+            return durabilityDisplayName();
+        }
+        return "an unidentified " + genericNoun();
+    }
+
+    /**
+     * Returns the rarity tier to use when coloring this item's {@link #presentationName()}. Identified
+     * items expose their true {@link #rarity}; unidentified items report {@link Rarity#COMMON} so that
+     * no rarity coloring leaks their true tier before identification.
+     *
+     * @return the rarity tier to display
+     */
+    public Rarity presentationRarity() {
+        return identified ? rarity : Rarity.COMMON;
+    }
+
+    /**
+     * Strips any leading indefinite/definite article from the item's {@link #name} to yield a bare
+     * noun phrase (e.g. {@code "a longsword"} to {@code "longsword"}) for the generic unidentified
+     * label. Names without a recognised leading article are returned unchanged.
+     *
+     * @return the article-stripped noun phrase
+     */
+    private String genericNoun() {
+        String lower = name.toLowerCase(Locale.ROOT);
+        for (String article : new String[] {"a ", "an ", "the "}) {
+            if (lower.startsWith(article)) {
+                return name.substring(article.length());
+            }
+        }
+        return name;
     }
 
     /**

@@ -42,6 +42,7 @@ import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.ItemIdentificationService;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -71,6 +72,7 @@ public class GameActionService {
      */
     private final Predicate<Player> inCombatCheck;
     private final MessageEmitter messageEmitter = new MessageEmitter();
+    private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
 
     /** Cooldown key used to rate-limit {@link #recall}. Not a real ability id, but reuses the tracker. */
@@ -747,6 +749,9 @@ public class GameActionService {
         if (item == null) {
             return GameActionResult.error("You aren't carrying that.");
         }
+        if (!item.isIdentified()) {
+            return identifyInventoryItem(source, item);
+        }
         AbilityId abilityId = item.getTeachesAbilityRef();
         if (abilityId == null) {
             return GameActionResult.error("There is nothing to learn from that.");
@@ -784,6 +789,56 @@ public class GameActionService {
         } else {
             messages.addAll(emitted);
         }
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Identifies a single carried item, revealing its rarity tier and stat affixes so that it
+     * displays with full coloring and affix labels instead of its generic
+     * {@code "an unidentified ..."} name.
+     *
+     * <p>Fails with a clear message when the named item is not carried or is already identified.
+     *
+     * @param source    the player performing the identification
+     * @param itemInput the item name or id to identify
+     * @return result with the identified item swapped into the player's inventory
+     */
+    public GameActionResult identifyItem(Player source, String itemInput) {
+        String normalized = itemInput == null ? "" : itemInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Identify what?");
+        }
+        Item item = findInventoryItem(source, normalized);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        if (item.isIdentified()) {
+            return GameActionResult.error("You already know all there is to know about " + item.getName() + ".");
+        }
+        return identifyInventoryItem(source, item);
+    }
+
+    /**
+     * Shared identification path used by both the {@code IDENTIFY} command and reading an
+     * unidentified item: swaps the item's identified copy into the player's inventory (preserving
+     * order) and emits the reveal messages.
+     *
+     * @param source the player identifying the item
+     * @param item   the unidentified inventory item to reveal
+     * @return result with the identified item swapped into the player's inventory
+     */
+    private GameActionResult identifyInventoryItem(Player source, Item item) {
+        Player updated = source.withInventory(
+            identificationService.identifyInInventory(source.getInventory(), item));
+        Item identified = item.withIdentified(true);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You study " + item.presentationName() + " and reveal it to be " + identified.presentationName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " studies " + item.presentationName() + "."
+        ));
         return new GameActionResult(updated, null, messages);
     }
 

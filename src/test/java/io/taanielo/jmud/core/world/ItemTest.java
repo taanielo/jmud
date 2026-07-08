@@ -228,4 +228,50 @@ class ItemTest {
         assertEquals(Rarity.UNCOMMON, withItem.getRarity());
         assertEquals(List.of(AffixId.of("of-the-fox")), withItem.getAffixes());
     }
+
+    private static Item unidentifiedRare(String id, String name) {
+        return new Item(
+            ItemId.of(id), name, "A mysterious item.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
+            List.of(), null, null, null, Rarity.RARE, List.of(AffixId.of("of-the-titan")), false
+        );
+    }
+
+    @Test
+    void itemsDefaultToIdentified() {
+        assertTrue(plain("rock", "a rock").isIdentified());
+    }
+
+    @Test
+    void unidentifiedItemHidesNameAndRarity() {
+        Item blade = unidentifiedRare("blade", "a runed longsword");
+        assertFalse(blade.isIdentified());
+        assertEquals("an unidentified runed longsword", blade.presentationName());
+        assertEquals(Rarity.COMMON, blade.presentationRarity());
+    }
+
+    @Test
+    void identifyingRevealsRealNameAndRarity() {
+        Item revealed = unidentifiedRare("blade", "a runed longsword").withIdentified(true);
+        assertTrue(revealed.isIdentified());
+        assertEquals("a runed longsword", revealed.presentationName());
+        assertEquals(Rarity.RARE, revealed.presentationRarity());
+        assertEquals(List.of(AffixId.of("of-the-titan")), revealed.getAffixes());
+    }
+
+    @Test
+    void withIdentifiedReturnsSameInstanceWhenUnchanged() {
+        Item blade = unidentifiedRare("blade", "a runed longsword");
+        assertTrue(blade == blade.withIdentified(false));
+    }
+
+    @Test
+    void unidentifiedNameStripsLeadingArticle() {
+        Item withThe = new Item(
+            ItemId.of("crown"), "the Crown of Kings", "A regal crown.",
+            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.HEAD, 2, 500, null, null, null,
+            List.of(), null, null, null, Rarity.RARE, List.of(), false
+        );
+        assertEquals("an unidentified Crown of Kings", withThe.presentationName());
+    }
 }

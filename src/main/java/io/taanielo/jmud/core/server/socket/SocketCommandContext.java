@@ -187,6 +187,13 @@ public interface SocketCommandContext extends Client {
     void readItem(String args);
 
     /**
+     * Executes an identify command with the provided arguments, revealing a carried item's rarity
+     * tier and affixes. Defaults to a no-op for non-socket implementations; the socket-backed
+     * implementation overrides it.
+     */
+    default void identifyItem(String args) {}
+
+    /**
      * Executes a write command with the provided arguments.
      */
     void writeItem(String args);
