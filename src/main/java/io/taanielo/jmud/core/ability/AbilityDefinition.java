@@ -42,7 +42,10 @@ public class AbilityDefinition implements Ability {
         this.aliases = List.copyOf(Objects.requireNonNullElse(aliases, List.of()));
         this.effects = List.copyOf(Objects.requireNonNullElse(effects, List.of()));
         this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
-        if (this.effects.isEmpty()) {
+        // Command-only utility abilities (AbilityTargeting.NONE) legitimately carry no generic
+        // effects — their mechanic is custom logic behind a dedicated command. Every other
+        // targeting mode flows through the effect pipeline and must declare at least one effect.
+        if (this.effects.isEmpty() && this.targeting != AbilityTargeting.NONE) {
             throw new IllegalArgumentException("Ability must define at least one effect");
         }
     }

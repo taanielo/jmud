@@ -8,7 +8,7 @@
   "cooldown": {
     "ticks": 0
   },
-  "targeting": "HARMFUL_OPENER",
+  "targeting": "NONE",
   "aliases": [],
   "effects": [],
   "messages": [
