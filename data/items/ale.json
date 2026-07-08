@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "id": "ale",
+  "name": "Mug of Ale",
+  "description": "A frothy mug of dark, malty ale.",
+  "attributes": {
+    "stats": {
+      "thirst": 25
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "drink",
+      "channel": "self",
+      "text": "You quaff {item}, wiping the froth from your lip."
+    },
+    {
+      "phase": "drink",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 8
+}

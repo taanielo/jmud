@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "id": "bread",
+  "name": "Loaf of Bread",
+  "description": "A crusty loaf of freshly baked bread.",
+  "attributes": {
+    "stats": {
+      "hunger": 30
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You tear off a chunk of {item} and eat it."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} eats {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 5
+}

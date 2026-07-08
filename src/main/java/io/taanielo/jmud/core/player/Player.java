@@ -45,6 +45,8 @@ public class Player implements EffectTarget, Combatant {
     private final PlayerAliases aliases;
     /** Offline messages waiting in the player's mailbox; defaults to empty for existing players. */
     private final PlayerMailbox mailbox;
+    /** Hunger and thirst levels (0&ndash;100); defaults to fully sated for existing players. */
+    private final PlayerSustenance sustenance;
 
     public static Player of(User user, String promptFormat) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of(), null, null);
@@ -92,6 +94,7 @@ public class Player implements EffectTarget, Combatant {
             null,
             null,
             null,
+            null,
             null
         );
     }
@@ -118,7 +121,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("bankedGold") Integer bankedGold,
         @JsonProperty("titles") List<String> titles,
         @JsonProperty("aliases") Map<String, String> aliases,
-        @JsonProperty("mailbox") List<PlayerMailMessage> mailbox
+        @JsonProperty("mailbox") List<PlayerMailMessage> mailbox,
+        @JsonProperty("sustenance") PlayerSustenance sustenance
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId),
@@ -135,7 +139,8 @@ public class Player implements EffectTarget, Combatant {
             bankedGold == null ? 0 : Math.max(0, bankedGold),
             new PlayerTitles(titles),
             new PlayerAliases(aliases),
-            new PlayerMailbox(mailbox)
+            new PlayerMailbox(mailbox),
+            sustenance == null ? PlayerSustenance.defaults() : sustenance
         );
     }
 
@@ -147,7 +152,7 @@ public class Player implements EffectTarget, Combatant {
         PlayerInventory inventory,
         PlayerEquipment equipment
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, false, 0, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, false, 0, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults());
     }
 
     private Player(
@@ -160,7 +165,7 @@ public class Player implements EffectTarget, Combatant {
         boolean resting,
         int gold
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults());
     }
 
     private Player(
@@ -174,7 +179,7 @@ public class Player implements EffectTarget, Combatant {
         int gold,
         ActiveQuest activeQuest
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults());
     }
 
     private Player(
@@ -189,7 +194,7 @@ public class Player implements EffectTarget, Combatant {
         ActiveQuest activeQuest,
         long totalKills
     ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty());
+        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults());
     }
 
     private Player(
@@ -207,7 +212,8 @@ public class Player implements EffectTarget, Combatant {
         int bankedGold,
         PlayerTitles titles,
         PlayerAliases aliases,
-        PlayerMailbox mailbox
+        PlayerMailbox mailbox,
+        PlayerSustenance sustenance
     ) {
         this.identity = Objects.requireNonNull(identity, "Identity is required");
         this.combatState = Objects.requireNonNull(combatState, "Combat state is required");
@@ -224,6 +230,7 @@ public class Player implements EffectTarget, Combatant {
         this.titles = Objects.requireNonNullElse(titles, PlayerTitles.empty());
         this.aliases = Objects.requireNonNullElse(aliases, PlayerAliases.empty());
         this.mailbox = Objects.requireNonNullElse(mailbox, PlayerMailbox.empty());
+        this.sustenance = Objects.requireNonNullElse(sustenance, PlayerSustenance.defaults());
     }
 
     @JsonProperty("user")
@@ -331,6 +338,11 @@ public class Player implements EffectTarget, Combatant {
         return mailbox.messages();
     }
 
+    @JsonProperty("sustenance")
+    public PlayerSustenance getSustenance() {
+        return sustenance;
+    }
+
     public PlayerIdentity identity() {
         return identity;
     }
@@ -365,6 +377,10 @@ public class Player implements EffectTarget, Combatant {
 
     public PlayerMailbox mailbox() {
         return mailbox;
+    }
+
+    public PlayerSustenance sustenance() {
+        return sustenance;
     }
 
     @JsonIgnore
@@ -415,31 +431,31 @@ public class Player implements EffectTarget, Combatant {
             return this;
         }
         // Dying always clears the resting flag.
-        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player respawn() {
-        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player withoutEffects() {
-        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player withAnsiEnabled(boolean enabled) {
-        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player withVitals(PlayerVitals updatedVitals) {
-        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player withDead(boolean dead) {
-        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player withLearnedAbilities(List<AbilityId> learnedAbilities) {
-        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -448,7 +464,7 @@ public class Player implements EffectTarget, Combatant {
      * @param earnedTitles the new titles list
      */
     public Player withTitles(List<String> earnedTitles) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withEarned(earnedTitles), aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withEarned(earnedTitles), aliases, mailbox, sustenance);
     }
 
     /**
@@ -458,7 +474,7 @@ public class Player implements EffectTarget, Combatant {
      * @param title the title to grant; must not be null
      */
     public Player grantTitle(String title) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.grant(title), aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.grant(title), aliases, mailbox, sustenance);
     }
 
     /**
@@ -468,7 +484,7 @@ public class Player implements EffectTarget, Combatant {
      * @param expansion the command line the alias expands to; must not be blank
      */
     public Player defineAlias(String name, String expansion) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.define(name, expansion), mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.define(name, expansion), mailbox, sustenance);
     }
 
     /**
@@ -478,7 +494,7 @@ public class Player implements EffectTarget, Combatant {
      * @param name the alias name to remove; case-insensitive
      */
     public Player removeAlias(String name) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.remove(name), mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.remove(name), mailbox, sustenance);
     }
 
     /**
@@ -487,30 +503,39 @@ public class Player implements EffectTarget, Combatant {
      * @param newMailbox the new mailbox state
      */
     public Player withMailbox(PlayerMailbox newMailbox) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, newMailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, newMailbox, sustenance);
+    }
+
+    /**
+     * Returns a copy of this player with the given sustenance (hunger/thirst) state.
+     *
+     * @param newSustenance the new sustenance state; must not be null
+     */
+    public Player withSustenance(PlayerSustenance newSustenance) {
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, Objects.requireNonNull(newSustenance, "Sustenance is required"));
     }
 
     public Player withInventory(List<Item> items) {
-        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player addItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player removeItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     public Player withEquipment(PlayerEquipment nextEquipment) {
-        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
      * Returns a copy of this player with the given identity (level and experience).
      */
     public Player withIdentity(PlayerIdentity nextIdentity) {
-        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -521,7 +546,7 @@ public class Player implements EffectTarget, Combatant {
      * @param resting {@code true} to enter a resting state, {@code false} to wake up
      */
     public Player withResting(boolean resting) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -530,7 +555,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newGold the new gold amount; negative values are clamped to 0
      */
     public Player withGold(int newGold) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, newGold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, newGold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -548,7 +573,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newBankedGold the new banked gold amount; negative values are clamped to 0
      */
     public Player withBankedGold(int newBankedGold) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, newBankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, newBankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -566,7 +591,7 @@ public class Player implements EffectTarget, Combatant {
      * @param quest the quest to set, or {@code null} to clear the active quest
      */
     public Player withActiveQuest(ActiveQuest quest) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, quest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, quest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -575,7 +600,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newTotalKills the new kill count; negative values are clamped to 0
      */
     public Player withTotalKills(long newTotalKills) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, newTotalKills, practicePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, newTotalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -584,7 +609,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newPracticePoints the new practice point count; negative values are clamped to 0
      */
     public Player withPracticePoints(int newPracticePoints) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold, titles, aliases, mailbox);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**
@@ -623,7 +648,8 @@ public class Player implements EffectTarget, Combatant {
             bankedGold,
             titles.earned(),
             aliases.expansions(),
-            mailbox.messages()
+            mailbox.messages(),
+            sustenance
         );
     }
 }

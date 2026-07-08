@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "id": "fruit",
+  "name": "Ripe Apple",
+  "description": "A crisp, ripe apple with a rosy skin.",
+  "attributes": {
+    "stats": {
+      "hunger": 15
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You bite into {item}, its juice refreshing you slightly."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} bites into {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 4
+}

@@ -25,6 +25,8 @@ import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRespawnTicker;
 import io.taanielo.jmud.core.player.RestingTicker;
+import io.taanielo.jmud.core.player.SustenanceSettings;
+import io.taanielo.jmud.core.player.SustenanceTicker;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
@@ -293,6 +295,34 @@ public class PlayerSession {
      */
     public void registerRestingTicker(RestingTicker ticker) {
         playerTicker.enableResting(ticker);
+    }
+
+    /**
+     * Enables the sustenance-decay stage inside the composed {@link PlayerTicker}.
+     * No-op when sustenance is globally disabled or already active.
+     *
+     * @param callback    called on the tick thread with the player after each decay
+     * @param warningSink called with a warning line when hunger/thirst newly cross the penalty threshold
+     */
+    public void registerSustenance(Consumer<Player> callback, Consumer<String> warningSink) {
+        if (!SustenanceSettings.enabled() || playerTicker.isSustenanceEnabled()) {
+            return;
+        }
+        playerTicker.enableSustenance(
+            new SustenanceTicker(
+                this::getPlayer,
+                callback,
+                warningSink,
+                SustenanceSettings.decayPerTick()
+            )
+        );
+    }
+
+    /**
+     * Disables the sustenance-decay stage inside the composed {@link PlayerTicker}.
+     */
+    public void clearSustenance() {
+        playerTicker.disableSustenance();
     }
 
     /**

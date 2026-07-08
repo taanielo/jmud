@@ -9,6 +9,8 @@ public enum MessagePhase {
     EXAMINE,
     USE,
     QUAFF,
+    EAT,
+    DRINK,
     READ,
     WRITE,
     PICKUP,

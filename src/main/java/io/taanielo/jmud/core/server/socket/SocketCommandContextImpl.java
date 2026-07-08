@@ -226,6 +226,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         saveOrWarn(updated);
     }
 
+    /** Applies a sustenance (hunger/thirst) decay tick update. */
+    void applySustenanceUpdate(Player updated) {
+        session.setPlayer(updated);
+        saveOrWarn(updated);
+    }
+
+    /** Delivers a hunger/thirst warning line to the player, followed by a fresh prompt. */
+    void deliverSustenanceWarning(String message) {
+        connection.writeLine(message);
+        sendPrompt();
+    }
+
     /** Applies a respawn tick update, sending the post-respawn room description. */
     void applyRespawnUpdate(Player updated) {
         session.replacePlayer(updated);
@@ -901,6 +913,30 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         cancelRestIfActive();
         GameActionResult result = gameActionService.quaffItem(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void eatItem(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to eat.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.eatItem(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void drinkItem(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to drink.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.drinkItem(session.getPlayer(), args);
         deliverResult(result);
         sendPrompt();
     }
@@ -2148,6 +2184,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         });
         // Register healing tick callback
         session.registerHealing(this::applyHealingUpdate);
+        // Register hunger/thirst decay tick callback
+        session.registerSustenance(this::applySustenanceUpdate, this::deliverSustenanceWarning);
         // Enqueue death-state check
         session.enqueueCommand(session::handleDeathState);
         // Show recent gossip history exactly once, before any other post-login output.

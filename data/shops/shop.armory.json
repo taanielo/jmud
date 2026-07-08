@@ -12,7 +12,12 @@
     {"item_id": "leather-chest"},
     {"item_id": "leather-legs"},
     {"item_id": "health-potion"},
-    {"item_id": "mana-potion"}
+    {"item_id": "mana-potion"},
+    {"item_id": "bread"},
+    {"item_id": "meat"},
+    {"item_id": "fruit"},
+    {"item_id": "water"},
+    {"item_id": "ale"}
   ],
   "sell_ratio": 0.5
 }

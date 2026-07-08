@@ -49,6 +49,8 @@ public class SocketCommandRegistry {
         new DropCommand(registry);
         new GiveCommand(registry, roomService);
         new QuaffCommand(registry);
+        new EatCommand(registry);
+        new DrinkCommand(registry);
         new ReadCommand(registry);
         new WriteCommand(registry);
         new EquipCommand(registry);

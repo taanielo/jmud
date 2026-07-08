@@ -148,6 +148,18 @@ public interface SocketCommandContext extends Client {
     void quaffItem(String args);
 
     /**
+     * Executes an eat command with the provided arguments. Default is a no-op; the
+     * socket-backed implementation overrides it to apply hunger satisfaction.
+     */
+    default void eatItem(String args) {}
+
+    /**
+     * Executes a drink command with the provided arguments. Default is a no-op; the
+     * socket-backed implementation overrides it to apply thirst satisfaction.
+     */
+    default void drinkItem(String args) {}
+
+    /**
      * Executes a read command with the provided arguments.
      */
     void readItem(String args);
