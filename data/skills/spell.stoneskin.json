@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.stoneskin",
+  "name": "stoneskin",
+  "type": "SPELL",
+  "level": 3,
+  "cost": {
+    "mana": 5
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["stone skin"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "stoneskin"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You cast {ability} on {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} on you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} on {target}."
+    }
+  ]
+}

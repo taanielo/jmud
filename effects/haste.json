@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "id": "haste",
+  "name": "Haste",
+  "duration_ticks": 80,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "You feel yourself speed up."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} begins to move with blinding speed."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Your unnatural speed fades."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} slows back to a normal pace."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is moving with unnatural speed."
+    }
+  ]
+}
