@@ -75,6 +75,36 @@ class JsonAbilityRepositoryTest {
     }
 
     @Test
+    void loadsAoeSpellWithScaledManaCost() throws Exception {
+        Path skillsDir = tempDir.resolve("skills");
+        Files.createDirectories(skillsDir);
+        Path abilityFile = skillsDir.resolve("spell.chain-lightning.json");
+        Files.writeString(abilityFile, """
+            {
+              \"schema_version\": 2,
+              \"id\": \"spell.chain-lightning\",
+              \"name\": \"chain-lightning\",
+              \"type\": \"SPELL\",
+              \"level\": 1,
+              \"cost\": {\"mana\": 4, \"mana_per_target\": 2},
+              \"cooldown\": {\"ticks\": 4},
+              \"targeting\": \"AoE\",
+              \"effects\": [
+                {\"kind\": \"VITALS\", \"stat\": \"HP\", \"operation\": \"DECREASE\", \"amount\": 5}
+              ]
+            }
+            """);
+
+        JsonAbilityRepository repository = new JsonAbilityRepository(tempDir);
+        Ability ability = repository.findById(AbilityId.of("spell.chain-lightning")).orElseThrow();
+
+        assertEquals(AbilityTargeting.AoE, ability.targeting());
+        assertEquals(4, ability.cost().mana());
+        assertEquals(2, ability.cost().manaPerTarget());
+        assertEquals(10, ability.cost().totalMana(3), "base 4 + 2 per target * 3 targets = 10");
+    }
+
+    @Test
     void rejectsUnknownSchemaVersion() throws Exception {
         Path skillsDir = tempDir.resolve("skills");
         Files.createDirectories(skillsDir);
