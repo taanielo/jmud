@@ -58,6 +58,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 
 ## Rules
 - The only subagents you spawn (Task tool, `subagent_type` = the worker's name) are **code-writer**, **game-designer**, **issue-creator**, and **workflow-optimizer**. Every other stage is a `scripts/agent/*.sh` call — spawning an agent for one wastes a full agent cold-start on a deterministic step. Pass only what a worker needs; read its result from `last-result.json`.
+- **Spawn every worker synchronously** (`run_in_background: false` on the Task/Agent call) and continue the cycle in the same turn when it returns. Never background a worker and end your turn to "wait for the notification": this session is a headless cron run — ending the turn ends the session, the harness kills the still-running worker at its background-wait ceiling, and the held LOCK then blocks the next cycles until it goes stale.
 - Never skip the GUARD. Never advance two different issues at once.
 - On any unexpected error: write state, **release the LOCK**, notify, STOP — never leave a held LOCK behind.
 - Launching this loop is the human's standing authorization (see `AGENTS.md` §13): workers spawned here do not pause for per-change confirmation.

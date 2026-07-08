@@ -146,15 +146,22 @@ constant, unlike a long-lived `/loop` session whose context grows with every ite
 One cycle, headless, from the repo root:
 
 ```bash
-claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits
+CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits
 ```
 
 Crontab (`crontab -e`) — cron's minimal PATH lacks `~/.local/bin`, where `claude` lives:
 
 ```cron
 PATH=/home/taaniel/.local/bin:/usr/local/bin:/usr/bin:/bin
+CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0
 */30 * * * * cd /home/taaniel/repos/jmud && flock -n .orchestrator/cron.flock claude -p "/orchestrator" --model sonnet --effort high --permission-mode acceptEdits >> .orchestrator/cron.log 2>&1
 ```
+
+`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` makes a headless run wait indefinitely for background
+tasks instead of killing them after 10 minutes. The orchestrator prompt already requires workers
+to be spawned synchronously, so this is a safety net: without it, an accidentally backgrounded
+code-writer is terminated mid-implementation, the LOCK is left held, and the next two cron
+firings skip on it — one feature cycle then stretches to 2–3 hours of wall time.
 
 Notes:
 
