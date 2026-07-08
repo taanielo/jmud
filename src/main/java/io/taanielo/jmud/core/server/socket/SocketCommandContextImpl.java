@@ -43,6 +43,7 @@ import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.AliasResult;
 import io.taanielo.jmud.core.player.EncumbranceService;
+import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
@@ -99,6 +100,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final SocketCommandDispatcher dispatcher;
     private final PlayerAliasService playerAliasService;
     private final PlayerMailService playerMailService;
+    private final LightingService lightingService;
 
     /**
      * Creates a command context by extracting all game-logic dependencies from the provided
@@ -134,6 +136,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         this.promptRenderer = new PromptRenderer();
         this.playerAliasService = new PlayerAliasService();
         this.playerMailService = new PlayerMailService();
+        this.lightingService = new LightingService();
         this.gameActionService = new GameActionService(
             abilityRegistry,
             context.abilityCostResolver(),
@@ -674,6 +677,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         RoomService.LookResult result = roomService.look(session.getPlayer().getUsername());
+        Room room = result.room();
+        if (room != null && !lightingService.canSeeRoom(session.getPlayer(), room)) {
+            connection.writeLines(lightingService.darknessLines());
+            sendPrompt();
+            return;
+        }
         connection.writeLines(result.lines());
         writeRoomOccupantLines(result.room());
         sendPrompt();
@@ -743,6 +752,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             }
             String arriveMessage = player.getUsername().getValue() + " arrives.";
             deliverRoomMessage(player.getUsername(), null, arriveMessage);
+        }
+        Room destination = result.room();
+        if (result.moved() && destination != null && !lightingService.canSeeRoom(player, destination)) {
+            connection.writeLine("You move " + direction.label() + ".");
+            connection.writeLines(lightingService.darknessLines());
+            warnIfRoomTooDangerous(player, destination);
+            sendPrompt();
+            return;
         }
         connection.writeLines(result.lines());
         if (result.moved()) {
@@ -855,7 +872,32 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 }
             }
         }
+        revealRoomIfNewlyLit(playerBeforeGet);
         sendPrompt();
+    }
+
+    /**
+     * After a pickup, re-renders the current room when the picked-up item was a light source that
+     * turned a previously-dark room visible, so the player immediately sees their surroundings.
+     *
+     * @param playerBeforePickup the player's state before the pickup mutated their inventory
+     */
+    private void revealRoomIfNewlyLit(Player playerBeforePickup) {
+        Player playerAfterPickup = session.getPlayer();
+        if (playerAfterPickup == null) {
+            return;
+        }
+        RoomService.LookResult look = roomService.look(playerAfterPickup.getUsername());
+        Room room = look.room();
+        if (room == null || !room.requiresLight()) {
+            return;
+        }
+        boolean couldSeeBefore = lightingService.canSeeRoom(playerBeforePickup, room);
+        boolean canSeeNow = lightingService.canSeeRoom(playerAfterPickup, room);
+        if (!couldSeeBefore && canSeeNow) {
+            connection.writeLines(look.lines());
+            writeRoomOccupantLines(room);
+        }
     }
 
     @Override

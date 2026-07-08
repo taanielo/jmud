@@ -7,6 +7,7 @@ import java.util.Optional;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.player.LevelUpService;
+import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerSustenance;
 import io.taanielo.jmud.core.player.PlayerVitals;
@@ -19,6 +20,7 @@ public class ScoreCommand extends RegistrableCommand {
 
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final RaceArmorBonusResolver raceArmorBonusResolver;
+    private final LightingService lightingService = new LightingService();
 
     /**
      * Creates a ScoreCommand that computes AC from the given resolvers.
@@ -87,6 +89,9 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Kills : %d", player.getTotalKills()));
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
+        lightingService.brightestLightSource(player).ifPresent(light ->
+            context.writeLineSafe(String.format("Light : %s (radius %d)", light.getName(),
+                lightingService.carriedLightRadius(player))));
         List<String> titles = player.titles().earned();
         if (!titles.isEmpty()) {
             context.writeLineSafe("Titles: " + String.join(", ", titles));

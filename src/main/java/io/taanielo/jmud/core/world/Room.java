@@ -27,6 +27,18 @@ public class Room {
      * {@link TimeOfDay#NIGHT}; {@code null} means the room looks the same at night.
      */
     @Nullable String nightDescription;
+    /**
+     * Optional ambient light level: {@code 0} = pitch dark, {@code 1} = dim, {@code 2} or higher =
+     * naturally lit; {@code null} means the room is naturally lit and needs no light source. Dark
+     * rooms hide their contents from players who carry no sufficient light source; see
+     * {@link #requiredLightRadius()}.
+     */
+    @Nullable Integer lightLevel;
+
+    /**
+     * Light level at or above which a room is considered naturally lit (needs no carried light).
+     */
+    private static final int LIT_LEVEL = 2;
 
     /**
      * Constructs a room with no locked exits. Existing callsites use this overload.
@@ -99,6 +111,32 @@ public class Room {
         @Nullable Integer minLevel,
         @Nullable String nightDescription
     ) {
+        this(id, name, description, exits, items, occupants, lockedExits, minLevel, nightDescription, null);
+    }
+
+    /**
+     * Constructs a room with the specified locked exits configuration, advisory minimum level,
+     * alternate night description, and ambient light level.
+     *
+     * @param lockedExits       map of direction to required key item id for exits that start locked
+     * @param minLevel          the recommended/minimum level to enter this room, or {@code null} if none
+     * @param nightDescription  the description shown at night instead of {@code description}, or
+     *                          {@code null} if the room looks the same at night
+     * @param lightLevel        the ambient light level ({@code 0} pitch dark, {@code 1} dim,
+     *                          {@code 2}+ lit), or {@code null} for a naturally lit room
+     */
+    public Room(
+        RoomId id,
+        String name,
+        String description,
+        Map<Direction, RoomId> exits,
+        List<Item> items,
+        List<Username> occupants,
+        Map<Direction, ItemId> lockedExits,
+        @Nullable Integer minLevel,
+        @Nullable String nightDescription,
+        @Nullable Integer lightLevel
+    ) {
         this.id = Objects.requireNonNull(id, "Room id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Room name must not be blank");
@@ -111,6 +149,7 @@ public class Room {
         this.lockedExits = Map.copyOf(Objects.requireNonNull(lockedExits, "Locked exits map is required"));
         this.minLevel = minLevel;
         this.nightDescription = nightDescription;
+        this.lightLevel = lightLevel;
     }
 
     /**
@@ -138,5 +177,33 @@ public class Room {
             return nightDescription;
         }
         return description;
+    }
+
+    /**
+     * Returns the minimum carried light radius a player needs to see this room's full contents.
+     *
+     * <p>A naturally lit room ({@link #lightLevel} {@code null} or {@code >= 2}) returns {@code 0},
+     * meaning no light is required. Darker rooms return a positive threshold that scales with how
+     * dark the room is: a pitch-dark room ({@code light_level = 0}) needs radius {@code 1} (a torch
+     * suffices), while a dim room ({@code light_level = 1}) needs radius {@code 2} (only a brighter
+     * source such as a lantern reveals it).
+     *
+     * @return the required light radius, or {@code 0} when no light source is needed
+     */
+    public int requiredLightRadius() {
+        if (lightLevel == null || lightLevel >= LIT_LEVEL) {
+            return 0;
+        }
+        return lightLevel + 1;
+    }
+
+    /**
+     * Returns whether this room is dark enough to require a carried light source to see its
+     * contents.
+     *
+     * @return {@code true} if {@link #requiredLightRadius()} is positive
+     */
+    public boolean requiresLight() {
+        return requiredLightRadius() > 0;
     }
 }

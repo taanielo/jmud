@@ -1,0 +1,14 @@
+{
+  "schema_version": 6,
+  "id": "torch",
+  "name": "a wooden torch",
+  "description": "A stout wooden torch wrapped in oil-soaked rags. Its flame casts a flickering circle of light, enough to see by in the dark.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 10,
+  "light_radius": 1
+}

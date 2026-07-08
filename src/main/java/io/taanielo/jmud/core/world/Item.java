@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import lombok.Value;
 
 import io.taanielo.jmud.core.ability.AbilityId;
@@ -36,6 +38,13 @@ public class Item {
      * containers.
      */
     List<Item> containedItems;
+    /**
+     * Radius of light this item emits while carried, or {@code null} when the item is not a light
+     * source. A positive value (e.g. {@code 1} for a torch, {@code 2} for a lantern) lets the
+     * carrier see in dark rooms; see {@link #isLightSource()}. Consumed at read time by
+     * {@link io.taanielo.jmud.core.player.LightingService}; not stored on the room.
+     */
+    @Nullable Integer lightRadius;
 
     /**
      * Constructs an item. Note this class is never bound directly by Jackson for item-definition
@@ -47,6 +56,8 @@ public class Item {
      *                          normal item; must be positive when present
      * @param containedItems    the items held inside a container; must be empty for non-containers
      *                          and never exceed {@code containerCapacity}
+     * @param lightRadius       the radius of light emitted while carried, or {@code null} for a
+     *                          non-light-emitting item; must be positive when present
      */
     public Item(
         ItemId id,
@@ -61,7 +72,8 @@ public class Item {
         AttackId attackRef,
         AbilityId teachesAbilityRef,
         Integer containerCapacity,
-        List<Item> containedItems
+        List<Item> containedItems,
+        @Nullable Integer lightRadius
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -103,6 +115,33 @@ public class Item {
         }
         this.containerCapacity = containerCapacity;
         this.containedItems = contents;
+        if (lightRadius != null && lightRadius <= 0) {
+            throw new IllegalArgumentException("Light radius must be positive");
+        }
+        this.lightRadius = lightRadius;
+    }
+
+    /**
+     * Convenience constructor for items with no light-emitting radius, preserving call sites that
+     * predate {@link #lightRadius}.
+     */
+    public Item(
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef,
+        AbilityId teachesAbilityRef,
+        Integer containerCapacity,
+        List<Item> containedItems
+    ) {
+        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
+            teachesAbilityRef, containerCapacity, containedItems, null);
     }
 
     /**
@@ -150,6 +189,14 @@ public class Item {
      */
     public boolean isContainer() {
         return containerCapacity != null;
+    }
+
+    /**
+     * Returns whether this item emits light while carried (i.e. has a positive
+     * {@link #lightRadius}), letting its carrier see in dark rooms.
+     */
+    public boolean isLightSource() {
+        return lightRadius != null && lightRadius > 0;
     }
 
     /**
@@ -230,6 +277,6 @@ public class Item {
      */
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
-            attackRef, teachesAbilityRef, containerCapacity, nextContents);
+            attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius);
     }
 }

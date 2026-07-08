@@ -1,0 +1,14 @@
+{
+  "schema_version": 6,
+  "id": "lantern",
+  "name": "a brass lantern",
+  "description": "A sturdy brass lantern with a glass housing that shelters its flame from draughts. It throws a steady, far-reaching light, revealing even the dimmest corners.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 2,
+  "value": 30,
+  "light_radius": 2
+}
