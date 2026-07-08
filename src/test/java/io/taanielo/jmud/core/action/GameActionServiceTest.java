@@ -202,18 +202,10 @@ class GameActionServiceTest {
 
     @Test
     void getItemPicksUpItemFromRoom() {
-        Item torch = new Item(
-            ItemId.of("torch"),
-            "Torch",
-            "A warm torch.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            5,
-            null
-        );
+        Item torch = Item.builder(ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
         roomService.dropItem(attacker.getUsername(), torch);
 
         GameActionResult result = service.getItem(attacker, "torch");
@@ -241,18 +233,10 @@ class GameActionServiceTest {
 
     @Test
     void dropItemRemovesItemFromInventory() {
-        Item torch = new Item(
-            ItemId.of("torch"),
-            "Torch",
-            "A warm torch.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            5,
-            null
-        );
+        Item torch = Item.builder(ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
         Player withItem = attacker.addItem(torch);
 
         GameActionResult result = service.dropItem(withItem, "torch");
@@ -358,18 +342,11 @@ class GameActionServiceTest {
     }
 
     private static Item torchItem() {
-        return new Item(
-            ItemId.of("torch"),
-            "Torch",
-            "A warm torch.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            io.taanielo.jmud.core.world.EquipmentSlot.WEAPON,
-            1,
-            5,
-            null
-        );
+        return Item.builder(ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty())
+            .equipSlot(io.taanielo.jmud.core.world.EquipmentSlot.WEAPON)
+            .weight(1)
+            .value(5)
+            .build();
     }
 
     @Test
@@ -399,13 +376,9 @@ class GameActionServiceTest {
             new TestCooldowns(),
             testEncumbranceService()
         );
-        Item potion = new Item(
-            ItemId.of("potion"),
-            "Potion",
-            "A small potion.",
-            ItemAttributes.empty(),
-            List.of(new io.taanielo.jmud.core.world.ItemEffect(effectId, 5)),
-            List.of(
+        Item potion = Item.builder(ItemId.of("potion"), "Potion", "A small potion.", ItemAttributes.empty())
+            .effects(List.of(new io.taanielo.jmud.core.world.ItemEffect(effectId, 5)))
+            .messages(List.of(
                 new io.taanielo.jmud.core.messaging.MessageSpec(
                     io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
                     io.taanielo.jmud.core.messaging.MessageChannel.SELF,
@@ -416,12 +389,10 @@ class GameActionServiceTest {
                     io.taanielo.jmud.core.messaging.MessageChannel.ROOM,
                     "{source} quaffs {item}."
                 )
-            ),
-            null,
-            1,
-            1,
-            null
-        );
+            ))
+            .weight(1)
+            .value(1)
+            .build();
         Player withItem = attacker.addItem(potion);
 
         GameActionResult result = service.quaffItem(withItem, "potion");
@@ -447,18 +418,10 @@ class GameActionServiceTest {
 
     @Test
     void quaffItemReturnsNothingHappensForEffectlessItem() {
-        Item rock = new Item(
-            ItemId.of("rock"),
-            "Rock",
-            "A plain rock.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            1,
-            null
-        );
+        Item rock = Item.builder(ItemId.of("rock"), "Rock", "A plain rock.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .build();
         Player withItem = attacker.addItem(rock);
 
         GameActionResult result = service.quaffItem(withItem, "rock");
@@ -496,26 +459,21 @@ class GameActionServiceTest {
             new TestCooldowns(),
             testEncumbranceService()
         );
-        Item curePotion = new Item(
-            ItemId.of("cure-potion"),
-            "Cure Potion",
-            "A shimmering blue vial.",
-            ItemAttributes.empty(),
-            List.of(new io.taanielo.jmud.core.world.ItemEffect(
+        Item curePotion = Item.builder(
+            ItemId.of("cure-potion"), "Cure Potion", "A shimmering blue vial.", ItemAttributes.empty())
+            .effects(List.of(new io.taanielo.jmud.core.world.ItemEffect(
                 poisonId, 0, io.taanielo.jmud.core.world.ItemEffectOperation.REMOVE
-            )),
-            List.of(
+            )))
+            .messages(List.of(
                 new io.taanielo.jmud.core.messaging.MessageSpec(
                     io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
                     io.taanielo.jmud.core.messaging.MessageChannel.SELF,
                     "You quaff {item}."
                 )
-            ),
-            null,
-            1,
-            1,
-            null
-        );
+            ))
+            .weight(1)
+            .value(1)
+            .build();
         Player poisoned = attacker.addItem(curePotion);
         poisoned.addEffect(new io.taanielo.jmud.core.effects.EffectInstance(poisonId, 5, 1));
 
@@ -554,26 +512,21 @@ class GameActionServiceTest {
             new TestCooldowns(),
             testEncumbranceService()
         );
-        Item curePotion = new Item(
-            ItemId.of("cure-potion"),
-            "Cure Potion",
-            "A shimmering blue vial.",
-            ItemAttributes.empty(),
-            List.of(new io.taanielo.jmud.core.world.ItemEffect(
+        Item curePotion = Item.builder(
+            ItemId.of("cure-potion"), "Cure Potion", "A shimmering blue vial.", ItemAttributes.empty())
+            .effects(List.of(new io.taanielo.jmud.core.world.ItemEffect(
                 poisonId, 0, io.taanielo.jmud.core.world.ItemEffectOperation.REMOVE
-            )),
-            List.of(
+            )))
+            .messages(List.of(
                 new io.taanielo.jmud.core.messaging.MessageSpec(
                     io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
                     io.taanielo.jmud.core.messaging.MessageChannel.SELF,
                     "You quaff {item}."
                 )
-            ),
-            null,
-            1,
-            1,
-            null
-        );
+            ))
+            .weight(1)
+            .value(1)
+            .build();
         Player healthy = attacker.addItem(curePotion);
 
         GameActionResult result = service.quaffItem(healthy, "cure potion");
@@ -590,24 +543,18 @@ class GameActionServiceTest {
             1, 0, lowVitals, List.of(), "prompt", false,
             List.of(), null, null
         );
-        Item healthPotion = new Item(
-            ItemId.of("health-potion"),
-            "Health Potion",
-            "A small red vial.",
-            new ItemAttributes(Map.of("hp", 20)),
-            List.of(),
-            List.of(
+        Item healthPotion = Item.builder(
+            ItemId.of("health-potion"), "Health Potion", "A small red vial.", new ItemAttributes(Map.of("hp", 20)))
+            .messages(List.of(
                 new io.taanielo.jmud.core.messaging.MessageSpec(
                     io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
                     io.taanielo.jmud.core.messaging.MessageChannel.SELF,
                     "You quaff {item}."
                 )
-            ),
-            null,
-            1,
-            15,
-            null
-        );
+            ))
+            .weight(1)
+            .value(15)
+            .build();
         Player withPotion = injured.addItem(healthPotion);
 
         GameActionResult result = service.quaffItem(withPotion, "health-potion");
@@ -619,18 +566,11 @@ class GameActionServiceTest {
     @Test
     void quaffItemHpHealingIsCappedAtMaxHp() {
         // Player is already at full HP (20/20); heal(20) should stay at 20
-        Item healthPotion = new Item(
-            ItemId.of("health-potion"),
-            "Health Potion",
-            "A small red vial.",
-            new ItemAttributes(Map.of("hp", 20)),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            15,
-            null
-        );
+        Item healthPotion = Item.builder(
+            ItemId.of("health-potion"), "Health Potion", "A small red vial.", new ItemAttributes(Map.of("hp", 20)))
+            .weight(1)
+            .value(15)
+            .build();
         Player withPotion = attacker.addItem(healthPotion);
 
         GameActionResult result = service.quaffItem(withPotion, "health-potion");
@@ -640,24 +580,19 @@ class GameActionServiceTest {
 
     @Test
     void quaffItemDamagesPlayerWhenHpStatIsNegative() {
-        Item poisonPotion = new Item(
-            ItemId.of("poisonous-potion"),
-            "Poisonous Potion",
-            "A cloudy green vial.",
-            new ItemAttributes(Map.of("hp", -10)),
-            List.of(),
-            List.of(
+        Item poisonPotion = Item.builder(
+            ItemId.of("poisonous-potion"), "Poisonous Potion", "A cloudy green vial.",
+            new ItemAttributes(Map.of("hp", -10)))
+            .messages(List.of(
                 new io.taanielo.jmud.core.messaging.MessageSpec(
                     io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
                     io.taanielo.jmud.core.messaging.MessageChannel.SELF,
                     "You quaff {item}."
                 )
-            ),
-            null,
-            1,
-            5,
-            null
-        );
+            ))
+            .weight(1)
+            .value(5)
+            .build();
         Player withPotion = attacker.addItem(poisonPotion);
 
         GameActionResult result = service.quaffItem(withPotion, "poisonous-potion");
@@ -674,24 +609,18 @@ class GameActionServiceTest {
             1, 0, lowMana, List.of(), "prompt", false,
             List.of(), null, null
         );
-        Item manaPotion = new Item(
-            ItemId.of("mana-potion"),
-            "Mana Potion",
-            "A small blue vial.",
-            new ItemAttributes(Map.of("mana", 20)),
-            List.of(),
-            List.of(
+        Item manaPotion = Item.builder(
+            ItemId.of("mana-potion"), "Mana Potion", "A small blue vial.", new ItemAttributes(Map.of("mana", 20)))
+            .messages(List.of(
                 new io.taanielo.jmud.core.messaging.MessageSpec(
                     io.taanielo.jmud.core.messaging.MessagePhase.QUAFF,
                     io.taanielo.jmud.core.messaging.MessageChannel.SELF,
                     "You quaff {item}."
                 )
-            ),
-            null,
-            1,
-            15,
-            null
-        );
+            ))
+            .weight(1)
+            .value(15)
+            .build();
         Player withPotion = withLowMana.addItem(manaPotion);
 
         GameActionResult result = service.quaffItem(withPotion, "mana-potion");
@@ -703,18 +632,11 @@ class GameActionServiceTest {
     @Test
     void quaffManaPotionIsCappedAtMaxMana() {
         // Player is already at full mana (20/20); restoreMana(20) should stay at 20
-        Item manaPotion = new Item(
-            ItemId.of("mana-potion"),
-            "Mana Potion",
-            "A small blue vial.",
-            new ItemAttributes(Map.of("mana", 20)),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            15,
-            null
-        );
+        Item manaPotion = Item.builder(
+            ItemId.of("mana-potion"), "Mana Potion", "A small blue vial.", new ItemAttributes(Map.of("mana", 20)))
+            .weight(1)
+            .value(15)
+            .build();
         Player withPotion = attacker.addItem(manaPotion);
 
         GameActionResult result = service.quaffItem(withPotion, "mana-potion");
@@ -726,18 +648,10 @@ class GameActionServiceTest {
     @Test
     void quaffItemNothingHappensGuardRequiresBothHpAndManaToBeZero() {
         // Item with neither hp nor mana stat and no effects should still return "Nothing happens."
-        Item rock = new Item(
-            ItemId.of("rock"),
-            "Rock",
-            "A plain rock.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            1,
-            null
-        );
+        Item rock = Item.builder(ItemId.of("rock"), "Rock", "A plain rock.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .build();
         Player withItem = attacker.addItem(rock);
 
         GameActionResult result = service.quaffItem(withItem, "rock");
@@ -758,18 +672,11 @@ class GameActionServiceTest {
 
     @Test
     void readItemReturnsErrorWhenItemTeachesNoAbility() {
-        Item plainScroll = new Item(
-            ItemId.of("blank-scroll"),
-            "Blank Scroll",
-            "An unwritten scroll.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            1,
-            null
-        );
+        Item plainScroll = Item.builder(
+            ItemId.of("blank-scroll"), "Blank Scroll", "An unwritten scroll.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .build();
         Player withItem = attacker.addItem(plainScroll);
 
         GameActionResult result = service.readItem(withItem, "blank-scroll");
@@ -793,19 +700,12 @@ class GameActionServiceTest {
             testEncumbranceService()
         );
         AbilityId healId = AbilityId.of("spell.heal");
-        Item scroll = new Item(
-            ItemId.of("scroll-of-healing"),
-            "Scroll of Healing",
-            "A scroll teaching healing.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            1,
-            null,
-            healId
-        );
+        Item scroll = Item.builder(
+            ItemId.of("scroll-of-healing"), "Scroll of Healing", "A scroll teaching healing.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .teachesAbilityRef(healId)
+            .build();
         Player withItem = attacker.addItem(scroll);
 
         GameActionResult result = service.readItem(withItem, "scroll of healing");
@@ -835,19 +735,12 @@ class GameActionServiceTest {
             testEncumbranceService()
         );
         AbilityId healId = AbilityId.of("spell.heal");
-        Item scroll = new Item(
-            ItemId.of("scroll-of-healing"),
-            "Scroll of Healing",
-            "A scroll teaching healing.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            1,
-            null,
-            healId
-        );
+        Item scroll = Item.builder(
+            ItemId.of("scroll-of-healing"), "Scroll of Healing", "A scroll teaching healing.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .teachesAbilityRef(healId)
+            .build();
         Player alreadyKnows = attacker.withLearnedAbilities(List.of(healId)).addItem(scroll);
 
         GameActionResult result = service.readItem(alreadyKnows, "scroll of healing");
@@ -920,17 +813,18 @@ class GameActionServiceTest {
     class ContainerTests {
 
         private Item bag(int capacity) {
-            return new Item(
-                ItemId.of("bag"), "a bag", "A small bag.",
-                ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, capacity, List.of()
-            );
+            return Item.builder(ItemId.of("bag"), "a bag", "A small bag.", ItemAttributes.empty())
+                .weight(1)
+                .value(5)
+                .container(io.taanielo.jmud.core.world.ContainerState.of(capacity))
+                .build();
         }
 
         private Item plainItem(String id, String name) {
-            return new Item(
-                ItemId.of(id), name, "A thing.",
-                ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null
-            );
+            return Item.builder(ItemId.of(id), name, "A thing.", ItemAttributes.empty())
+                .weight(1)
+                .value(5)
+                .build();
         }
 
         @Test
@@ -973,8 +867,11 @@ class GameActionServiceTest {
         @Test
         void putItemRejectsNestingContainers() {
             Player p = attacker.addItem(bag(3)).addItem(
-                new Item(ItemId.of("pouch"), "a pouch", "A pouch.",
-                    ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, 2, List.of()));
+                Item.builder(ItemId.of("pouch"), "a pouch", "A pouch.", ItemAttributes.empty())
+                    .weight(1)
+                    .value(5)
+                    .container(io.taanielo.jmud.core.world.ContainerState.of(2))
+                    .build());
 
             GameActionResult result = service.putItem(p, "pouch", "bag");
 
@@ -1163,10 +1060,12 @@ class GameActionServiceTest {
 
         @BeforeEach
         void setUpPick() {
-            Item chest = new Item(
-                CHEST, "a treasure chest", "An iron-banded chest.",
-                ItemAttributes.empty(), List.of(), List.of(), null, 10, 100, null, null, 3, List.of()
-            ).withLocked(true);
+            Item chest = Item.builder(CHEST, "a treasure chest", "An iron-banded chest.", ItemAttributes.empty())
+                .weight(10)
+                .value(100)
+                .container(io.taanielo.jmud.core.world.ContainerState.of(3))
+                .build()
+                .withLocked(true);
             Room vault = new Room(
                 ROOM_VAULT, "Vault", "A stone vault.",
                 Map.of(), List.of(chest), List.of()

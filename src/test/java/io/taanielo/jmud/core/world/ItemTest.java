@@ -15,17 +15,18 @@ import org.junit.jupiter.api.Test;
 class ItemTest {
 
     private static Item plain(String id, String name) {
-        return new Item(
-            ItemId.of(id), name, "A thing.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null
-        );
+        return Item.builder(ItemId.of(id), name, "A thing.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
     }
 
     private static Item container(String id, String name, int capacity) {
-        return new Item(
-            ItemId.of(id), name, "A container.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, capacity, List.of()
-        );
+        return Item.builder(ItemId.of(id), name, "A container.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .container(ContainerState.of(capacity))
+            .build();
     }
 
     @Test
@@ -90,19 +91,22 @@ class ItemTest {
 
     @Test
     void nonContainerCannotHoldContents() {
-        assertThrows(IllegalArgumentException.class, () -> new Item(
-            ItemId.of("rock"), "a rock", "A rock.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null,
-            List.of(plain("a", "an apple"))
-        ));
+        assertThrows(IllegalArgumentException.class, () -> Item.builder(
+            ItemId.of("rock"), "a rock", "A rock.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .container(new ContainerState(null, List.of(plain("a", "an apple")), false))
+            .build());
     }
 
     @Test
     void nonPositiveCapacityIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new Item(
-            ItemId.of("bag"), "a bag", "A bag.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, 0, List.of()
-        ));
+        assertThrows(IllegalArgumentException.class, () -> Item.builder(
+            ItemId.of("bag"), "a bag", "A bag.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .container(ContainerState.of(0))
+            .build());
     }
 
     @Test
@@ -112,28 +116,32 @@ class ItemTest {
 
     @Test
     void itemWithPositiveLightRadiusIsALightSource() {
-        Item torch = new Item(
-            ItemId.of("torch"), "a torch", "A torch.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null, List.of(), 1
-        );
+        Item torch = Item.builder(ItemId.of("torch"), "a torch", "A torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .light(LightSource.of(1))
+            .build();
         assertTrue(torch.isLightSource());
         assertEquals(1, torch.getLightRadius());
     }
 
     @Test
     void nonPositiveLightRadiusIsRejected() {
-        assertThrows(IllegalArgumentException.class, () -> new Item(
-            ItemId.of("torch"), "a torch", "A torch.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null, List.of(), 0
-        ));
+        assertThrows(IllegalArgumentException.class, () -> Item.builder(
+            ItemId.of("torch"), "a torch", "A torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .light(LightSource.of(0))
+            .build());
     }
 
     private static Item durable(String id, String name, Integer maxDurability, Integer durability) {
-        return new Item(
-            ItemId.of(id), name, "A blade.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, maxDurability, durability
-        );
+        return Item.builder(ItemId.of(id), name, "A blade.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .durability(Durability.of(maxDurability, durability))
+            .build();
     }
 
     @Test
@@ -197,44 +205,49 @@ class ItemTest {
 
     @Test
     void itemRetainsRarityAndAffixes() {
-        Item item = new Item(
-            ItemId.of("blade"), "a blade", "A fine blade.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, List.of(AffixId.of("of-the-bear"), AffixId.of("of-vitality"))
-        );
+        Item item = Item.builder(ItemId.of("blade"), "a blade", "A fine blade.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .rarity(RarityProfile.of(Rarity.RARE, List.of(AffixId.of("of-the-bear"), AffixId.of("of-vitality"))))
+            .build();
         assertEquals(Rarity.RARE, item.getRarity());
         assertEquals(List.of(AffixId.of("of-the-bear"), AffixId.of("of-vitality")), item.getAffixes());
     }
 
     @Test
     void nullRarityDefaultsToCommon() {
-        Item item = new Item(
-            ItemId.of("blade"), "a blade", "A fine blade.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, null, null, null, null
-        );
+        Item item = Item.builder(ItemId.of("blade"), "a blade", "A fine blade.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .rarity(RarityProfile.of(null, null))
+            .build();
         assertEquals(Rarity.COMMON, item.getRarity());
         assertTrue(item.getAffixes().isEmpty());
     }
 
     @Test
     void rarityAndAffixesSurviveWithContainedItemsCopy() {
-        Item chest = new Item(
-            ItemId.of("chest"), "a chest", "A sturdy chest.",
-            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, 3,
-            List.of(), null, null, null, Rarity.UNCOMMON, List.of(AffixId.of("of-the-fox"))
-        );
+        Item chest = Item.builder(ItemId.of("chest"), "a chest", "A sturdy chest.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .container(ContainerState.of(3))
+            .rarity(RarityProfile.of(Rarity.UNCOMMON, List.of(AffixId.of("of-the-fox"))))
+            .build();
         Item withItem = chest.withContainedItem(plain("a", "an apple"));
         assertEquals(Rarity.UNCOMMON, withItem.getRarity());
         assertEquals(List.of(AffixId.of("of-the-fox")), withItem.getAffixes());
     }
 
     private static Item unidentifiedRare(String id, String name) {
-        return new Item(
-            ItemId.of(id), name, "A mysterious item.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.WEAPON, 5, 100, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, List.of(AffixId.of("of-the-titan")), false
-        );
+        return Item.builder(ItemId.of(id), name, "A mysterious item.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(100)
+            .rarity(RarityProfile.of(Rarity.RARE, List.of(AffixId.of("of-the-titan"))))
+            .identification(Identification.unidentified())
+            .build();
     }
 
     @Test
@@ -267,11 +280,13 @@ class ItemTest {
 
     @Test
     void unidentifiedNameStripsLeadingArticle() {
-        Item withThe = new Item(
-            ItemId.of("crown"), "the Crown of Kings", "A regal crown.",
-            ItemAttributes.empty(), List.of(), List.of(), EquipmentSlot.HEAD, 2, 500, null, null, null,
-            List.of(), null, null, null, Rarity.RARE, List.of(), false
-        );
+        Item withThe = Item.builder(ItemId.of("crown"), "the Crown of Kings", "A regal crown.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.HEAD)
+            .weight(2)
+            .value(500)
+            .rarity(RarityProfile.of(Rarity.RARE, List.of()))
+            .identification(Identification.unidentified())
+            .build();
         assertEquals("an unidentified Crown of Kings", withThe.presentationName());
     }
 }

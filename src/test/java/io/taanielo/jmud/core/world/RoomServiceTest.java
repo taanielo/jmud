@@ -155,18 +155,11 @@ class RoomServiceTest {
     @Test
     void lookShowsExitsItemsAndOccupants() {
         RoomId roomAId = RoomId.of("a");
-        Item item = new Item(
-            ItemId.of("torch"),
-            "Torch",
-            "A warm torch.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            5,
-            null
-        );
+        Item item = Item.builder(
+            ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
         Room roomA = new Room(
             roomAId,
             "Room A",
@@ -216,18 +209,11 @@ class RoomServiceTest {
     @Test
     void takeItemRemovesFromRoom() {
         RoomId roomAId = RoomId.of("a");
-        Item torch = new Item(
-            ItemId.of("torch"),
-            "Torch",
-            "A warm torch.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            5,
-            null
-        );
+        Item torch = Item.builder(
+            ItemId.of("torch"), "Torch", "A warm torch.", ItemAttributes.empty())
+            .weight(1)
+            .value(5)
+            .build();
         Room roomA = new Room(
             roomAId,
             "Room A",
@@ -263,18 +249,10 @@ class RoomServiceTest {
 
         Username bob = Username.of("Bob");
         service.ensurePlayerLocation(bob);
-        Item apple = new Item(
-            ItemId.of("apple"),
-            "Apple",
-            "A crisp apple.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            1,
-            null
-        );
+        Item apple = Item.builder(ItemId.of("apple"), "Apple", "A crisp apple.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .build();
         service.dropItem(bob, apple);
 
         RoomService.LookResult lookResult = service.look(bob);
@@ -323,10 +301,10 @@ class RoomServiceTest {
         RoomId roomAId = RoomId.of("a");
         RoomId roomBId = RoomId.of("b");
         ItemId keyId = ItemId.of("iron-key");
-        Item key = new Item(
-            keyId, "Iron Key", "A key.", ItemAttributes.empty(),
-            List.of(), List.of(), null, 1, 0, null
-        );
+        Item key = Item.builder(keyId, "Iron Key", "A key.", ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .build();
         Room roomA = new Room(
             roomAId, "Room A", "A quiet room.",
             Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
@@ -378,10 +356,10 @@ class RoomServiceTest {
         RoomId roomAId = RoomId.of("a");
         RoomId roomBId = RoomId.of("b");
         ItemId keyId = ItemId.of("iron-key");
-        Item key = new Item(
-            keyId, "Iron Key", "A key.", ItemAttributes.empty(),
-            List.of(), List.of(), null, 1, 0, null
-        );
+        Item key = Item.builder(keyId, "Iron Key", "A key.", ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .build();
         Room roomA = new Room(
             roomAId, "Room A", "A quiet room.",
             Map.of(Direction.NORTH, roomBId), List.of(), List.of(),
@@ -433,10 +411,10 @@ class RoomServiceTest {
         RoomId roomAId = RoomId.of("a");
         RoomId roomBId = RoomId.of("b");
         ItemId keyId = ItemId.of("iron-key");
-        Item key = new Item(
-            keyId, "Iron Key", "A key.", ItemAttributes.empty(),
-            List.of(), List.of(), null, 1, 0, null
-        );
+        Item key = Item.builder(keyId, "Iron Key", "A key.", ItemAttributes.empty())
+            .weight(1)
+            .value(0)
+            .build();
         Room roomA = new Room(
             roomAId, "Room A", "A quiet room.",
             Map.of(Direction.NORTH, roomBId), List.of(), List.of(),

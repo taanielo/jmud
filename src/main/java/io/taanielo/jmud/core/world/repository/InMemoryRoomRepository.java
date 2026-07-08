@@ -5,15 +5,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemId;
-import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
-import io.taanielo.jmud.core.effects.EffectId;
 
 public class InMemoryRoomRepository implements RoomRepository {
 
@@ -33,29 +33,25 @@ public class InMemoryRoomRepository implements RoomRepository {
             "Training Yard",
             "A dusty yard with practice dummies and scattered weapons.",
             Map.of(Direction.NORTH, armoryId, Direction.EAST, courtyardId, Direction.SOUTH, sparringPitId),
-            List.of(new Item(
-                ItemId.of("iron-sword"),
-                "Iron Sword",
-                "A plain iron sword with a worn leather grip.",
-                ItemAttributes.empty(),
-                List.of(),
-                List.of(),
-                EquipmentSlot.WEAPON,
-                5,
-                25,
-                null
-            ), new Item(
-                ItemId.of("poisonous-potion"),
-                "Poisonous Potion",
-                "A cloudy green vial that smells faintly of rot.",
-                ItemAttributes.empty(),
-                List.of(new ItemEffect(EffectId.of("poison"), 10)),
-                List.of(),
-                null,
-                1,
-                5,
-                null
-            )),
+            List.of(
+                Item.builder(
+                    ItemId.of("iron-sword"),
+                    "Iron Sword",
+                    "A plain iron sword with a worn leather grip.",
+                    ItemAttributes.empty())
+                    .equipSlot(EquipmentSlot.WEAPON)
+                    .weight(5)
+                    .value(25)
+                    .build(),
+                Item.builder(
+                    ItemId.of("poisonous-potion"),
+                    "Poisonous Potion",
+                    "A cloudy green vial that smells faintly of rot.",
+                    ItemAttributes.empty())
+                    .effects(List.of(new ItemEffect(EffectId.of("poison"), 10)))
+                    .weight(1)
+                    .value(5)
+                    .build()),
             List.of()
         );
 
@@ -64,18 +60,16 @@ public class InMemoryRoomRepository implements RoomRepository {
             "Armory",
             "A compact room lined with weapon racks and oiled leather armor.",
             Map.of(Direction.SOUTH, trainingYardId),
-            List.of(new Item(
-                ItemId.of("training-shield"),
-                "Training Shield",
-                "A wooden shield used for drills.",
-                ItemAttributes.empty(),
-                List.of(),
-                List.of(),
-                EquipmentSlot.OFFHAND,
-                6,
-                15,
-                null
-            )),
+            List.of(
+                Item.builder(
+                    ItemId.of("training-shield"),
+                    "Training Shield",
+                    "A wooden shield used for drills.",
+                    ItemAttributes.empty())
+                    .equipSlot(EquipmentSlot.OFFHAND)
+                    .weight(6)
+                    .value(15)
+                    .build()),
             List.of()
         );
 

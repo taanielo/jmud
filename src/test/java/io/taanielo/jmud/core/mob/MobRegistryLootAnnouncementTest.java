@@ -48,18 +48,11 @@ class MobRegistryLootAnnouncementTest {
     private static final AttackDefinition ONE_DMG_ATTACK =
         new AttackDefinition(DEFAULT_ATTACK, "punch", 1, 1, 0, 0, 0, List.of());
 
-    private static final Item HEALTH_POTION = new Item(
-        ItemId.of("item.health_potion"),
-        "health potion",
-        "A small red vial.",
-        ItemAttributes.empty(),
-        List.of(),
-        List.of(),
-        null,
-        1,
-        10,
-        null
-    );
+    private static final Item HEALTH_POTION = Item.builder(
+        ItemId.of("item.health_potion"), "health potion", "A small red vial.", ItemAttributes.empty())
+        .weight(1)
+        .value(10)
+        .build();
 
     // ── helpers ───────────────────────────────────────────────────────
 

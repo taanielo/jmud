@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.combat.CombatRandom;
@@ -19,21 +17,12 @@ import io.taanielo.jmud.core.combat.CombatRandom;
 class ContainerLockingServiceTest {
 
     private static Item lockedChest() {
-        return new Item(
-            ItemId.of("chest"),
-            "a treasure chest",
-            "An iron-banded chest.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            10,
-            100,
-            null,
-            null,
-            3,
-            List.of()
-        ).withLocked(true);
+        return Item.builder(ItemId.of("chest"), "a treasure chest", "An iron-banded chest.", ItemAttributes.empty())
+            .weight(10)
+            .value(100)
+            .container(ContainerState.of(3))
+            .build()
+            .withLocked(true);
     }
 
     @Test
@@ -91,18 +80,11 @@ class ContainerLockingServiceTest {
     @Test
     void unlockContainerRejectsNonContainer() {
         ContainerLockingService service = new ContainerLockingService(new ScriptedRandom());
-        Item sword = new Item(
-            ItemId.of("sword"),
-            "a sword",
-            "A sword.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            EquipmentSlot.WEAPON,
-            5,
-            10,
-            null
-        );
+        Item sword = Item.builder(ItemId.of("sword"), "a sword", "A sword.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(10)
+            .build();
 
         assertThrows(IllegalArgumentException.class, () -> service.unlockContainer(sword));
     }

@@ -265,18 +265,10 @@ class ShopServiceTest {
     // ── helpers ───────────────────────────────────────────────────────
 
     private static Item item(String id, String name, String description, int value) {
-        return new Item(
-            ItemId.of(id),
-            name,
-            description,
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            value,
-            null
-        );
+        return Item.builder(ItemId.of(id), name, description, ItemAttributes.empty())
+            .weight(1)
+            .value(value)
+            .build();
     }
 
     private static Player playerWithGold(int gold) {

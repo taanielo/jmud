@@ -1,11 +1,14 @@
 package io.taanielo.jmud.core.world.repository.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,18 +30,11 @@ class JsonItemRepositoryTest {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);
 
-        Item item = new Item(
-            ItemId.of("rusty-dagger"),
-            "Rusty Dagger",
-            "A dull blade with a chipped edge.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            2,
-            3,
-            null
-        );
+        Item item = Item.builder(
+            ItemId.of("rusty-dagger"), "Rusty Dagger", "A dull blade with a chipped edge.", ItemAttributes.empty())
+            .weight(2)
+            .value(3)
+            .build();
         repository.save(item);
 
         Optional<Item> loaded = repository.findById(ItemId.of("rusty-dagger"));
@@ -52,33 +48,16 @@ class JsonItemRepositoryTest {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);
 
-        Item apple = new Item(
-            ItemId.of("apple"),
-            "an apple",
-            "A crisp red apple.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            2,
-            null
-        );
-        Item bag = new Item(
-            ItemId.of("leather-bag"),
-            "a leather bag",
-            "A supple leather bag.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            20,
-            null,
-            null,
-            5,
-            List.of(apple)
-        );
+        Item apple = Item.builder(ItemId.of("apple"), "an apple", "A crisp red apple.", ItemAttributes.empty())
+            .weight(1)
+            .value(2)
+            .build();
+        Item bag = Item.builder(
+            ItemId.of("leather-bag"), "a leather bag", "A supple leather bag.", ItemAttributes.empty())
+            .weight(1)
+            .value(20)
+            .container(io.taanielo.jmud.core.world.ContainerState.of(5, List.of(apple)))
+            .build();
         repository.save(bag);
 
         // Fresh repository (no cache) so the values come back off disk.
@@ -98,24 +77,13 @@ class JsonItemRepositoryTest {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);
 
-        Item sword = new Item(
-            ItemId.of("iron-sword"),
-            "Iron Sword",
-            "A plain iron sword.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            io.taanielo.jmud.core.world.EquipmentSlot.WEAPON,
-            5,
-            25,
-            null,
-            null,
-            null,
-            List.of(),
-            null,
-            50,
-            30
-        );
+        Item sword = Item.builder(
+            ItemId.of("iron-sword"), "Iron Sword", "A plain iron sword.", ItemAttributes.empty())
+            .equipSlot(io.taanielo.jmud.core.world.EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(25)
+            .durability(io.taanielo.jmud.core.world.Durability.of(50, 30))
+            .build();
         repository.save(sword);
 
         // Fresh repository (no cache) so the values come back off disk.
@@ -134,28 +102,17 @@ class JsonItemRepositoryTest {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);
 
-        Item blade = new Item(
-            ItemId.of("runed-blade"),
-            "Runed Blade",
-            "A blade humming with power.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            io.taanielo.jmud.core.world.EquipmentSlot.WEAPON,
-            5,
-            120,
-            null,
-            null,
-            null,
-            List.of(),
-            null,
-            null,
-            null,
-            io.taanielo.jmud.core.world.Rarity.RARE,
-            List.of(
-                io.taanielo.jmud.core.world.AffixId.of("of-the-bear"),
-                io.taanielo.jmud.core.world.AffixId.of("of-vitality"))
-        );
+        Item blade = Item.builder(
+            ItemId.of("runed-blade"), "Runed Blade", "A blade humming with power.", ItemAttributes.empty())
+            .equipSlot(io.taanielo.jmud.core.world.EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(120)
+            .rarity(io.taanielo.jmud.core.world.RarityProfile.of(
+                io.taanielo.jmud.core.world.Rarity.RARE,
+                List.of(
+                    io.taanielo.jmud.core.world.AffixId.of("of-the-bear"),
+                    io.taanielo.jmud.core.world.AffixId.of("of-vitality"))))
+            .build();
         repository.save(blade);
 
         // Fresh repository (no cache) so the values come back off disk.
@@ -187,5 +144,41 @@ class JsonItemRepositoryTest {
         );
 
         assertTrue(error.getMessage().contains("Failed to read item data"));
+    }
+
+    /**
+     * Golden-file round trip: loading the committed, byte-for-byte-unchanged
+     * {@code data/items/wooden-chest.json} through {@link JsonItemRepository} must produce the same
+     * {@link Item} state as before the component-record construction refactor. This guards the
+     * persistence compatibility contract (AGENTS.md §11): the flat DTO fields still assemble into an
+     * equivalent domain object via the new builder-based mapper.
+     */
+    @Test
+    void loadsExistingWoodenChestDataFileUnchanged() throws Exception {
+        Path source = Path.of("data", "items", "wooden-chest.json");
+        assertTrue(Files.exists(source), "expected committed data file at " + source.toAbsolutePath());
+        Path dataRoot = tempDir.resolve("data");
+        Path itemsDir = dataRoot.resolve("items");
+        Files.createDirectories(itemsDir);
+        Files.copy(source, itemsDir.resolve("wooden-chest.json"), StandardCopyOption.REPLACE_EXISTING);
+
+        JsonItemRepository repository = new JsonItemRepository(dataRoot);
+        Item chest = repository.findById(ItemId.of("wooden-chest")).orElseThrow();
+
+        assertEquals(ItemId.of("wooden-chest"), chest.getId());
+        assertEquals("a wooden chest", chest.getName());
+        assertEquals(20, chest.getWeight());
+        assertEquals(60, chest.getValue());
+        assertTrue(chest.isContainer());
+        assertEquals(Integer.valueOf(10), chest.getContainerCapacity());
+        assertTrue(chest.getContainedItems().isEmpty());
+        assertFalse(chest.isLocked());
+        assertTrue(chest.isIdentified());
+        assertFalse(chest.isBreakable());
+        assertNull(chest.getLightRadius());
+        assertNull(chest.getEquipSlot());
+        assertEquals(io.taanielo.jmud.core.world.Rarity.COMMON, chest.getRarity());
+        assertTrue(chest.getAffixes().isEmpty());
+        assertTrue(chest.getEffects().isEmpty());
     }
 }

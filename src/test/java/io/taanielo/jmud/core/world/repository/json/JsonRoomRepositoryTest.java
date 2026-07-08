@@ -32,30 +32,16 @@ class JsonRoomRepositoryTest {
         JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
         JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
 
-        Item sword = new Item(
-            ItemId.of("practice-sword"),
-            "Practice Sword",
-            "A blunted sword for sparring.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            3,
-            12,
-            null
-        );
-        Item potion = new Item(
-            ItemId.of("minor-potion"),
-            "Minor Potion",
-            "A small vial for quick recovery.",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            1,
-            8,
-            null
-        );
+        Item sword = Item.builder(
+            ItemId.of("practice-sword"), "Practice Sword", "A blunted sword for sparring.", ItemAttributes.empty())
+            .weight(3)
+            .value(12)
+            .build();
+        Item potion = Item.builder(
+            ItemId.of("minor-potion"), "Minor Potion", "A small vial for quick recovery.", ItemAttributes.empty())
+            .weight(1)
+            .value(8)
+            .build();
         itemRepository.save(sword);
         itemRepository.save(potion);
 

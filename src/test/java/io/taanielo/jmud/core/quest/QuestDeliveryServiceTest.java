@@ -263,18 +263,10 @@ class QuestDeliveryServiceTest {
     }
 
     private static Item makeItem(String id, String name) {
-        return new Item(
-            ItemId.of(id),
-            name,
-            "A " + name + ".",
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            0,
-            0,
-            null
-        );
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())
+            .weight(0)
+            .value(0)
+            .build();
     }
 
     private static int countRatTails(Player player) {

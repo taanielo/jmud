@@ -185,17 +185,9 @@ public class RoomItemService {
             ? "The corpse of " + owner + " lies here, containing "
                 + gold + " gold coin" + (gold == 1 ? "" : "s") + "."
             : "The corpse of " + owner + " lies here.";
-        return new Item(
-            ItemId.of(id),
-            "the corpse of " + owner,
-            description,
-            ItemAttributes.empty(),
-            List.of(),
-            List.of(),
-            null,
-            0,
-            gold,
-            null
-        );
+        return Item.builder(ItemId.of(id), "the corpse of " + owner, description, ItemAttributes.empty())
+            .weight(0)
+            .value(gold)
+            .build();
     }
 }
