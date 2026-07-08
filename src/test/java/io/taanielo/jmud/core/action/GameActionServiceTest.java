@@ -1404,6 +1404,181 @@ class GameActionServiceTest {
         }
     }
 
+    // ── steal ──────────────────────────────────────────────────────────────
+
+    @Nested
+    class StealTests {
+
+        private Player rogue;
+
+        @BeforeEach
+        void setUpSteal() {
+            rogue = rogueOfLevel(5);
+            roomService.ensurePlayerLocation(rogue.getUsername());
+        }
+
+        private Player rogueOfLevel(int level) {
+            return new Player(
+                User.of(Username.of("nimble"), Password.hash("pw", 1000)),
+                level, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("rogue")
+            );
+        }
+
+        private GameActionService stealService(CombatRandom rng, NpcStealPort port) {
+            return new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                roomService,
+                (source, input) -> Optional.empty(),
+                new TestCooldowns(),
+                testEncumbranceService(),
+                p -> false,
+                rng,
+                p -> { },
+                port
+            );
+        }
+
+        @Test
+        void successfulStealTransfersGoldToRogue() {
+            // Level 5 => 45 + 3*5 = 60% threshold. Roll 1 succeeds.
+            FakeVictim bandit = new FakeVictim("bandit", 25);
+            GameActionService service = stealService(new FixedCombatRandom(1), portFor(bandit));
+
+            GameActionResult result = service.steal(rogue, "bandit");
+
+            assertEquals(25, result.updatedSource().getGold());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("lift 25 gold coins")));
+            assertFalse(bandit.turnedHostile, "a successful steal must not aggravate the victim");
+        }
+
+        @Test
+        void failedStealTurnsNpcHostileWithoutTransferringGold() {
+            // Roll 100 fails the 60% threshold.
+            FakeVictim bandit = new FakeVictim("bandit", 25);
+            GameActionService service = stealService(new FixedCombatRandom(100), portFor(bandit));
+
+            GameActionResult result = service.steal(rogue, "bandit");
+
+            assertTrue(result.updatedSource() == null, "a failed steal must not change the rogue's gold");
+            assertTrue(bandit.turnedHostile, "a failed steal must turn the victim hostile");
+            assertEquals(rogue.getUsername(), bandit.hostileToward);
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("caught")));
+        }
+
+        @Test
+        void stealSuccessRollUsesSeededPortOverOneToHundred() {
+            // Level 5 threshold is 60; a roll of exactly 60 must succeed (roll <= threshold).
+            FakeVictim bandit = new FakeVictim("bandit", 7);
+            RecordingCombatRandom rng = new RecordingCombatRandom(60);
+            GameActionService service = stealService(rng, portFor(bandit));
+
+            GameActionResult result = service.steal(rogue, "bandit");
+
+            assertEquals(1, rng.lastMin());
+            assertEquals(100, rng.lastMax());
+            assertEquals(7, result.updatedSource().getGold());
+        }
+
+        @Test
+        void nonRogueCannotSteal() {
+            Player fighter = new Player(
+                User.of(Username.of("brute"), Password.hash("pw", 1000)),
+                5, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("fighter")
+            );
+            roomService.ensurePlayerLocation(fighter.getUsername());
+            GameActionService service = stealService(new FixedCombatRandom(1), portFor(new FakeVictim("bandit", 25)));
+
+            GameActionResult result = service.steal(fighter, "bandit");
+
+            assertTrue(result.messages().getFirst().text().contains("rogues"));
+            assertTrue(result.updatedSource() == null);
+        }
+
+        @Test
+        void deadRogueCannotSteal() {
+            GameActionService service = stealService(new FixedCombatRandom(1), portFor(new FakeVictim("bandit", 25)));
+
+            GameActionResult result = service.steal(rogue.die(), "bandit");
+
+            assertTrue(result.messages().getFirst().text().contains("cannot do that"));
+            assertTrue(result.updatedSource() == null);
+        }
+
+        @Test
+        void stealingFromMissingNpcFails() {
+            GameActionService service = stealService(new FixedCombatRandom(1), NpcStealPort.NONE);
+
+            GameActionResult result = service.steal(rogue, "ghost");
+
+            assertTrue(result.messages().getFirst().text().contains("don't see"));
+        }
+
+        @Test
+        void stealingFromNpcWithNoGoldFails() {
+            FakeVictim pauper = new FakeVictim("pauper", 0);
+            GameActionService service = stealService(new FixedCombatRandom(1), portFor(pauper));
+
+            GameActionResult result = service.steal(rogue, "pauper");
+
+            assertTrue(result.messages().getFirst().text().contains("nothing worth stealing"));
+            assertFalse(pauper.turnedHostile);
+        }
+
+        @Test
+        void blankTargetIsRejected() {
+            GameActionService service = stealService(new FixedCombatRandom(1), NpcStealPort.NONE);
+
+            GameActionResult result = service.steal(rogue, "  ");
+
+            assertTrue(result.messages().getFirst().text().contains("Steal from whom?"));
+        }
+
+        private NpcStealPort portFor(NpcStealPort.StealVictim victim) {
+            return (roomId, nameInput) -> Optional.of(victim);
+        }
+    }
+
+    private static class FakeVictim implements NpcStealPort.StealVictim {
+        private final String name;
+        private final int gold;
+        private boolean turnedHostile;
+        private Username hostileToward;
+
+        FakeVictim(String name, int gold) {
+            this.name = name;
+            this.gold = gold;
+        }
+
+        @Override
+        public String name() {
+            return name;
+        }
+
+        @Override
+        public boolean hasStealableGold() {
+            return gold > 0;
+        }
+
+        @Override
+        public int stealGold() {
+            return gold;
+        }
+
+        @Override
+        public void turnHostile(Username thief) {
+            this.turnedHostile = true;
+            this.hostileToward = thief;
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private Player player(String username) {

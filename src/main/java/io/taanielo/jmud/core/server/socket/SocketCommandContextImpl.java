@@ -153,7 +153,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 if (context.mobRegistry() != null) {
                     context.mobRegistry().fleeCombat(p.getUsername());
                 }
-            }
+            },
+            (roomId, nameInput) -> context.mobRegistry() != null
+                ? context.mobRegistry().findStealTarget(roomId, nameInput)
+                : java.util.Optional.empty()
         );
     }
 
@@ -1080,6 +1083,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         cancelRestIfActive();
         GameActionResult result = gameActionService.sneakToggle(session.getPlayer());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void steal(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to steal.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.steal(session.getPlayer(), args);
         deliverResult(result);
         sendPrompt();
     }

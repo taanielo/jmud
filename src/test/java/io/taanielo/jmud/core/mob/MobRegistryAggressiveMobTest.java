@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.action.NpcStealPort;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
@@ -142,6 +143,91 @@ class MobRegistryAggressiveMobTest {
 
         assertTrue(registry.isInCombat(hero.getUsername()),
             "Stealth only prevents fresh aggro; an already-engaged mob keeps attacking");
+    }
+
+    /**
+     * Builds a {@link MobRegistry} containing a single non-aggressive NPC named "Bandit" with the
+     * given gold drop, and places the given player in the NPC's room. Used to exercise the rogue
+     * STEAL port ({@link NpcStealPort}).
+     */
+    private MobRegistry buildRegistryWithGoldNpc(Player thief, GoldDrop goldDrop) {
+        MobTemplate template = new MobTemplate(
+            MobId.of("mob.bandit"),
+            "Bandit",
+            30,
+            DEFAULT_ATTACK,
+            null,
+            false,  // not aggressive: only becomes hostile when caught stealing
+            List.of(),
+            ROOM_ID,
+            1,
+            10,
+            5,
+            goldDrop,
+            List.of(),
+            false
+        );
+        MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
+        AttackRepository attackRepo = new StubAttackRepository(Map.of(DEFAULT_ATTACK, ONE_DMG_ATTACK));
+        ItemRepository itemRepo = new StubItemRepository(Map.of());
+
+        RoomService roomService = new RoomService(new StubRoomRepository(ROOM_ID), ROOM_ID);
+        roomService.ensurePlayerLocation(thief.getUsername());
+
+        StubPlayerRepository playerRepo = new StubPlayerRepository(thief);
+        lastPlayerRepo = playerRepo;
+        PlayerEventBus bus = new PlayerEventBus();
+
+        MobRegistry registry = new MobRegistry(
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
+        registry.init();
+        return registry;
+    }
+
+    @Test
+    void findStealTarget_returnsVictimWithStealableGold() {
+        Player thief = player("rogue");
+        MobRegistry registry = buildRegistryWithGoldNpc(thief, new GoldDrop(15, 15));
+
+        Optional<NpcStealPort.StealVictim> victim = registry.findStealTarget(ROOM_ID, "bandit");
+
+        assertTrue(victim.isPresent());
+        assertTrue(victim.get().hasStealableGold());
+        assertTrue(victim.get().stealGold() == 15);
+    }
+
+    @Test
+    void findStealTarget_reportsNoGoldWhenTemplateHasNoGoldDrop() {
+        Player thief = player("rogue");
+        MobRegistry registry = buildRegistryWithGoldNpc(thief, null);
+
+        Optional<NpcStealPort.StealVictim> victim = registry.findStealTarget(ROOM_ID, "bandit");
+
+        assertTrue(victim.isPresent());
+        assertFalse(victim.get().hasStealableGold());
+    }
+
+    @Test
+    void findStealTarget_isEmptyForUnknownNpc() {
+        Player thief = player("rogue");
+        MobRegistry registry = buildRegistryWithGoldNpc(thief, new GoldDrop(15, 15));
+
+        assertFalse(registry.findStealTarget(ROOM_ID, "dragon").isPresent());
+    }
+
+    @Test
+    void turnHostile_putsThiefIntoCombatWithNpc() {
+        Player thief = player("rogue");
+        MobRegistry registry = buildRegistryWithGoldNpc(thief, new GoldDrop(15, 15));
+
+        assertFalse(registry.isInCombat(thief.getUsername()),
+            "Precondition: a non-aggressive NPC does not engage on its own");
+
+        registry.findStealTarget(ROOM_ID, "bandit").orElseThrow().turnHostile(thief.getUsername());
+
+        assertTrue(registry.isInCombat(thief.getUsername()),
+            "A caught thief must be engaged by the NPC they tried to rob");
     }
 
     // ── stubs ─────────────────────────────────────────────────────────

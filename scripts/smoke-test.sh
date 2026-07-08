@@ -168,15 +168,18 @@ expect "$T2C" "locked chest shown in LOOK"        'treasure chest \(locked\)'
 expect "$T2C" "warrior blocked from PICK"         'rogues'
 
 # ── phase 2d: rogue examines and PICKs the locked chest, and SNEAKs ───────────
-log "Phase 2d: create rogue '$TEST_ROGUE', EXAMINE/PICK the chest, and SNEAK"
+log "Phase 2d: create rogue '$TEST_ROGUE', EXAMINE/PICK the chest, SNEAK, and STEAL"
 T2D="$OUT_DIR/phase2d-rogue-pick.txt"
 run_session "$T2D" "$TEST_ROGUE" "$TEST_PASS" "$TEST_PASS" "human" "rogue" \
-    "examine a treasure chest" "pick a treasure chest" "sneak" "sneak" "quit"
+    "examine a treasure chest" "pick a treasure chest" "sneak" "sneak" \
+    "steal training dummy" "quit"
 
 expect "$T2D" "EXAMINE reports the chest is locked" 'It is locked.'
 expect "$T2D" "PICK attempt resolves"               'pick the lock|fail to pick|trap'
 expect "$T2D" "SNEAK toggles stealth on then off"   'fade into the shadows'
 expect "$T2D" "SNEAK reveals on second toggle"      'emerge from stealth'
+# The training dummy carries no gold, so STEAL resolves cleanly to its no-gold outcome.
+expect "$T2D" "STEAL command executes"              'nothing worth stealing|lift .* gold|caught'
 
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).

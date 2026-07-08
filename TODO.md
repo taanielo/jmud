@@ -9,7 +9,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add unidentified magic items and an IDENTIFY scroll/NPC service to reveal their stats
 - [x] Add locked treasure chests with trap chance and a rogue PICK skill to open them
 - [x] Add SNEAK and HIDE stealth commands so rogues can avoid aggressive mobs and set up backstab
-- [ ] Add STEAL skill for rogues to pickpocket gold from NPCs, with failure aggro consequence
+- [x] Add STEAL skill for rogues to pickpocket gold from NPCs, with failure aggro consequence
 - [ ] Add ranged weapons (bows, throwing knives) usable on mobs in adjacent rooms before they close in
 - [ ] Add buff spells (bless, stoneskin, haste) as timed status effects castable on self and party members
 - [ ] Add area-of-effect spells that hit every hostile mob in the room, with mana cost scaling
