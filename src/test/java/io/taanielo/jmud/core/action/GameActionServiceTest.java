@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1274,6 +1275,115 @@ class GameActionServiceTest {
         }
     }
 
+    // ── flee ──────────────────────────────────────────────────────────────
+
+    @Nested
+    class FleeTests {
+
+        private static final RoomId ROOM_START = RoomId.of("flee-start");
+        private static final RoomId ROOM_NORTH = RoomId.of("flee-north");
+        private static final RoomId ROOM_EAST = RoomId.of("flee-east");
+
+        private Player fighter;
+        private boolean inCombat;
+        private List<Username> disengaged;
+
+        @BeforeEach
+        void setUpFlee() {
+            fighter = player("fighter");
+            inCombat = true;
+            disengaged = new ArrayList<>();
+        }
+
+        private GameActionService fleeService(CombatRandom rng) {
+            return new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                roomService,
+                (source, input) -> Optional.empty(),
+                new TestCooldowns(),
+                testEncumbranceService(),
+                p -> inCombat,
+                rng,
+                p -> disengaged.add(p.getUsername())
+            );
+        }
+
+        private Room roomWithExits(Map<Direction, RoomId> exits) {
+            return new Room(ROOM_START, "Start", "A room with exits.", exits, List.of(), List.of());
+        }
+
+        @Test
+        void fleeFailsWhenNotInCombat() {
+            inCombat = false;
+            GameActionService service = fleeService(new FixedCombatRandom(0));
+
+            FleeResult result = service.flee(fighter, roomWithExits(Map.of(Direction.NORTH, ROOM_NORTH)));
+
+            assertFalse(result.fled());
+            assertEquals("You are not in combat.", result.message());
+            assertTrue(result.direction() == null);
+            assertTrue(disengaged.isEmpty(), "combat must not be disengaged when flee is rejected");
+        }
+
+        @Test
+        void fleeFailsWhenRoomHasNoExits() {
+            GameActionService service = fleeService(new FixedCombatRandom(0));
+
+            FleeResult result = service.flee(fighter, roomWithExits(Map.of()));
+
+            assertFalse(result.fled());
+            assertEquals("There is nowhere to flee!", result.message());
+            assertTrue(disengaged.isEmpty(), "combat must not be disengaged when there is nowhere to flee");
+        }
+
+        @Test
+        void fleeFailsWhenRoomIsNull() {
+            GameActionService service = fleeService(new FixedCombatRandom(0));
+
+            FleeResult result = service.flee(fighter, null);
+
+            assertFalse(result.fled());
+            assertEquals("There is nowhere to flee!", result.message());
+            assertTrue(disengaged.isEmpty());
+        }
+
+        @Test
+        void fleeDisengagesCombatAndChoosesTheOnlyExit() {
+            GameActionService service = fleeService(new FixedCombatRandom(0));
+
+            FleeResult result = service.flee(fighter, roomWithExits(Map.of(Direction.NORTH, ROOM_NORTH)));
+
+            assertTrue(result.fled());
+            assertEquals(Direction.NORTH, result.direction());
+            assertEquals("You flee to the " + Direction.NORTH.label() + "!", result.message());
+            assertEquals(List.of(fighter.getUsername()), disengaged);
+        }
+
+        @Test
+        void fleeSelectsExitByRolledIndexOverInclusiveRange() {
+            RecordingCombatRandom rng = new RecordingCombatRandom(1);
+            GameActionService service = fleeService(rng);
+            Room room = roomWithExits(Map.of(Direction.NORTH, ROOM_NORTH, Direction.EAST, ROOM_EAST));
+            // The service selects exits.get(rolledIndex) from the room's exit key set; mirror that
+            // ordering here so the assertion does not depend on Map iteration order.
+            Direction expected = new ArrayList<>(room.getExits().keySet()).get(1);
+
+            FleeResult result = service.flee(fighter, room);
+
+            assertTrue(result.fled());
+            assertEquals(expected, result.direction());
+            assertEquals(0, rng.lastMin());
+            assertEquals(room.getExits().size() - 1, rng.lastMax(),
+                "flee must roll over the inclusive [0, exitCount-1] range");
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private Player player(String username) {
@@ -1369,6 +1479,31 @@ class GameActionServiceTest {
                 return rolls[rolls.length - 1];
             }
             return rolls[index++];
+        }
+    }
+
+    private static class RecordingCombatRandom implements CombatRandom {
+        private final int value;
+        private int lastMin;
+        private int lastMax;
+
+        RecordingCombatRandom(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public int roll(int minInclusive, int maxInclusive) {
+            this.lastMin = minInclusive;
+            this.lastMax = maxInclusive;
+            return value;
+        }
+
+        int lastMin() {
+            return lastMin;
+        }
+
+        int lastMax() {
+            return lastMax;
         }
     }
 

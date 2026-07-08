@@ -13,8 +13,8 @@ import io.taanielo.jmud.core.world.Direction;
 /**
  * Verifies that flee direction selection is deterministic under a fixed world seed.
  *
- * <p>{@code SocketCommandContextImpl.fleeCombat()} picks the escape exit with
- * {@code exits.get(context.worldRandom().roll(0, exits.size() - 1))}. That call runs
+ * <p>{@code GameActionService.flee(...)} picks the escape exit with
+ * {@code exits.get(worldRandom.roll(0, exits.size() - 1))}. That call runs
  * through the seeded RNG port (AGENTS.md §5), so the direction chosen for a given seed
  * and exit list must be reproducible. This test replicates that exact selection
  * expression, keeping the guarantee location-independent from the socket adapter, which
