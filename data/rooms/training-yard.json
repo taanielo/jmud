@@ -6,7 +6,8 @@
   "item_ids": [
     "iron-sword",
     "health-potion",
-    "poisonous-potion"
+    "poisonous-potion",
+    "treasure-chest-locked"
   ],
   "exits": {
     "north": "armory",

@@ -24,6 +24,7 @@ public record ItemDto(
     Integer durability,
     String rarity,
     List<String> affixes,
-    Boolean identified
+    Boolean identified,
+    Boolean locked
 ) {
 }

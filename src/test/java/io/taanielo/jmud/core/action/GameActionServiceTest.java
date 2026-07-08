@@ -58,6 +58,7 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
+import io.taanielo.jmud.core.world.ContainerLockingService;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
@@ -1145,6 +1146,131 @@ class GameActionServiceTest {
 
             assertEquals(ROOM_TOWN, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
             assertTrue(result.metadata().containsKey("recalled"));
+        }
+    }
+
+    // ── pick lock ──────────────────────────────────────────────────────────
+
+    @Nested
+    class PickLockTests {
+
+        private static final RoomId ROOM_VAULT = RoomId.of("vault");
+        private static final ItemId CHEST = ItemId.of("chest");
+
+        private RoomService pickRoomService;
+        private Player rogue;
+
+        @BeforeEach
+        void setUpPick() {
+            Item chest = new Item(
+                CHEST, "a treasure chest", "An iron-banded chest.",
+                ItemAttributes.empty(), List.of(), List.of(), null, 10, 100, null, null, 3, List.of()
+            ).withLocked(true);
+            Room vault = new Room(
+                ROOM_VAULT, "Vault", "A stone vault.",
+                Map.of(), List.of(chest), List.of()
+            );
+            pickRoomService = new RoomService(
+                new TestRoomRepository(Map.of(ROOM_VAULT, vault)), ROOM_VAULT
+            );
+            rogue = rogueOfLevel(5);
+            pickRoomService.ensurePlayerLocation(rogue.getUsername());
+        }
+
+        private Player rogueOfLevel(int level) {
+            return new Player(
+                User.of(Username.of("sly"), Password.hash("pw", 1000)),
+                level, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("rogue")
+            );
+        }
+
+        private GameActionService pickService(int... rolls) {
+            return new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                pickRoomService,
+                (source, input) -> Optional.empty(),
+                new TestCooldowns(),
+                testEncumbranceService(),
+                new ContainerLockingService(new FixedCombatRandom(rolls))
+            );
+        }
+
+        @Test
+        void successfulPickUnlocksContainerWithoutDamage() {
+            // Level 5 => 80% threshold. Pick roll 1 succeeds; trap roll 100 does not trigger.
+            GameActionService service = pickService(1, 100);
+
+            GameActionResult result = service.pickLock(rogue, "chest");
+
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("pick the lock")));
+            assertEquals(rogue.getVitals().hp(), result.updatedSource().getVitals().hp());
+            assertFalse(pickRoomService.findItem(rogue.getUsername(), "chest").orElseThrow().isLocked());
+        }
+
+        @Test
+        void sprungTrapDamagesRogueAndLeavesChestLocked() {
+            // Pick roll 100 fails; trap roll 1 triggers; damage roll 10.
+            GameActionService service = pickService(100, 1, 10);
+
+            GameActionResult result = service.pickLock(rogue, "chest");
+
+            assertEquals(rogue.getVitals().hp() - 10, result.updatedSource().getVitals().hp());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("trap")));
+            assertTrue(pickRoomService.findItem(rogue.getUsername(), "chest").orElseThrow().isLocked());
+        }
+
+        @Test
+        void failedPickWithoutTrapWastesActionWithoutDamage() {
+            // Pick roll 100 fails; trap roll 100 does not trigger.
+            GameActionService service = pickService(100, 100);
+
+            GameActionResult result = service.pickLock(rogue, "chest");
+
+            assertEquals(rogue.getVitals().hp(), result.updatedSource().getVitals().hp());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("fail")));
+            assertTrue(pickRoomService.findItem(rogue.getUsername(), "chest").orElseThrow().isLocked());
+        }
+
+        @Test
+        void nonRogueCannotPick() {
+            Player fighter = new Player(
+                User.of(Username.of("brute"), Password.hash("pw", 1000)),
+                5, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("fighter")
+            );
+            pickRoomService.ensurePlayerLocation(fighter.getUsername());
+            GameActionService service = pickService(1, 100);
+
+            GameActionResult result = service.pickLock(fighter, "chest");
+
+            assertTrue(result.messages().getFirst().text().contains("rogues"));
+            assertTrue(pickRoomService.findItem(fighter.getUsername(), "chest").orElseThrow().isLocked());
+        }
+
+        @Test
+        void pickingAlreadyUnlockedContainerFails() {
+            GameActionService service = pickService(1, 100);
+            service.pickLock(rogue, "chest");
+
+            GameActionResult result = service.pickLock(rogue, "chest");
+
+            assertTrue(result.messages().getFirst().text().contains("isn't locked"));
+        }
+
+        @Test
+        void blankTargetIsRejected() {
+            GameActionService service = pickService(1, 100);
+
+            GameActionResult result = service.pickLock(rogue, "  ");
+
+            assertTrue(result.messages().getFirst().text().contains("Pick what?"));
         }
     }
 

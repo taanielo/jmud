@@ -1036,6 +1036,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void pickLock(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to pick locks.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.pickLock(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void writeItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to write.");
@@ -1252,6 +1264,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         connection.writeLine(session.getTextStyler().rarity(found.getName(), found.getRarity()));
         connection.writeLine(found.getDescription());
+        if (found.isContainer() && found.isLocked()) {
+            connection.writeLine("It is locked.");
+        }
         if (found.getEquipSlot() != null) {
             connection.writeLine("Slot: " + found.getEquipSlot().id());
         }

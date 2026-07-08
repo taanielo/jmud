@@ -22,6 +22,7 @@ SSH_PORT="${SMOKE_SSH_PORT:-4492}"
 OUT_DIR="build/smoke-test"
 SERVER_LOG="$OUT_DIR/server.log"
 TEST_USER="smoke$(date +%s)"
+TEST_ROGUE="rogue$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -52,6 +53,7 @@ cleanup() {
         kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
     fi
     rm -f "data/users/$TEST_USER.json" "players/$TEST_USER.json"
+    rm -f "data/users/$TEST_ROGUE.json" "players/$TEST_ROGUE.json"
 }
 trap cleanup EXIT
 
@@ -150,6 +152,29 @@ T2B="$OUT_DIR/phase2b-repair.txt"
 run_session "$T2B" "$TEST_USER" "$TEST_PASS" "repair iron sword" "quit"
 
 expect "$T2B" "REPAIR without a blacksmith is handled" 'no blacksmith here'
+
+# ── phase 2c: locked container is visible and rogue-gated ────────────────────
+# The training-yard holds a locked treasure chest (issue #277). A locked
+# container shows "(locked)" in LOOK and only a rogue may PICK it; a warrior is
+# turned away. Pick success/trap rolls are random, so downstream we assert the
+# command is wired and produces one of its known outcomes rather than a fixed
+# result — the success/trap maths are covered by the ContainerLockingService and
+# GameActionService unit tests.
+log "Phase 2c: locked chest visible; warrior cannot PICK"
+T2C="$OUT_DIR/phase2c-warrior-pick.txt"
+run_session "$T2C" "$TEST_USER" "$TEST_PASS" "look" "pick a treasure chest" "quit"
+
+expect "$T2C" "locked chest shown in LOOK"        'treasure chest \(locked\)'
+expect "$T2C" "warrior blocked from PICK"         'rogues'
+
+# ── phase 2d: rogue examines and PICKs the locked chest ──────────────────────
+log "Phase 2d: create rogue '$TEST_ROGUE', EXAMINE and PICK the chest"
+T2D="$OUT_DIR/phase2d-rogue-pick.txt"
+run_session "$T2D" "$TEST_ROGUE" "$TEST_PASS" "$TEST_PASS" "human" "rogue" \
+    "examine a treasure chest" "pick a treasure chest" "quit"
+
+expect "$T2D" "EXAMINE reports the chest is locked" 'It is locked.'
+expect "$T2D" "PICK attempt resolves"               'pick the lock|fail to pick|trap'
 
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).

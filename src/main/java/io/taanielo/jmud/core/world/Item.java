@@ -80,6 +80,14 @@ public class Item {
      * are identified out of the box.
      */
     boolean identified;
+    /**
+     * Whether this container is locked, blocking access to its {@link #containedItems} until it is
+     * opened (e.g. by the rogue PICK skill via {@link ContainerLockingService}). Only container
+     * items may be locked; defaults to {@code false} so plain items and legacy item data (which has
+     * no {@code locked} field) are unlocked out of the box. See {@link #isLocked()} and
+     * {@link #withLocked(boolean)}.
+     */
+    boolean locked;
 
     /**
      * Constructs an item. Note this class is never bound directly by Jackson for item-definition
@@ -102,6 +110,9 @@ public class Item {
      * @param affixes           the ids of stat affixes attached to this item, or {@code null} for none
      * @param identified        whether the item's rarity and affixes are revealed, or {@code null} to
      *                          default to {@code true} (identified) for backward compatibility
+     * @param locked            whether this container is locked, or {@code null} to default to
+     *                          {@code false} (unlocked); must be {@code null}/{@code false} for
+     *                          non-container items
      */
     public Item(
         ItemId id,
@@ -122,7 +133,8 @@ public class Item {
         @Nullable Integer durability,
         @Nullable Rarity rarity,
         @Nullable List<AffixId> affixes,
-        @Nullable Boolean identified
+        @Nullable Boolean identified,
+        @Nullable Boolean locked
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -188,6 +200,42 @@ public class Item {
         this.rarity = Objects.requireNonNullElse(rarity, Rarity.COMMON);
         this.affixes = List.copyOf(Objects.requireNonNullElse(affixes, List.of()));
         this.identified = identified == null || identified;
+        boolean isLocked = locked != null && locked;
+        if (isLocked && containerCapacity == null) {
+            throw new IllegalArgumentException("Only container items may be locked");
+        }
+        this.locked = isLocked;
+    }
+
+    /**
+     * Convenience constructor for identification-aware call sites that predate {@link #locked}: builds
+     * an item with an explicit identification status but an unlocked lock state, preserving call sites
+     * created before locked containers existed.
+     */
+    public Item(
+        ItemId id,
+        String name,
+        String description,
+        ItemAttributes attributes,
+        List<ItemEffect> effects,
+        List<MessageSpec> messages,
+        EquipmentSlot equipSlot,
+        int weight,
+        int value,
+        AttackId attackRef,
+        AbilityId teachesAbilityRef,
+        Integer containerCapacity,
+        List<Item> containedItems,
+        @Nullable Integer lightRadius,
+        @Nullable Integer maxDurability,
+        @Nullable Integer durability,
+        @Nullable Rarity rarity,
+        @Nullable List<AffixId> affixes,
+        @Nullable Boolean identified
+    ) {
+        this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
+            teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
+            rarity, affixes, identified, null);
     }
 
     /**
@@ -217,7 +265,7 @@ public class Item {
     ) {
         this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
             teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, null);
+            rarity, affixes, null, null);
     }
 
     /**
@@ -245,7 +293,7 @@ public class Item {
     ) {
         this(id, name, description, attributes, effects, messages, equipSlot, weight, value, attackRef,
             teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            null, null, null);
+            null, null, null, null);
     }
 
     /**
@@ -352,12 +400,17 @@ public class Item {
     }
 
     /**
-     * Returns the item's name, annotated with its fill level {@code (count/capacity)} when it is a
-     * container (e.g. {@code "a leather bag (3/5)"}). Non-container items return their plain name.
+     * Returns the item's name, annotated with its fill level {@code (count/capacity)} when it is an
+     * unlocked container (e.g. {@code "a leather bag (3/5)"}) or with a {@code (locked)} suffix when
+     * it is a locked container (e.g. {@code "a treasure chest (locked)"}, hiding its contents count).
+     * Non-container items return their plain name.
      */
     public String displayName() {
         if (!isContainer()) {
             return name;
+        }
+        if (locked) {
+            return name + " (locked)";
         }
         return name + " (" + containedItems.size() + "/" + containerCapacity + ")";
     }
@@ -430,7 +483,7 @@ public class Item {
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
-            rarity, affixes, identified);
+            rarity, affixes, identified, locked);
     }
 
     /**
@@ -464,7 +517,7 @@ public class Item {
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
-            rarity, affixes, identified);
+            rarity, affixes, identified, locked);
     }
 
     /**
@@ -482,7 +535,29 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, newIdentified);
+            rarity, affixes, newIdentified, locked);
+    }
+
+    /**
+     * Returns a copy of this container with its locked state set to {@code newLocked}. A locked
+     * container blocks access to its contents until it is opened (e.g. via the rogue PICK skill).
+     * All other state — durability, contents, rarity, identification — is preserved. Returns
+     * {@code this} unchanged when the state already matches.
+     *
+     * @param newLocked whether the copy should be locked
+     * @return a new item instance with the updated locked state, or {@code this} if unchanged
+     * @throws IllegalStateException if this item is not a container
+     */
+    public Item withLocked(boolean newLocked) {
+        if (!isContainer()) {
+            throw new IllegalStateException("This item is not a container");
+        }
+        if (this.locked == newLocked) {
+            return this;
+        }
+        return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
+            attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
+            rarity, affixes, identified, newLocked);
     }
 
     /**

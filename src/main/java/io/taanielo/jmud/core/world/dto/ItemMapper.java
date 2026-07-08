@@ -31,8 +31,11 @@ public class ItemMapper {
         boolean hasRarity = item.getRarity() != null && !item.getRarity().isCommon();
         boolean hasAffixes = !item.getAffixes().isEmpty();
         boolean unidentified = !item.isIdentified();
+        boolean locked = item.isLocked();
         int version;
-        if (unidentified) {
+        if (locked) {
+            version = SchemaVersions.V10;
+        } else if (unidentified) {
             version = SchemaVersions.V9;
         } else if (hasRarity || hasAffixes) {
             version = SchemaVersions.V8;
@@ -66,7 +69,8 @@ public class ItemMapper {
             item.getDurability(),
             hasRarity ? item.getRarity().id() : null,
             affixIds,
-            unidentified ? Boolean.FALSE : null
+            unidentified ? Boolean.FALSE : null,
+            locked ? Boolean.TRUE : null
         );
     }
 
@@ -111,7 +115,8 @@ public class ItemMapper {
             dto.durability(),
             rarity,
             affixes,
-            dto.identified()
+            dto.identified(),
+            dto.locked()
         );
     }
 }

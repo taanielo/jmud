@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "id": "skill.pick",
+  "name": "pick",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {},
+  "cooldown": {
+    "ticks": 0
+  },
+  "targeting": "HARMFUL_OPENER",
+  "aliases": [],
+  "effects": [],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You crouch by the lock, picks in hand."
+    }
+  ]
+}
