@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "id": "meat",
+  "name": "Slab of Meat",
+  "description": "A hearty slab of roasted meat, still warm.",
+  "attributes": {
+    "stats": {
+      "hunger": 50
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You devour {item}, feeling much more satisfied."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} devours {item}."
+    }
+  ],
+  "weight": 2,
+  "value": 12
+}

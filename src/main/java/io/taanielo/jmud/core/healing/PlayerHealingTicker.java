@@ -54,6 +54,10 @@ public class PlayerHealingTicker implements Tickable {
         }
         try {
             int baseHealPerTick = baseResolver.baseHpPerTick(player);
+            // Starving or parched players regenerate at half rate (AGENTS.md §5 — tick-thread only).
+            if (player.getSustenance().regenPenalised()) {
+                baseHealPerTick = baseHealPerTick / 2;
+            }
             Player updated = engine.apply(player, baseHealPerTick);
             if (updated != player) {
                 playerUpdater.accept(updated);

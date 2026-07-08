@@ -502,6 +502,103 @@ public class GameActionService {
     }
 
     /**
+     * Eats a food item from inventory, restoring the player's hunger by the item's
+     * {@code hunger} stat and consuming the item.
+     *
+     * <p>The item's {@code hunger} attribute stat determines how many hunger points are
+     * restored (capped at {@link io.taanielo.jmud.core.player.PlayerSustenance#MAX}). Items
+     * without a positive {@code hunger} stat are rejected as inedible. Any {@code eat}-phase
+     * messages defined on the item are emitted; otherwise a default eat message is produced.
+     *
+     * @param source the player eating the item
+     * @param itemInput the item name or id to eat
+     * @return result with the updated source (hunger restored, item removed)
+     */
+    public GameActionResult eatItem(Player source, String itemInput) {
+        String normalized = itemInput == null ? "" : itemInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Eat what?");
+        }
+        Item item = findInventoryItem(source, normalized);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        int hungerRestore = item.getAttributes().getStats().getOrDefault("hunger", 0);
+        if (hungerRestore <= 0) {
+            return GameActionResult.error("You can't eat that.");
+        }
+        Player updated = source.withSustenance(source.getSustenance().feed(hungerRestore)).removeItem(item);
+        List<GameMessage> messages = consumptionMessages(source, item, MessagePhase.EAT, "eat", "eats");
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Drinks a beverage item from inventory, restoring the player's thirst by the item's
+     * {@code thirst} stat and consuming the item.
+     *
+     * <p>The item's {@code thirst} attribute stat determines how many thirst points are
+     * restored (capped at {@link io.taanielo.jmud.core.player.PlayerSustenance#MAX}). Items
+     * without a positive {@code thirst} stat are rejected as undrinkable. Any {@code drink}-phase
+     * messages defined on the item are emitted; otherwise a default drink message is produced.
+     *
+     * @param source the player drinking the item
+     * @param itemInput the item name or id to drink
+     * @return result with the updated source (thirst restored, item removed)
+     */
+    public GameActionResult drinkItem(Player source, String itemInput) {
+        String normalized = itemInput == null ? "" : itemInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Drink what?");
+        }
+        Item item = findInventoryItem(source, normalized);
+        if (item == null) {
+            return GameActionResult.error("You aren't carrying that.");
+        }
+        int thirstRestore = item.getAttributes().getStats().getOrDefault("thirst", 0);
+        if (thirstRestore <= 0) {
+            return GameActionResult.error("You can't drink that.");
+        }
+        Player updated = source.withSustenance(source.getSustenance().quench(thirstRestore)).removeItem(item);
+        List<GameMessage> messages = consumptionMessages(source, item, MessagePhase.DRINK, "drink", "drinks");
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Builds the self/room messages for consuming an item, using item-defined messages for
+     * the given phase when present, or a default verb-based pair otherwise.
+     */
+    private List<GameMessage> consumptionMessages(
+        Player source,
+        Item item,
+        MessagePhase phase,
+        String selfVerb,
+        String roomVerb
+    ) {
+        MessageContext context = new MessageContext(
+            source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            item.getName(),
+            null,
+            null,
+            null
+        );
+        List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), phase, context);
+        if (!emitted.isEmpty()) {
+            return emitted;
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You " + selfVerb + " " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " " + roomVerb + " " + item.getName() + "."
+        ));
+        return messages;
+    }
+
+    /**
      * Reads a scroll from inventory, permanently teaching the player the ability it references.
      *
      * <p>The scroll is consumed (removed from inventory) on success. Fails with a clear message

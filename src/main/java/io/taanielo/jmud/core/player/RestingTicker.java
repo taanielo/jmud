@@ -75,7 +75,12 @@ public class RestingTicker implements Tickable {
             return;
         }
 
-        PlayerVitals regenned = vitals.regenRest(regenHp, regenMana, regenMove);
+        // Starving or parched players regenerate at half rate.
+        boolean penalised = player.getSustenance().regenPenalised();
+        int effectiveHp = penalised ? regenHp / 2 : regenHp;
+        int effectiveMana = penalised ? regenMana / 2 : regenMana;
+        int effectiveMove = penalised ? regenMove / 2 : regenMove;
+        PlayerVitals regenned = vitals.regenRest(effectiveHp, effectiveMana, effectiveMove);
         Player updated = player.withVitals(regenned);
 
         if (regenned.isFull()) {

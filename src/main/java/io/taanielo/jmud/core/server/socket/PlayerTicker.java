@@ -8,6 +8,7 @@ import io.taanielo.jmud.core.effects.PlayerEffectTicker;
 import io.taanielo.jmud.core.healing.PlayerHealingTicker;
 import io.taanielo.jmud.core.player.PlayerRespawnTicker;
 import io.taanielo.jmud.core.player.RestingTicker;
+import io.taanielo.jmud.core.player.SustenanceTicker;
 import io.taanielo.jmud.core.tick.Tickable;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
 
@@ -27,6 +28,8 @@ import io.taanielo.jmud.core.tick.system.CooldownSystem;
  *       {@link #enableHealing})</li>
  *   <li><b>Resting</b> — applies per-tick rest regeneration (only while resting is
  *       active; toggled via {@link #enableResting}/{@link #disableResting})</li>
+ *   <li><b>Sustenance</b> — decays hunger/thirst each tick (only when enabled via
+ *       {@link #enableSustenance})</li>
  * </ol>
  *
  * <p>Global tickables ({@code MobRegistry}, {@code CorpseDecayTicker}, {@code TickClock},
@@ -55,6 +58,10 @@ public class PlayerTicker implements Tickable {
     /** Stage 6: rest regeneration ticking, toggled by REST/WAKE commands. */
     @Nullable
     private RestingTicker restingTicker;
+
+    /** Stage 7: hunger/thirst decay ticking, enabled after login. */
+    @Nullable
+    private SustenanceTicker sustenanceTicker;
 
     /**
      * Constructs a {@code PlayerTicker} with the three always-active stages.
@@ -97,6 +104,10 @@ public class PlayerTicker implements Tickable {
         // Stage 6: rest regeneration (conditional)
         if (restingTicker != null) {
             restingTicker.tick();
+        }
+        // Stage 7: hunger/thirst decay (conditional)
+        if (sustenanceTicker != null) {
+            sustenanceTicker.tick();
         }
     }
 
@@ -179,6 +190,32 @@ public class PlayerTicker implements Tickable {
      */
     public boolean isRestingEnabled() {
         return restingTicker != null;
+    }
+
+    // ── Stage 7: sustenance ──────────────────────────────────────────────────
+
+    /**
+     * Enables the sustenance-decay stage. Replaces any previously set ticker.
+     * Must be called on the tick thread (or during login setup).
+     *
+     * @param ticker the sustenance ticker to activate; must not be null
+     */
+    public void enableSustenance(SustenanceTicker ticker) {
+        this.sustenanceTicker = Objects.requireNonNull(ticker, "Sustenance ticker is required");
+    }
+
+    /**
+     * Disables the sustenance-decay stage. Must be called on the tick thread.
+     */
+    public void disableSustenance() {
+        this.sustenanceTicker = null;
+    }
+
+    /**
+     * Returns {@code true} when the sustenance stage is currently active.
+     */
+    public boolean isSustenanceEnabled() {
+        return sustenanceTicker != null;
     }
 
     /**
