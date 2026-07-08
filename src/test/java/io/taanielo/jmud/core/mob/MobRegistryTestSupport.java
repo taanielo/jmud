@@ -5,6 +5,8 @@ import java.time.Clock;
 import io.taanielo.jmud.core.audit.AuditEntry;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSink;
+import io.taanielo.jmud.core.combat.CombatRandom;
+import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.PlayerRepository;
 
@@ -17,6 +19,14 @@ import io.taanielo.jmud.core.player.PlayerRepository;
 final class MobRegistryTestSupport {
 
     private MobRegistryTestSupport() {
+    }
+
+    /**
+     * Returns a {@link CombatRandom} for {@code MobRegistry} tests that do not assert on
+     * exact roll sequences, preserving the historical (non-deterministic) behaviour.
+     */
+    static CombatRandom random() {
+        return new ThreadLocalCombatRandom();
     }
 
     static PersistenceQueue persistenceQueueFor(PlayerRepository playerRepository) {

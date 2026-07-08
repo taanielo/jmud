@@ -28,8 +28,10 @@ import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
@@ -103,6 +105,7 @@ public record GameContext(
     EffectRepository effectRepository,
     EffectEngine effectEngine,
     CombatEngine combatEngine,
+    CombatRandom worldRandom,
     EncumbranceService encumbranceService,
     HealingEngine healingEngine,
     HealingBaseResolver healingBaseResolver,
@@ -176,8 +179,15 @@ public record GameContext(
 
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
-        CombatEngine combatEngine =
-                createCombatEngine(config, effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository, tickClock::currentTick, effectEngine);
+        // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
+        // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
+        // logged by SeededCombatRandomProvider; set jmud.world.seed to replay a specific session.
+        boolean seededRng = !"threadlocal".equalsIgnoreCase(config.getString("jmud.combat.rng", "seeded"));
+        long worldSeed = seededRng ? config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong()) : 0L;
+        CombatRandom worldRandom = seededRng ? new SeededCombatRandom(worldSeed) : new ThreadLocalCombatRandom();
+        CombatEngine combatEngine = createCombatEngine(
+                effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository,
+                tickClock::currentTick, effectEngine, seededRng, worldSeed);
 
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 
@@ -198,7 +208,7 @@ public record GameContext(
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
-                playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository);
+                playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository, worldRandom);
         if (mobRegistry != null) {
             mobRegistry.setEffectEngine(effectEngine);
             mobRegistry.setWorldClock(worldClock);
@@ -240,6 +250,7 @@ public record GameContext(
             effectRepository,
             effectEngine,
             combatEngine,
+            worldRandom,
             encumbranceService,
             healingEngine,
             healingBaseResolver,
@@ -283,12 +294,14 @@ public record GameContext(
         PlayerRepository playerRepository,
         PersistenceQueue persistenceQueue,
         ItemRepository itemRepository,
-        JsonAttackRepository attackRepository
+        JsonAttackRepository attackRepository,
+        CombatRandom worldRandom
     ) {
         try {
             JsonMobTemplateRepository templateRepo = new JsonMobTemplateRepository();
             return new MobRegistry(
-                templateRepo, itemRepository, attackRepository, roomService, playerRepository, persistenceQueue, playerEventBus);
+                templateRepo, itemRepository, attackRepository, roomService, playerRepository,
+                persistenceQueue, playerEventBus, worldRandom);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
         }
@@ -311,24 +324,22 @@ public record GameContext(
     }
 
     private static CombatEngine createCombatEngine(
-        GameConfig config,
         EffectRepository effectRepository,
         RaceArmorBonusResolver armorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
         JsonAttackRepository attackRepository,
         LongSupplier tickSupplier,
-        EffectEngine effectEngine
+        EffectEngine effectEngine,
+        boolean seeded,
+        long worldSeed
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
-        String rngMode = config.getString("jmud.combat.rng", "seeded");
-        if ("threadlocal".equalsIgnoreCase(rngMode)) {
+        if (!seeded) {
             return new CombatEngine(
                 attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom(), effectEngine);
         }
-        // Default: seeded mode — derive world seed from config, or generate a random one.
-        // The SeededCombatRandomProvider constructor logs the effective seed at INFO so
-        // any session can be reconstructed; set jmud.world.seed to replay a specific session.
-        long worldSeed = config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong());
+        // Seeded mode: the provider derives an independent per-encounter stream from the shared
+        // world seed and logs the effective seed at INFO so any session can be reconstructed.
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
             attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, provider, tickSupplier, effectEngine);

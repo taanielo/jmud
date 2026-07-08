@@ -90,7 +90,8 @@ class MobRegistryKillTrackingTest {
         bus.register(attacker.getUsername(), captured::add);
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, persistenceQueue, bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo, persistenceQueue, bus,
+            MobRegistryTestSupport.random());
         registry.init();
         return registry;
     }

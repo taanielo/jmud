@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
@@ -1128,7 +1127,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         List<Direction> exits = new ArrayList<>(currentRoom.getExits().keySet());
-        Direction chosen = exits.get(ThreadLocalRandom.current().nextInt(exits.size()));
+        Direction chosen = exits.get(context.worldRandom().roll(0, exits.size() - 1));
         connection.writeLine("You flee to the " + chosen.label() + "!");
         context.mobRegistry().fleeCombat(player.getUsername());
         sendMove(chosen);

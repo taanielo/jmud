@@ -24,4 +24,9 @@ public class DefaultCombatRandom implements CombatRandom {
         int bound = maxInclusive - minInclusive + 1;
         return random.nextInt(bound) + minInclusive;
     }
+
+    @Override
+    public double nextDouble() {
+        return random.nextDouble();
+    }
 }

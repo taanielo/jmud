@@ -13,4 +13,9 @@ public class ThreadLocalCombatRandom implements CombatRandom {
         }
         return ThreadLocalRandom.current().nextInt(minInclusive, maxInclusive + 1);
     }
+
+    @Override
+    public double nextDouble() {
+        return ThreadLocalRandom.current().nextDouble();
+    }
 }

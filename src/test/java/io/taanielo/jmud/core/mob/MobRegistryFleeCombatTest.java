@@ -74,7 +74,8 @@ class MobRegistryFleeCombatTest {
         PlayerEventBus bus = new PlayerEventBus();
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
         registry.init();
         return registry;
     }

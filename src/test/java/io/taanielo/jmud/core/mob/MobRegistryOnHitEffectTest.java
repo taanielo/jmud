@@ -88,7 +88,7 @@ class MobRegistryOnHitEffectTest {
 
         MobRegistry registry = new MobRegistry(
             templateRepo, itemRepo, attackRepo, roomService, playerRepo,
-            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
         registry.setEffectEngine(effectEngine);
         registry.init();
         return registry;

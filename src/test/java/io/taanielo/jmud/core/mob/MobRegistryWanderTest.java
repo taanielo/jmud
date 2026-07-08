@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.mob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +16,9 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -89,6 +92,10 @@ class MobRegistryWanderTest {
     }
 
     private MobRegistry buildRegistry(MobTemplate template, RoomRepository roomRepo) {
+        return buildRegistry(template, roomRepo, MobRegistryTestSupport.random());
+    }
+
+    private MobRegistry buildRegistry(MobTemplate template, RoomRepository roomRepo, CombatRandom random) {
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
         AttackRepository attackRepo = new StubAttackRepository(Map.of());
         ItemRepository itemRepo = new StubItemRepository(Map.of());
@@ -96,7 +103,8 @@ class MobRegistryWanderTest {
         PlayerRepository playerRepo = new StubPlayerRepository();
         PlayerEventBus bus = new PlayerEventBus();
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, random);
         registry.init();
         return registry;
     }
@@ -208,6 +216,42 @@ class MobRegistryWanderTest {
 
         assertEquals(SPAWN_ROOM, mob.roomId(),
             "Respawned mob should be back in spawn room");
+    }
+
+    /**
+     * With a fixed world seed, a wandering mob's full room trajectory must be identical
+     * across two independent runs, proving the wander roll and exit choice are routed
+     * through the seeded RNG port rather than a bare {@code ThreadLocalRandom}. The
+     * trajectory also changes rooms at least once, confirming the RNG actually drives
+     * movement rather than the sequences matching only because the mob never moves.
+     */
+    @Test
+    void wanderTrajectory_isDeterministic_underFixedSeed() {
+        List<RoomId> firstRun = recordWanderTrajectory(1234L);
+        List<RoomId> secondRun = recordWanderTrajectory(1234L);
+        assertEquals(firstRun, secondRun,
+            "Same seed must produce identical wander trajectories");
+        assertTrue(firstRun.stream().anyMatch(NORTH_ROOM::equals),
+            "Mob should have wandered to the north room at least once under this seed");
+    }
+
+    /**
+     * Runs a single wandering mob for a fixed number of ticks under the given seed and
+     * records the mob's room after each tick (always the same length), capturing the exact
+     * trajectory driven by the seeded RNG.
+     */
+    private List<RoomId> recordWanderTrajectory(long seed) {
+        MobTemplate template = wanderingTemplate(true, List.of());
+        MobRegistry registry = buildRegistry(template, twoRoomRepository(), new SeededCombatRandom(seed));
+        MobInstance mob = registry.allInstances().iterator().next();
+        java.util.List<RoomId> trajectory = new java.util.ArrayList<>();
+        // 100 ticks at ~30% move chance makes a zero-move trajectory effectively impossible
+        // (0.7^100 ≈ 3e-16) while remaining fully deterministic for the given seed.
+        for (int i = 0; i < 100; i++) {
+            registry.tick();
+            trajectory.add(mob.roomId());
+        }
+        return trajectory;
     }
 
     // ── stubs ─────────────────────────────────────────────────────────
