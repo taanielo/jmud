@@ -5,15 +5,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemId;
-import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
-import io.taanielo.jmud.core.effects.EffectId;
 
 public class InMemoryRoomRepository implements RoomRepository {
 
