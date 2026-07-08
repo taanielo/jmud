@@ -19,7 +19,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 
 `orchestrator-state.json` default:
 ```json
-{ "current_issue": null, "stage": "FIND_ISSUE", "build_retries": 0,
+{ "current_issue": null, "todo_line": null, "stage": "FIND_ISSUE", "build_retries": 0,
   "cycles_since_last_optimization": 0,
   "blocked_issues": [], "parked_pr": null, "waiting_for_session_reset": false,
   "last_updated": null }
@@ -38,16 +38,16 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
   3. `TODO.md` has an unchecked `- [ ]` line → spawn **issue-creator** (pass that line).
   4. Else → spawn **game-designer**. Failure/skip → print `STANDBY`, release LOCK, STOP.
 
-  Whatever was picked: `gh issue edit <N> --add-assignee @me`, set `current_issue`, `stage = CREATE_BRANCH`.
+  Whatever was picked: `gh issue edit <N> --add-assignee @me`, set `current_issue`. Then find the issue's `TODO.md` line: if the issue came from issue-creator this cycle, use `source_todo` from `last-result.json`; otherwise scan `TODO.md` for the unchecked `- [ ]` line describing the same feature (wording may differ from the issue title — match on meaning). Set `todo_line` to the exact line text, or `null` if none matches. `stage = CREATE_BRANCH`.
 - **CREATE_BRANCH** — run `scripts/agent/branch.sh <N> "<issue title>"`. OK → `stage = WRITE_CODE`.
-- **WRITE_CODE** — spawn **code-writer** (pass the **full issue body** — architecture issues contain a binding "How (implementation guide)" section; if `build_retries > 0`, also pass the contents of `.orchestrator/build-error.txt`). Success → `stage = VERIFY_BUILD`.
+- **WRITE_CODE** — spawn **code-writer** (pass the **full issue body** — architecture issues contain a binding "How (implementation guide)" section; if `todo_line` is set, pass it verbatim so the code-writer marks it `- [x]` in the same change; if `build_retries > 0`, also pass the contents of `.orchestrator/build-error.txt`). Success → `stage = VERIFY_BUILD`.
 - **VERIFY_BUILD** — run `scripts/agent/verify.sh --expect-branch <branch>`, adding `--smoke` when the change is player-visible (commands, login flow, output format). It runs `./gradlew check` (the full quality-gate suite, not just `build`) and, on failure, leaves an actionable excerpt in `.orchestrator/build-error.txt`.
   - OK → `build_retries = 0`, `stage = CREATE_PR`.
   - FAIL and `build_retries < 2` → `build_retries += 1`, `stage = WRITE_CODE`.
   - FAIL and `build_retries >= 2` → `gh issue create --title "blocked: <title>" --body "<scrubbed error summary from build-error.txt>" --label bug`; append the number to `blocked_issues`; notify (PushNotification if available); `build_retries = 0`, `current_issue = null`, `stage = FIND_ISSUE`.
 - **CREATE_PR** — run `scripts/agent/pr-create.sh <N> "<type>(<scope>): <summary>"` — you compose the Conventional Commit title from the issue (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`, imperative, ≤ 70 chars). OK → `stage = MERGE_PR`.
 - **MERGE_PR** — run `scripts/agent/merge.sh <N>`. It gates on GitHub CI status (`gh pr checks --watch`) before squash-merging — local `check` success alone is not sufficient.
-  - OK → append `{ "issue":N, "pr":M, "merged_at":"..." }` to `cycle-log.jsonl`; `cycles_since_last_optimization += 1`; `current_issue = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0.
+  - OK → append `{ "issue":N, "pr":M, "merged_at":"..." }` to `cycle-log.jsonl`; `cycles_since_last_optimization += 1`; `current_issue = null`; `todo_line = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0. **Do not commit `TODO.md` after the merge** — the code-writer marks the TODO line inside the feature PR; a separate post-merge `docs(todo)` commit to `main` is always wrong. If the merged PR missed the TODO line, mention it as a WARN in the cycle summary instead of committing to `main` yourself.
   - `FAIL reason=conflicts` → set `parked_pr`, notify, `current_issue = null`, `stage = FIND_ISSUE` (a human resolves the conflict).
   - `FAIL reason=ci` or `reason=ci-timeout` → treat like a local build failure: copy the failing-check detail from `.orchestrator/merge.log` into `.orchestrator/build-error.txt` and apply the VERIFY_BUILD retry/blocked logic above (`stage = WRITE_CODE` or block).
 
