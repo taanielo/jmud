@@ -6,7 +6,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 
 - [x] Add item durability: gear degrades in combat and a blacksmith NPC offers a REPAIR command
 - [x] Add item rarity tiers (common/uncommon/rare) with stat affixes and colored names in LOOK/INVENTORY
-- [ ] Add unidentified magic items and an IDENTIFY scroll/NPC service to reveal their stats
+- [x] Add unidentified magic items and an IDENTIFY scroll/NPC service to reveal their stats
 - [ ] Add locked treasure chests with trap chance and a rogue PICK skill to open them
 - [ ] Add SNEAK and HIDE stealth commands so rogues can avoid aggressive mobs and set up backstab
 - [ ] Add STEAL skill for rogues to pickpocket gold from NPCs, with failure aggro consequence
