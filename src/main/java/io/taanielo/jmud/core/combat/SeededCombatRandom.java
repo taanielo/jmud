@@ -50,4 +50,14 @@ public class SeededCombatRandom implements CombatRandom {
         int bound = maxInclusive - minInclusive + 1;
         return rng.nextInt(bound) + minInclusive;
     }
+
+    /**
+     * Rolls a deterministic fractional value in {@code [0.0, 1.0)} from the seeded generator.
+     *
+     * @return a deterministic value in {@code [0.0, 1.0)}
+     */
+    @Override
+    public double nextDouble() {
+        return rng.nextDouble();
+    }
 }

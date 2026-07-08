@@ -105,7 +105,8 @@ class MobRegistrySpecialAbilityTest {
         roomService.ensurePlayerLocation(target.getUsername());
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, persistenceQueue, bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo, persistenceQueue, bus,
+            MobRegistryTestSupport.random());
         registry.init();
         return registry;
     }

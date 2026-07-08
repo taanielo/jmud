@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,6 +19,7 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
@@ -66,6 +66,7 @@ public class MobRegistry implements Tickable {
     private final PlayerRepository playerRepository;
     private final PersistenceQueue persistenceQueue;
     private final PlayerEventBus playerEventBus;
+    private final CombatRandom random;
     private final LevelUpService levelUpService = new LevelUpService();
     private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
@@ -89,7 +90,8 @@ public class MobRegistry implements Tickable {
         RoomService roomService,
         PlayerRepository playerRepository,
         PersistenceQueue persistenceQueue,
-        PlayerEventBus playerEventBus
+        PlayerEventBus playerEventBus,
+        CombatRandom random
     ) {
         this.templateRepository = Objects.requireNonNull(templateRepository, "Template repository is required");
         this.itemRepository = Objects.requireNonNull(itemRepository, "Item repository is required");
@@ -98,6 +100,7 @@ public class MobRegistry implements Tickable {
         this.playerRepository = Objects.requireNonNull(playerRepository, "Player repository is required");
         this.persistenceQueue = Objects.requireNonNull(persistenceQueue, "Persistence queue is required");
         this.playerEventBus = Objects.requireNonNull(playerEventBus, "Player event bus is required");
+        this.random = Objects.requireNonNull(random, "Random is required");
     }
 
     /**
@@ -213,7 +216,7 @@ public class MobRegistry implements Tickable {
                 continue;
             }
             // ~30 % chance to wander this tick
-            if (ThreadLocalRandom.current().nextDouble() >= 0.30) {
+            if (random.nextDouble() >= 0.30) {
                 continue;
             }
             RoomId fromRoomId = mob.roomId();
@@ -223,7 +226,7 @@ public class MobRegistry implements Tickable {
             }
             List<Map.Entry<Direction, RoomId>> exitList = List.copyOf(exits.entrySet());
             Map.Entry<Direction, RoomId> chosen =
-                exitList.get(ThreadLocalRandom.current().nextInt(exitList.size()));
+                exitList.get(random.roll(0, exitList.size() - 1));
             Direction dir = chosen.getKey();
             RoomId toRoomId = chosen.getValue();
 
@@ -315,7 +318,7 @@ public class MobRegistry implements Tickable {
             LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
             Player afterXp = levelUpResult.player();
             if (mob.template().goldDrop() != null) {
-                int gold = mob.template().goldDrop().roll();
+                int gold = mob.template().goldDrop().roll(random);
                 if (gold > 0) {
                     afterXp = afterXp.addGold(gold);
                     messages.add(GameMessage.toSource(
@@ -382,7 +385,7 @@ public class MobRegistry implements Tickable {
         if (candidates.isEmpty()) {
             return;
         }
-        Username targetUsername = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
+        Username targetUsername = candidates.get(random.roll(0, candidates.size() - 1));
         Player target = playerRepository.loadPlayer(targetUsername).orElse(null);
         if (target == null || target.isDead()) {
             return;
@@ -472,7 +475,7 @@ public class MobRegistry implements Tickable {
         if (effectEngine == null || effectApplication == null) {
             return;
         }
-        int roll = ThreadLocalRandom.current().nextInt(1, 101);
+        int roll = random.roll(1, 100);
         if (roll > effectApplication.chancePercent()) {
             return;
         }
@@ -595,7 +598,7 @@ public class MobRegistry implements Tickable {
                 LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
                 Player afterXp = levelUpResult.player();
                 if (mob.template().goldDrop() != null) {
-                    int gold = mob.template().goldDrop().roll();
+                    int gold = mob.template().goldDrop().roll(random);
                     if (gold > 0) {
                         afterXp = afterXp.addGold(gold);
                         messages.add(GameMessage.toSource(
@@ -667,7 +670,7 @@ public class MobRegistry implements Tickable {
     private List<Item> dropLoot(MobInstance mob) {
         List<Item> dropped = new ArrayList<>();
         for (LootEntry entry : mob.template().lootTable()) {
-            if (ThreadLocalRandom.current().nextDouble() <= entry.dropChance()) {
+            if (random.nextDouble() <= entry.dropChance()) {
                 try {
                     itemRepository.findById(entry.itemId()).ifPresent(item -> {
                         roomService.addItem(mob.roomId(), item);
@@ -748,7 +751,7 @@ public class MobRegistry implements Tickable {
     private int rollDamage(AttackDefinition attack) {
         int range = attack.maxDamage() - attack.minDamage();
         int base = range > 0
-            ? attack.minDamage() + ThreadLocalRandom.current().nextInt(range + 1)
+            ? attack.minDamage() + random.roll(0, range)
             : attack.minDamage();
         return Math.max(1, base + attack.damageBonus());
     }

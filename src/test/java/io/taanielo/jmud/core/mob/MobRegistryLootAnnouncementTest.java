@@ -113,7 +113,8 @@ class MobRegistryLootAnnouncementTest {
         bus.register(attacker.getUsername(), captured::add);
 
         MobRegistry registry = new MobRegistry(
-            templateRepo, itemRepo, attackRepo, roomService, playerRepo, MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
         registry.init();
         return registry;
     }
@@ -213,7 +214,8 @@ class MobRegistryLootAnnouncementTest {
 
         MobRegistry registry = new MobRegistry(
             new StubMobTemplateRepository(List.of(template)),
-            itemRepo, attackRepo, roomService, playerRepo, MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus);
+            itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
         registry.init();
 
         GameActionResult result = registry.processPlayerAttack(
