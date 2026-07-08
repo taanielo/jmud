@@ -208,11 +208,13 @@ rm    .orchestrator/PAUSE     # resume
 | `orchestrator-state.json`  | the state machine (current issue, stage, counters)   |
 | `last-result.json`         | the last worker's structured result                  |
 | `cycle-log.jsonl`          | one line per completed cycle                          |
-| `LOCK`                     | run lease (stale after 60 min); prevents overlap     |
+| `LOCK`                     | run lease (stale after 35 min); prevents overlap     |
 | `PAUSE`                    | kill switch (presence = stop)                        |
 
-If a run is interrupted, a leftover `LOCK` younger than 60 min will make the next run skip with
-`LOCK held`; delete it manually only if you are sure no run is active.
+PAUSE/LOCK are enforced deterministically by `scripts/agent/guard.sh` (the orchestrator's Step 0).
+If a run is interrupted, a leftover `LOCK` younger than 35 min will make the next run skip with
+`LOCK held` — at most one skipped 30-min cron firing; delete it manually only if you are sure no
+run is active.
 
 ---
 

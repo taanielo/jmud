@@ -27,7 +27,9 @@ BRANCH="$(git branch --show-current)"
 
 # 1. Stage by whitelist. .orchestrator/ is gitignored, but reset it
 #    defensively anyway — runtime state must never be committed.
-for p in src data docs scripts build.gradle settings.gradle gradle .claude/agents .claude/commands; do
+#    TODO.md is included so the code-writer's "mark the TODO line done" edit
+#    ships inside the feature PR instead of lingering unstaged.
+for p in src data docs scripts build.gradle settings.gradle gradle TODO.md SETUP.md readme.md .claude/agents .claude/commands; do
     [ -e "$p" ] && run git add -- "$p"
 done
 git reset -q -- .orchestrator 2>/dev/null || true

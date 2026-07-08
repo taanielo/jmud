@@ -33,8 +33,23 @@ back_to_main() {
     run git pull --ff-only origin main   || fail pull "ff-only pull of main failed after merge"
 }
 
+# Record the cycle in cycle-log.jsonl with GitHub's real merge timestamp —
+# history entries are written here, deterministically, never by the model
+# (which has been caught inventing round-number timestamps). Idempotent:
+# skips if this PR is already logged.
+append_cycle_log() {
+    local cycle_log="$STATE_DIR/cycle-log.jsonl"
+    grep -q "\"pr\":$PR_NUM[,}]" "$cycle_log" 2>/dev/null && return 0
+    local merged_at
+    merged_at="$(gh pr view "$PR_NUM" --json mergedAt -q '.mergedAt // empty' 2>>"$STEP_LOG")"
+    [ -n "$merged_at" ] || merged_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    jq -cn --argjson p "$PR_NUM" --argjson i "${ISSUE:-null}" --arg m "$merged_at" \
+        '{issue: $i, pr: $p, merged_at: $m}' >>"$cycle_log"
+}
+
 # Idempotent: a crash after merging must not re-fail the cycle.
 if [ "$PR_STATE" = "MERGED" ]; then
+    append_cycle_log
     back_to_main
     ok "$(result_json)" "merged=true pr=$PR_NUM (was already merged)"
 fi
@@ -72,6 +87,7 @@ if ! ci_watch; then
 fi
 
 run gh pr merge "$PR_NUM" --squash --delete-branch || fail merge "gh pr merge --squash failed"
+append_cycle_log
 back_to_main
 
 ok "$(result_json)" "merged=true pr=$PR_NUM"

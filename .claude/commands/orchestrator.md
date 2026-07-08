@@ -1,12 +1,12 @@
 ---
 description: Run one cycle of jmud's autonomous feature loop (pick issue → branch → code → verify with `./gradlew check` → PR → merge gated on CI).
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(./gradlew:*), Bash(gradle:*), Bash(cat:*), Bash(date:*), Bash(mkdir:*), Bash(mv:*), Bash(rm:*), Bash(test:*), Bash(scripts/next-issue.sh:*), Bash(scripts/agent/branch.sh:*), Bash(scripts/agent/verify.sh:*), Bash(scripts/agent/pr-create.sh:*), Bash(scripts/agent/merge.sh:*), Read, Write, Edit, Task
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(./gradlew:*), Bash(gradle:*), Bash(cat:*), Bash(date:*), Bash(mkdir:*), Bash(mv:*), Bash(rm:*), Bash(test:*), Bash(scripts/next-issue.sh:*), Bash(scripts/agent/guard.sh:*), Bash(scripts/agent/branch.sh:*), Bash(scripts/agent/verify.sh:*), Bash(scripts/agent/pr-create.sh:*), Bash(scripts/agent/merge.sh:*), Read, Write, Edit, Task
 argument-hint: (no arguments)
 ---
 
 You are the **orchestrator** for jmud's autonomous development loop. You run in the **main session** and drive one full cycle. The **mechanical stages are shell scripts** under `scripts/agent/` (run them with Bash — never spawn an agent for them); only the stages that need judgment (writing code, designing features, formalizing issues, optimizing the workflow) spawn subagents. You alone may spawn subagents (workers cannot). Persist all progress to disk so any cycle can resume after an interruption.
 
-**Step-script contract** (`scripts/agent/branch.sh`, `verify.sh`, `pr-create.sh`, `merge.sh`): each prints optional `WARN ...` lines plus exactly one `OK ...` / `FAIL reason=<slug> ...` line, writes `last-result.json` itself, and logs detail to `.orchestrator/<step>.log`. Trust the OK/FAIL line; read the step log **only on FAIL**. Relay any WARN lines in your end-of-cycle summary — they exist so a human notices (e.g. piling autosave stashes).
+**Step-script contract** (`scripts/agent/guard.sh`, `branch.sh`, `verify.sh`, `pr-create.sh`, `merge.sh`): each prints optional `WARN ...` lines plus exactly one `OK ...` / `FAIL reason=<slug> ...` line, writes `last-result.json` itself (exception: `guard.sh` never touches `last-result.json` — its FAILs mean "do nothing", not "a step failed"), and logs detail to `.orchestrator/<step>.log`. Trust the OK/FAIL line; read the step log **only on FAIL**. Relay any WARN lines in your end-of-cycle summary — they exist so a human notices (e.g. piling autosave stashes).
 
 Run this command on a self-paced `/loop` (no fixed interval) so the next cycle starts only after this one returns.
 
@@ -26,10 +26,12 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 ```
 
 ## Step 0 — GUARD (always first)
-1. If `.orchestrator/PAUSE` exists → print `PAUSED (remove .orchestrator/PAUSE to resume)` and STOP.
-2. If `LOCK` exists and its `started_at` is **younger than 60 min** → another run is active; print `LOCK held, skipping` and STOP. Otherwise (no lock, or stale) write a fresh `LOCK`.
-3. Read `orchestrator-state.json` (create with defaults if missing).
-4. **Usage-limit check**: the system prompt contains a `<total_tokens>N tokens left</total_tokens>` tag. Parse N. If N ≤ 20000 (i.e. ≥ 90 % of the context window consumed) → print `usage limit reached (≤20k tokens remaining)`, release LOCK, STOP.
+1. Run `scripts/agent/guard.sh`. It checks the `PAUSE` kill switch, enforces the run lease (`LOCK` counts as stale after **35 min**), writes a fresh `LOCK`, and creates `orchestrator-state.json` with defaults if missing — never re-derive lock age or timestamps yourself.
+   - `FAIL reason=paused` → print `PAUSED (remove .orchestrator/PAUSE to resume)` and STOP.
+   - `FAIL reason=lock-held` → print `LOCK held, skipping` and STOP (do not release the other run's LOCK).
+   - `OK` → continue; relay any `WARN` (a stale lock was taken over — the prior run likely died mid-cycle).
+2. Read `orchestrator-state.json`.
+3. **Usage-limit check**: the system prompt contains a `<total_tokens>N tokens left</total_tokens>` tag. Parse N. If N ≤ 20000 (i.e. ≥ 90 % of the context window consumed) → print `usage limit reached (≤20k tokens remaining)`, release LOCK, STOP.
 
 ## Step 1 — Dispatch by `state.stage`
 - **FIND_ISSUE** — pick work in this priority order (skip anything in `blocked_issues`):
@@ -47,12 +49,12 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
   - FAIL and `build_retries >= 2` → `gh issue create --title "blocked: <title>" --body "<scrubbed error summary from build-error.txt>" --label bug`; append the number to `blocked_issues`; notify (PushNotification if available); `build_retries = 0`, `current_issue = null`, `stage = FIND_ISSUE`.
 - **CREATE_PR** — run `scripts/agent/pr-create.sh <N> "<type>(<scope>): <summary>"` — you compose the Conventional Commit title from the issue (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`, imperative, ≤ 70 chars). OK → `stage = MERGE_PR`.
 - **MERGE_PR** — run `scripts/agent/merge.sh <N>`. It gates on GitHub CI status (`gh pr checks --watch`) before squash-merging — local `check` success alone is not sufficient.
-  - OK → append `{ "issue":N, "pr":M, "merged_at":"..." }` to `cycle-log.jsonl`; `cycles_since_last_optimization += 1`; `current_issue = null`; `todo_line = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0. **Do not commit `TODO.md` after the merge** — the code-writer marks the TODO line inside the feature PR; a separate post-merge `docs(todo)` commit to `main` is always wrong. If the merged PR missed the TODO line, mention it as a WARN in the cycle summary instead of committing to `main` yourself.
+  - OK → (`merge.sh` has already appended this cycle's line to `cycle-log.jsonl` with the real merge timestamp — never append or edit that file yourself); `cycles_since_last_optimization += 1`; `current_issue = null`; `todo_line = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0. **Do not commit `TODO.md` after the merge** — the code-writer marks the TODO line inside the feature PR; a separate post-merge `docs(todo)` commit to `main` is always wrong. If the merged PR missed the TODO line, mention it as a WARN in the cycle summary instead of committing to `main` yourself.
   - `FAIL reason=conflicts` → set `parked_pr`, notify, `current_issue = null`, `stage = FIND_ISSUE` (a human resolves the conflict).
   - `FAIL reason=ci` or `reason=ci-timeout` → treat like a local build failure: copy the failing-check detail from `.orchestrator/merge.log` into `.orchestrator/build-error.txt` and apply the VERIFY_BUILD retry/blocked logic above (`stage = WRITE_CODE` or block).
 
 ## Step 2 — Persist & finish
-- Write `orchestrator-state.json` **atomically**: write `orchestrator-state.json.tmp`, then `mv` over the real file. Update `last_updated` (ISO-8601).
+- Write `orchestrator-state.json` **atomically**: write `orchestrator-state.json.tmp`, then `mv` over the real file. Set `last_updated` to the output of `date -u +%Y-%m-%dT%H:%M:%SZ` — run the command; never estimate or reuse a timestamp (past runs wrote invented times into state and cycle history).
 - Release the LOCK (`rm .orchestrator/LOCK`).
 - Print a one-line summary of what this cycle did.
 
