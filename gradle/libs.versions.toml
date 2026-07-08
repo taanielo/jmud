@@ -12,7 +12,7 @@ junitPlatformLauncher = "6.1.1"
 # (com.google.errorprone.predicates.type.DescendantOf) that was removed in error_prone_core
 # 2.49.0+, which crashes NullAway at compile time. 2.48.0 is the newest release that still
 # has it; revisit once a NullAway release compatible with newer Error Prone ships.
-errorproneCore = "2.48.0"
+errorproneCore = "2.50.0"
 errorpronePlugin = "5.1.0"
 nullaway = "0.12.7"
 jspecify = "1.0.0"
