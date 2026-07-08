@@ -22,6 +22,7 @@ import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
+import io.taanielo.jmud.core.action.FleeResult;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
@@ -146,7 +147,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
             abilityTargetResolver,
             session.getCooldownTracker(),
             encumbranceService,
-            p -> context.mobRegistry() != null && context.mobRegistry().isInCombat(p.getUsername())
+            p -> context.mobRegistry() != null && context.mobRegistry().isInCombat(p.getUsername()),
+            context.worldRandom(),
+            p -> {
+                if (context.mobRegistry() != null) {
+                    context.mobRegistry().fleeCombat(p.getUsername());
+                }
+            }
         );
     }
 
@@ -1111,26 +1118,15 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to flee.");
             return;
         }
-        if (context.mobRegistry() == null) {
-            writeLineWithPrompt("You are not in combat.");
-            return;
-        }
         Player player = session.getPlayer();
-        if (!context.mobRegistry().isInCombat(player.getUsername())) {
-            writeLineWithPrompt("You are not in combat.");
-            return;
-        }
         RoomService.LookResult lookResult = roomService.look(player.getUsername(), session.getTextStyler());
-        Room currentRoom = lookResult.room();
-        if (currentRoom == null || currentRoom.getExits().isEmpty()) {
-            writeLineWithPrompt("There is nowhere to flee!");
+        FleeResult result = gameActionService.flee(player, lookResult.room());
+        if (!result.fled()) {
+            writeLineWithPrompt(result.message());
             return;
         }
-        List<Direction> exits = new ArrayList<>(currentRoom.getExits().keySet());
-        Direction chosen = exits.get(context.worldRandom().roll(0, exits.size() - 1));
-        connection.writeLine("You flee to the " + chosen.label() + "!");
-        context.mobRegistry().fleeCombat(player.getUsername());
-        sendMove(chosen);
+        connection.writeLine(result.message());
+        sendMove(result.direction());
     }
 
     @Override

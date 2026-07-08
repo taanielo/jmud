@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import io.taanielo.jmud.core.ability.AbilityUseResult;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatEngine;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatResult;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
@@ -38,6 +40,7 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.ContainerLockingService;
+import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
@@ -78,6 +81,18 @@ public class GameActionService {
      * unlocking. Defaults to a {@link ThreadLocalCombatRandom}-backed instance when not supplied.
      */
     private final ContainerLockingService containerLockingService;
+    /**
+     * Seeded RNG port used for world/game rolls made by this service — currently the random exit
+     * choice in {@link #flee}. Routing it through {@link CombatRandom} keeps flee reproducible from
+     * a world seed (AGENTS.md §5), rather than using bare {@code ThreadLocalRandom} in the adapter.
+     */
+    private final CombatRandom worldRandom;
+    /**
+     * Disengages the given player from active combat. Injected so the flee game rule can apply the
+     * combat-state mutation without the adapter (or this service) depending on
+     * {@link io.taanielo.jmud.core.mob.MobRegistry} directly. Defaults to a no-op.
+     */
+    private final Consumer<Player> combatDisengage;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -155,12 +170,13 @@ public class GameActionService {
 
     /**
      * Creates a game action service with both an explicit in-combat predicate and a container-locking
-     * service. This is the primary constructor all others delegate to.
+     * service. The world RNG defaults to {@link ThreadLocalCombatRandom} and the combat-disengage
+     * callback to a no-op, so {@link #flee} is inert; use the production constructor to wire both.
      *
      * @param inCombatCheck           returns {@code true} when the given player is already engaged in
      *                                combat; used to block
      *                                {@link io.taanielo.jmud.core.ability.AbilityTargeting#HARMFUL_OPENER}
-     *                                abilities mid-combat
+     *                                abilities mid-combat and to gate {@link #flee}
      * @param containerLockingService the service governing pick-lock success, trap, and damage rolls
      */
     public GameActionService(
@@ -175,6 +191,64 @@ public class GameActionService {
         Predicate<Player> inCombatCheck,
         ContainerLockingService containerLockingService
     ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
+            containerLockingService, new ThreadLocalCombatRandom(), _ -> { });
+    }
+
+    /**
+     * Creates a game action service with an explicit in-combat predicate, seeded world RNG, and
+     * combat-disengage callback, in addition to the default container-locking service. This is the
+     * production constructor: the RNG powers {@link #flee}'s random exit choice and the callback
+     * applies its combat-state mutation.
+     *
+     * @param inCombatCheck   returns {@code true} when the given player is already engaged in combat
+     * @param worldRandom     seeded RNG port for world/game rolls (flee direction)
+     * @param combatDisengage disengages the given player from active combat when they flee
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        Predicate<Player> inCombatCheck,
+        CombatRandom worldRandom,
+        Consumer<Player> combatDisengage
+    ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
+            new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage);
+    }
+
+    /**
+     * Full constructor to which all others delegate.
+     *
+     * @param inCombatCheck           returns {@code true} when the given player is already engaged in
+     *                                combat; used to block
+     *                                {@link io.taanielo.jmud.core.ability.AbilityTargeting#HARMFUL_OPENER}
+     *                                abilities mid-combat and to gate {@link #flee}
+     * @param containerLockingService the service governing pick-lock success, trap, and damage rolls
+     * @param worldRandom             seeded RNG port for world/game rolls (flee direction)
+     * @param combatDisengage         disengages the given player from active combat when they flee
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        Predicate<Player> inCombatCheck,
+        ContainerLockingService containerLockingService,
+        CombatRandom worldRandom,
+        Consumer<Player> combatDisengage
+    ) {
         this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         this.abilityCostResolver = Objects.requireNonNull(abilityCostResolver, "Ability cost resolver is required");
         this.abilityEffectEngine = Objects.requireNonNull(abilityEffectEngine, "Ability effect engine is required");
@@ -186,6 +260,8 @@ public class GameActionService {
         this.inCombatCheck = Objects.requireNonNull(inCombatCheck, "In-combat check is required");
         this.containerLockingService =
             Objects.requireNonNull(containerLockingService, "Container locking service is required");
+        this.worldRandom = Objects.requireNonNull(worldRandom, "World random is required");
+        this.combatDisengage = Objects.requireNonNull(combatDisengage, "Combat disengage callback is required");
     }
 
     /**
@@ -230,6 +306,34 @@ public class GameActionService {
             destinationId, source.getUsername(), playerName + " arrives in a flash of light."));
 
         return new GameActionResult(null, null, messages, Map.of("recalled", Boolean.TRUE));
+    }
+
+    /**
+     * Attempts to flee from active combat by disengaging and choosing a random available exit.
+     *
+     * <p>This is the flee game rule, kept out of the transport adapter so it is deterministic and
+     * unit-testable without sockets (AGENTS.md §5, §10). Fails without any state change when the
+     * player is not currently in combat, or when their room has no exits to flee through. On success
+     * it picks one of the room's exits uniformly at random through the seeded {@link CombatRandom}
+     * port, applies the injected combat-disengage mutation, and returns the chosen direction so the
+     * caller can perform the actual movement.
+     *
+     * @param source      the player attempting to flee
+     * @param currentRoom the player's current room, or {@code null} when their location is unknown
+     * @return a {@link FleeResult} describing the outcome and, on success, the chosen exit direction
+     */
+    public FleeResult flee(Player source, Room currentRoom) {
+        Objects.requireNonNull(source, "Source is required");
+        if (!inCombatCheck.test(source)) {
+            return FleeResult.failure("You are not in combat.");
+        }
+        if (currentRoom == null || currentRoom.getExits().isEmpty()) {
+            return FleeResult.failure("There is nowhere to flee!");
+        }
+        List<Direction> exits = new ArrayList<>(currentRoom.getExits().keySet());
+        Direction chosen = exits.get(worldRandom.roll(0, exits.size() - 1));
+        combatDisengage.accept(source);
+        return FleeResult.success(chosen, "You flee to the " + chosen.label() + "!");
     }
 
     /**
