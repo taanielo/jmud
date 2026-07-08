@@ -111,7 +111,9 @@ public class JsonItemRepository implements ItemRepository {
     }
 
     private void validateSchema(ItemDto dto, Path path) throws RepositoryException {
-        if (dto.schemaVersion() != SchemaVersions.V3 && dto.schemaVersion() != SchemaVersions.V4) {
+        if (dto.schemaVersion() != SchemaVersions.V3
+            && dto.schemaVersion() != SchemaVersions.V4
+            && dto.schemaVersion() != SchemaVersions.V5) {
             throw new RepositoryException("Unsupported item schema version " + dto.schemaVersion() + " in " + path);
         }
     }

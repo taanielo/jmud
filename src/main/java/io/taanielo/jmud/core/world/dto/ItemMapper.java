@@ -23,8 +23,11 @@ public class ItemMapper {
         List<ItemEffectDto> effects = item.getEffects().stream()
             .map(effect -> new ItemEffectDto(effect.id().getValue(), effect.durationTicks(), effect.operation()))
             .toList();
+        List<ItemDto> contents = item.getContainedItems().isEmpty()
+            ? null
+            : item.getContainedItems().stream().map(this::toDto).toList();
         return new ItemDto(
-            SchemaVersions.V4,
+            SchemaVersions.V5,
             item.getId().getValue(),
             item.getName(),
             item.getDescription(),
@@ -35,7 +38,9 @@ public class ItemMapper {
             item.getWeight(),
             item.getValue(),
             item.getAttackRef() == null ? null : item.getAttackRef().getValue(),
-            item.getTeachesAbilityRef() == null ? null : item.getTeachesAbilityRef().getValue()
+            item.getTeachesAbilityRef() == null ? null : item.getTeachesAbilityRef().getValue(),
+            item.getContainerCapacity(),
+            contents
         );
     }
 
@@ -54,6 +59,9 @@ public class ItemMapper {
         EquipmentSlot slot = EquipmentSlot.fromId(dto.equipSlot());
         AttackId attackRef = dto.attackRef() != null ? AttackId.of(dto.attackRef()) : null;
         AbilityId teachesAbilityRef = dto.teachesAbilityRef() != null ? AbilityId.of(dto.teachesAbilityRef()) : null;
+        List<Item> contents = dto.contents() == null
+            ? List.of()
+            : dto.contents().stream().map(this::toDomain).toList();
         return new Item(
             ItemId.of(dto.id()),
             dto.name(),
@@ -65,7 +73,9 @@ public class ItemMapper {
             dto.weight(),
             dto.value(),
             attackRef,
-            teachesAbilityRef
+            teachesAbilityRef,
+            dto.containerCapacity(),
+            contents
         );
     }
 }

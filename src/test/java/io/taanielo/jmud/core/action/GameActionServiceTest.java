@@ -912,6 +912,137 @@ class GameActionServiceTest {
         assertTrue(result.messages().isEmpty());
     }
 
+    // ── containers ───────────────────────────────────────────────────────
+
+    @Nested
+    class ContainerTests {
+
+        private Item bag(int capacity) {
+            return new Item(
+                ItemId.of("bag"), "a bag", "A small bag.",
+                ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, capacity, List.of()
+            );
+        }
+
+        private Item plainItem(String id, String name) {
+            return new Item(
+                ItemId.of(id), name, "A thing.",
+                ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null
+            );
+        }
+
+        @Test
+        void putItemPlacesItemIntoContainer() {
+            Player p = attacker.addItem(bag(3)).addItem(plainItem("sword", "a sword"));
+
+            GameActionResult result = service.putItem(p, "sword", "bag");
+
+            assertEquals("You put a sword into a bag.", result.messages().getFirst().text());
+            assertTrue(result.messages().stream().anyMatch(m ->
+                m.type() == GameMessage.Type.ROOM && m.text().equals("attacker puts a sword into a bag.")));
+            List<Item> inv = result.updatedSource().getInventory();
+            assertEquals(1, inv.size());
+            Item updatedBag = inv.getFirst();
+            assertEquals(1, updatedBag.containedItemCount());
+            assertEquals(ItemId.of("sword"), updatedBag.getContainedItems().getFirst().getId());
+        }
+
+        @Test
+        void putItemRejectsWhenContainerFull() {
+            Item full = bag(1).withContainedItem(plainItem("sword", "a sword"));
+            Player p = attacker.addItem(full).addItem(plainItem("shield", "a shield"));
+
+            GameActionResult result = service.putItem(p, "shield", "bag");
+
+            assertEquals("a bag is full.", result.messages().getFirst().text());
+            // No state change: shield still carried at top level.
+            assertTrue(p.getInventory().stream().anyMatch(i -> i.getId().equals(ItemId.of("shield"))));
+        }
+
+        @Test
+        void putItemRejectsNonContainer() {
+            Player p = attacker.addItem(plainItem("rock", "a rock")).addItem(plainItem("sword", "a sword"));
+
+            GameActionResult result = service.putItem(p, "sword", "rock");
+
+            assertEquals("a rock is not a container.", result.messages().getFirst().text());
+        }
+
+        @Test
+        void putItemRejectsNestingContainers() {
+            Player p = attacker.addItem(bag(3)).addItem(
+                new Item(ItemId.of("pouch"), "a pouch", "A pouch.",
+                    ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, 2, List.of()));
+
+            GameActionResult result = service.putItem(p, "pouch", "bag");
+
+            assertEquals("You can't put a container inside another container.", result.messages().getFirst().text());
+        }
+
+        @Test
+        void putItemErrorWhenNotCarryingContainer() {
+            Player p = attacker.addItem(plainItem("sword", "a sword"));
+
+            GameActionResult result = service.putItem(p, "sword", "bag");
+
+            assertEquals("You aren't carrying bag.", result.messages().getFirst().text());
+        }
+
+        @Test
+        void putItemErrorWhenNotCarryingItem() {
+            Player p = attacker.addItem(bag(3));
+
+            GameActionResult result = service.putItem(p, "sword", "bag");
+
+            assertEquals("You aren't carrying that.", result.messages().getFirst().text());
+        }
+
+        @Test
+        void getFromContainerMovesItemToInventory() {
+            Item filled = bag(3).withContainedItem(plainItem("sword", "a sword"));
+            Player p = attacker.addItem(filled);
+
+            GameActionResult result = service.getFromContainer(p, "sword", "bag");
+
+            assertEquals("You get a sword from a bag.", result.messages().getFirst().text());
+            List<Item> inv = result.updatedSource().getInventory();
+            assertTrue(inv.stream().anyMatch(i -> i.getId().equals(ItemId.of("sword"))
+                && !i.isContainer()));
+            Item updatedBag = inv.stream().filter(Item::isContainer).findFirst().orElseThrow();
+            assertEquals(0, updatedBag.containedItemCount());
+        }
+
+        @Test
+        void getFromContainerErrorWhenItemNotInside() {
+            Player p = attacker.addItem(bag(3));
+
+            GameActionResult result = service.getFromContainer(p, "sword", "bag");
+
+            assertEquals("There is no sword in a bag.", result.messages().getFirst().text());
+        }
+
+        @Test
+        void removingItemFromContainerFreesSlot() {
+            Item full = bag(1).withContainedItem(plainItem("sword", "a sword"));
+            Player p = attacker.addItem(full).addItem(plainItem("shield", "a shield"));
+
+            // Full container rejects the shield.
+            GameActionResult rejected = service.putItem(p, "shield", "bag");
+            assertEquals("a bag is full.", rejected.messages().getFirst().text());
+
+            // Take the sword out, which frees the single slot.
+            GameActionResult removed = service.getFromContainer(p, "sword", "bag");
+            Player afterRemoval = removed.updatedSource();
+
+            // Now the shield fits.
+            GameActionResult added = service.putItem(afterRemoval, "shield", "bag");
+            Item updatedBag = added.updatedSource().getInventory().stream()
+                .filter(Item::isContainer).findFirst().orElseThrow();
+            assertEquals(1, updatedBag.containedItemCount());
+            assertEquals(ItemId.of("shield"), updatedBag.getContainedItems().getFirst().getId());
+        }
+    }
+
     // ── recall ───────────────────────────────────────────────────────────
 
     @Nested

@@ -126,6 +126,28 @@ public interface SocketCommandContext extends Client {
     void dropItem(String args);
 
     /**
+     * Places an item from the player's inventory into a carried container.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param itemInput      the item name or id to place inside the container
+     * @param containerInput the container name or id to place the item into
+     */
+    default void putIntoContainer(String itemInput, String containerInput) {}
+
+    /**
+     * Retrieves an item from a carried container into the player's inventory.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param itemInput      the item name or id to retrieve from the container
+     * @param containerInput the container name or id to retrieve the item from
+     */
+    default void getFromContainer(String itemInput, String containerInput) {}
+
+    /**
      * Gives an item from the player's inventory to an already-resolved target player.
      *
      * <p>The caller ({@link GiveCommand}) is responsible for confirming the target is online

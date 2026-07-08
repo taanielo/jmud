@@ -71,7 +71,7 @@ public class RoomRenderer {
             return "none";
         }
         return items.stream()
-            .map(Item::getName)
+            .map(Item::displayName)
             .collect(Collectors.joining(", "));
     }
 

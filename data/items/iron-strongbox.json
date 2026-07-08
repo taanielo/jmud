@@ -1,0 +1,14 @@
+{
+  "schema_version": 5,
+  "id": "iron-strongbox",
+  "name": "an iron strongbox",
+  "description": "A small but immensely solid iron strongbox, its lid fitted with a heavy hasp.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 15,
+  "value": 120,
+  "container_capacity": 3
+}

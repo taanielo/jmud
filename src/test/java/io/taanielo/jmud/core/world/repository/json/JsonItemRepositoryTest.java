@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -45,6 +45,52 @@ class JsonItemRepositoryTest {
 
         assertTrue(loaded.isPresent());
         assertEquals(item, loaded.get());
+    }
+
+    @Test
+    void savesAndLoadsContainerWithContents() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository repository = new JsonItemRepository(dataRoot);
+
+        Item apple = new Item(
+            ItemId.of("apple"),
+            "an apple",
+            "A crisp red apple.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            2,
+            null
+        );
+        Item bag = new Item(
+            ItemId.of("leather-bag"),
+            "a leather bag",
+            "A supple leather bag.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            20,
+            null,
+            null,
+            5,
+            List.of(apple)
+        );
+        repository.save(bag);
+
+        // Fresh repository (no cache) so the values come back off disk.
+        Optional<Item> loaded = new JsonItemRepository(dataRoot).findById(ItemId.of("leather-bag"));
+
+        assertTrue(loaded.isPresent());
+        Item reloaded = loaded.get();
+        assertTrue(reloaded.isContainer());
+        assertEquals(Integer.valueOf(5), reloaded.getContainerCapacity());
+        assertEquals(1, reloaded.containedItemCount());
+        assertEquals(ItemId.of("apple"), reloaded.getContainedItems().getFirst().getId());
+        assertEquals(bag, reloaded);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -34,6 +35,10 @@ public class GetCommand extends RegistrableCommand {
             return Optional.empty();
         }
         String args = parts[1];
+        // "GET <item> FROM <container>" is handled by GetFromCommand; don't double-match it here.
+        if (args.toLowerCase(Locale.ROOT).contains(GetFromCommand.SEPARATOR)) {
+            return Optional.empty();
+        }
         return Optional.of(new SocketCommandMatch(this, context -> context.getItem(args)));
     }
 }

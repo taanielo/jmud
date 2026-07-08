@@ -1,0 +1,14 @@
+{
+  "schema_version": 5,
+  "id": "leather-bag",
+  "name": "a leather bag",
+  "description": "A supple leather bag with a drawstring neck, roomy enough for a few small items.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 20,
+  "container_capacity": 5
+}

@@ -61,6 +61,31 @@ class InventoryListingTest {
     }
 
     @Test
+    void containerShownWithFillLevel() {
+        Item contained = item("apple", "an apple", 1);
+        Item bag = new Item(
+            ItemId.of("leather-bag"),
+            "a leather bag",
+            "A supple leather bag.",
+            ItemAttributes.empty(),
+            List.of(),
+            List.of(),
+            null,
+            1,
+            0,
+            null,
+            null,
+            5,
+            List.of(contained)
+        );
+
+        List<String> lines = InventoryListing.format(List.of(bag), 1, 50);
+
+        assertTrue(lines.get(1).contains("a leather bag (1/5)"),
+            "Container line should show fill level but was: " + lines.get(1));
+    }
+
+    @Test
     void footerReflectsCarriedAndMaxWeight() {
         Item heavy = item("anvil", "Iron Anvil", 40);
         List<String> lines = InventoryListing.format(List.of(heavy), 40, 50);
