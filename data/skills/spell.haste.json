@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.haste",
+  "name": "haste",
+  "type": "SPELL",
+  "level": 3,
+  "cost": {
+    "mana": 4
+  },
+  "cooldown": {
+    "ticks": 4
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["hasten"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "haste"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You cast {ability} on {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} on you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} on {target}."
+    }
+  ]
+}

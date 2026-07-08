@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.bless",
+  "name": "bless",
+  "type": "SPELL",
+  "level": 2,
+  "cost": {
+    "mana": 3
+  },
+  "cooldown": {
+    "ticks": 3
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["blessing"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "bless"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You cast {ability} on {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} on you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} on {target}."
+    }
+  ]
+}

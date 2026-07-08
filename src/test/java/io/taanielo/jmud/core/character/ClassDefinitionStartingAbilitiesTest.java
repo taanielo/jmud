@@ -34,7 +34,7 @@ class ClassDefinitionStartingAbilitiesTest {
     }
 
     @Test
-    void mageHasFireballAndHeal() throws ClassRepositoryException {
+    void mageHasFireballHealAndBuffSpells() throws ClassRepositoryException {
         JsonClassRepository repo = new JsonClassRepository(Path.of("data"));
         List<ClassDefinition> classes = repo.findAll();
 
@@ -43,7 +43,9 @@ class ClassDefinitionStartingAbilitiesTest {
 
         assertTrue(ids.contains("spell.fireball"), "Mage must have spell.fireball");
         assertTrue(ids.contains("spell.heal"), "Mage must have spell.heal");
-        assertEquals(2, ids.size(), "Mage should have exactly 2 starting abilities");
+        assertTrue(ids.contains("spell.stoneskin"), "Mage must have spell.stoneskin");
+        assertTrue(ids.contains("spell.haste"), "Mage must have spell.haste");
+        assertEquals(4, ids.size(), "Mage should have exactly 4 starting abilities");
     }
 
     @Test
