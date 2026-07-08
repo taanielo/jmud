@@ -74,6 +74,7 @@ public class SocketCommandRegistry {
         new AbilitiesCommand(registry);
         new AttackCommand(registry);
         new KillCommand(registry);
+        new RangedAttackCommand(registry);
         new ConsiderCommand(registry);
         new FleeCommand(registry);
         new RecallCommand(registry);

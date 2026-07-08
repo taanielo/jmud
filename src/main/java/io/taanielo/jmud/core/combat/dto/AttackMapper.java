@@ -6,6 +6,7 @@ import java.util.Objects;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.WeaponType;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
@@ -14,10 +15,12 @@ import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 /**
  * Maps {@link AttackDto} instances to {@link AttackDefinition} domain objects.
  *
- * <p>Accepts schema versions 2 through 4. Schema version 2 omits {@code weapon_type};
+ * <p>Accepts schema versions 2 through 5. Schema version 2 omits {@code weapon_type};
  * the mapper defaults to {@link WeaponType#SLASHING} in that case. Schema version 4
  * additionally accepts an optional {@code applies_effect} field describing an on-hit
- * status effect application.
+ * status effect application. Schema version 5 additionally accepts an optional
+ * {@code range_type} field ({@code MELEE} or {@code RANGED}); it defaults to
+ * {@link RangeType#MELEE} when absent or unrecognised.
  */
 public class AttackMapper {
 
@@ -32,12 +35,14 @@ public class AttackMapper {
         Objects.requireNonNull(dto, "Attack DTO is required");
         if (dto.schemaVersion() != AttackSchemaVersions.V2
             && dto.schemaVersion() != AttackSchemaVersions.V3
-            && dto.schemaVersion() != AttackSchemaVersions.V4) {
+            && dto.schemaVersion() != AttackSchemaVersions.V4
+            && dto.schemaVersion() != AttackSchemaVersions.V5) {
             throw new IllegalArgumentException("Unsupported attack schema version " + dto.schemaVersion());
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         WeaponType weaponType = parseWeaponType(dto.weaponType());
         AttackEffectApplication effectOnHit = parseEffectOnHit(dto.appliesEffect());
+        RangeType rangeType = parseRangeType(dto.rangeType());
         return new AttackDefinition(
             AttackId.of(dto.id()),
             dto.name(),
@@ -48,8 +53,20 @@ public class AttackMapper {
             dto.damageBonus(),
             messages,
             weaponType,
-            effectOnHit
+            effectOnHit,
+            rangeType
         );
+    }
+
+    private RangeType parseRangeType(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return RangeType.MELEE;
+        }
+        try {
+            return RangeType.valueOf(raw.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return RangeType.MELEE;
+        }
     }
 
     private AttackEffectApplication parseEffectOnHit(AttackDto.AppliesEffectDto dto) {

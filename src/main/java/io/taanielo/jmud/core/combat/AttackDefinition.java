@@ -21,10 +21,64 @@ public class AttackDefinition {
     private final List<MessageSpec> messages;
     private final WeaponType weaponType;
     private final AttackEffectApplication effectOnHit;
+    private final RangeType rangeType;
+
+    /**
+     * Constructs an attack definition with explicit weapon type, an optional on-hit status
+     * effect application, and an explicit {@link RangeType}.
+     *
+     * @param id          unique identifier for this attack
+     * @param name        display name of the attack
+     * @param minDamage   minimum damage dealt on a hit (non-negative)
+     * @param maxDamage   maximum damage dealt on a hit (must be &gt;= minDamage)
+     * @param hitBonus    additive bonus to hit chance
+     * @param critBonus   additive bonus to critical hit chance
+     * @param damageBonus additive bonus applied to raw damage roll
+     * @param messages    flavour messages for hit, miss, and crit phases
+     * @param weaponType  classification of the weapon's damage style
+     * @param effectOnHit optional status effect to apply to the target on a successful hit;
+     *                    {@code null} means this attack applies no effect
+     * @param rangeType   whether this attack is melee-only or can strike an adjacent room;
+     *                    {@code null} defaults to {@link RangeType#MELEE}
+     */
+    public AttackDefinition(
+        AttackId id,
+        String name,
+        int minDamage,
+        int maxDamage,
+        int hitBonus,
+        int critBonus,
+        int damageBonus,
+        List<MessageSpec> messages,
+        WeaponType weaponType,
+        AttackEffectApplication effectOnHit,
+        RangeType rangeType
+    ) {
+        this.id = Objects.requireNonNull(id, "Attack id is required");
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Attack name must not be blank");
+        }
+        if (minDamage < 0 || maxDamage < 0) {
+            throw new IllegalArgumentException("Attack damage must be non-negative");
+        }
+        if (maxDamage < minDamage) {
+            throw new IllegalArgumentException("Attack max damage must be >= min damage");
+        }
+        this.name = name;
+        this.minDamage = minDamage;
+        this.maxDamage = maxDamage;
+        this.hitBonus = hitBonus;
+        this.critBonus = critBonus;
+        this.damageBonus = damageBonus;
+        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
+        this.weaponType = Objects.requireNonNullElse(weaponType, WeaponType.SLASHING);
+        this.effectOnHit = effectOnHit;
+        this.rangeType = Objects.requireNonNullElse(rangeType, RangeType.MELEE);
+    }
 
     /**
      * Constructs an attack definition with explicit weapon type and an optional
-     * on-hit status effect application.
+     * on-hit status effect application, defaulting to {@link RangeType#MELEE}.
      *
      * @param id          unique identifier for this attack
      * @param name        display name of the attack
@@ -50,25 +104,8 @@ public class AttackDefinition {
         WeaponType weaponType,
         AttackEffectApplication effectOnHit
     ) {
-        this.id = Objects.requireNonNull(id, "Attack id is required");
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Attack name must not be blank");
-        }
-        if (minDamage < 0 || maxDamage < 0) {
-            throw new IllegalArgumentException("Attack damage must be non-negative");
-        }
-        if (maxDamage < minDamage) {
-            throw new IllegalArgumentException("Attack max damage must be >= min damage");
-        }
-        this.name = name;
-        this.minDamage = minDamage;
-        this.maxDamage = maxDamage;
-        this.hitBonus = hitBonus;
-        this.critBonus = critBonus;
-        this.damageBonus = damageBonus;
-        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
-        this.weaponType = Objects.requireNonNullElse(weaponType, WeaponType.SLASHING);
-        this.effectOnHit = effectOnHit;
+        this(id, name, minDamage, maxDamage, hitBonus, critBonus, damageBonus, messages,
+            weaponType, effectOnHit, RangeType.MELEE);
     }
 
     /**
@@ -171,5 +208,15 @@ public class AttackDefinition {
     /** @return the on-hit status effect application, or {@code null} if this attack applies no effect */
     public AttackEffectApplication effectOnHit() {
         return effectOnHit;
+    }
+
+    /** @return whether this attack is melee-only or can strike an adjacent room */
+    public RangeType rangeType() {
+        return rangeType;
+    }
+
+    /** @return {@code true} when this attack can be fired at a target in an adjacent room */
+    public boolean isRanged() {
+        return rangeType == RangeType.RANGED;
     }
 }

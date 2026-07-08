@@ -1,0 +1,34 @@
+{
+  "schema_version": 5,
+  "id": "attack.shortbow",
+  "name": "shortbow",
+  "weapon_type": "PIERCING",
+  "range_type": "RANGED",
+  "min_damage": 2,
+  "max_damage": 7,
+  "hit_bonus": 8,
+  "crit_bonus": 2,
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You snap off a quick shot at {target} for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} snaps off a quick shot at {target}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Your hasty shot whistles past {target}."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Your arrow buries itself deep in {target} for {damage}!"
+    }
+  ]
+}

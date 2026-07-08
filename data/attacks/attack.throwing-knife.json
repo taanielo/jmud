@@ -1,0 +1,34 @@
+{
+  "schema_version": 5,
+  "id": "attack.throwing-knife",
+  "name": "throwing knife",
+  "weapon_type": "PIERCING",
+  "range_type": "RANGED",
+  "min_damage": 2,
+  "max_damage": 5,
+  "hit_bonus": 7,
+  "crit_bonus": 4,
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You hurl a knife at {target}, sinking it in for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} hurls a knife at {target}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Your thrown knife clatters harmlessly past {target}."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Your knife strikes {target} in a vital spot for {damage}!"
+    }
+  ]
+}

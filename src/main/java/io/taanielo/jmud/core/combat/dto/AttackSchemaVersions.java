@@ -7,6 +7,8 @@ public final class AttackSchemaVersions {
     public static final int V3 = 3;
     /** V4 adds the optional {@code applies_effect} field (on-hit status effect application). */
     public static final int V4 = 4;
+    /** V5 adds the optional {@code range_type} field (MELEE or RANGED). */
+    public static final int V5 = 5;
 
     private AttackSchemaVersions() {
     }
