@@ -18,6 +18,7 @@ public record ItemDto(
     String attackRef,
     String teachesAbilityRef,
     Integer containerCapacity,
-    List<ItemDto> contents
+    List<ItemDto> contents,
+    Integer lightRadius
 ) {
 }

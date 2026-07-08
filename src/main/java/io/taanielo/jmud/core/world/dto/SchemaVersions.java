@@ -6,6 +6,7 @@ public final class SchemaVersions {
     public static final int V3 = 3;
     public static final int V4 = 4;
     public static final int V5 = 5;
+    public static final int V6 = 6;
 
     private SchemaVersions() {
     }

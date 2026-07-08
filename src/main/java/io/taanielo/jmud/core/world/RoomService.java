@@ -274,7 +274,8 @@ public class RoomService {
             occupants,
             room.getLockedExits(),
             room.getMinLevel(),
-            room.getNightDescription()
+            room.getNightDescription(),
+            room.getLightLevel()
         );
     }
 
@@ -305,7 +306,8 @@ public class RoomService {
             room.getOccupants(),
             room.getLockedExits(),
             room.getMinLevel(),
-            room.getNightDescription()
+            room.getNightDescription(),
+            room.getLightLevel()
         );
         try {
             roomRepository.save(updated);

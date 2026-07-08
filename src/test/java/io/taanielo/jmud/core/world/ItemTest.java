@@ -104,4 +104,27 @@ class ItemTest {
             ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, 0, List.of()
         ));
     }
+
+    @Test
+    void plainItemIsNotALightSource() {
+        assertFalse(plain("rock", "a rock").isLightSource());
+    }
+
+    @Test
+    void itemWithPositiveLightRadiusIsALightSource() {
+        Item torch = new Item(
+            ItemId.of("torch"), "a torch", "A torch.",
+            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null, List.of(), 1
+        );
+        assertTrue(torch.isLightSource());
+        assertEquals(1, torch.getLightRadius());
+    }
+
+    @Test
+    void nonPositiveLightRadiusIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new Item(
+            ItemId.of("torch"), "a torch", "A torch.",
+            ItemAttributes.empty(), List.of(), List.of(), null, 1, 5, null, null, null, List.of(), 0
+        ));
+    }
 }
