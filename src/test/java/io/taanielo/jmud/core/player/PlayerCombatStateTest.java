@@ -62,4 +62,28 @@ class PlayerCombatStateTest {
 
         assertEquals(1, state.effects().size());
     }
+
+    @Test
+    void stealthDefaultsToFalseAndToggles() {
+        PlayerCombatState state = new PlayerCombatState(PlayerVitals.defaults(), List.of(), false);
+
+        assertFalse(state.stealthActive());
+        assertTrue(state.withStealth(true).stealthActive());
+        assertFalse(state.withStealth(true).withStealth(false).stealthActive());
+    }
+
+    @Test
+    void deathAndRespawnClearStealth() {
+        PlayerCombatState hidden = new PlayerCombatState(PlayerVitals.defaults(), List.of(), false).withStealth(true);
+
+        assertFalse(hidden.die().stealthActive());
+        assertFalse(hidden.respawn().stealthActive());
+    }
+
+    @Test
+    void withVitalsPreservesStealth() {
+        PlayerCombatState hidden = new PlayerCombatState(PlayerVitals.defaults(), List.of(), false).withStealth(true);
+
+        assertTrue(hidden.withVitals(hidden.vitals().damage(1)).stealthActive());
+    }
 }

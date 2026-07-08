@@ -41,6 +41,8 @@ class MobRegistryAggressiveMobTest {
     private static final AttackDefinition ONE_DMG_ATTACK =
         new AttackDefinition(DEFAULT_ATTACK, "punch", 1, 1, 0, 0, 0, List.of());
 
+    private StubPlayerRepository lastPlayerRepo;
+
     private Player player(String name) {
         User user = User.of(Username.of(name), Password.hash("pw", 1));
         return Player.of(user, "%hp> ");
@@ -74,7 +76,8 @@ class MobRegistryAggressiveMobTest {
         RoomService roomService = new RoomService(new StubRoomRepository(ROOM_ID), ROOM_ID);
         roomService.ensurePlayerLocation(target.getUsername());
 
-        PlayerRepository playerRepo = new StubPlayerRepository(target);
+        StubPlayerRepository playerRepo = new StubPlayerRepository(target);
+        lastPlayerRepo = playerRepo;
         PlayerEventBus bus = new PlayerEventBus();
 
         MobRegistry registry = new MobRegistry(
@@ -111,6 +114,34 @@ class MobRegistryAggressiveMobTest {
 
         assertFalse(registry.isInCombat(target.getUsername()),
             "Player should no longer be in combat after fleeing from aggressive mob");
+    }
+
+    @Test
+    void aggressiveMob_doesNotEngageStealthedPlayer_afterTick() {
+        Player hidden = player("sneak").withStealth(true);
+        MobRegistry registry = buildRegistryWithAggressiveMob(hidden, 100);
+
+        registry.tick();
+
+        assertFalse(registry.isInCombat(hidden.getUsername()),
+            "An aggressive mob must not engage a player hidden in stealth");
+    }
+
+    @Test
+    void aggressiveMob_keepsAttackingAlreadyEngagedPlayerEvenWhenStealthed() {
+        Player hero = player("hero");
+        MobRegistry registry = buildRegistryWithAggressiveMob(hero, 100);
+
+        registry.tick();
+        assertTrue(registry.isInCombat(hero.getUsername()),
+            "Precondition: mob should have engaged the player");
+
+        // The player slips into stealth after already being engaged; existing combat continues.
+        lastPlayerRepo.savePlayer(hero.withStealth(true));
+        registry.tick();
+
+        assertTrue(registry.isInCombat(hero.getUsername()),
+            "Stealth only prevents fresh aggro; an already-engaged mob keeps attacking");
     }
 
     // ── stubs ─────────────────────────────────────────────────────────

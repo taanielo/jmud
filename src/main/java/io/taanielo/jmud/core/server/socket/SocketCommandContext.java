@@ -427,6 +427,19 @@ public interface SocketCommandContext extends Client {
     default void pickLock(String args) {}
 
     /**
+     * Toggles the rogue stealth (SNEAK/HIDE) state for the current player.
+     *
+     * <p>Only rogues may sneak. Activating stealth hides the rogue from fresh aggro by aggressive
+     * mobs; using it again reveals them. The state also clears automatically when the rogue attacks
+     * or uses an ability.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args unused command arguments
+     */
+    default void sneak(String args) {}
+
+    /**
      * Deposits the specified amount of gold from the player's carried balance into the bank.
      *
      * <p>Requires the player to be in the same room as a bank NPC.

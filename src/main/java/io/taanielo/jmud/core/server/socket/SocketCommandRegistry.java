@@ -93,6 +93,7 @@ public class SocketCommandRegistry {
         new LockCommand(registry);
         new UnlockCommand(registry);
         new PickCommand(registry);
+        new SneakCommand(registry);
         new QuitCommand(registry);
         new HelpCommand(registry);
         new AliasCommand(registry);
