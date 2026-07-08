@@ -1283,6 +1283,127 @@ class GameActionServiceTest {
         }
     }
 
+    // ── sneak / stealth ────────────────────────────────────────────────────
+
+    @Nested
+    class StealthTests {
+
+        private static final AbilityId BACKSTAB = AbilityId.of("skill.backstab");
+
+        private Player rogue;
+        private Player victim;
+        private GameActionService stealthService;
+
+        @BeforeEach
+        void setUpStealth() {
+            rogue = new Player(
+                User.of(Username.of("shadow"), Password.hash("pw", 1000)),
+                5, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(BACKSTAB), null, ClassId.of("rogue")
+            );
+            victim = new Player(
+                User.of(Username.of("victim"), Password.hash("pw", 1000)),
+                3, 0L, new PlayerVitals(50, 50, 50, 50, 50, 50), List.of(), "prompt", false,
+                List.of(), null, null
+            );
+            roomService.ensurePlayerLocation(rogue.getUsername());
+            roomService.ensurePlayerLocation(victim.getUsername());
+
+            AbilityRegistry registry = new AbilityRegistry(List.of(new AbilityDefinition(
+                BACKSTAB, "backstab", AbilityType.SKILL, 1,
+                new AbilityCost(0, 0), new AbilityCooldown(0),
+                AbilityTargeting.HARMFUL_OPENER, List.of(),
+                List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 10, null)),
+                List.of()
+            )));
+            AbilityTargetResolver targetResolver = (source, input) ->
+                input.equalsIgnoreCase("victim") ? Optional.of(victim) : Optional.empty();
+            stealthService = new GameActionService(
+                registry, new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                roomService, targetResolver,
+                new TestCooldowns(), testEncumbranceService()
+            );
+        }
+
+        @Test
+        void sneakActivatesStealthForRogue() {
+            GameActionResult result = stealthService.sneakToggle(rogue);
+
+            assertTrue(result.updatedSource().isStealthActive());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("fade into the shadows")));
+        }
+
+        @Test
+        void sneakTogglesStealthOffWhenAlreadyHidden() {
+            GameActionResult result = stealthService.sneakToggle(rogue.withStealth(true));
+
+            assertFalse(result.updatedSource().isStealthActive());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("emerge from stealth")));
+        }
+
+        @Test
+        void nonRogueCannotSneak() {
+            Player fighter = new Player(
+                User.of(Username.of("brute"), Password.hash("pw", 1000)),
+                5, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("fighter")
+            );
+
+            GameActionResult result = stealthService.sneakToggle(fighter);
+
+            assertTrue(result.messages().getFirst().text().contains("rogues"));
+            assertTrue(result.updatedSource() == null);
+        }
+
+        @Test
+        void backstabFromStealthDealsBonusDamageAndBreaksStealth() {
+            GameActionResult stealthResult = stealthService.useAbility(rogue.withStealth(true), "backstab victim");
+            GameActionResult normalResult = stealthService.useAbility(rogue, "backstab victim");
+
+            assertEquals(
+                normalResult.updatedTarget().getVitals().hp() - 10,
+                stealthResult.updatedTarget().getVitals().hp(),
+                "A backstab from stealth must deal 10 bonus damage over a normal backstab"
+            );
+            assertFalse(stealthResult.updatedSource().isStealthActive(),
+                "Using an ability must clear stealth");
+            assertTrue(stealthResult.messages().stream().anyMatch(m -> m.text().contains("deadly precision")));
+            assertTrue(stealthResult.messages().stream().anyMatch(m -> m.text().contains("emerge from the shadows")));
+        }
+
+        @Test
+        void attackingBreaksStealth() {
+            AttackId defaultAttack = CombatSettings.defaultAttackId();
+            GameActionService attackService = new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of(
+                        defaultAttack,
+                        new AttackDefinition(defaultAttack, "punch", 2, 4, 0, 0, 0, List.of())
+                    )),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                roomService,
+                (source, input) -> input.equalsIgnoreCase("victim") ? Optional.of(victim) : Optional.empty(),
+                new TestCooldowns(), testEncumbranceService()
+            );
+
+            GameActionResult result = attackService.attack(rogue.withStealth(true), "victim");
+
+            assertTrue(result.updatedSource() != null, "attack must return an updated source when stealth breaks");
+            assertFalse(result.updatedSource().isStealthActive());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("emerge from the shadows")));
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private Player player(String username) {

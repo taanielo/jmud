@@ -404,6 +404,17 @@ public class Player implements EffectTarget, Combatant {
         return resting;
     }
 
+    /**
+     * Returns {@code true} while the player is hidden in stealth (via SNEAK/HIDE).
+     *
+     * <p>This flag is in-memory only and is never persisted to JSON, so it is always
+     * {@code false} after a disconnect or server restart.
+     */
+    @JsonIgnore
+    public boolean isStealthActive() {
+        return combatState.stealthActive();
+    }
+
     @Override
     public List<EffectInstance> effects() {
         return combatState.effects();
@@ -547,6 +558,17 @@ public class Player implements EffectTarget, Combatant {
      */
     public Player withResting(boolean resting) {
         return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
+    }
+
+    /**
+     * Returns a copy of this player with the stealth (hidden) flag set to the given value.
+     *
+     * <p>The stealth state is in-memory only and is never persisted.
+     *
+     * @param active {@code true} to enter stealth, {@code false} to leave it
+     */
+    public Player withStealth(boolean active) {
+        return new Player(identity, combatState.withStealth(active), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance);
     }
 
     /**

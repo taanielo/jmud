@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "id": "skill.sneak",
+  "name": "sneak",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {},
+  "cooldown": {
+    "ticks": 0
+  },
+  "targeting": "NONE",
+  "aliases": ["hide"],
+  "effects": [],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You melt into the shadows."
+    }
+  ]
+}

@@ -7,23 +7,34 @@ import java.util.Objects;
 import io.taanielo.jmud.core.effects.EffectInstance;
 
 /**
- * Holds a player's combat-related state: vitals, active effects and death flag.
+ * Holds a player's combat-related state: vitals, active effects, death flag and the
+ * transient stealth flag.
  *
  * <p>The effects collection is owned by this class. Callers observe it through the
  * immutable snapshot returned by {@link #effects()} and mutate it only through
  * {@link #addEffect(EffectInstance)} and {@link #removeEffect(EffectInstance)},
  * which — like all game-state mutation — must run on the tick thread (AGENTS.md §5).
+ *
+ * <p>The {@link #stealthActive()} flag is in-memory only and is never serialised; it
+ * defaults to {@code false} for players loaded from persistence and is cleared on death
+ * and respawn.
  */
 public class PlayerCombatState {
     private final PlayerVitals vitals;
     private final List<EffectInstance> effects;
     private final boolean dead;
+    private final boolean stealthActive;
 
     public PlayerCombatState(PlayerVitals vitals, List<EffectInstance> effects, Boolean dead) {
+        this(vitals, effects, dead, false);
+    }
+
+    public PlayerCombatState(PlayerVitals vitals, List<EffectInstance> effects, Boolean dead, boolean stealthActive) {
         this.vitals = Objects.requireNonNull(vitals, "Vitals are required");
         this.effects = new ArrayList<>(Objects.requireNonNullElse(effects, List.of()));
         boolean resolvedDead = Objects.requireNonNullElse(dead, false) || vitals.hp() <= 0;
         this.dead = resolvedDead;
+        this.stealthActive = stealthActive;
     }
 
     public PlayerVitals vitals() {
@@ -67,28 +78,47 @@ public class PlayerCombatState {
         return dead;
     }
 
+    /**
+     * Returns whether the player is currently in stealth (hidden). In-memory only, never persisted.
+     */
+    public boolean stealthActive() {
+        return stealthActive;
+    }
+
     public PlayerCombatState die() {
-        if (dead && vitals.hp() <= 0 && effects.isEmpty()) {
+        if (dead && vitals.hp() <= 0 && effects.isEmpty() && !stealthActive) {
             return this;
         }
         PlayerVitals deadVitals = vitals.damage(vitals.hp());
-        return new PlayerCombatState(deadVitals, List.of(), true);
+        return new PlayerCombatState(deadVitals, List.of(), true, false);
     }
 
     public PlayerCombatState respawn() {
         PlayerVitals restored = vitals.respawnHalf();
-        return new PlayerCombatState(restored, List.of(), false);
+        return new PlayerCombatState(restored, List.of(), false, false);
     }
 
     public PlayerCombatState withoutEffects() {
-        return new PlayerCombatState(vitals, List.of(), dead);
+        return new PlayerCombatState(vitals, List.of(), dead, stealthActive);
     }
 
     public PlayerCombatState withVitals(PlayerVitals updatedVitals) {
-        return new PlayerCombatState(updatedVitals, effects, dead);
+        return new PlayerCombatState(updatedVitals, effects, dead, stealthActive);
     }
 
     public PlayerCombatState withDead(boolean nextDead) {
-        return new PlayerCombatState(vitals, effects, nextDead);
+        return new PlayerCombatState(vitals, effects, nextDead, stealthActive);
+    }
+
+    /**
+     * Returns a copy of this combat state with the stealth flag set to the given value.
+     *
+     * @param active {@code true} to enter stealth, {@code false} to leave it
+     */
+    public PlayerCombatState withStealth(boolean active) {
+        if (this.stealthActive == active) {
+            return this;
+        }
+        return new PlayerCombatState(vitals, effects, dead, active);
     }
 }

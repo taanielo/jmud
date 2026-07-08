@@ -101,6 +101,10 @@ public class GameActionService {
     private static final AbilityId RECALL_COOLDOWN_KEY = AbilityId.of("recall");
     /** Number of ticks a player must wait between successful recalls. */
     private static final int RECALL_COOLDOWN_TICKS = 30;
+    /** Ability id of the rogue BACKSTAB skill, which gains a bonus when opened from stealth. */
+    private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
+    /** Extra damage a BACKSTAB deals when the attacker strikes from stealth. */
+    private static final int STEALTH_BACKSTAB_BONUS_DAMAGE = 10;
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -380,10 +384,19 @@ public class GameActionService {
             GameActionResult deathResult = resolveDeathIfNeeded(result.target(), source);
             Player updatedTarget = deathResult.updatedTarget();
             messages.addAll(deathResult.messages());
+            // Attacking always breaks stealth (AGENTS.md §5 — same tick as the action).
+            Player updatedSource = null;
+            if (source.isStealthActive()) {
+                updatedSource = source.withStealth(false);
+                messages.add(GameMessage.toSource("You emerge from the shadows."));
+                messages.add(GameMessage.toRoom(
+                    source.getUsername(), target.getUsername(),
+                    source.getUsername().getValue() + " emerges from the shadows!"));
+            }
             Map<String, Object> meta = result.rngSeed() != 0L
                 ? Map.of("rngSeed", result.rngSeed())
                 : Map.of();
-            return new GameActionResult(null, updatedTarget, messages, meta);
+            return new GameActionResult(updatedSource, updatedTarget, messages, meta);
         } catch (RepositoryException | EffectRepositoryException e) {
             return GameActionResult.error("Combat failed: " + e.getMessage());
         }
@@ -403,6 +416,8 @@ public class GameActionService {
         );
         AbilityEngine engine = new AbilityEngine(abilityRegistry, abilityCostResolver, resolver, sink);
 
+        boolean struckFromStealth = source.isStealthActive();
+
         AbilityUseResult result = engine.use(
             source, input, source.getLearnedAbilities(),
             abilityTargetResolver, cooldownTracker, inCombatCheck
@@ -416,6 +431,25 @@ public class GameActionService {
         Player updatedSource = result.source();
         Player updatedTarget = result.target();
 
+        // Stealth resolution: a genuine ability use against a distinct target breaks stealth;
+        // a backstab landed from stealth deals bonus damage first. This runs synchronously in the
+        // same tick as the ability so no reader thread ever observes a half-broken stealth state.
+        boolean hitDistinctTarget = !updatedTarget.getUsername().equals(updatedSource.getUsername());
+        if (struckFromStealth && hitDistinctTarget) {
+            if (isBackstab(input, source.getLearnedAbilities())) {
+                PlayerVitals boosted = updatedTarget.getVitals().damage(STEALTH_BACKSTAB_BONUS_DAMAGE);
+                updatedTarget = updatedTarget.withVitals(boosted);
+                messages.add(GameMessage.toSource(
+                    "Your strike from the shadows lands with deadly precision (+"
+                        + STEALTH_BACKSTAB_BONUS_DAMAGE + " damage)!"));
+            }
+            updatedSource = updatedSource.withStealth(false);
+            messages.add(GameMessage.toSource("You emerge from the shadows."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(), updatedTarget.getUsername(),
+                source.getUsername().getValue() + " emerges from the shadows!"));
+        }
+
         GameActionResult deathResult = resolveDeathIfNeeded(updatedTarget, updatedSource);
         updatedTarget = deathResult.updatedTarget();
         messages.addAll(deathResult.messages());
@@ -425,6 +459,16 @@ public class GameActionService {
         }
 
         return new GameActionResult(updatedSource, updatedTarget, messages);
+    }
+
+    /**
+     * Returns whether the given raw ability {@code input} resolves to the rogue BACKSTAB skill
+     * among the player's learned abilities.
+     */
+    private boolean isBackstab(String input, List<AbilityId> learnedAbilities) {
+        return abilityRegistry.findBestMatch(input, learnedAbilities)
+            .map(match -> BACKSTAB_ABILITY_ID.equals(match.ability().id()))
+            .orElse(false);
     }
 
     /**
@@ -783,6 +827,44 @@ public class GameActionService {
             ));
         } else {
             messages.add(GameMessage.toSource("You fail to pick the lock on " + container.getName() + "."));
+        }
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Toggles the rogue stealth (SNEAK/HIDE) state on the given player.
+     *
+     * <p>Only rogues may sneak. When stealth is inactive it is activated ("You fade into the
+     * shadows"); when already active it is deactivated ("You emerge from stealth"). While hidden a
+     * rogue is skipped by aggressive mobs choosing a fresh target (see
+     * {@link io.taanielo.jmud.core.mob.MobRegistry}); the state is cleared automatically the moment
+     * the rogue attacks, casts an ability, or uses a skill (see {@link #useAbility} and
+     * {@link #attack}). The flag lives on the {@link Player} aggregate and is mutated only on the
+     * tick thread (AGENTS.md §5).
+     *
+     * @param source the player toggling stealth
+     * @return result with the updated (hidden/revealed) player and outcome messages, or an error
+     */
+    public GameActionResult sneakToggle(Player source) {
+        if (!isRogue(source)) {
+            return GameActionResult.error("Only rogues know how to move unseen.");
+        }
+        if (source.isDead()) {
+            return GameActionResult.error("You cannot do that right now.");
+        }
+        boolean activating = !source.isStealthActive();
+        Player updated = source.withStealth(activating);
+        List<GameMessage> messages = new ArrayList<>();
+        if (activating) {
+            messages.add(GameMessage.toSource("You fade into the shadows."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(), null,
+                source.getUsername().getValue() + " slips into the shadows and vanishes."));
+        } else {
+            messages.add(GameMessage.toSource("You emerge from stealth."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(), null,
+                source.getUsername().getValue() + " steps out of the shadows."));
         }
         return new GameActionResult(updated, null, messages);
     }

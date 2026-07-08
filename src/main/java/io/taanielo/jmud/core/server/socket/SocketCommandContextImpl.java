@@ -356,6 +356,25 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
     }
 
+    /**
+     * Reveals the player if they are currently hidden in stealth, emitting the break messages to
+     * the player and their room. Used by attack paths (e.g. striking a mob) where breaking stealth
+     * is a side effect rather than the action's own result.
+     */
+    private void breakStealthIfActive() {
+        Player player = session.getPlayer();
+        if (player != null && player.isStealthActive()) {
+            deliverResult(new GameActionResult(
+                player.withStealth(false),
+                null,
+                List.of(
+                    GameMessage.toSource("You emerge from the shadows."),
+                    GameMessage.toRoom(
+                        player.getUsername(), null,
+                        player.getUsername().getValue() + " emerges from the shadows!"))));
+        }
+    }
+
     @Override
     public void writeLineWithPrompt(String message) {
         connection.writeLine(message);
@@ -1054,6 +1073,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void sneak(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sneak.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.sneakToggle(session.getPlayer());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void writeItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to write.");
@@ -1100,6 +1131,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("There are no mobs here.");
             return;
         }
+        breakStealthIfActive();
         Player player = session.getPlayer();
         var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
         if (roomIdOpt.isEmpty()) {

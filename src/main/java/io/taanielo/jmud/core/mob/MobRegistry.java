@@ -391,6 +391,12 @@ public class MobRegistry implements Tickable {
             return;
         }
         boolean firstEngagement = !mob.engagedPlayers().contains(targetUsername);
+        // A player hidden in stealth (rogue SNEAK/HIDE) avoids fresh aggro: an aggressive mob will
+        // not engage them for the first time. Mobs already engaged with a player keep attacking —
+        // stealth only prevents the initial engagement.
+        if (firstEngagement && target.isStealthActive()) {
+            return;
+        }
         boolean useSpecial = mob.template().specialAttackId() != null
             && !mob.specialAbilityUsed()
             && firstEngagement;
