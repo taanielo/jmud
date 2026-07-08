@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
+import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.effects.EffectId;
 
 class AttackMapperTest {
@@ -29,7 +30,8 @@ class AttackMapperTest {
             0,
             List.of(),
             "PIERCING",
-            new AttackDto.AppliesEffectDto("poison", 40)
+            new AttackDto.AppliesEffectDto("poison", 40),
+            null
         );
 
         AttackDefinition attack = mapper.toDomain(dto);
@@ -52,12 +54,57 @@ class AttackMapperTest {
             0,
             List.of(),
             "PIERCING",
+            null,
             null
         );
 
         AttackDefinition attack = mapper.toDomain(dto);
 
         assertNull(attack.effectOnHit());
+    }
+
+    @Test
+    void defaultsRangeTypeToMeleeWhenAbsent() {
+        AttackDto dto = new AttackDto(
+            AttackSchemaVersions.V4,
+            "attack.dagger",
+            "dagger",
+            1,
+            5,
+            8,
+            4,
+            0,
+            List.of(),
+            "PIERCING",
+            null,
+            null
+        );
+
+        AttackDefinition attack = mapper.toDomain(dto);
+
+        assertEquals(RangeType.MELEE, attack.rangeType());
+    }
+
+    @Test
+    void mapsRangedFromSchemaVersion5() {
+        AttackDto dto = new AttackDto(
+            AttackSchemaVersions.V5,
+            "attack.long-bow",
+            "long bow",
+            3,
+            9,
+            5,
+            2,
+            0,
+            List.of(),
+            "PIERCING",
+            null,
+            "RANGED"
+        );
+
+        AttackDefinition attack = mapper.toDomain(dto);
+
+        assertEquals(RangeType.RANGED, attack.rangeType());
     }
 
     @Test
@@ -72,6 +119,7 @@ class AttackMapperTest {
             0,
             0,
             List.of(),
+            null,
             null,
             null
         );

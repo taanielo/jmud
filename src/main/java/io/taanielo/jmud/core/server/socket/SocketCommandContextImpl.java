@@ -1160,6 +1160,43 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void executeRangedAttack(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to attack.");
+            return;
+        }
+        cancelRestIfActive();
+        String normalized = args == null ? "" : args.trim();
+        int lastSpace = normalized.lastIndexOf(' ');
+        if (lastSpace < 0) {
+            writeLineWithPrompt("Usage: SHOOT <target> <direction>");
+            return;
+        }
+        String targetName = normalized.substring(0, lastSpace).trim();
+        String directionInput = normalized.substring(lastSpace + 1).trim();
+        Optional<Direction> direction = Direction.fromInput(directionInput);
+        if (targetName.isEmpty() || direction.isEmpty()) {
+            writeLineWithPrompt("Usage: SHOOT <target> <direction>");
+            return;
+        }
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("There are no mobs here.");
+            return;
+        }
+        breakStealthIfActive();
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        GameActionResult result = context.mobRegistry()
+            .processPlayerRangedAttack(player, targetName, direction.get(), roomIdOpt.get());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void fleeCombat() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to flee.");

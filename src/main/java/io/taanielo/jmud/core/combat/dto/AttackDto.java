@@ -13,6 +13,9 @@ import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
  *
  * <p>Schema version 4 adds the optional {@code applies_effect} field, describing
  * a status effect this attack applies to its target on a successful hit.
+ *
+ * <p>Schema version 5 adds the optional {@code range_type} field ({@code MELEE} or
+ * {@code RANGED}); files that omit it default to {@code MELEE}.
  */
 public record AttackDto(
     int schemaVersion,
@@ -25,7 +28,8 @@ public record AttackDto(
     int damageBonus,
     List<MessageSpecDto> messages,
     String weaponType,
-    AppliesEffectDto appliesEffect
+    AppliesEffectDto appliesEffect,
+    String rangeType
 ) {
 
     /**

@@ -1,0 +1,19 @@
+{
+  "schema_version": 7,
+  "id": "throwing-knife",
+  "name": "Throwing Knife",
+  "description": "A balanced blade weighted for throwing at a distant foe.",
+  "attributes": {
+    "stats": {
+      "dexterity": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 1,
+  "value": 12,
+  "attack_ref": "attack.throwing-knife",
+  "max_durability": 20,
+  "durability": 20
+}

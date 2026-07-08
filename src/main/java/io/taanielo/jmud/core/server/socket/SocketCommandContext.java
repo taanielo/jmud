@@ -214,6 +214,20 @@ public interface SocketCommandContext extends Client {
     void killMob(String args);
 
     /**
+     * Executes a SHOOT command: fires a ranged weapon at a mob in an adjacent room.
+     *
+     * <p>Parses {@code args} as {@code <target> <direction>}, verifies the player wields a ranged
+     * weapon, and resolves the attack against the named mob in the room lying in the given
+     * direction. Fails with a clear message when the direction is missing/invalid, no matching mob
+     * is in that room, or the player is not wielding a ranged weapon.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw command arguments ({@code <target> <direction>})
+     */
+    default void executeRangedAttack(String args) {}
+
+    /**
      * Sends the current player's inventory listing (carried items and encumbrance).
      */
     void sendInventory();

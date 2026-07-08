@@ -23,6 +23,7 @@ import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
@@ -300,75 +301,190 @@ public class MobRegistry implements Tickable, NpcStealPort {
                 + remaining + " HP remaining)"));
 
         if (!mob.isAlive()) {
-            messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-            for (Item dropped : dropLoot(mob)) {
-                messages.add(GameMessage.toSource(
-                    "A " + dropped.getName() + " drops to the ground."));
-            }
-            mob.scheduleRespawn(currentTimeOfDay());
-            endCombatForMob(mob);
+            awardMobKill(mob, attacker, roomId, messages);
+        }
+        return new GameActionResult(null, null, messages);
+    }
 
-            // Determine XP share: split equally among party members in the same room.
-            List<Username> xpRecipients = partyService != null
-                ? partyService.getPartyMembersInRoom(
-                    attacker.getUsername(), roomId, roomService::findPlayerLocation)
-                : List.of(attacker.getUsername());
-            int xpPerMember = (int) Math.floor(
-                (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
-
-            Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
-            LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
-            Player afterXp = levelUpResult.player();
-            if (mob.template().goldDrop() != null) {
-                int gold = mob.template().goldDrop().roll(random);
-                if (gold > 0) {
-                    afterXp = afterXp.addGold(gold);
-                    messages.add(GameMessage.toSource(
-                        "The " + mob.template().name() + " drops " + gold + " gold coin"
-                            + (gold == 1 ? "" : "s") + "."));
-                }
-            }
-            if (questKillService != null) {
-                var killResult = questKillService.recordKill(afterXp, mob.template().id().getValue());
-                if (killResult.isPresent()) {
-                    afterXp = killResult.get().player();
-                    for (String msg : killResult.get().messages()) {
-                        messages.add(GameMessage.toSource(msg));
-                    }
-                }
-            }
-            afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
-            saveOrLog(afterXp);
+    /**
+     * Applies the shared post-kill rewards when a player's attack (melee or ranged) drops a mob:
+     * loot drops, respawn scheduling, combat teardown, party-split XP, gold, quest-kill credit, and
+     * level-up notifications. Appends the attacker-facing messages to {@code messages} and publishes
+     * per-member messages to other party members in the room. Runs entirely on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param mob      the slain mob
+     * @param attacker the player who landed the killing blow
+     * @param roomId   the room used to resolve the attacker's party members for XP sharing
+     * @param messages the mutable attacker-facing message list to append reward messages to
+     */
+    private void awardMobKill(MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
+        messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
+        for (Item dropped : dropLoot(mob)) {
             messages.add(GameMessage.toSource(
-                "You gain " + xpPerMember + " experience points."));
-            if (levelUpResult.leveledUp()) {
-                messages.add(GameMessage.toSource(
-                    "You have advanced to level " + afterXp.getLevel() + "!"));
-            }
+                "A " + dropped.getName() + " drops to the ground."));
+        }
+        mob.scheduleRespawn(currentTimeOfDay());
+        endCombatForMob(mob);
 
-            // Award XP to other party members in the same room.
-            for (Username member : xpRecipients) {
-                if (member.equals(attacker.getUsername())) {
-                    continue;
-                }
-                Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
-                if (memberPlayer == null || memberPlayer.isDead()) {
-                    continue;
-                }
-                LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
-                Player memberAfterXp = memberLvl.player()
-                    .withTotalKills(memberLvl.player().getTotalKills() + 1);
-                saveOrLog(memberAfterXp);
-                List<GameMessage> memberMsgs = new ArrayList<>();
-                memberMsgs.add(GameMessage.toSource(
-                    "Your party slay the " + mob.template().name()
-                        + "! You gain " + xpPerMember + " experience points."));
-                if (memberLvl.leveledUp()) {
-                    memberMsgs.add(GameMessage.toSource(
-                        "You have advanced to level " + memberAfterXp.getLevel() + "!"));
-                }
-                playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
+        // Determine XP share: split equally among party members in the same room.
+        List<Username> xpRecipients = partyService != null
+            ? partyService.getPartyMembersInRoom(
+                attacker.getUsername(), roomId, roomService::findPlayerLocation)
+            : List.of(attacker.getUsername());
+        int xpPerMember = (int) Math.floor(
+            (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
+
+        Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
+        LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
+        Player afterXp = levelUpResult.player();
+        if (mob.template().goldDrop() != null) {
+            int gold = mob.template().goldDrop().roll(random);
+            if (gold > 0) {
+                afterXp = afterXp.addGold(gold);
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + " drops " + gold + " gold coin"
+                        + (gold == 1 ? "" : "s") + "."));
             }
+        }
+        if (questKillService != null) {
+            var killResult = questKillService.recordKill(afterXp, mob.template().id().getValue());
+            if (killResult.isPresent()) {
+                afterXp = killResult.get().player();
+                for (String msg : killResult.get().messages()) {
+                    messages.add(GameMessage.toSource(msg));
+                }
+            }
+        }
+        afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
+        saveOrLog(afterXp);
+        messages.add(GameMessage.toSource(
+            "You gain " + xpPerMember + " experience points."));
+        if (levelUpResult.leveledUp()) {
+            messages.add(GameMessage.toSource(
+                "You have advanced to level " + afterXp.getLevel() + "!"));
+        }
+
+        // Award XP to other party members in the same room.
+        for (Username member : xpRecipients) {
+            if (member.equals(attacker.getUsername())) {
+                continue;
+            }
+            Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
+            if (memberPlayer == null || memberPlayer.isDead()) {
+                continue;
+            }
+            LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
+            Player memberAfterXp = memberLvl.player()
+                .withTotalKills(memberLvl.player().getTotalKills() + 1);
+            saveOrLog(memberAfterXp);
+            List<GameMessage> memberMsgs = new ArrayList<>();
+            memberMsgs.add(GameMessage.toSource(
+                "Your party slay the " + mob.template().name()
+                    + "! You gain " + xpPerMember + " experience points."));
+            if (memberLvl.leveledUp()) {
+                memberMsgs.add(GameMessage.toSource(
+                    "You have advanced to level " + memberAfterXp.getLevel() + "!"));
+            }
+            playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
+        }
+    }
+
+    /**
+     * Processes a player's ranged attack (SHOOT command) against a mob in an adjacent room.
+     *
+     * <p>The player must be wielding a weapon whose attack is classified {@link RangeType#RANGED}
+     * (see {@link AttackDefinition#isRanged()}); melee weapons and being unarmed are rejected. The
+     * named direction must be a valid exit from {@code roomId}, and a live, attackable mob matching
+     * {@code targetName} must occupy that adjacent room. On a hit the mob takes damage and, if it
+     * survives, retaliates by closing the distance — moving into the shooter's room and engaging
+     * them so it attacks in melee on subsequent ticks. All mutation happens on the tick thread via
+     * the player command queue (AGENTS.md §5).
+     *
+     * @param attacker   the shooting player
+     * @param targetName the raw mob-name input to fire at
+     * @param direction  the direction of the adjacent room the target is in
+     * @param roomId     the shooter's current room
+     * @return result containing messages to deliver to the shooter
+     */
+    public GameActionResult processPlayerRangedAttack(
+        Player attacker, String targetName, Direction direction, RoomId roomId) {
+        Objects.requireNonNull(attacker, "Attacker is required");
+        Objects.requireNonNull(direction, "Direction is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (targetName == null || targetName.isBlank()) {
+            return GameActionResult.error("Shoot what?");
+        }
+        AttackId attackId = resolveAttackId(attacker);
+        AttackDefinition attack = loadAttack(attackId);
+        if (attack == null) {
+            return GameActionResult.error("Combat error: attack definition not found.");
+        }
+        if (!attack.isRanged()) {
+            return GameActionResult.error("You are not wielding a ranged weapon.");
+        }
+        RoomId adjacentRoomId = roomService.getExits(roomId).get(direction);
+        if (adjacentRoomId == null) {
+            return GameActionResult.error("There is no exit to the " + direction.label() + ".");
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(adjacentRoomId), targetName);
+        if (mob == null) {
+            return GameActionResult.error(
+                "You don't see " + targetName + " to the " + direction.label() + ".");
+        }
+        if (mob.template().hasTag("npc")) {
+            return GameActionResult.error("You cannot attack that.");
+        }
+        int damage = rollDamage(attack);
+        int remaining = mob.takeDamage(damage);
+
+        List<GameMessage> messages = new ArrayList<>();
+        String mobName = mob.template().name();
+        messages.add(GameMessage.toSource(
+            "You fire at the " + mobName + " to the " + direction.label() + " for " + damage
+                + " damage. (" + remaining + " HP remaining)"));
+
+        // Announce the shot to bystanders in the shooter's room.
+        String shooterName = attacker.getUsername().getValue();
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(attacker.getUsername())) {
+                continue;
+            }
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource(shooterName + " fires at the " + mobName
+                    + " to the " + direction.label() + "."))));
+        }
+        // Announce the incoming fire to anyone in the target's room.
+        for (Username occupant : roomService.getPlayersInRoom(adjacentRoomId)) {
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource("An arrow flies in from the " + direction.opposite().label()
+                    + " and strikes the " + mobName + "."))));
+        }
+
+        if (!mob.isAlive()) {
+            awardMobKill(mob, attacker, roomId, messages);
+            return new GameActionResult(null, null, messages);
+        }
+
+        // Retaliation: a surviving ranged-attacked mob closes the distance into the shooter's room
+        // and engages them, so it fights in melee on subsequent ticks (AGENTS.md §5 — tick thread).
+        for (Username occupant : roomService.getPlayersInRoom(adjacentRoomId)) {
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource("The " + mobName + " charges off to the "
+                    + direction.opposite().label() + "."))));
+        }
+        mob.moveTo(roomId);
+        mob.engage(attacker.getUsername());
+        playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
+        messages.add(GameMessage.toSource(
+            "The " + mobName + " charges in from the " + direction.label() + " to close with you!"));
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(attacker.getUsername())) {
+                continue;
+            }
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource("The " + mobName + " charges in from the "
+                    + direction.label() + "."))));
         }
         return new GameActionResult(null, null, messages);
     }
