@@ -8,6 +8,7 @@
   "exits": {
     "south": "tangled-undergrowth",
     "east": "trolls-hollow",
-    "west": "ruins-gate"
+    "west": "ruins-gate",
+    "north": "frozen-peaks-foothills"
   }
 }

@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "frost-giant",
+  "name": "Frost Giant",
+  "max_hp": 130,
+  "attack_id": "attack.frost-giant",
+  "aggressive": true,
+  "tags": ["ice", "giant", "frozen-peaks"],
+  "spawn_room_id": "frozen-peaks-ridge",
+  "max_count": 2,
+  "respawn_ticks": 45,
+  "xp_reward": 130,
+  "loot": [],
+  "gold_drop": {
+    "min": 20,
+    "max": 45
+  }
+}

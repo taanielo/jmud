@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "id": "frozen-peaks-glacier",
+  "name": "Cracked Glacier",
+  "description": "A vast river of ancient ice spills down between the peaks, its surface split by yawning blue crevasses. The glacier creaks and shifts underfoot, and meltwater trickles unseen far below. A frozen ridge rises to the north, and a dark fissure in the ice mouth opens to the east.",
+  "item_ids": [],
+  "exits": {
+    "south": "frozen-peaks-pass",
+    "north": "frozen-peaks-ridge",
+    "east": "frozen-peaks-ice-cavern"
+  },
+  "min_level": 16,
+  "is_outdoor": true,
+  "ambient_messages": [
+    "Deep beneath the ice, the glacier shifts with a groan you feel in your teeth.",
+    "A crevasse yawns wider with a sharp crack, and cold air breathes up from the dark.",
+    "Frozen wind scours the glacier, raising a stinging veil of ice crystals."
+  ]
+}

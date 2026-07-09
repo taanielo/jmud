@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.blizzard-wraith",
+  "name": "soul-freezing touch",
+  "min_damage": 18,
+  "max_damage": 30,
+  "hit_bonus": 3,
+  "crit_bonus": 3,
+  "damage_bonus": 5,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The blizzard wraith sweeps through you, its soul-freezing touch searing you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The blizzard wraith dissolves into swirling snow and your strike finds nothing."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The blizzard wraith pours through you, and the killing cold rips {damage} from your body!"
+    }
+  ]
+}

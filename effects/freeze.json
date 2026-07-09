@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "freeze",
+  "name": "Freeze",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A biting frost sheathes your limbs in ice, slowing every movement."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A rime of frost creeps across {name}'s body."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The clinging frost melts away and warmth returns to your limbs."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The frost coating {name} cracks and falls away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is coated in a rime of frost and moves sluggishly."
+    }
+  ]
+}

@@ -32,7 +32,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add MAP command rendering an ASCII minimap of explored rooms around the player
 - [x] Add RECALL scroll/command teleporting the player back to the starter zone, with combat lockout
 - [x] Add boats/ferries: a scheduled transport room that moves between docks on a tick timetable
-- [ ] Add The Frozen Peaks high-level zone with ice mobs, a dragon boss, and cold-damage attacks
+- [x] Add The Frozen Peaks high-level zone with ice mobs, a dragon boss, and cold-damage attacks
 - [ ] Add customizable prompt: PROMPT command with tokens for HP/mana/moves/XP and color choices
 - [ ] Add IGNORE command to mute tells/says from a specific player, persisted per player
 

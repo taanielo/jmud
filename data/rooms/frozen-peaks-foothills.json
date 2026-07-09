@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "frozen-peaks-foothills",
+  "name": "Frozen Peaks Foothills",
+  "description": "The forest thins and dies away against a wall of grey stone. A rough trail climbs north into the mountains, where snow-laden slopes rise toward jagged white peaks that vanish into low cloud. The air here is sharp and cold, and every breath fogs before your face.",
+  "item_ids": [],
+  "exits": {
+    "south": "hunters-clearing",
+    "north": "frozen-peaks-pass"
+  },
+  "min_level": 15,
+  "is_outdoor": true,
+  "ambient_messages": [
+    "A frozen wind sweeps down from the heights, cutting through cloth and flesh alike.",
+    "Somewhere far above, a sheet of ice cracks loose and tumbles down the slopes.",
+    "Fine snow hisses across the trail and gathers in the hollows of your footprints."
+  ]
+}

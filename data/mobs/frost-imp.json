@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "frost-imp",
+  "name": "Frost Imp",
+  "max_hp": 45,
+  "attack_id": "attack.frost-imp",
+  "aggressive": true,
+  "tags": ["ice", "frozen-peaks"],
+  "spawn_room_id": "frozen-peaks-foothills",
+  "max_count": 3,
+  "respawn_ticks": 25,
+  "xp_reward": 40,
+  "loot": [],
+  "gold_drop": {
+    "min": 5,
+    "max": 14
+  }
+}
