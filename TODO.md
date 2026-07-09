@@ -30,7 +30,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add weather system on the tick cycle (rain, fog, storm) shown in outdoor room descriptions with small combat/visibility modifiers
 - [x] Add ambient room messages: zones emit occasional atmospheric lines (dripping water, distant howls) on tick
 - [x] Add MAP command rendering an ASCII minimap of explored rooms around the player
-- [ ] Add RECALL scroll/command teleporting the player back to the starter zone, with combat lockout
+- [x] Add RECALL scroll/command teleporting the player back to the starter zone, with combat lockout
 - [ ] Add boats/ferries: a scheduled transport room that moves between docks on a tick timetable
 - [ ] Add The Frozen Peaks high-level zone with ice mobs, a dragon boss, and cold-damage attacks
 - [ ] Add customizable prompt: PROMPT command with tokens for HP/mana/moves/XP and color choices

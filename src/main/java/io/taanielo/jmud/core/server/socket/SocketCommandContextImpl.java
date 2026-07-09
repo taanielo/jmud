@@ -1243,8 +1243,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         cancelRestIfActive();
-        GameActionResult result = gameActionService.readItem(session.getPlayer(), args);
+        Player player = session.getPlayer();
+        GameActionResult result = gameActionService.readItem(player, args);
         deliverResult(result);
+        if (result.metadata().containsKey("recalled")) {
+            RoomService.LookResult look = roomService.look(player.getUsername(), session.getTextStyler());
+            connection.writeLines(look.lines());
+            writeRoomOccupantLines(look.room());
+        }
         sendPrompt();
     }
 

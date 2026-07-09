@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.action;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -55,6 +57,9 @@ import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectStacking;
+import io.taanielo.jmud.core.messaging.MessageChannel;
+import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
@@ -1044,6 +1049,65 @@ class GameActionServiceTest {
 
             assertEquals(ROOM_TOWN, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
             assertTrue(result.metadata().containsKey("recalled"));
+        }
+
+        private Item recallScroll() {
+            return Item.builder(
+                ItemId.of("scroll-of-recall"), "Scroll of Recall", "A worn parchment.", ItemAttributes.empty())
+                .weight(1)
+                .value(50)
+                .messages(List.of(
+                    new MessageSpec(MessagePhase.READ, MessageChannel.SELF, "You read {item}."),
+                    new MessageSpec(MessagePhase.READ, MessageChannel.ROOM, "{source} reads {item}.")
+                ))
+                .build();
+        }
+
+        @Test
+        void readingRecallScrollTeleportsToTownAndConsumesScroll() {
+            Player withScroll = player.addItem(recallScroll());
+
+            GameActionResult result = recallService.readItem(withScroll, "scroll of recall");
+
+            assertEquals(ROOM_TOWN, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertTrue(result.metadata().containsKey("recalled"));
+            assertNotNull(result.updatedSource());
+            assertTrue(result.updatedSource().getInventory().isEmpty(), "Scroll should be consumed on success");
+            assertTrue(
+                result.messages().stream().anyMatch(m -> m.text().contains("You read Scroll of Recall")),
+                "Expected the scroll's read flavor message"
+            );
+            long roomAtMessages = result.messages().stream()
+                .filter(m -> m.type() == GameMessage.Type.ROOM_AT)
+                .count();
+            assertEquals(2, roomAtMessages, "Expected departure and arrival room messages from recall");
+        }
+
+        @Test
+        void readingRecallScrollBlockedInCombatKeepsScroll() {
+            inCombat = true;
+            Player withScroll = player.addItem(recallScroll());
+
+            GameActionResult result = recallService.readItem(withScroll, "scroll of recall");
+
+            assertEquals(ROOM_DUNGEON, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertFalse(result.metadata().containsKey("recalled"));
+            assertNull(result.updatedSource(), "Scroll must not be consumed when recall is blocked");
+            assertTrue(result.messages().getFirst().text().contains("FLEE"));
+        }
+
+        @Test
+        void readingRecallScrollBlockedOnCooldownKeepsScroll() {
+            recallService.recall(player);
+            recallRoomService.move(player.getUsername(), Direction.NORTH);
+            Player withScroll = player.addItem(recallScroll());
+
+            GameActionResult result = recallService.readItem(withScroll, "scroll of recall");
+
+            assertEquals(ROOM_DUNGEON, recallRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+            assertFalse(result.metadata().containsKey("recalled"));
+            assertNull(result.updatedSource(), "Scroll must not be consumed when recall is on cooldown");
+            assertTrue(result.messages().getFirst().text().contains("recovering"));
         }
     }
 
