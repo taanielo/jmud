@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.faction.ReputationPriceResolver;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.Item;
-import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
