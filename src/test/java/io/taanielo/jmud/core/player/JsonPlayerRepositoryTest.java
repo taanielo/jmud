@@ -25,6 +25,7 @@ import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.faction.PlayerReputation;
+import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 class JsonPlayerRepositoryTest {
@@ -100,6 +101,26 @@ class JsonPlayerRepositoryTest {
             "Unlocked achievement should survive the save/load round-trip");
         assertEquals(Optional.of(unlockedAt), achievements.unlockedAt(AchievementId.of("first_kill")),
             "Unlock timestamp should round-trip through JSON");
+    }
+
+    @Test
+    void savesAndLoadsExploredRooms() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("explorer"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .exploreRoom(RoomId.of("training-yard"))
+            .exploreRoom(RoomId.of("armory"));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent(), "Player should reload after reconnection");
+        PlayerExploration exploration = loaded.get().exploration();
+        assertTrue(exploration.hasVisited(RoomId.of("training-yard")),
+            "Explored room should survive the save/load round-trip");
+        assertTrue(exploration.hasVisited(RoomId.of("armory")),
+            "Explored room should survive the save/load round-trip");
+        assertEquals(2, exploration.count());
     }
 
     @Test

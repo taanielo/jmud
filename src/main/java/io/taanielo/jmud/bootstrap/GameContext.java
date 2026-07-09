@@ -102,6 +102,7 @@ import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomItemService;
 import io.taanielo.jmud.core.world.RoomRenderer;
+import io.taanielo.jmud.core.world.MapService;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.WorldClock;
 import io.taanielo.jmud.core.world.WorldClockSettings;
@@ -125,6 +126,7 @@ public record GameContext(
     PersistenceQueue persistenceQueue,
     RoomRepository roomRepository,
     RoomService roomService,
+    MapService mapService,
     TickRegistry tickRegistry,
     TickClock tickClock,
     FixedRateTickScheduler tickScheduler,
@@ -191,6 +193,7 @@ public record GameContext(
             new PlayerLocationService(roomRepository, RoomId.of("training-yard"));
         RoomService roomService = new RoomService(
             playerLocationService, roomItemService, new RoomRenderer(), roomRepository);
+        MapService mapService = new MapService(roomRepository);
         MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
 
         TickRegistry tickRegistry = new TickRegistry();
@@ -329,6 +332,7 @@ public record GameContext(
             persistenceQueue,
             roomRepository,
             roomService,
+            mapService,
             tickRegistry,
             tickClock,
             tickScheduler,

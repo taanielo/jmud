@@ -764,6 +764,26 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void sendMap() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to view the map.");
+            return;
+        }
+        Player player = session.getPlayer();
+        String roomId = resolveRoomId(player);
+        if (roomId == null) {
+            writeLineWithPrompt("You are nowhere. The world feels unfinished.");
+            return;
+        }
+        RoomId currentRoom = RoomId.of(roomId);
+        markRoomExplored(currentRoom);
+        player = session.getPlayer();
+        String map = context.mapService().renderMap(player, currentRoom);
+        context.messageBroadcaster().sendToPlayer(player.getUsername(), new PlainTextMessage(map));
+        sendPrompt();
+    }
+
+    @Override
     public void sendLookAt(String targetInput) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to look around.");
@@ -839,6 +859,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLine("You move " + direction.label() + ".");
             connection.writeLines(lightingService.darknessLines());
             warnIfRoomTooDangerous(player, destination);
+            markRoomExplored(destination.getId());
             recordExplorationVisit(destination);
             sendPrompt();
             return;
@@ -847,9 +868,34 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (result.moved()) {
             writeRoomOccupantLines(result.room());
             warnIfRoomTooDangerous(player, result.room());
+            if (destination != null) {
+                markRoomExplored(destination.getId());
+            }
             recordExplorationVisit(destination);
         }
         sendPrompt();
+    }
+
+    /**
+     * Records the given room in the current player's exploration set so it appears on their minimap
+     * (MAP command), then persists the updated snapshot through the write-behind queue.
+     *
+     * <p>Runs on the tick thread as part of command execution (AGENTS.md &sect;5), so it safely
+     * mutates and replaces the session player. A no-op when the room was already explored.
+     *
+     * @param roomId the room the player has entered
+     */
+    private void markRoomExplored(RoomId roomId) {
+        Player player = session.getPlayer();
+        if (player == null) {
+            return;
+        }
+        Player updated = player.exploreRoom(roomId);
+        if (updated == player) {
+            return;
+        }
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
     }
 
     /**
