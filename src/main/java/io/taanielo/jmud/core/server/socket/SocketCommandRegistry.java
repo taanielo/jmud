@@ -96,6 +96,7 @@ public class SocketCommandRegistry {
         new RestCommand(registry);
         new WakeCommand(registry);
         new AnsiCommand(registry);
+        new PromptCommand(registry);
         new GoldCommand(registry);
         new ListCommand(registry);
         new BuyCommand(registry);

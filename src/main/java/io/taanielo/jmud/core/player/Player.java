@@ -636,6 +636,16 @@ public class Player implements EffectTarget, Combatant {
         return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration);
     }
 
+    /**
+     * Returns a copy of this player with the given prompt format string, preserving all other state.
+     *
+     * @param nextFormat the new prompt format (token substitution handled by {@code PromptRenderer})
+     * @return an updated player
+     */
+    public Player withPromptFormat(String nextFormat) {
+        return new Player(identity, combatState, preferences.withPromptFormat(nextFormat), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration);
+    }
+
     public Player withVitals(PlayerVitals updatedVitals) {
         return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration);
     }
