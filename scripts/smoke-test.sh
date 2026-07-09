@@ -48,6 +48,16 @@ server_pid() {
     pgrep -f -- "--telnet-port $TELNET_PORT" | head -1
 }
 
+# Phase 4 runs a second, dedicated server instance launched directly from the
+# installDist binary (plain `java`, no Gradle daemon in front of it) on its
+# own ports — see the phase 4 comment for why `./gradlew run` can't be used
+# for a SIGTERM test.
+SHUTDOWN_TELNET_PORT="${SMOKE_SHUTDOWN_TELNET_PORT:-4591}"
+SHUTDOWN_SSH_PORT="${SMOKE_SHUTDOWN_SSH_PORT:-4592}"
+shutdown_server_pid() {
+    pgrep -f -- "--telnet-port $SHUTDOWN_TELNET_PORT" | head -1
+}
+
 cleanup() {
     local pid
     pid="$(server_pid || true)"
@@ -58,6 +68,10 @@ cleanup() {
             sleep 1
         done
         kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+    fi
+    pid="$(shutdown_server_pid || true)"
+    if [ -n "${pid:-}" ]; then
+        kill -9 "$pid" 2>/dev/null
     fi
     rm -f "data/users/$TEST_USER.json" "players/$TEST_USER.json"
     rm -f "data/users/$TEST_ROGUE.json" "players/$TEST_ROGUE.json"
@@ -267,6 +281,85 @@ else
     grep -iE 'exception|severe|\bERROR\b' "$SESSION_LOG" | grep -vE 'Broken pipe|Socket is closed|Error sending message|Error writing' | head -5
 fi
 
+# ── phase 4: graceful shutdown on SIGTERM ────────────────────────────────────
+# SIGTERM (the default kill signal) must trigger ShutdownCoordinator's orderly
+# sequence: stop accepting connections, notify clients, stop the tick scheduler,
+# save online players, flush audit, clear the tick registry — then the JVM exits
+# on its own.
+#
+# This cannot be tested against the main server instance above: that instance
+# runs via `./gradlew run`, which executes inside the Gradle Daemon's forked
+# worker process. That worker does not install the JVM's normal default
+# SIGTERM disposition (shutdown hooks run, then exit) the way a plain `java`
+# process does, so a directly-signalled Gradle worker exits immediately
+# without ever invoking registered shutdown hooks — the hook code silently
+# never runs. Real deployments (Docker/Kubernetes/systemd) invoke jmud as a
+# plain `java` process, so to test the real behavior we build the install
+# distribution and launch that binary directly, bypassing Gradle entirely for
+# this one process.
+log "Phase 4: graceful shutdown on SIGTERM"
+SHUTDOWN_LOG="$OUT_DIR/server-shutdown.log"
+JMUD_BIN="build/install/jmud/bin/jmud"
+
+log "+ ./gradlew installDist --console=plain -q"
+if ! ./gradlew installDist --console=plain -q > "$OUT_DIR/installDist.log" 2>&1; then
+    fail "./gradlew installDist failed — see $OUT_DIR/installDist.log"
+elif [ ! -x "$JMUD_BIN" ]; then
+    fail "installDist did not produce an executable $JMUD_BIN"
+elif nc -z 127.0.0.1 "$SHUTDOWN_TELNET_PORT" 2>/dev/null; then
+    fail "port $SHUTDOWN_TELNET_PORT already in use — cannot run shutdown phase"
+else
+    "$JMUD_BIN" --telnet-port "$SHUTDOWN_TELNET_PORT" --ssh-port "$SHUTDOWN_SSH_PORT" \
+        > "$SHUTDOWN_LOG" 2>&1 &
+
+    waited=0
+    until nc -z 127.0.0.1 "$SHUTDOWN_TELNET_PORT" 2>/dev/null; do
+        sleep 1
+        waited=$((waited + 1))
+        if [ "$waited" -ge "$STARTUP_TIMEOUT" ]; then
+            fail "shutdown-test server did not open port $SHUTDOWN_TELNET_PORT within ${STARTUP_TIMEOUT}s"
+            break
+        fi
+    done
+
+    SHUTDOWN_PID="$(shutdown_server_pid || true)"
+    if [ -z "${SHUTDOWN_PID:-}" ]; then
+        fail "shutdown-test server not running after startup"
+    else
+        # Hold a live session open across the shutdown so an online player is
+        # saved. The server closes the connection when it shuts down, so nc
+        # exits on its own.
+        T4="$OUT_DIR/phase4-shutdown.txt"
+        {
+            sleep 1.5
+            printf '%s\r\n' "$TEST_USER"
+            sleep 1.5
+            printf '%s\r\n' "$TEST_PASS"
+            sleep 30   # idle, holding the connection until the server shuts down
+        } | timeout 45 nc 127.0.0.1 "$SHUTDOWN_TELNET_PORT" | tr -d '\r' > "$T4" &
+        NC_PID=$!
+        sleep 6   # let the login land on a tick before we pull the plug
+
+        kill "$SHUTDOWN_PID" 2>/dev/null   # SIGTERM — the graceful path
+        exited=0
+        for _ in $(seq 1 15); do
+            kill -0 "$SHUTDOWN_PID" 2>/dev/null || { exited=1; break; }
+            sleep 1
+        done
+        wait "$NC_PID" 2>/dev/null
+
+        if [ "$exited" -eq 1 ]; then
+            pass "server exited on its own after SIGTERM (no kill -9 needed)"
+        else
+            fail "server did not exit within 15s of SIGTERM — forcing kill -9"
+            kill -9 "$SHUTDOWN_PID" 2>/dev/null
+        fi
+
+        expect "$SHUTDOWN_LOG" "shutdown sequence started"   'Shutdown sequence starting'
+        expect "$SHUTDOWN_LOG" "shutdown sequence completed" 'Shutdown sequence complete'
+    fi
+fi
+
 # ── summary ──────────────────────────────────────────────────────────────────
 log ""
 if [ "$FAILURES" -eq 0 ]; then
@@ -277,5 +370,8 @@ else
     log "--- transcript phase 1 (tail) ---"; tail -15 "$T1"
     log "--- transcript phase 2 (tail) ---"; tail -15 "$T2"
     log "--- server log (tail) ---";         tail -15 "$SERVER_LOG"
+    if [ -n "${SHUTDOWN_LOG:-}" ] && [ -f "$SHUTDOWN_LOG" ]; then
+        log "--- shutdown log window (tail) ---"; tail -15 "$SHUTDOWN_LOG"
+    fi
     exit 1
 fi
