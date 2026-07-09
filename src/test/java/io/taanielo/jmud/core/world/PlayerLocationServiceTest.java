@@ -85,6 +85,21 @@ class PlayerLocationServiceTest {
     }
 
     @Test
+    void movePlayerToRelocatesDirectlyBypassingExitChecks() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, basicRoom(ROOM_A, Map.of()),
+            ROOM_B, basicRoom(ROOM_B, Map.of())));
+        Username alice = Username.of("Alice");
+        service.ensurePlayerLocation(alice);
+
+        // Room A has no exit to Room B, yet a fiat move still succeeds (e.g. a ferry arrival).
+        service.movePlayerTo(alice, ROOM_B);
+
+        assertEquals(Optional.of(ROOM_B), service.findPlayerLocation(alice));
+        assertEquals(List.of(alice), service.getPlayersInRoom(ROOM_B));
+    }
+
+    @Test
     void getPlayersInRoomReturnsOccupants() {
         PlayerLocationService service = buildService(Map.of(
             ROOM_A, basicRoom(ROOM_A, Map.of())));

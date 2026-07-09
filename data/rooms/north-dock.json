@@ -1,0 +1,12 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "north-dock",
+  "name": "North Dock",
+  "description": "Weathered planks stretch out over cold grey water. A creaking gangway leads down onto the coastal ferry when it is moored here. The forest trail winds away to the west.",
+  "item_ids": [],
+  "exits": {
+    "west": "darkwood-trail",
+    "down": "coastal-ferry-deck"
+  }
+}

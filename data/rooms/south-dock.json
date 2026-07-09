@@ -1,0 +1,11 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "south-dock",
+  "name": "South Dock",
+  "description": "A quiet stone jetty on a fog-wrapped island, reachable only by the coastal ferry. A gangway leads down onto the ferry's deck when it is moored here.",
+  "item_ids": [],
+  "exits": {
+    "down": "coastal-ferry-deck"
+  }
+}

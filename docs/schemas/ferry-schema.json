@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:ferry:v1",
+  "title": "Scheduled ferry (v1)",
+  "description": "A single ferry/boat definition persisted as data/ferries/<ferry-id>.json. Describes a scheduled transport 'room' (the deck) that moves between an ordered list of dock rooms on a tick timetable, carrying any players standing on its deck to the next dock. Movement is deterministic (driven by tick counts, never wall-clock time; AGENTS.md §5). The loader tolerates only the properties listed here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "deck_room_id",
+    "route",
+    "ticks_per_leg"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "File schema version; must match the loader's supported version exactly."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique, stable ferry id (matches the file name by convention)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable display name, used in default departure/arrival announcements."
+    },
+    "deck_room_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Id of the room players stand in while aboard the ferry. Occupants of this room are carried to the next dock when the ferry departs."
+    },
+    "route": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Ordered list of dock room ids the ferry visits. After the last dock the ferry cycles back to the first.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "ticks_per_leg": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of ticks the ferry waits at each dock before departing for the next one."
+    },
+    "start_leg_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index into 'route' of the dock the ferry starts moored at. Defaults to 0 when omitted; must be a valid index into 'route'."
+    },
+    "departure_messages": {
+      "type": "array",
+      "description": "Optional flavour lines announced (one chosen at random) when the ferry departs. A default line is used when omitted or empty.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "arrival_messages": {
+      "type": "array",
+      "description": "Optional flavour lines announced (one chosen at random) when the ferry arrives at a dock. A default line is used when omitted or empty.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

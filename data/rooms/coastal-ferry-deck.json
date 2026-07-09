@@ -1,0 +1,9 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "coastal-ferry-deck",
+  "name": "Deck of the Coastal Ferry",
+  "description": "The salt-scoured deck of a small ferry sways gently underfoot. Ropes coil beside a low railing, and there is nowhere to go but to wait for the ferry to reach its next dock.",
+  "item_ids": [],
+  "exits": {}
+}
