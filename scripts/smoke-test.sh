@@ -23,6 +23,7 @@ OUT_DIR="build/smoke-test"
 SERVER_LOG="$OUT_DIR/server.log"
 TEST_USER="smoke$(date +%s)"
 TEST_ROGUE="rogue$(date +%s)"
+TEST_LINK="link$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -75,6 +76,7 @@ cleanup() {
     fi
     rm -f "data/users/$TEST_USER.json" "players/$TEST_USER.json"
     rm -f "data/users/$TEST_ROGUE.json" "players/$TEST_ROGUE.json"
+    rm -f "data/users/$TEST_LINK.json" "players/$TEST_LINK.json"
     # Restore the committed bulletin board so the smoke test leaves no trace.
     if [ -f "$BOARD_BACKUP" ]; then
         cp "$BOARD_BACKUP" "$BOARD_FILE"
@@ -280,6 +282,50 @@ else
     fail "server log contains $ERRORS unexpected error line(s) — see $SERVER_LOG"
     grep -iE 'exception|severe|\bERROR\b' "$SESSION_LOG" | grep -vE 'Broken pipe|Socket is closed|Error sending message|Error writing' | head -5
 fi
+
+# ── phase 3b: linkdead reconnect (issue #343) ────────────────────────────────
+# A dropped connection keeps the player "linkdead" in the world for a grace period
+# (jmud.linkdead.timeout_ticks, default 30) so a reconnecting client reattaches to the
+# LIVE session instead of reloading from disk. We create a character, reach the in-world
+# prompt, then kill nc abruptly (never QUIT) to simulate a dropped link; the server marks
+# the session linkdead. Well within the timeout we reconnect as the same user and confirm
+# the session resumes (prompt + SCORE) and that the server reattached rather than logging in.
+#
+# Runs AFTER the phase-3 health scan on purpose: an abrupt client drop legitimately logs an
+# "Error receiving" line (a pre-existing disconnect wart, see issues #180/#182), which the
+# strict phase-3 error scan would otherwise flag.
+log "Phase 3b: linkdead reconnect"
+T3B_A="$OUT_DIR/phase3b-linkdead-drop.txt"
+T3B_B="$OUT_DIR/phase3b-reconnect.txt"
+LINKDEAD_LOG_OFFSET=$(wc -c < "$SERVER_LOG")
+{
+    sleep 1.5
+    printf '%s\r\n' "$TEST_LINK"
+    sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"
+    sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"
+    sleep 1.5
+    printf '%s\r\n' "human"
+    sleep 1.5
+    printf '%s\r\n' "warrior"
+    sleep 30   # stay in-world, holding the link until we pull the plug
+} | timeout 60 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T3B_A" &
+LINK_NC_PID=$!
+sleep 12                              # let creation finish and the character settle in-world
+kill -9 "$LINK_NC_PID" 2>/dev/null    # abrupt drop -> server marks the session linkdead
+wait "$LINK_NC_PID" 2>/dev/null
+sleep 3                               # a few ticks pass while linkdead, well under the timeout
+
+run_session "$T3B_B" "$TEST_LINK" "$TEST_PASS" "score" "quit"
+
+expect "$T3B_B" "reconnect reaches the in-world prompt" '\[[0-9]+/[0-9]+hp .*\]'
+expect "$T3B_B" "reconnect resumes SCORE"               '--- Score ---'
+
+LINKDEAD_LOG="$OUT_DIR/server-linkdead-window.log"
+tail -c "+$((LINKDEAD_LOG_OFFSET + 1))" "$SERVER_LOG" > "$LINKDEAD_LOG"
+expect "$LINKDEAD_LOG" "server marked the dropped session linkdead" 'went linkdead'
+expect "$LINKDEAD_LOG" "server reattached the reconnecting client"  'reattached to linkdead session'
 
 # ── phase 4: graceful shutdown on SIGTERM ────────────────────────────────────
 # SIGTERM (the default kill signal) must trigger ShutdownCoordinator's orderly

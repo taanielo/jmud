@@ -63,9 +63,26 @@ public class PlayerSession {
 
     private volatile Player player;
     private volatile boolean authenticated;
-    private boolean connected = true;
+    private volatile boolean connected = true;
     private TextStyler textStyler;
     private boolean quitRequested;
+
+    /**
+     * Linkdead state (issue #343). When a connection drops unexpectedly the session is kept alive
+     * in the world for a grace period: {@code linkdead} is {@code true}, {@code connected} is
+     * {@code false}, and {@code linkdeadTicksRemaining} counts down on the tick thread until the
+     * session is reaped. Both are volatile because they are written on a reader thread (at
+     * disconnect) and read/decremented on the tick thread (by {@link LinkdeadTimeoutTicker}).
+     */
+    private volatile boolean linkdead;
+    private volatile int linkdeadTicksRemaining;
+
+    /**
+     * Hook invoked (on the tick thread) when the linkdead grace period expires, so the transport
+     * adapter can perform the final save, emit the {@code player.linkdead_timeout} audit event, and
+     * tear the connection down. Wired by {@link SocketClient}; never touches game state itself.
+     */
+    private @Nullable Runnable linkdeadExpiryHandler;
 
     private final CooldownSystem abilityCooldowns = new CooldownSystem();
     private final AbilityCooldownTracker cooldownTracker = new CooldownTracker(abilityCooldowns);
@@ -446,6 +463,103 @@ public class PlayerSession {
         }
         abilityCooldowns.clear();
         respawnTicker.schedule();
+    }
+
+    // ── Linkdead lifecycle (issue #343) ─────────────────────────────────
+
+    /**
+     * Registers the hook invoked on the tick thread when this session's linkdead grace period
+     * expires. The transport adapter uses it to save the player one final time, emit the
+     * {@code player.linkdead_timeout} audit event, and tear down the connection.
+     *
+     * @param linkdeadExpiryHandler the expiry callback; may be null to clear
+     */
+    public void setLinkdeadExpiryHandler(@Nullable Runnable linkdeadExpiryHandler) {
+        this.linkdeadExpiryHandler = linkdeadExpiryHandler;
+    }
+
+    /**
+     * Transitions this session to the linkdead state after an unexpected disconnect. The composed
+     * ticker stays subscribed and the player remains in their room; only the {@code connected} flag
+     * is cleared and the countdown started, so the world can continue to see, tick, and target the
+     * player while a reconnecting client has a chance to reattach.
+     *
+     * @param ticks the number of ticks to linger before the session is reaped; clamped to at least 1
+     */
+    public void startLinkdead(int ticks) {
+        this.connected = false;
+        this.linkdead = true;
+        this.linkdeadTicksRemaining = Math.max(1, ticks);
+    }
+
+    /**
+     * Returns whether this session is currently linkdead (dropped connection, awaiting reattach or
+     * timeout).
+     *
+     * @return {@code true} while the session is linkdead
+     */
+    public boolean isLinkdead() {
+        return linkdead;
+    }
+
+    /**
+     * Returns the number of ticks remaining before a linkdead session is reaped (primarily for
+     * tests and introspection).
+     *
+     * @return the remaining linkdead countdown, or {@code 0} when not linkdead
+     */
+    public int linkdeadTicksRemaining() {
+        return linkdeadTicksRemaining;
+    }
+
+    /**
+     * Decrements the linkdead countdown by one tick. Must be called on the tick thread.
+     *
+     * @return {@code true} when the countdown has reached zero and the session should be reaped;
+     *     {@code false} otherwise (including when the session is not linkdead)
+     */
+    public boolean tickLinkdead() {
+        if (!linkdead) {
+            return false;
+        }
+        linkdeadTicksRemaining--;
+        return linkdeadTicksRemaining <= 0;
+    }
+
+    /**
+     * Clears linkdead state when a live transport takes over the session again. Marks the session
+     * connected, resets the countdown, and drops any transient NPC conversation (dialogue is not
+     * carried across a reconnect). Does <em>not</em> reload the player from disk or re-subscribe
+     * ticks — the tick subscription is never dropped while linkdead.
+     */
+    public void reattach() {
+        this.connected = true;
+        this.linkdead = false;
+        this.linkdeadTicksRemaining = 0;
+        clearDialogue();
+    }
+
+    /**
+     * Invoked by {@link LinkdeadTimeoutTicker} when the grace period expires. Clears linkdead state
+     * and runs the registered expiry hook (final save, audit, transport teardown), if any.
+     */
+    public void expireLinkdead() {
+        this.linkdead = false;
+        this.linkdeadTicksRemaining = 0;
+        if (linkdeadExpiryHandler != null) {
+            linkdeadExpiryHandler.run();
+        }
+    }
+
+    /**
+     * Unsubscribes the composed ticker without saving or flushing. Used when a reconnecting client
+     * adopts this session's live player, so the old session stops ticking without disturbing the
+     * player's persisted state (the new session now owns the save path).
+     */
+    public void unsubscribeTicks() {
+        if (playerTickerSubscription != null) {
+            playerTickerSubscription.unsubscribe();
+        }
     }
 
     /**

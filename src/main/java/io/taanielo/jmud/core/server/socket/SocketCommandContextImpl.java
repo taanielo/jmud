@@ -228,6 +228,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         return clientPool.clients().stream()
             .filter(SocketClient.class::isInstance)
             .map(SocketClient.class::cast)
+            // Linkdead players are still in the world (attackable, occupying their room) but are
+            // unresponsive, so they are omitted from the WHO roster (issue #343).
+            .filter(sc -> !sc.session().isLinkdead())
             .map(SocketClient::authenticatedUsername)
             .flatMap(Optional::stream)
             .toList();

@@ -58,6 +58,11 @@ public class SocketClient implements Client {
     private final Runnable onClose;
     private final AtomicBoolean closed = new AtomicBoolean();
     private volatile CharacterCreationState creationState;
+    private final PlayerSessionRegistry sessionRegistry;
+
+    /** Set (on the tick thread) when this session is being torn down due to a linkdead timeout, so
+     * {@link #fullClose()} emits {@code player.linkdead_timeout} instead of {@code player.logout}. */
+    private volatile boolean linkdeadExpired;
 
     public SocketClient(
         ClientConnection connection,
@@ -89,6 +94,8 @@ public class SocketClient implements Client {
             this, connection, session, context, clientPool, commandDispatcher
         );
         this.session.setSaveFailureHandler(commandContext::handleSaveFailure);
+        this.sessionRegistry = context.playerSessionRegistry();
+        this.session.setLinkdeadExpiryHandler(this::handleLinkdeadTimeout);
     }
 
     @Override
@@ -168,15 +175,76 @@ public class SocketClient implements Client {
 
     @Override
     public void close() {
+        if (shouldGoLinkdead()) {
+            int ticks = LinkdeadSettings.timeoutTicks();
+            session.startLinkdead(ticks);
+            log.info("Player {} went linkdead; holding session for {} ticks.",
+                session.getPlayer().getUsername(), ticks);
+            // Close the dropped socket transport, but keep the client in the pool and the composed
+            // ticker subscribed so the player stays visible, tickable, and reattachable (issue #343).
+            connection.close();
+            return;
+        }
+        fullClose();
+    }
+
+    /**
+     * Decides whether a disconnecting client should linger as a linkdead session (issue #343)
+     * instead of tearing down immediately. Only in-world, authenticated players whose connection
+     * dropped unexpectedly (not an explicit QUIT) qualify.
+     */
+    private boolean shouldGoLinkdead() {
+        return LinkdeadSettings.enabled()
+            && sessionRegistry != null
+            && session.isAuthenticated()
+            && session.getPlayer() != null
+            && creationState == null
+            && !session.isQuitRequested()
+            && !session.isLinkdead();
+    }
+
+    /**
+     * Invoked (on the tick thread) by the session's linkdead expiry hook when the grace period runs
+     * out: performs the final save and full transport teardown, emitting {@code player.linkdead_timeout}.
+     */
+    private void handleLinkdeadTimeout() {
+        linkdeadExpired = true;
+        fullClose();
+    }
+
+    /**
+     * Reclaims this (dropped) client's transport when a reconnecting login has adopted its live
+     * session: removes it from the pool and closes the socket without saving, unsubscribing, or
+     * emitting a logout — the new session now owns the player and its save path (issue #343).
+     */
+    void detachForReattach() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
+        connection.close();
+        clientPool.remove(this);
+        if (onClose != null) {
+            onClose.run();
+        }
+    }
+
+    private void fullClose() {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
         log.debug("Closing connection ..");
         Player player = session.getPlayer();
         if (session.isAuthenticated() && player != null) {
-            commandContext.emitAudit("player.logout", AuditSubject.player(player.getUsername()),
+            String eventType = linkdeadExpired ? "player.linkdead_timeout" : "player.logout";
+            String reason = linkdeadExpired
+                ? "linkdead_timeout"
+                : (session.isQuitRequested() ? "quit" : "disconnect");
+            commandContext.emitAudit(eventType, AuditSubject.player(player.getUsername()),
                 null, commandContext.resolveRoomId(player), "success",
-                Map.of("reason", session.isQuitRequested() ? "quit" : "disconnect"));
+                Map.of("reason", reason));
+        }
+        if (sessionRegistry != null && player != null) {
+            sessionRegistry.removeIf(player.getUsername(), session);
         }
         if (context.playerEventBus() != null && session.getPlayer() != null) {
             context.playerEventBus().unregister(session.getPlayer().getUsername());
@@ -199,9 +267,18 @@ public class SocketClient implements Client {
     }
     private void completeAuthentication(User authenticatedUser, boolean isNewPlayer) {
         session.setAuthenticated(true);
+        Username username = authenticatedUser.getUsername();
+        PlayerSession existing = sessionRegistry == null
+            ? null
+            : sessionRegistry.lookup(username).orElse(null);
+        if (existing != null && existing != session && existing.isLinkdead()
+            && existing.getPlayer() != null) {
+            reattachToLinkdeadSession(existing, username);
+            return;
+        }
         AtomicBoolean created = new AtomicBoolean(isNewPlayer);
         Player player = context.playerRepository()
-            .loadPlayer(authenticatedUser.getUsername())
+            .loadPlayer(username)
             .orElseGet(() -> {
                 Player newPlayer = Player.of(authenticatedUser, PromptSettings.defaultFormat(),
                     OutputStyleSettings.ansiEnabledByDefault(), List.of());
@@ -216,9 +293,63 @@ public class SocketClient implements Client {
         } else {
             context.roomService().ensurePlayerLocation(player.getUsername());
         }
+        if (sessionRegistry != null) {
+            sessionRegistry.register(username, session);
+        }
         commandContext.emitAudit("player.login", AuditSubject.player(player.getUsername()),
             null, commandContext.resolveRoomId(player), "success", Map.of("newPlayer", created.get()));
         commandContext.registerPostLoginCallbacks(created.get());
+    }
+
+    /**
+     * Reattaches this fresh connection to an existing linkdead session (issue #343). The dropped
+     * client's live in-memory player is adopted verbatim — no disk reload — so the reconnecting
+     * player resumes exactly where they were (room, HP, inventory, buffs). The stale session's
+     * ticker is unsubscribed and its client removed from the pool, leaving this connection as the
+     * sole owner of the player, then post-login wiring re-establishes effect/healing ticks on this
+     * session and shows the current room.
+     *
+     * <p>Runs on this connection's reader thread. Because the single tick thread never runs two
+     * tickables concurrently, unsubscribing the old ticker (a thread-safe list removal that takes
+     * effect on the next tick) plus reading the old session's volatile player reference is safe; at
+     * worst one final healing/effect tick lands on the old player just after we snapshot it, a
+     * benign one-tick staleness.
+     *
+     * @param existing the linkdead session being reclaimed
+     * @param username the reconnecting player's username
+     */
+    private void reattachToLinkdeadSession(PlayerSession existing, Username username) {
+        Player livePlayer = existing.getPlayer();
+        existing.reattach();
+        existing.unsubscribeTicks();
+        detachOldClient(existing);
+        session.setPlayer(livePlayer);
+        session.setTextStyler(TextStylers.forEnabled(livePlayer.isAnsiEnabled()));
+        if (livePlayer.isDead()) {
+            context.roomService().clearPlayerLocation(username);
+        } else {
+            context.roomService().ensurePlayerLocation(username);
+        }
+        if (sessionRegistry != null) {
+            sessionRegistry.register(username, session);
+        }
+        commandContext.emitAudit("player.reattach", AuditSubject.player(username),
+            null, commandContext.resolveRoomId(livePlayer), "success", Map.of());
+        log.info("Player {} reattached to linkdead session.", username.getValue());
+        commandContext.registerPostLoginCallbacks(false);
+    }
+
+    /**
+     * Removes and closes the dropped {@link SocketClient} that still owns the linkdead session being
+     * reattached, so exactly one client and one ticker remain for the username.
+     */
+    private void detachOldClient(PlayerSession existing) {
+        for (Client c : clientPool.clients()) {
+            if (c instanceof SocketClient sc && sc != this && sc.session() == existing) {
+                sc.detachForReattach();
+                return;
+            }
+        }
     }
     void beginCharacterCreation() {
         creationState = new ChoosingRace();
