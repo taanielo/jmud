@@ -309,6 +309,12 @@ else
         kill -9 "$SHUTDOWN_PID" 2>/dev/null
     fi
 
+    # The JVM process is gone, but when running under `./gradlew run` its
+    # stdout is relayed to us through the Gradle daemon's client protocol,
+    # which can lag slightly behind the OS-level process exit. Give that
+    # relay a moment to catch up before trusting the log file is complete.
+    sleep 3
+
     # Scan only the log produced from SIGTERM onward.
     SHUTDOWN_LOG="$OUT_DIR/server-shutdown-window.log"
     tail -c "+$((SHUTDOWN_OFFSET + 1))" "$SERVER_LOG" > "$SHUTDOWN_LOG"
