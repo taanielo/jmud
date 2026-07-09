@@ -7,7 +7,8 @@
   "item_ids": [],
   "exits": {
     "south": "courtyard",
-    "north": "tangled-undergrowth"
+    "north": "tangled-undergrowth",
+    "east": "north-dock"
   },
   "ambient_messages": [
     "A distant howl rises through the trees and fades into silence.",

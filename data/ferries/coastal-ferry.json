@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "coastal-ferry",
+  "name": "Coastal Ferry",
+  "deck_room_id": "coastal-ferry-deck",
+  "route": [
+    "north-dock",
+    "south-dock"
+  ],
+  "ticks_per_leg": 15,
+  "start_leg_index": 0,
+  "departure_messages": [
+    "The Coastal Ferry's horn sounds twice as it casts off and pulls away from the dock.",
+    "Ropes are loosed, and the Coastal Ferry glides out onto the open water."
+  ],
+  "arrival_messages": [
+    "The Coastal Ferry slides up to the dock and its gangway drops with a clatter.",
+    "With a groan of timbers, the Coastal Ferry moors against the jetty."
+  ]
+}

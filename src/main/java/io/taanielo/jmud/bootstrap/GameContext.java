@@ -90,6 +90,9 @@ import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
+import io.taanielo.jmud.core.transport.BoatEngine;
+import io.taanielo.jmud.core.transport.FerryRepository;
+import io.taanielo.jmud.core.transport.repository.json.JsonFerryRepository;
 import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.weather.WeatherRoomView;
 import io.taanielo.jmud.core.weather.WeatherSettings;
@@ -247,6 +250,14 @@ public record GameContext(
             AmbientMessageSettings.minIntervalTicks(), AmbientMessageSettings.maxIntervalTicks());
         tickRegistry.register(ambientMessageEngine);
 
+        // Scheduled ferries sail between docks on a tick timetable, carrying any players standing on
+        // their deck room to the next dock (AGENTS.md §5). State is tick-thread-confined and driven
+        // by tick counts, so arrivals are deterministic; flavour lines share the world RNG.
+        FerryRepository ferryRepository = createFerryRepository();
+        BoatEngine boatEngine = new BoatEngine(
+            worldRandom, playerLocationService, messageBroadcaster, ferryRepository.findAll());
+        tickRegistry.register(boatEngine);
+
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 
         HealingEngine healingEngine = new HealingEngine(effectRepository);
@@ -372,6 +383,10 @@ public record GameContext(
 
     private static NotesRepository createNotesRepository() {
         return new JsonNotesRepository();
+    }
+
+    private static FerryRepository createFerryRepository() {
+        return new JsonFerryRepository();
     }
 
     private static UserRegistry createUserRegistry() {

@@ -115,6 +115,22 @@ public class PlayerLocationService {
     }
 
     /**
+     * Relocates the player directly to the given room, bypassing exit and lock checks.
+     *
+     * <p>Used by world systems that move players by fiat rather than by a chosen direction — for
+     * example a scheduled ferry carrying its deck passengers to the next dock. Must only be called
+     * from the tick thread (AGENTS.md §5).
+     *
+     * @param username the player to relocate
+     * @param roomId   the destination room id
+     */
+    public void movePlayerTo(Username username, RoomId roomId) {
+        Objects.requireNonNull(username, "Username is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        playerLocations.put(username, roomId);
+    }
+
+    /**
      * Returns the exit map for the given room, or an empty map if the room cannot be found.
      *
      * <p>Used by mob AI to enumerate candidate wander destinations.
