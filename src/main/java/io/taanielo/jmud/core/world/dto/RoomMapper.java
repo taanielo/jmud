@@ -32,8 +32,11 @@ public class RoomMapper {
         String nightDescription = room.getNightDescription();
         Integer lightLevel = room.getLightLevel();
         boolean outdoor = room.isOutdoor();
+        List<String> ambientMessages = room.getAmbientMessages();
         int version;
-        if (outdoor) {
+        if (!ambientMessages.isEmpty()) {
+            version = SchemaVersions.V8;
+        } else if (outdoor) {
             version = SchemaVersions.V7;
         } else if (lightLevel != null) {
             version = SchemaVersions.V6;
@@ -46,7 +49,7 @@ public class RoomMapper {
         }
         return new RoomDto(version, room.getId().getValue(), room.getName(), room.getDescription(), itemIds, exits,
             lockedExits.isEmpty() ? null : lockedExits, minLevel, nightDescription, lightLevel,
-            outdoor ? Boolean.TRUE : null);
+            outdoor ? Boolean.TRUE : null, ambientMessages.isEmpty() ? null : ambientMessages);
     }
 
     /**
@@ -71,6 +74,7 @@ public class RoomMapper {
                 );
             }
         }
+        List<String> ambientMessages = dto.ambientMessages() == null ? List.of() : dto.ambientMessages();
         return new Room(
             RoomId.of(dto.id()),
             dto.name(),
@@ -82,7 +86,8 @@ public class RoomMapper {
             dto.minLevel(),
             dto.nightDescription(),
             dto.lightLevel(),
-            Boolean.TRUE.equals(dto.isOutdoor())
+            Boolean.TRUE.equals(dto.isOutdoor()),
+            ambientMessages
         );
     }
 }

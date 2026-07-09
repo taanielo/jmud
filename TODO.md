@@ -28,7 +28,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add an arena zone with a spectator stand and periodic announced duel events
 - [x] Add player bulletin boards: BOARD/NOTE commands with persistent per-room note storage
 - [x] Add weather system on the tick cycle (rain, fog, storm) shown in outdoor room descriptions with small combat/visibility modifiers
-- [ ] Add ambient room messages: zones emit occasional atmospheric lines (dripping water, distant howls) on tick
+- [x] Add ambient room messages: zones emit occasional atmospheric lines (dripping water, distant howls) on tick
 - [ ] Add MAP command rendering an ASCII minimap of explored rooms around the player
 - [ ] Add RECALL scroll/command teleporting the player back to the starter zone, with combat lockout
 - [ ] Add boats/ferries: a scheduled transport room that moves between docks on a tick timetable

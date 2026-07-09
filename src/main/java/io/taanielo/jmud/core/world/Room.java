@@ -39,6 +39,11 @@ public class Room {
      * weather; {@code false} means the room is indoors and never shows weather effects.
      */
     boolean outdoor;
+    /**
+     * Optional pool of atmospheric flavour lines the room emits occasionally during play (e.g.
+     * dripping water, distant howls). Empty means the room is silent; never {@code null}.
+     */
+    List<String> ambientMessages;
 
     /**
      * Light level at or above which a room is considered naturally lit (needs no carried light).
@@ -147,7 +152,8 @@ public class Room {
     }
 
     /**
-     * Constructs a room with all optional attributes including the outdoor/weather flag.
+     * Constructs a room with all optional attributes including the outdoor/weather flag but no
+     * ambient messages.
      *
      * @param lockedExits       map of direction to required key item id for exits that start locked
      * @param minLevel          the recommended/minimum level to enter this room, or {@code null} if none
@@ -170,6 +176,36 @@ public class Room {
         @Nullable Integer lightLevel,
         boolean outdoor
     ) {
+        this(id, name, description, exits, items, occupants, lockedExits, minLevel, nightDescription,
+            lightLevel, outdoor, List.of());
+    }
+
+    /**
+     * Constructs a room with all optional attributes including the ambient message pool.
+     *
+     * @param lockedExits       map of direction to required key item id for exits that start locked
+     * @param minLevel          the recommended/minimum level to enter this room, or {@code null} if none
+     * @param nightDescription  the description shown at night instead of {@code description}, or
+     *                          {@code null} if the room looks the same at night
+     * @param lightLevel        the ambient light level ({@code 0} pitch dark, {@code 1} dim,
+     *                          {@code 2}+ lit), or {@code null} for a naturally lit room
+     * @param outdoor           {@code true} if the room is exposed to the sky and subject to weather
+     * @param ambientMessages   the pool of atmospheric flavour lines the room emits occasionally
+     */
+    public Room(
+        RoomId id,
+        String name,
+        String description,
+        Map<Direction, RoomId> exits,
+        List<Item> items,
+        List<Username> occupants,
+        Map<Direction, ItemId> lockedExits,
+        @Nullable Integer minLevel,
+        @Nullable String nightDescription,
+        @Nullable Integer lightLevel,
+        boolean outdoor,
+        List<String> ambientMessages
+    ) {
         this.id = Objects.requireNonNull(id, "Room id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Room name must not be blank");
@@ -184,6 +220,7 @@ public class Room {
         this.nightDescription = nightDescription;
         this.lightLevel = lightLevel;
         this.outdoor = outdoor;
+        this.ambientMessages = List.copyOf(Objects.requireNonNull(ambientMessages, "Ambient messages are required"));
     }
 
     /**
@@ -239,5 +276,14 @@ public class Room {
      */
     public boolean requiresLight() {
         return requiredLightRadius() > 0;
+    }
+
+    /**
+     * Returns whether this room has any atmospheric flavour lines to emit.
+     *
+     * @return {@code true} if {@link #getAmbientMessages()} is non-empty
+     */
+    public boolean hasAmbientMessages() {
+        return !ambientMessages.isEmpty();
     }
 }

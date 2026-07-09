@@ -116,6 +116,39 @@ class JsonRoomRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsRoomWithAmbientMessages() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Room room = new Room(
+            RoomId.of("dripping-cave"),
+            "Dripping Cave",
+            "A damp cavern.",
+            Map.of(),
+            List.of(),
+            List.of(),
+            Map.of(),
+            null,
+            null,
+            null,
+            false,
+            List.of("Water drips somewhere in the dark.", "A cold draft sighs past.")
+        );
+        roomRepository.save(room);
+
+        // Use a fresh repository instance so the read goes through the JSON file, not the cache.
+        JsonRoomRepository reloadedRepository = new JsonRoomRepository(itemRepository, dataRoot);
+        Optional<Room> loaded = reloadedRepository.findById(RoomId.of("dripping-cave"));
+
+        assertTrue(loaded.isPresent());
+        assertEquals(
+            List.of("Water drips somewhere in the dark.", "A cold draft sighs past."),
+            loaded.get().getAmbientMessages());
+        assertTrue(loaded.get().hasAmbientMessages());
+    }
+
+    @Test
     void loadsLegacyRoomWithoutMinLevelAsNull() throws Exception {
         Path dataRoot = tempDir.resolve("data");
         Path roomsDir = dataRoot.resolve("rooms");

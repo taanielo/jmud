@@ -59,6 +59,18 @@ public class PlayerLocationService {
     }
 
     /**
+     * Returns the set of room ids that currently contain at least one player.
+     *
+     * <p>Used by world tickers (e.g. ambient flavour emission) that only need to act on occupied
+     * rooms, so empty rooms are skipped entirely.
+     *
+     * @return an unmodifiable set of occupied room ids (may be empty, never {@code null})
+     */
+    public Set<RoomId> occupiedRooms() {
+        return Set.copyOf(playerLocations.values());
+    }
+
+    /**
      * Ensures the player has a location, defaulting to the starting room if absent.
      *
      * @param username the player

@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 8,
   "id": "catacombs-entrance",
   "name": "Catacombs Entrance",
   "description": "Crumbling stone steps descend into a cold, musty passage. Ancient runes are carved into the archway above, their meaning long forgotten. The smell of dry bone and stale air drifts upward from below. A heavy iron gate bars the way south.",
@@ -11,5 +11,10 @@
   "locked_exits": {
     "south": "crypt-key"
   },
-  "min_level": 5
+  "min_level": 5,
+  "ambient_messages": [
+    "The dripping of water echoes faintly from somewhere far below.",
+    "A cold draft sighs up through the iron gate, carrying the smell of old bone.",
+    "Loose grit trickles down the crumbling steps with a dry whisper."
+  ]
 }
