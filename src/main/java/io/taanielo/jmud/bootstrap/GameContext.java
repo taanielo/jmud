@@ -62,10 +62,12 @@ import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
+import io.taanielo.jmud.core.player.ArenaEventTicker;
 import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
+import io.taanielo.jmud.core.player.OnlinePlayersSupplier;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.quest.CompositeQuestRepository;
 import io.taanielo.jmud.core.quest.DailyQuestPool;
@@ -272,6 +274,17 @@ public record GameContext(
 
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);
+
+        // The Arena drafts random online players into announced consensual duels on a fixed tick
+        // interval. It reads the live client snapshot only to enumerate online usernames; all state
+        // mutation (challenge issue, spectator notices) runs on the tick thread (AGENTS.md §5).
+        OnlinePlayersSupplier onlinePlayers = () -> clientPool.clients().stream()
+            .filter(client -> client.isInWorld())
+            .flatMap(client -> client.currentPlayer().stream())
+            .map(player -> player.getUsername())
+            .toList();
+        tickRegistry.register(
+            new ArenaEventTicker(duelService, messageBroadcaster, onlinePlayers, worldRandom));
 
         GossipHistory gossipHistory = new GossipHistory();
 

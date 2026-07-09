@@ -7,7 +7,8 @@
   "exits" : {
     "east" : "courtyard",
     "south" : "sparring-pit",
-    "north" : "armory"
+    "north" : "armory",
+    "west" : "arena-entrance"
   },
   "locked_exits" : null,
   "min_level" : null,
