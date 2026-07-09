@@ -96,6 +96,7 @@ public class SocketCommandRegistry {
         new PickCommand(registry);
         new SneakCommand(registry);
         new StealCommand(registry);
+        new TrackCommand(registry);
         new SummonCommand(registry);
         new TameCommand(registry);
         new CompanionsCommand(registry);

@@ -1546,6 +1546,142 @@ class GameActionServiceTest {
         }
     }
 
+    // ── track ────────────────────────────────────────────────────────────────
+
+    @Nested
+    class TrackTests {
+
+        private static final RoomId TOWN = RoomId.of("town");
+        private static final RoomId FOREST = RoomId.of("forest");
+        private static final RoomId DEEP = RoomId.of("deep");
+
+        private RoomService trackRoomService;
+        private Player ranger;
+
+        @BeforeEach
+        void setUpTrack() {
+            // town --north--> forest --north--> deep
+            Room town = new Room(
+                TOWN, "Town", "A town.",
+                Map.of(Direction.NORTH, FOREST), List.of(), List.of());
+            Room forest = new Room(
+                FOREST, "Forest", "A forest.",
+                Map.of(Direction.SOUTH, TOWN, Direction.NORTH, DEEP), List.of(), List.of());
+            Room deep = new Room(
+                DEEP, "Deep Forest", "A deep forest.",
+                Map.of(Direction.SOUTH, FOREST), List.of(), List.of());
+            trackRoomService = new RoomService(
+                new TestRoomRepository(Map.of(TOWN, town, FOREST, forest, DEEP, deep)), TOWN);
+            ranger = rangerOfLevel(5);
+            trackRoomService.ensurePlayerLocation(ranger.getUsername());
+        }
+
+        private Player rangerOfLevel(int level) {
+            return new Player(
+                User.of(Username.of("strider"), Password.hash("pw", 1000)),
+                level, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("ranger"));
+        }
+
+        private GameActionService trackService(MobLocatorPort locator) {
+            return new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                trackRoomService,
+                (source, input) -> Optional.empty(),
+                new TestCooldowns(),
+                testEncumbranceService(),
+                p -> false,
+                new FixedCombatRandom(1),
+                p -> { },
+                NpcStealPort.NONE,
+                locator
+            );
+        }
+
+        @Test
+        void tracksNearestMobAndReportsFirstStepDirection() {
+            MobLocatorPort locator = roomId -> DEEP.equals(roomId) ? List.of("Goblin") : List.of();
+            GameActionService service = trackService(locator);
+
+            GameActionResult result = service.track(ranger, "goblin");
+
+            assertTrue(result.messages().getFirst().text().contains("to the north"),
+                "TRACK must point toward the first step of the shortest path");
+            assertTrue(result.messages().getFirst().text().contains("Goblin"));
+        }
+
+        @Test
+        void tracksMobInSameRoom() {
+            MobLocatorPort locator = roomId -> TOWN.equals(roomId) ? List.of("Wolf") : List.of();
+            GameActionService service = trackService(locator);
+
+            GameActionResult result = service.track(ranger, "wolf");
+
+            assertTrue(result.messages().getFirst().text().contains("in this room"),
+                "A mob in the ranger's own room must report as being present");
+        }
+
+        @Test
+        void partialNameMatchesMobDisplayName() {
+            MobLocatorPort locator = roomId -> FOREST.equals(roomId) ? List.of("Giant Rat") : List.of();
+            GameActionService service = trackService(locator);
+
+            GameActionResult result = service.track(ranger, "rat");
+
+            assertTrue(result.messages().getFirst().text().contains("to the north"));
+            assertTrue(result.messages().getFirst().text().contains("Giant Rat"));
+        }
+
+        @Test
+        void reportsNoTraceWhenMobAbsent() {
+            GameActionService service = trackService(MobLocatorPort.NONE);
+
+            GameActionResult result = service.track(ranger, "dragon");
+
+            assertTrue(result.messages().getFirst().text().contains("no trace"));
+        }
+
+        @Test
+        void nonRangerCannotTrack() {
+            Player fighter = new Player(
+                User.of(Username.of("brute"), Password.hash("pw", 1000)),
+                5, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("fighter"));
+            trackRoomService.ensurePlayerLocation(fighter.getUsername());
+            GameActionService service = trackService(
+                roomId -> DEEP.equals(roomId) ? List.of("Goblin") : List.of());
+
+            GameActionResult result = service.track(fighter, "goblin");
+
+            assertTrue(result.messages().getFirst().text().contains("rangers"));
+        }
+
+        @Test
+        void blankTargetIsRejected() {
+            GameActionService service = trackService(MobLocatorPort.NONE);
+
+            GameActionResult result = service.track(ranger, "  ");
+
+            assertTrue(result.messages().getFirst().text().contains("Track what?"));
+        }
+
+        @Test
+        void deadRangerCannotTrack() {
+            GameActionService service = trackService(
+                roomId -> DEEP.equals(roomId) ? List.of("Goblin") : List.of());
+
+            GameActionResult result = service.track(ranger.die(), "goblin");
+
+            assertTrue(result.messages().getFirst().text().contains("cannot do that"));
+        }
+    }
+
     private static class FakeVictim implements NpcStealPort.StealVictim {
         private final String name;
         private final int gold;

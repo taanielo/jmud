@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "id": "ranger",
+  "name": "Ranger",
+  "healing": {
+    "base_modifier": 0
+  },
+  "carry_bonus": 6,
+  "ability_ids": ["skill.track"]
+}

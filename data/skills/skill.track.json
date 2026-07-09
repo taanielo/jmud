@@ -1,0 +1,23 @@
+{
+  "schema_version": 2,
+  "id": "skill.track",
+  "name": "track",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {
+    "move": 5
+  },
+  "cooldown": {
+    "ticks": 3
+  },
+  "targeting": "NONE",
+  "aliases": [],
+  "effects": [],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You kneel and study the trail for signs of your quarry."
+    }
+  ]
+}
