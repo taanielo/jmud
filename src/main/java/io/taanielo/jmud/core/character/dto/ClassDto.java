@@ -8,6 +8,7 @@ public record ClassDto(
     String name,
     ClassHealingDto healing,
     int carryBonus,
+    int armorBonus,
     List<String> abilityIds
 ) {
 }

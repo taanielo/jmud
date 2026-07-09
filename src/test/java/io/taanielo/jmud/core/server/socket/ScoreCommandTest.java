@@ -12,9 +12,13 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
+import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.messaging.Message;
@@ -115,6 +119,23 @@ class ScoreCommandTest {
     }
 
     @Test
+    void includesClassArmorBonusInAc() {
+        // Equipment 5, race 2, class 5 → AC = 12 (heavy-armour class proficiency stacks)
+        EquipmentArmorResolver equipmentResolver = stubEquipmentResolver(5);
+        RaceArmorBonusResolver raceResolver = stubRaceResolver(2);
+        ClassArmorBonusResolver classResolver = stubClassResolver(5);
+
+        Player player = makePlayer(PlayerEquipment.empty());
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver, classResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("AC    : 12")),
+            "Expected 'AC    : 12' in output, got: " + context.lines);
+    }
+
+    @Test
     void doesNotShowTitlesLineWhenNoneEarned() {
         EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
         RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
@@ -158,7 +179,14 @@ class ScoreCommandTest {
     // ── helpers ──────────────────────────────────────────────────────────
 
     private ScoreCommand makeCommand(EquipmentArmorResolver equipmentResolver, RaceArmorBonusResolver raceResolver) {
-        return new ScoreCommand(new SocketCommandRegistry(), equipmentResolver, raceResolver);
+        return makeCommand(equipmentResolver, raceResolver, ClassArmorBonusResolver.noOp());
+    }
+
+    private ScoreCommand makeCommand(
+            EquipmentArmorResolver equipmentResolver,
+            RaceArmorBonusResolver raceResolver,
+            ClassArmorBonusResolver classResolver) {
+        return new ScoreCommand(new SocketCommandRegistry(), equipmentResolver, raceResolver, classResolver);
     }
 
     private Player makePlayer(PlayerEquipment equipment) {
@@ -198,6 +226,20 @@ class ScoreCommandTest {
             @Override public List<Race> findAll() { return List.of(); }
         };
         return new RaceArmorBonusResolver(emptyRepo) {
+            @Override
+            public int armorBonus(Player player) {
+                return bonus;
+            }
+        };
+    }
+
+    /** Returns a {@link ClassArmorBonusResolver} that always returns {@code bonus}. */
+    private ClassArmorBonusResolver stubClassResolver(int bonus) {
+        ClassRepository emptyRepo = new ClassRepository() {
+            @Override public Optional<ClassDefinition> findById(ClassId id) { return Optional.empty(); }
+            @Override public List<ClassDefinition> findAll() { return List.of(); }
+        };
+        return new ClassArmorBonusResolver(emptyRepo) {
             @Override
             public int armorBonus(Player player) {
                 return bonus;

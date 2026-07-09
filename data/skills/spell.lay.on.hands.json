@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "spell.lay.on.hands",
+  "name": "lay on hands",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["layhands", "loh"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "INCREASE",
+      "amount": 15
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You lay your hands upon {target} and channel holy warmth into their wounds."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} lays healing hands upon you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} lays glowing hands upon {target}."
+    }
+  ]
+}

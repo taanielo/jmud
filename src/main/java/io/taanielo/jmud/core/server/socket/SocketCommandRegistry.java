@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
@@ -23,21 +24,24 @@ public class SocketCommandRegistry {
      * ({@code GameContext}) and passed in — this method must not build
      * infrastructure itself.
      *
-     * @param equipmentArmorResolver resolver for AC contributed by equipped armour
-     * @param raceArmorBonusResolver resolver for AC contributed by the player's race
-     * @param playerRepository       repository used to enumerate all persisted players for {@code RANK}
-     * @param roomService            service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
-     * @param messageBroadcaster     scoped delivery service used to fan out {@code SHOUT} to nearby rooms
+     * @param equipmentArmorResolver  resolver for AC contributed by equipped armour
+     * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
+     * @param classArmorBonusResolver resolver for AC contributed by the player's class
+     * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
+     * @param roomService             service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
+     * @param messageBroadcaster      scoped delivery service used to fan out {@code SHOUT} to nearby rooms
      */
     public static SocketCommandRegistry createDefault(
         EquipmentArmorResolver equipmentArmorResolver,
         RaceArmorBonusResolver raceArmorBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
         PlayerRepository playerRepository,
         RoomService roomService,
         MessageBroadcaster messageBroadcaster
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
+        Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         Objects.requireNonNull(playerRepository, "Player repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(messageBroadcaster, "Message broadcaster is required");
@@ -68,7 +72,7 @@ public class SocketCommandRegistry {
         new GossipCommand(registry);
         new WhoCommand(registry);
         new RankCommand(registry, playerRepository);
-        new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver);
+        new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver);
         new AbilityCommand(registry);
         new CastCommand(registry);
         new AbilitiesCommand(registry);

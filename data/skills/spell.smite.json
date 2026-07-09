@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "spell.smite",
+  "name": "smite",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 6
+  },
+  "cooldown": {
+    "ticks": 3
+  },
+  "targeting": "HARMFUL_UNDEAD",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 16
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down holy fire to smite {target}, searing its undead flesh!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} smites you with holy fire!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} smites {target} with a pillar of holy fire!"
+    }
+  ]
+}

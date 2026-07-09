@@ -10,7 +10,7 @@ import io.taanielo.jmud.core.character.ClassId;
 public class ClassMapper {
     public ClassDefinition toDomain(ClassDto dto) {
         Objects.requireNonNull(dto, "Class DTO is required");
-        if (dto.schemaVersion() != ClassSchemaVersions.V2) {
+        if (dto.schemaVersion() != ClassSchemaVersions.V2 && dto.schemaVersion() != ClassSchemaVersions.V3) {
             throw new IllegalArgumentException("Unsupported class schema version " + dto.schemaVersion());
         }
         ClassHealingDto healingDto = Objects.requireNonNull(dto.healing(), "Class healing is required");
@@ -22,6 +22,7 @@ public class ClassMapper {
             dto.name(),
             healingDto.baseModifier(),
             dto.carryBonus(),
+            dto.armorBonus(),
             startingAbilityIds
         );
     }

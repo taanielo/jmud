@@ -26,6 +26,7 @@ import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
+import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
@@ -180,6 +181,7 @@ public record GameContext(
 
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
+        ClassArmorBonusResolver classArmorBonusResolver = new ClassArmorBonusResolver(classRepository);
         RaceAttackBonusResolver raceAttackBonusResolver = new RaceAttackBonusResolver(raceRepository);
         // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
         // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
@@ -188,7 +190,8 @@ public record GameContext(
         long worldSeed = seededRng ? config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong()) : 0L;
         CombatRandom worldRandom = seededRng ? new SeededCombatRandom(worldSeed) : new ThreadLocalCombatRandom();
         CombatEngine combatEngine = createCombatEngine(
-                effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, equipmentArmorResolver, attackRepository,
+                effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
+                equipmentArmorResolver, attackRepository,
                 tickClock::currentTick, effectEngine, seededRng, worldSeed);
 
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
@@ -200,7 +203,8 @@ public record GameContext(
         AbilityTargetResolver abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
 
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
-            equipmentArmorResolver, raceArmorBonusResolver, playerRepository, roomService, messageBroadcaster);
+            equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
+            playerRepository, roomService, messageBroadcaster);
 
         ItemDurabilityService itemDurabilityService =
             new ItemDurabilityService(config.getInt("jmud.combat.durability_loss_per_hit", 1));
@@ -329,6 +333,7 @@ public record GameContext(
         EffectRepository effectRepository,
         RaceArmorBonusResolver armorBonusResolver,
         RaceAttackBonusResolver attackBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
         JsonAttackRepository attackRepository,
         LongSupplier tickSupplier,
@@ -340,15 +345,15 @@ public record GameContext(
         if (!seeded) {
             CombatRandom threadLocalRandom = new ThreadLocalCombatRandom();
             return new CombatEngine(
-                attackRepository, resolver, armorBonusResolver, attackBonusResolver, equipmentArmorResolver,
-                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
+                attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
+                equipmentArmorResolver, (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
-            attackRepository, resolver, armorBonusResolver, attackBonusResolver, equipmentArmorResolver,
-            provider, tickSupplier, effectEngine);
+            attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
+            equipmentArmorResolver, provider, tickSupplier, effectEngine);
     }
 
     private static ItemRepository createItemRepository() {
