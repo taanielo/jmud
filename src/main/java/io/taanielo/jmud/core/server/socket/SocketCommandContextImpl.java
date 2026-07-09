@@ -48,6 +48,9 @@ import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
+import io.taanielo.jmud.core.notes.NoteDeletionResult;
+import io.taanielo.jmud.core.notes.NotesService;
+import io.taanielo.jmud.core.notes.PlayerNote;
 import io.taanielo.jmud.core.output.TextStylers;
 import io.taanielo.jmud.core.party.Party;
 import io.taanielo.jmud.core.party.PartyService;
@@ -109,6 +112,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private static final DateTimeFormatter ACHIEVEMENT_TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
+    /** Format used to render bulletin-board note timestamps in the local time zone. */
+    private static final DateTimeFormatter NOTE_TIME_FORMAT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
     private final SocketClient client;
     private final ClientConnection connection;
     private final PlayerSession session;
@@ -126,6 +133,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final PlayerAliasService playerAliasService;
     private final PlayerMailService playerMailService;
     private final LightingService lightingService;
+    private final @Nullable NotesService notesService;
 
     /**
      * Creates a command context by extracting all game-logic dependencies from the provided
@@ -162,6 +170,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         this.playerAliasService = new PlayerAliasService();
         this.playerMailService = new PlayerMailService();
         this.lightingService = new LightingService();
+        this.notesService = context.notesService();
         this.gameActionService = new GameActionService(
             abilityRegistry,
             context.abilityCostResolver(),
@@ -2484,6 +2493,118 @@ class SocketCommandContextImpl implements SocketCommandContext {
             saveOrWarn(result.updatedPlayer());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void showBoard() {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to read the board.");
+            return;
+        }
+        if (notesService == null) {
+            writeLineWithPrompt("The bulletin board is not available.");
+            return;
+        }
+        RoomId roomId = currentRoomId(player);
+        if (roomId == null) {
+            writeLineWithPrompt("You are nowhere near a board.");
+            return;
+        }
+        List<PlayerNote> notes = notesService.notesInRoom(roomId);
+        if (notes.isEmpty()) {
+            writeLineWithPrompt("The bulletin board here is empty. Post the first note with NOTE POST <message>.");
+            return;
+        }
+        connection.writeLine("Bulletin board (" + notes.size() + " note" + (notes.size() == 1 ? "" : "s") + "):");
+        int index = 1;
+        for (PlayerNote note : notes) {
+            connection.writeLine(String.format(
+                "  [%d] %s (%s)",
+                index++, note.author().getValue(), NOTE_TIME_FORMAT.format(note.timestamp())));
+            connection.writeLine("      " + note.content());
+        }
+        connection.writeLine("Delete one of your notes with NOTE DELETE <number>.");
+        sendPrompt();
+    }
+
+    @Override
+    public void manageNote(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use notes.");
+            return;
+        }
+        if (notesService == null) {
+            writeLineWithPrompt("The bulletin board is not available.");
+            return;
+        }
+        RoomId roomId = currentRoomId(player);
+        if (roomId == null) {
+            writeLineWithPrompt("You are nowhere near a board.");
+            return;
+        }
+        String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+        String sub = parts[0]; // already uppercased by splitInput
+        String subArgs = parts[1];
+        switch (sub) {
+            case "POST" -> handleNotePost(player, roomId, subArgs);
+            case "DELETE" -> handleNoteDelete(player, roomId, subArgs);
+            default -> writeLineWithPrompt("Usage: NOTE POST <message>  |  NOTE DELETE <number>");
+        }
+    }
+
+    private void handleNotePost(Player player, RoomId roomId, String message) {
+        if (notesService == null) {
+            return;
+        }
+        if (message == null || message.isBlank()) {
+            writeLineWithPrompt("Post what? Usage: NOTE POST <message>");
+            return;
+        }
+        try {
+            notesService.postNote(roomId, player.getUsername(), message);
+            writeLineWithPrompt("Your note has been posted to the board.");
+        } catch (IllegalArgumentException e) {
+            writeLineWithPrompt(e.getMessage());
+        }
+    }
+
+    private void handleNoteDelete(Player player, RoomId roomId, String numberInput) {
+        if (notesService == null) {
+            return;
+        }
+        if (numberInput == null || numberInput.isBlank()) {
+            writeLineWithPrompt("Delete which note? Usage: NOTE DELETE <number>");
+            return;
+        }
+        Integer index = parseNoteIndex(numberInput.trim());
+        if (index == null) {
+            writeLineWithPrompt("'" + numberInput.trim() + "' is not a valid note number.");
+            return;
+        }
+        NoteDeletionResult result = notesService.deleteNote(roomId, index, player.getUsername());
+        String message = switch (result.outcome()) {
+            case DELETED -> "Note " + index + " has been removed from the board.";
+            case NO_SUCH_NOTE -> "There is no note numbered " + index + " on this board.";
+            case NOT_AUTHORIZED -> "You can only delete notes you posted yourself.";
+        };
+        writeLineWithPrompt(message);
+    }
+
+    /** Parses a one-based note index, returning {@code null} if the text is not a positive integer. */
+    private @Nullable Integer parseNoteIndex(String text) {
+        try {
+            int value = Integer.parseInt(text);
+            return value > 0 ? value : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Resolves the player's current room id, or {@code null} if their location is unknown. */
+    private @Nullable RoomId currentRoomId(Player player) {
+        return roomService.findPlayerLocation(player.getUsername()).orElse(null);
     }
 
     private void handlePartyForm(Player player, PartyService partyService) {

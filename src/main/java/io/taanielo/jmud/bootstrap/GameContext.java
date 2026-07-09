@@ -60,6 +60,9 @@ import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
+import io.taanielo.jmud.core.notes.NotesRepository;
+import io.taanielo.jmud.core.notes.NotesService;
+import io.taanielo.jmud.core.notes.repository.json.JsonNotesRepository;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.ArenaEventTicker;
@@ -148,7 +151,8 @@ public record GameContext(
     DialogueService dialogueService,
     ItemRepository itemRepository,
     AchievementService achievementService,
-    DuelService duelService
+    DuelService duelService,
+    NotesService notesService
 ) {
 
     /**
@@ -290,6 +294,8 @@ public record GameContext(
 
         DialogueService dialogueService = createDialogueService();
 
+        NotesService notesService = new NotesService(createNotesRepository(), Clock.systemUTC());
+
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
         return new GameContext(
@@ -331,8 +337,13 @@ public record GameContext(
             dialogueService,
             itemRepository,
             achievementService,
-            duelService
+            duelService,
+            notesService
         );
+    }
+
+    private static NotesRepository createNotesRepository() {
+        return new JsonNotesRepository();
     }
 
     private static UserRegistry createUserRegistry() {

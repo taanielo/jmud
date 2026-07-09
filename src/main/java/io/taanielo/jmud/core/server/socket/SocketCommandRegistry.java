@@ -114,6 +114,8 @@ public class SocketCommandRegistry {
         new HelpCommand(registry);
         new AliasCommand(registry);
         new MailCommand(registry);
+        new BoardCommand(registry);
+        new NoteCommand(registry);
         return registry;
     }
 
