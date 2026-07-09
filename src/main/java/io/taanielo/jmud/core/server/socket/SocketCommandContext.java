@@ -581,6 +581,26 @@ public interface SocketCommandContext extends Client {
     default void manageMail(String args) {}
 
     /**
+     * Displays the bulletin board of the player's current room via the {@code BOARD} command:
+     * every note pinned there, numbered oldest-first, with each note's author, timestamp, and text.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void showBoard() {}
+
+    /**
+     * Executes a {@code NOTE} sub-command against the current room's bulletin board:
+     * {@code POST <message>} pins a new note, and {@code DELETE <number>} removes one of the
+     * player's own notes by its board number (as shown by {@code BOARD}).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "POST hello all"} or
+     *             {@code "DELETE 2"})
+     */
+    default void manageNote(String args) {}
+
+    /**
      * Initiates a conversation with a named NPC in the current room via the {@code TALK} command.
      *
      * <p>Finds a living mob whose name matches {@code npcName} and which offers a dialogue tree,

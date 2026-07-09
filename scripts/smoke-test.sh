@@ -31,6 +31,13 @@ CHECKS=0
 cd "$(dirname "$0")/.." || exit 1
 mkdir -p "$OUT_DIR"
 
+# The BOARD/NOTE phase posts a real note to the training-yard bulletin board, which the
+# notes repository persists to data/boards/training-yard.json. Snapshot it up front so
+# cleanup can restore the committed state regardless of how the phase ends.
+BOARD_FILE="data/boards/training-yard.json"
+BOARD_BACKUP="$OUT_DIR/training-yard.board.bak"
+if [ -f "$BOARD_FILE" ]; then cp "$BOARD_FILE" "$BOARD_BACKUP"; fi
+
 log()  { printf '%s\n' "$*"; }
 pass() { CHECKS=$((CHECKS + 1)); log "  PASS: $*"; }
 fail() { CHECKS=$((CHECKS + 1)); FAILURES=$((FAILURES + 1)); log "  FAIL: $*"; }
@@ -54,6 +61,12 @@ cleanup() {
     fi
     rm -f "data/users/$TEST_USER.json" "players/$TEST_USER.json"
     rm -f "data/users/$TEST_ROGUE.json" "players/$TEST_ROGUE.json"
+    # Restore the committed bulletin board so the smoke test leaves no trace.
+    if [ -f "$BOARD_BACKUP" ]; then
+        cp "$BOARD_BACKUP" "$BOARD_FILE"
+    else
+        rm -f "$BOARD_FILE"
+    fi
 }
 trap cleanup EXIT
 
@@ -193,6 +206,20 @@ run_session "$T2E" "$TEST_USER" "$TEST_PASS" "duel nobody" "accept" "quit"
 
 expect "$T2E" "DUEL against an absent player is handled" 'no one here by that name to duel'
 expect "$T2E" "ACCEPT with no pending challenge is handled" 'no pending duel challenge'
+
+# ── phase 2f: bulletin board (BOARD/NOTE) ────────────────────────────────────
+# New players spawn in the training-yard, whose committed board carries a welcome
+# note. We read it (BOARD), pin our own note (NOTE POST), confirm it appears, then
+# remove it (NOTE DELETE 2) so the persisted board returns to its committed state.
+log "Phase 2f: BOARD/NOTE bulletin board"
+T2F="$OUT_DIR/phase2f-board.txt"
+run_session "$T2F" "$TEST_USER" "$TEST_PASS" \
+    "board" "note post Smoke test note" "board" "note delete 2" "quit"
+
+expect "$T2F" "BOARD shows the welcome note"        'Ancient Herald'
+expect "$T2F" "NOTE POST is confirmed"              'note has been posted'
+expect "$T2F" "posted note appears on the board"    'Smoke test note'
+expect "$T2F" "NOTE DELETE removes the note"        'has been removed from the board'
 
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).

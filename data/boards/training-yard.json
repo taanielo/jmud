@@ -1,0 +1,10 @@
+{
+  "schema_version" : 1,
+  "notes" : [ {
+    "id" : "00000000-0000-0000-0000-000000000001",
+    "author" : "Ancient Herald",
+    "content" : "Welcome to the Training Yard! Read this board with BOARD, and pin your own note with NOTE POST <message>.",
+    "timestamp" : "2026-07-09T00:00:00Z",
+    "room_id" : "training-yard"
+  } ]
+}
