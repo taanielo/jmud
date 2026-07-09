@@ -480,6 +480,27 @@ public interface SocketCommandContext extends Client {
     default void summon(String args) {}
 
     /**
+     * Permanently tames a charmable mob in the player's room, turning it into a persistent companion
+     * that follows its owner between rooms and fights at their side.
+     *
+     * <p>Only mobs flagged {@code charmable} can be tamed, and a player may control at most a fixed
+     * number of companions at once. Tamed companions are saved to the player's file so they survive
+     * logout/login. The game logic lives in {@code MobRegistry.processTame}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the mob name to tame
+     */
+    default void tame(String args) {}
+
+    /**
+     * Lists the player's active tamed companions, with each pet's location and current HP.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void companions() {}
+
+    /**
      * Deposits the specified amount of gold from the player's carried balance into the bank.
      *
      * <p>Requires the player to be in the same room as a bank NPC.

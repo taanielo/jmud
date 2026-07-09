@@ -1203,6 +1203,43 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void tame(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to tame.");
+            return;
+        }
+        cancelRestIfActive();
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("There is nothing here to tame.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        GameActionResult result = context.mobRegistry().processTame(player, args, roomIdOpt.get());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void companions() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to see your companions.");
+            return;
+        }
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("You have no companions.");
+            return;
+        }
+        GameActionResult result = context.mobRegistry().listCompanions(session.getPlayer());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void writeItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to write.");
@@ -2512,6 +2549,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         session.registerSustenance(this::applySustenanceUpdate, this::deliverSustenanceWarning);
         // Enqueue death-state check
         session.enqueueCommand(session::handleDeathState);
+        // Re-spawn the player's persisted tamed companions into their room on the tick thread so
+        // they rejoin their owner in the world (AGENTS.md §5).
+        if (context.mobRegistry() != null) {
+            session.enqueueCommand(() -> {
+                Player current = session.getPlayer();
+                if (current == null || current.isDead()) {
+                    return;
+                }
+                roomService.findPlayerLocation(current.getUsername())
+                    .ifPresent(room -> context.mobRegistry().spawnTamedPets(current, room));
+            });
+        }
         // Show recent gossip history exactly once, before any other post-login output.
         sendGossipHistory();
         // Notify of any unread mail waiting in the player's mailbox.

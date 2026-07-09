@@ -27,6 +27,7 @@ public class MobTemplateDtoMapper {
             : null;
         List<String> tags = dto.tags() == null ? List.of() : List.copyOf(dto.tags());
         boolean wanders = dto.wanders() != null && dto.wanders();
+        boolean charmable = dto.charmable() != null && dto.charmable();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -43,7 +44,8 @@ public class MobTemplateDtoMapper {
             tags,
             wanders,
             dto.nightRespawnTicks(),
-            dto.summonDurationTicks()
+            dto.summonDurationTicks(),
+            charmable
         );
     }
 }

@@ -55,7 +55,12 @@ public record MobTemplate(
      * player's summon is active, and it is removed the moment it dies or this many ticks elapse.
      * {@code null} for ordinary world mobs.
      */
-    @Nullable Integer summonDurationTicks
+    @Nullable Integer summonDurationTicks,
+    /**
+     * When {@code true} the mob may be permanently captured as a companion via the TAME command
+     * (see the pet/charm system). Defaults to {@code false} — ordinary mobs cannot be tamed.
+     */
+    boolean charmable
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -102,7 +107,7 @@ public record MobTemplate(
         boolean wanders
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, null, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false);
     }
 
     /**
@@ -127,7 +132,34 @@ public record MobTemplate(
         @Nullable Integer nightRespawnTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false);
+    }
+
+    /**
+     * Convenience constructor for pet templates and other callers that specify a night-specific
+     * respawn rate and a summon duration but are not charmable; defaults {@link #charmable()} to
+     * {@code false}.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false);
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */

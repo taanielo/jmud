@@ -9,6 +9,7 @@
   "max_count": 3,
   "respawn_ticks": 20,
   "night_respawn_ticks": 10,
+  "charmable": true,
   "loot": [
     {
       "item_id": "wolf-pelt",
