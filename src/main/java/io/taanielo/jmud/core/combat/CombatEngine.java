@@ -30,6 +30,7 @@ public class CombatEngine {
     private final AttackRepository attackRepository;
     private final CombatModifierResolver modifierResolver;
     private final RaceArmorBonusResolver armorBonusResolver;
+    private final RaceAttackBonusResolver attackBonusResolver;
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final CombatRandomProvider randomProvider;
     private final LongSupplier tickSupplier;
@@ -165,9 +166,47 @@ public class CombatEngine {
         LongSupplier tickSupplier,
         EffectEngine effectEngine
     ) {
+        this(
+            attackRepository,
+            modifierResolver,
+            armorBonusResolver,
+            RaceAttackBonusResolver.noOp(),
+            equipmentArmorResolver,
+            randomProvider,
+            tickSupplier,
+            effectEngine
+        );
+    }
+
+    /**
+     * Creates a combat engine that additionally resolves a race-based attack modifier
+     * for the attacker, derived from the attacker's race. This is the fully-wired
+     * constructor used by the composition root.
+     *
+     * @param attackRepository       source of attack definitions
+     * @param modifierResolver       resolves combat modifier chains from player effects
+     * @param armorBonusResolver     resolves race-based AC bonuses on the target
+     * @param attackBonusResolver    resolves race-based attack (hit-chance) bonuses on the attacker
+     * @param equipmentArmorResolver resolves equipment-based AC bonuses on the target
+     * @param randomProvider         produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier           supplies the current world tick number
+     * @param effectEngine           applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                               {@code null} disables on-hit effect application
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
+        this.attackBonusResolver = Objects.requireNonNull(attackBonusResolver, "Attack bonus resolver is required");
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         this.randomProvider = Objects.requireNonNull(randomProvider, "Combat random provider is required");
         this.tickSupplier = Objects.requireNonNull(tickSupplier, "Tick supplier is required");
@@ -210,10 +249,12 @@ public class CombatEngine {
         CombatModifiers attackerMods = modifierResolver.resolve(attacker.effects());
         CombatModifiers targetMods = modifierResolver.resolve(target.effects());
         int targetArmorBonus = armorBonusResolver.armorBonus(target) + equipmentArmorResolver.totalAc(target);
+        int attackerRaceAttackBonus = attackBonusResolver.attackBonus(attacker);
 
         int hitChanceBase = CombatSettings.baseHitChance()
             + attack.hitBonus()
             + attackerMods.attack().apply(0)
+            + attackerRaceAttackBonus
             - targetMods.defense().apply(0)
             - targetArmorBonus;
         int hitChance = attackerMods.hitChance().apply(hitChanceBase);

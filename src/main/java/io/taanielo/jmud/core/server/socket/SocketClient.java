@@ -265,6 +265,11 @@ public class SocketClient implements Client {
         }
         if (raceId != null) {
             player = player.withIdentity(player.identity().withRace(raceId));
+            try {
+                player = context.characterCreationService().applyRaceStartingStats(player, raceId);
+            } catch (CharacterCreationException e) {
+                log.warn("Failed to apply race starting stats for {}: {}", raceId.getValue(), e.getMessage());
+            }
         }
         if (classDef != null) {
             player = player.withIdentity(player.identity().withClassId(classDef.id()));

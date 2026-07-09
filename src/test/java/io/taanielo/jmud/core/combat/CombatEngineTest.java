@@ -235,6 +235,32 @@ class CombatEngineTest {
     }
 
     @Test
+    void raceAttackBonusIncreasesHitChance() throws Exception {
+        // Base hit chance is 75. With attack bonus +2, effective hit chance becomes 77.
+        // Rolling 76 would normally miss (76 > 75) but hits with the attack bonus (76 <= 77).
+        AttackId attackId = AttackId.of("attack.strong");
+        AttackDefinition attack = new AttackDefinition(attackId, "strong", 2, 2, 0, 0, 0, List.of());
+        FixedCombatRandom random = new FixedCombatRandom(76, 2, 100);
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            new StubAttackBonusResolver(2),
+            EquipmentArmorResolver.noOp(),
+            (tick, actorId) -> random,
+            () -> 0L,
+            null
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertEquals(2, result.damage());
+    }
+
+    @Test
     void raceArmorBonusZeroLeavesHitChanceUnchanged() throws Exception {
         // Base hit chance is 75. With armor bonus 0, rolling 75 still hits.
         AttackId attackId = AttackId.of("attack.no-armor");
@@ -420,6 +446,35 @@ class CombatEngineTest {
 
         @Override
         public int armorBonus(Player player) {
+            return bonus;
+        }
+
+        private static io.taanielo.jmud.core.character.repository.RaceRepository emptyRaceRepository() {
+            return new io.taanielo.jmud.core.character.repository.RaceRepository() {
+                @Override
+                public Optional<io.taanielo.jmud.core.character.Race> findById(
+                    io.taanielo.jmud.core.character.RaceId id) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public java.util.List<io.taanielo.jmud.core.character.Race> findAll() {
+                    return List.of();
+                }
+            };
+        }
+    }
+
+    private static class StubAttackBonusResolver extends RaceAttackBonusResolver {
+        private final int bonus;
+
+        private StubAttackBonusResolver(int bonus) {
+            super(emptyRaceRepository());
+            this.bonus = bonus;
+        }
+
+        @Override
+        public int attackBonus(Player attacker) {
             return bonus;
         }
 

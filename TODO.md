@@ -15,7 +15,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add area-of-effect spells that hit every hostile mob in the room, with mana cost scaling
 - [x] Add summonable companions: a necromancer-style SUMMON ability that spawns a temporary pet mob fighting for the player
 - [x] Add a pet/charm system: tamed mobs follow their owner between rooms and assist in combat
-- [ ] Add Elf race (high mana, low carry) and Orc race (high strength, healing penalty) with matching starting stats
+- [x] Add Elf race (high mana, low carry) and Orc race (high strength, healing penalty) with matching starting stats
 - [ ] Add Ranger class with TRACK skill that points toward the nearest mob of a named type
 - [ ] Add Paladin class with a self-heal, an undead-damage bonus, and heavy armour proficiency
 - [ ] Add NPC dialogue trees: TALK command with numbered responses driven by JSON dialogue data

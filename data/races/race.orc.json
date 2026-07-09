@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "id": "orc",
+  "name": "Orc",
+  "healing": {
+    "base_modifier": -2
+  },
+  "carry_base": 90,
+  "attack_modifier": 5,
+  "mana_modifier": -5
+}

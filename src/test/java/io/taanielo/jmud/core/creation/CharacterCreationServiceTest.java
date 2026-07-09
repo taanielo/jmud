@@ -5,18 +5,24 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.authentication.Password;
+import io.taanielo.jmud.core.authentication.User;
+import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
+import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerVitals;
 
 /**
  * Unit tests for {@link CharacterCreationService} using stub repositories.
@@ -175,6 +181,67 @@ class CharacterCreationServiceTest {
             new StubRaceRepository(), new EmptyClassRepository()
         );
         assertThrows(CharacterCreationException.class, emptyService::buildClassPrompt);
+    }
+
+    // ── applyRaceStartingStats ─────────────────────────────────────────
+
+    @Test
+    void applyRaceStartingStats_elf_increasesMaxManaAndFillsPool() throws CharacterCreationException {
+        Race elf = new Race(RaceId.of("elf"), "Elf", -2, 40, 0, 10, -1);
+        CharacterCreationService svc = serviceWith(elf);
+
+        Player result = svc.applyRaceStartingStats(newPlayer(), elf.id());
+
+        assertEquals(PlayerVitals.DEFAULT_MAX + 10, result.getVitals().maxMana());
+        assertEquals(result.getVitals().maxMana(), result.getVitals().mana(),
+            "A freshly created character should start with a full mana pool");
+    }
+
+    @Test
+    void applyRaceStartingStats_orc_decreasesMaxMana() throws CharacterCreationException {
+        Race orc = new Race(RaceId.of("orc"), "Orc", -2, 90, 0, -5, 5);
+        CharacterCreationService svc = serviceWith(orc);
+
+        Player result = svc.applyRaceStartingStats(newPlayer(), orc.id());
+
+        assertEquals(PlayerVitals.DEFAULT_MAX - 5, result.getVitals().maxMana());
+    }
+
+    @Test
+    void applyRaceStartingStats_nullRace_returnsSamePlayer() throws CharacterCreationException {
+        Player player = newPlayer();
+        assertEquals(player, service.applyRaceStartingStats(player, null));
+    }
+
+    private static Player newPlayer() {
+        return new Player(
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
+            1,
+            0,
+            PlayerVitals.defaults(),
+            new ArrayList<>(),
+            "prompt",
+            false,
+            List.of(),
+            null,
+            null
+        );
+    }
+
+    private static CharacterCreationService serviceWith(Race... races) {
+        List<Race> raceList = List.of(races);
+        RaceRepository repo = new RaceRepository() {
+            @Override
+            public Optional<Race> findById(RaceId id) {
+                return raceList.stream().filter(r -> r.id().equals(id)).findFirst();
+            }
+
+            @Override
+            public List<Race> findAll() {
+                return raceList;
+            }
+        };
+        return new CharacterCreationService(repo, new StubClassRepository());
     }
 
     // ── stub repositories ──────────────────────────────────────────────

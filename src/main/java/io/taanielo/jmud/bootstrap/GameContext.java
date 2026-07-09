@@ -31,6 +31,7 @@ import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
@@ -179,6 +180,7 @@ public record GameContext(
 
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
+        RaceAttackBonusResolver raceAttackBonusResolver = new RaceAttackBonusResolver(raceRepository);
         // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
         // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
         // logged by SeededCombatRandomProvider; set jmud.world.seed to replay a specific session.
@@ -186,7 +188,7 @@ public record GameContext(
         long worldSeed = seededRng ? config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong()) : 0L;
         CombatRandom worldRandom = seededRng ? new SeededCombatRandom(worldSeed) : new ThreadLocalCombatRandom();
         CombatEngine combatEngine = createCombatEngine(
-                effectRepository, raceArmorBonusResolver, equipmentArmorResolver, attackRepository,
+                effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, equipmentArmorResolver, attackRepository,
                 tickClock::currentTick, effectEngine, seededRng, worldSeed);
 
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
@@ -326,6 +328,7 @@ public record GameContext(
     private static CombatEngine createCombatEngine(
         EffectRepository effectRepository,
         RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
         JsonAttackRepository attackRepository,
         LongSupplier tickSupplier,
@@ -335,14 +338,17 @@ public record GameContext(
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
         if (!seeded) {
+            CombatRandom threadLocalRandom = new ThreadLocalCombatRandom();
             return new CombatEngine(
-                attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, new ThreadLocalCombatRandom(), effectEngine);
+                attackRepository, resolver, armorBonusResolver, attackBonusResolver, equipmentArmorResolver,
+                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
-            attackRepository, resolver, armorBonusResolver, equipmentArmorResolver, provider, tickSupplier, effectEngine);
+            attackRepository, resolver, armorBonusResolver, attackBonusResolver, equipmentArmorResolver,
+            provider, tickSupplier, effectEngine);
     }
 
     private static ItemRepository createItemRepository() {

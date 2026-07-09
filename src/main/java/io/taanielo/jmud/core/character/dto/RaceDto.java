@@ -6,6 +6,8 @@ public record RaceDto(
     String name,
     RaceHealingDto healing,
     int carryBase,
-    int armorBonus
+    int armorBonus,
+    int manaModifier,
+    int attackModifier
 ) {
 }

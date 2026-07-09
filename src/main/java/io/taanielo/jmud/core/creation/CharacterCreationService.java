@@ -13,6 +13,8 @@ import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
+import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerVitals;
 
 /**
  * Application service that drives the character-creation flow for new players.
@@ -140,6 +142,45 @@ public class CharacterCreationService {
             .findFirst();
     }
 
+    /**
+     * Applies the chosen race's starting stat modifiers to a freshly created player.
+     *
+     * <p>Currently this adjusts the player's maximum mana pool by the race's
+     * {@link Race#manaModifier()} (e.g. Elves gain a deeper pool, Orcs a shallower one).
+     * The mana pool is left full after the adjustment so a new character begins ready to
+     * cast. The maximum is clamped to a minimum of {@code 1} so a large negative modifier
+     * can never invalidate the vitals. Other race stats (carry capacity, healing, armor,
+     * attack) are resolved at their point of use and are not baked into the player here.
+     *
+     * @param player the newly created player whose stats should be adjusted
+     * @param raceId the race chosen during character creation; {@code null} leaves the player unchanged
+     * @return the player with race starting stats applied, or the original player when the
+     *         race is {@code null} or unknown
+     * @throws CharacterCreationException if race data cannot be loaded
+     */
+    public Player applyRaceStartingStats(Player player, RaceId raceId) throws CharacterCreationException {
+        Objects.requireNonNull(player, "Player is required");
+        if (raceId == null) {
+            return player;
+        }
+        Race race;
+        try {
+            race = raceRepository.findById(raceId).orElse(null);
+        } catch (RaceRepositoryException e) {
+            throw new CharacterCreationException("Failed to load race " + raceId.getValue() + ": " + e.getMessage(), e);
+        }
+        if (race == null || race.manaModifier() == 0) {
+            return player;
+        }
+        PlayerVitals vitals = player.getVitals();
+        int newMaxMana = Math.max(1, vitals.maxMana() + race.manaModifier());
+        PlayerVitals adjusted = vitals.withMaxMana(newMaxMana);
+        if (newMaxMana > adjusted.mana()) {
+            adjusted = adjusted.restoreMana(newMaxMana - adjusted.mana());
+        }
+        return player.withVitals(adjusted);
+    }
+
     // ── private helpers ────────────────────────────────────────────────
 
     private List<Race> loadRaces() throws CharacterCreationException {
@@ -171,15 +212,20 @@ public class CharacterCreationService {
     }
 
     private void appendRaceHint(StringBuilder sb, Race race) {
-        // Show carry capacity and healing modifier as brief description.
+        // Show carry capacity, healing, mana and attack modifiers as a brief description.
         sb.append(" (carry ").append(race.carryBase());
-        int hmod = race.healingBaseModifier();
-        if (hmod > 0) {
-            sb.append(", healing +").append(hmod);
-        } else if (hmod < 0) {
-            sb.append(", healing ").append(hmod);
-        }
+        appendSignedModifier(sb, "healing", race.healingBaseModifier());
+        appendSignedModifier(sb, "mana", race.manaModifier());
+        appendSignedModifier(sb, "attack", race.attackModifier());
         sb.append(')');
+    }
+
+    private void appendSignedModifier(StringBuilder sb, String label, int value) {
+        if (value > 0) {
+            sb.append(", ").append(label).append(" +").append(value);
+        } else if (value < 0) {
+            sb.append(", ").append(label).append(' ').append(value);
+        }
     }
 
     private void appendClassHint(StringBuilder sb, ClassDefinition cd) {
