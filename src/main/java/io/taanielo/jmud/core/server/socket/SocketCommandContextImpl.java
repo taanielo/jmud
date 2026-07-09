@@ -60,7 +60,6 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.quest.ActiveQuest;
 import io.taanielo.jmud.core.quest.DeliveryQuestResult;
-import io.taanielo.jmud.core.quest.ExplorationQuestResult;
 import io.taanielo.jmud.core.quest.ExplorationQuestService;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
 import io.taanielo.jmud.core.quest.QuestId;
