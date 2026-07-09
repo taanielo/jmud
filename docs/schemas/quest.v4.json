@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:quest:v4",
+  "title": "Exploration quest (v4)",
+  "description": "A quest where the player must visit every room listed in required_room_ids. Progress is tracked per player as rooms are entered; the quest auto-completes on the final room visit (there is no QUEST COMPLETE step) and grants gold, XP and an optional title. Schema version 1 is a kill quest, version 2 an item-collection delivery quest, version 3 an NPC-to-NPC package delivery; this version 4 covers room-visitation exploration. Quests are stored as data/quests/quest.<id>.json and the loader tolerates unknown properties.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "description",
+    "required_room_ids"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 4
+    },
+    "type": {
+      "type": "string",
+      "const": "exploration",
+      "description": "Optional human-readable discriminator. The effective type is derived from which fields are populated."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique quest id, accepted via QUEST ACCEPT <id>."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name shown to the player."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short flavour description of the exploration goal."
+    },
+    "required_room_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "description": "Room ids the player must all visit to complete the quest, in any order. Every id must exist in the room repository; the quest grant fails loudly otherwise."
+    },
+    "gold_reward": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bonus gold awarded on completion."
+    },
+    "xp_reward": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bonus XP awarded on completion."
+    },
+    "title_reward": {
+      "type": "string",
+      "description": "Optional title granted to the player on completion."
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 4,
+      "type": "exploration",
+      "id": "explore-catacombs",
+      "name": "Into the Catacombs",
+      "description": "Chart every chamber of the Catacombs beneath the keep.",
+      "required_room_ids": [
+        "catacombs-entrance",
+        "ossuary-hall",
+        "burial-alcove",
+        "crypt-corridor",
+        "warden-chamber"
+      ],
+      "gold_reward": 60,
+      "xp_reward": 150,
+      "title_reward": "Catacomb Cartographer"
+    }
+  ]
+}

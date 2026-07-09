@@ -1,0 +1,17 @@
+{
+  "schema_version": 4,
+  "type": "exploration",
+  "id": "explore-catacombs",
+  "name": "Into the Catacombs",
+  "description": "Chart every chamber of the Catacombs beneath the keep.",
+  "required_room_ids": [
+    "catacombs-entrance",
+    "ossuary-hall",
+    "burial-alcove",
+    "crypt-corridor",
+    "warden-chamber"
+  ],
+  "gold_reward": 60,
+  "xp_reward": 150,
+  "title_reward": "Catacomb Cartographer"
+}
