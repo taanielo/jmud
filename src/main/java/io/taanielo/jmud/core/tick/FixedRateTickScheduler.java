@@ -1,6 +1,9 @@
 package io.taanielo.jmud.core.tick;
 
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -8,6 +11,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -32,6 +36,11 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>{@code jmud.tick.overruns} — a {@link Counter} incremented each time a tick
  *       exceeds the configured interval budget.</li>
  * </ul>
+ *
+ * <p>When a {@link TickMetricsService} is attached via {@link #setMetricsService(TickMetricsService)},
+ * a {@link TickMetrics} snapshot (total duration, per-{@link Tickable} cost, overrun flag) is
+ * recorded at the end of every tick for the wizard {@code STATS} command. Recording happens on the
+ * tick thread only, so the service needs no synchronisation (AGENTS.md §5).
  */
 @Slf4j
 public class FixedRateTickScheduler {
@@ -45,7 +54,8 @@ public class FixedRateTickScheduler {
     private final Counter overrunMicrometerCounter;
     private volatile long lastTickNanos;
     private volatile long maxTickNanos;
-    private volatile boolean previousTickOverran;
+    private long tickNumber;
+    private @Nullable TickMetricsService metricsService;
     private @Nullable ScheduledFuture<?> task;
 
     /**
@@ -119,6 +129,17 @@ public class FixedRateTickScheduler {
             .register(meterRegistry);
     }
 
+    /**
+     * Attaches a {@link TickMetricsService} that receives a {@link TickMetrics} snapshot at the
+     * end of every tick. Must be called before {@link #start()} (from the composition root, on the
+     * bootstrap thread) so the tick thread only ever reads an already-set reference.
+     *
+     * @param metricsService the aggregation service to feed per-tick metrics into
+     */
+    public void setMetricsService(TickMetricsService metricsService) {
+        this.metricsService = Objects.requireNonNull(metricsService, "Metrics service is required");
+    }
+
     /** Starts the fixed-rate tick loop. Calling this more than once is a no-op. */
     public void start() {
         if (!started.compareAndSet(false, true)) {
@@ -159,25 +180,19 @@ public class FixedRateTickScheduler {
     private void runTick() {
         List<Tickable> snapshot = tickRegistry.snapshot();
         log.debug("Tick start ({} tickables)", snapshot.size());
-        boolean traceSlowest = previousTickOverran;
-        Tickable slowest = null;
-        long slowestNanos = -1;
+        long tick = ++tickNumber;
+        Map<String, Long> tickableCostNanos = new HashMap<>(snapshot.size() * 2);
 
         long startNanos = System.nanoTime();
         for (Tickable tickable : snapshot) {
-            long tickableStart = traceSlowest ? System.nanoTime() : 0L;
+            long tickableStart = System.nanoTime();
             try {
                 tickable.tick();
             } catch (Exception e) {
                 log.error("Tickable failed during tick", e);
             }
-            if (traceSlowest) {
-                long tickableElapsed = System.nanoTime() - tickableStart;
-                if (tickableElapsed > slowestNanos) {
-                    slowestNanos = tickableElapsed;
-                    slowest = tickable;
-                }
-            }
+            long tickableElapsed = System.nanoTime() - tickableStart;
+            tickableCostNanos.merge(tickable.getClass().getSimpleName(), tickableElapsed, Long::sum);
         }
         long elapsedNanos = System.nanoTime() - startNanos;
 
@@ -194,21 +209,31 @@ public class FixedRateTickScheduler {
             overrunCount.incrementAndGet();
             overrunMicrometerCounter.increment();
             log.warn(
-                "Tick overran: {} ms (budget {} ms, {} tickables)",
+                "Tick #{} overran: {} ms (budget {} ms, {} tickables). Slowest: {}",
+                tick,
                 elapsedMs,
                 intervalMillis,
-                snapshot.size()
+                snapshot.size(),
+                formatSlowest(tickableCostNanos)
             );
         }
-        previousTickOverran = overran;
 
-        if (traceSlowest && slowest != null) {
-            log.debug(
-                "Tick slowest tickable: {} ({} ms)",
-                slowest.getClass().getName(),
-                slowestNanos / 1_000_000L
-            );
+        TickMetricsService service = metricsService;
+        if (service != null) {
+            service.recordTick(new TickMetrics(tick, elapsedNanos, tickableCostNanos, overran));
         }
+    }
+
+    /**
+     * Formats the three costliest tickables of a tick for the overrun WARN line, e.g.
+     * {@code "MobRegistry=812ms, PlayerCommandQueue=190ms, WeatherEngine=3ms"}.
+     */
+    private static String formatSlowest(Map<String, Long> tickableCostNanos) {
+        return tickableCostNanos.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+            .limit(3)
+            .map(entry -> entry.getKey() + "=" + (entry.getValue() / 1_000_000L) + "ms")
+            .collect(Collectors.joining(", "));
     }
 
     /**
