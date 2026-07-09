@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:dialogue:v1",
+  "title": "NPC dialogue tree (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "npc_id",
+    "start_node",
+    "nodes"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique dialogue tree id. A mob template references this via its 'dialogue_id' field."
+    },
+    "npc_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the mob this dialogue belongs to (informational; the link is via the mob's dialogue_id)."
+    },
+    "start_node": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Key of the node in 'nodes' where the conversation begins. Must be a defined node."
+    },
+    "nodes": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Map of node id -> node. Response targets must reference keys in this map.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The NPC's spoken line for this node."
+          },
+          "responses": {
+            "type": "array",
+            "description": "Ordered, numbered responses shown to the player. An empty or omitted list makes the node terminal (ends the conversation).",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text", "target"],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The response text shown to the player."
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Id of the node this response advances to. Must be a defined node."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

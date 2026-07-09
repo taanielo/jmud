@@ -20,6 +20,7 @@ public record MobTemplateDto(
     Boolean wanders,
     Integer nightRespawnTicks,
     Integer summonDurationTicks,
-    Boolean charmable
+    Boolean charmable,
+    String dialogueId
 ) {
 }

@@ -39,6 +39,9 @@ import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
+import io.taanielo.jmud.core.dialogue.DialogueRepositoryException;
+import io.taanielo.jmud.core.dialogue.DialogueService;
+import io.taanielo.jmud.core.dialogue.repository.json.JsonDialogueRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
@@ -125,7 +128,8 @@ public record GameContext(
     GossipHistory gossipHistory,
     WorldClock worldClock,
     ItemDurabilityService itemDurabilityService,
-    ItemAffixService itemAffixService
+    ItemAffixService itemAffixService,
+    DialogueService dialogueService
 ) {
 
     /**
@@ -238,6 +242,8 @@ public record GameContext(
 
         GossipHistory gossipHistory = new GossipHistory();
 
+        DialogueService dialogueService = createDialogueService();
+
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
         return new GameContext(
@@ -274,7 +280,8 @@ public record GameContext(
             gossipHistory,
             worldClock,
             itemDurabilityService,
-            itemAffixService
+            itemAffixService,
+            dialogueService
         );
     }
 
@@ -403,6 +410,14 @@ public record GameContext(
             return new BankService(bankRepository);
         } catch (BankRepositoryException e) {
             throw new IllegalStateException("Failed to initialize bank service: " + e.getMessage(), e);
+        }
+    }
+
+    private static DialogueService createDialogueService() {
+        try {
+            return new DialogueService(new JsonDialogueRepository());
+        } catch (DialogueRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize dialogue service: " + e.getMessage(), e);
         }
     }
 

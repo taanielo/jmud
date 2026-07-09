@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.mob.GoldDrop;
 import io.taanielo.jmud.core.mob.LootEntry;
 import io.taanielo.jmud.core.mob.MobId;
@@ -28,6 +29,7 @@ public class MobTemplateDtoMapper {
         List<String> tags = dto.tags() == null ? List.of() : List.copyOf(dto.tags());
         boolean wanders = dto.wanders() != null && dto.wanders();
         boolean charmable = dto.charmable() != null && dto.charmable();
+        DialogueId dialogueId = dto.dialogueId() != null ? DialogueId.of(dto.dialogueId()) : null;
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -45,7 +47,8 @@ public class MobTemplateDtoMapper {
             wanders,
             dto.nightRespawnTicks(),
             dto.summonDurationTicks(),
-            charmable
+            charmable,
+            dialogueId
         );
     }
 }

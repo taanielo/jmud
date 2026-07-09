@@ -35,6 +35,10 @@ import io.taanielo.jmud.core.bank.BankTransactionResult;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
+import io.taanielo.jmud.core.dialogue.DialogueId;
+import io.taanielo.jmud.core.dialogue.DialogueNode;
+import io.taanielo.jmud.core.dialogue.DialogueService;
+import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
@@ -760,6 +764,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         cancelRestIfActive();
+        session.clearDialogue();
         Player player = session.getPlayer();
         if (encumbranceService.isOverburdened(player)) {
             writeLineWithPrompt("You are carrying too much to do that.");
@@ -1240,6 +1245,96 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GameActionResult result = context.mobRegistry().processTame(player, args, roomIdOpt.get());
         deliverResult(result);
         sendPrompt();
+    }
+
+    @Override
+    public void talk(String npcName) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to talk.");
+            return;
+        }
+        cancelRestIfActive();
+        DialogueService dialogueService = context.dialogueService();
+        if (dialogueService == null || context.mobRegistry() == null) {
+            writeLineWithPrompt("There is no one here to talk to.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        RoomId roomId = roomIdOpt.get();
+        String normalized = npcName.trim().toLowerCase(Locale.ROOT);
+        var speaker = context.mobRegistry().getMobsInRoom(roomId).stream()
+            .filter(mob -> mob.isAlive() && mob.template().dialogueId() != null)
+            .filter(mob -> {
+                String name = mob.template().name().toLowerCase(Locale.ROOT);
+                return name.equals(normalized) || name.startsWith(normalized);
+            })
+            .findFirst()
+            .orElse(null);
+        if (speaker == null) {
+            writeLineWithPrompt("There is no one here by that name to talk to.");
+            return;
+        }
+        DialogueId dialogueId = speaker.template().dialogueId();
+        DialogueTree tree = dialogueService.findTree(dialogueId).orElse(null);
+        if (tree == null) {
+            writeLineWithPrompt(speaker.template().name() + " has nothing to say.");
+            return;
+        }
+        DialogueNode startNode = tree.startNode();
+        session.startDialogue(tree, startNode.id(), roomId, speaker.template().name());
+        if (startNode.isTerminal()) {
+            session.clearDialogue();
+        }
+        writeLineWithPrompt(dialogueService.renderNode(speaker.template().name(), startNode));
+    }
+
+    @Override
+    public void respond(String numberInput) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to respond.");
+            return;
+        }
+        cancelRestIfActive();
+        DialogueService dialogueService = context.dialogueService();
+        DialogueTree tree = session.getDialogueTree();
+        String currentNodeId = session.getDialogueNodeId();
+        String speaker = session.getDialogueSpeaker();
+        RoomId dialogueRoomId = session.getDialogueRoomId();
+        if (dialogueService == null || tree == null || currentNodeId == null
+                || speaker == null || dialogueRoomId == null) {
+            writeLineWithPrompt("You are not talking to anyone. Use TALK <name> first.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty() || !roomIdOpt.get().equals(dialogueRoomId)) {
+            session.clearDialogue();
+            writeLineWithPrompt("Your conversation has ended.");
+            return;
+        }
+        int number;
+        try {
+            number = Integer.parseInt(numberInput.trim());
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("Respond with a number. Usage: RESPOND <number>");
+            return;
+        }
+        DialogueNode next = dialogueService.respond(tree, currentNodeId, number).orElse(null);
+        if (next == null) {
+            writeLineWithPrompt("That is not one of your options.");
+            return;
+        }
+        if (next.isTerminal()) {
+            session.clearDialogue();
+        } else {
+            session.advanceDialogueNode(next.id());
+        }
+        writeLineWithPrompt(dialogueService.renderNode(speaker, next));
     }
 
     @Override

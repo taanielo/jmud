@@ -4,10 +4,13 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
+
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.CooldownTracker;
+import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepository;
@@ -30,6 +33,7 @@ import io.taanielo.jmud.core.player.SustenanceTicker;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSubscription;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
+import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 
 /**
@@ -80,6 +84,24 @@ public class PlayerSession {
 
     /** Optional hook invoked (on the tick thread) whenever a player save fails, after logging. */
     private Consumer<Player> saveFailureHandler;
+
+    /**
+     * Active NPC conversation state (see the {@code TALK}/{@code RESPOND} commands), or {@code null}
+     * when the player is not talking to anyone. Held here — not on the persisted player — because a
+     * conversation is transient session state that is cleared on room change, movement, or logout.
+     */
+    private @Nullable ActiveDialogue activeDialogue;
+
+    /**
+     * A player's current position within an NPC dialogue tree.
+     *
+     * @param tree     the dialogue tree being traversed
+     * @param nodeId   the id of the node the player is currently at
+     * @param roomId   the room in which the conversation started; leaving it ends the conversation
+     * @param speaker  the display name of the NPC being spoken to
+     */
+    private record ActiveDialogue(DialogueTree tree, String nodeId, RoomId roomId, String speaker) {
+    }
 
     /**
      * Creates a player session with the given dependencies.
@@ -164,6 +186,82 @@ public class PlayerSession {
 
     public void setQuitRequested(boolean quitRequested) {
         this.quitRequested = quitRequested;
+    }
+
+    /**
+     * Begins an NPC conversation, replacing any conversation already in progress.
+     *
+     * @param tree    the dialogue tree being entered
+     * @param nodeId  the starting node id
+     * @param roomId  the room the conversation takes place in
+     * @param speaker the NPC's display name
+     */
+    public void startDialogue(DialogueTree tree, String nodeId, RoomId roomId, String speaker) {
+        this.activeDialogue = new ActiveDialogue(
+            Objects.requireNonNull(tree, "Dialogue tree is required"),
+            Objects.requireNonNull(nodeId, "Node id is required"),
+            Objects.requireNonNull(roomId, "Room id is required"),
+            Objects.requireNonNull(speaker, "Speaker is required"));
+    }
+
+    /**
+     * Returns whether the player is currently in an NPC conversation.
+     */
+    public boolean isInDialogue() {
+        return activeDialogue != null;
+    }
+
+    /**
+     * Returns the active dialogue tree, or {@code null} when no conversation is in progress.
+     */
+    public @Nullable DialogueTree getDialogueTree() {
+        return activeDialogue == null ? null : activeDialogue.tree();
+    }
+
+    /**
+     * Returns the current dialogue node id, or {@code null} when no conversation is in progress.
+     */
+    public @Nullable String getDialogueNodeId() {
+        return activeDialogue == null ? null : activeDialogue.nodeId();
+    }
+
+    /**
+     * Returns the room the active conversation started in, or {@code null} when none is in progress.
+     */
+    public @Nullable RoomId getDialogueRoomId() {
+        return activeDialogue == null ? null : activeDialogue.roomId();
+    }
+
+    /**
+     * Returns the NPC display name for the active conversation, or {@code null} when none is in
+     * progress.
+     */
+    public @Nullable String getDialogueSpeaker() {
+        return activeDialogue == null ? null : activeDialogue.speaker();
+    }
+
+    /**
+     * Advances the active conversation to a new node, keeping the same tree, room, and speaker.
+     * No-op when no conversation is in progress.
+     *
+     * @param nodeId the node id to advance to
+     */
+    public void advanceDialogueNode(String nodeId) {
+        if (activeDialogue == null) {
+            return;
+        }
+        this.activeDialogue = new ActiveDialogue(
+            activeDialogue.tree(),
+            Objects.requireNonNull(nodeId, "Node id is required"),
+            activeDialogue.roomId(),
+            activeDialogue.speaker());
+    }
+
+    /**
+     * Ends any active NPC conversation.
+     */
+    public void clearDialogue() {
+        this.activeDialogue = null;
     }
 
     public AbilityCooldownTracker getCooldownTracker() {

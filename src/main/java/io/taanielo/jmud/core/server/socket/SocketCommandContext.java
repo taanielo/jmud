@@ -568,4 +568,32 @@ public interface SocketCommandContext extends Client {
      */
     default void manageMail(String args) {}
 
+    /**
+     * Initiates a conversation with a named NPC in the current room via the {@code TALK} command.
+     *
+     * <p>Finds a living mob whose name matches {@code npcName} and which offers a dialogue tree,
+     * begins the conversation at the tree's start node, and displays the NPC's opening line and
+     * numbered response options. Fails with a clear message when no matching NPC is present or the
+     * NPC has nothing to say.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param npcName the NPC name to talk to
+     */
+    default void talk(String npcName) {}
+
+    /**
+     * Selects a numbered dialogue response via the {@code RESPOND} command, advancing the active
+     * conversation and displaying the NPC's next line and options.
+     *
+     * <p>Fails with a clear message when the player is not currently in a conversation, has left the
+     * NPC's room, or supplies an invalid response number. Reaching a terminal node ends the
+     * conversation.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param numberInput the raw 1-based response number entered by the player
+     */
+    default void respond(String numberInput) {}
+
 }
