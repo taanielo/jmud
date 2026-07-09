@@ -18,6 +18,7 @@ public record MobTemplateDto(
     Integer xpReward,
     GoldDropDto goldDrop,
     Boolean wanders,
-    Integer nightRespawnTicks
+    Integer nightRespawnTicks,
+    Integer summonDurationTicks
 ) {
 }

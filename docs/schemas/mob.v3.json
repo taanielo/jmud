@@ -90,6 +90,11 @@
       "type": "boolean",
       "default": false,
       "description": "When true the mob may randomly wander between linked rooms each tick. NPCs (tag 'npc') never wander."
+    },
+    "summon_duration_ticks": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "Marks this template as a summonable pet: its lifetime (in ticks) once summoned. Pet templates are never spawned into the world at start-up and never respawn — an instance exists only while a player's SUMMON is active. Omit for ordinary world mobs."
     }
   }
 }

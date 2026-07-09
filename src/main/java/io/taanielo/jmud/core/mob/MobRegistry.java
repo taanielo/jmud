@@ -90,6 +90,11 @@ public class MobRegistry implements Tickable, NpcStealPort {
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
+    /**
+     * Pet templates (see {@link MobTemplate#isPetTemplate()}) cached at {@link #init()} so the
+     * on-demand SUMMON path never touches the JSON repository from the tick thread (AGENTS.md §5).
+     */
+    private final List<MobTemplate> petTemplates = new ArrayList<>();
 
     public MobRegistry(
         MobTemplateRepository templateRepository,
@@ -175,19 +180,31 @@ public class MobRegistry implements Tickable, NpcStealPort {
             return;
         }
         for (MobTemplate template : templates) {
+            // Pet templates are never spawned into the world at start-up; an instance exists only
+            // while a player's SUMMON is active. Cache them for the on-demand summon path instead.
+            if (template.isPetTemplate()) {
+                petTemplates.add(template);
+                continue;
+            }
             for (int i = 0; i < template.maxCount(); i++) {
                 MobInstance mob = new MobInstance(template);
                 instances.put(mob.instanceId(), mob);
             }
         }
-        log.info("Spawned {} mob instance(s) from {} template(s)", instances.size(), templates.size());
+        log.info("Spawned {} mob instance(s) from {} template(s); cached {} pet template(s)",
+            instances.size(), templates.size(), petTemplates.size());
     }
 
     @Override
     public void tick() {
         runPlayerCombat();
+        runPetCombat();
         runWanderPhase();
         for (MobInstance mob : instances.values()) {
+            // Summoned pets are driven by runPetCombat and never respawn or attack players.
+            if (mob.isSummoned()) {
+                continue;
+            }
             if (!mob.isAlive()) {
                 if (mob.tickRespawn()) {
                     mob.respawn();
@@ -285,6 +302,9 @@ public class MobRegistry implements Tickable, NpcStealPort {
         MobInstance mob = findMobByName(getMobsInRoom(roomId), input);
         if (mob == null) {
             return GameActionResult.error("No such target here.");
+        }
+        if (mob.isSummoned()) {
+            return GameActionResult.error("You cannot attack a summoned ally.");
         }
         if (mob.template().hasTag("npc")) {
             return GameActionResult.error("You cannot attack that.");
@@ -463,6 +483,9 @@ public class MobRegistry implements Tickable, NpcStealPort {
             return GameActionResult.error(
                 "You don't see " + targetName + " to the " + direction.label() + ".");
         }
+        if (mob.isSummoned()) {
+            return GameActionResult.error("You cannot attack a summoned ally.");
+        }
         if (mob.template().hasTag("npc")) {
             return GameActionResult.error("You cannot attack that.");
         }
@@ -548,7 +571,7 @@ public class MobRegistry implements Tickable, NpcStealPort {
         Objects.requireNonNull(roomId, "Room id is required");
 
         List<MobInstance> targets = getMobsInRoom(roomId).stream()
-            .filter(m -> !m.template().hasTag("npc"))
+            .filter(m -> !m.template().hasTag("npc") && !m.isSummoned())
             .toList();
         if (targets.isEmpty()) {
             return GameActionResult.error("There are no enemies here to strike.");
@@ -672,6 +695,228 @@ public class MobRegistry implements Tickable, NpcStealPort {
         public void turnHostile(Username thief) {
             mob.engage(thief);
             playerCombatTargets.put(thief, mob.instanceId());
+        }
+    }
+
+    // ── Summoned pets ─────────────────────────────────────────────────
+
+    /**
+     * Summons a temporary pet mob (necromancer-style SUMMON spell) that fights hostile mobs on the
+     * caster's behalf. Validates the caster's level and mana, enforces the one-active-pet-at-a-time
+     * rule, then spawns a pet from the cached pet template into the caster's room and registers it so
+     * it participates in combat from the next tick. Runs entirely on the tick thread via the caster's
+     * command queue (AGENTS.md §5); the pet template is read from an in-memory cache, never from disk.
+     *
+     * @param caster the summoning player
+     * @param spell  the resolved SUMMON spell ability, supplying the level requirement and mana cost
+     * @param roomId the caster's current room, where the pet is spawned
+     * @return result whose {@code updatedSource} is the caster with mana deducted on success, plus
+     *         summon messages; or an error with no state change when validation fails
+     */
+    public GameActionResult processSummon(Player caster, Ability spell, RoomId roomId) {
+        Objects.requireNonNull(caster, "Caster is required");
+        Objects.requireNonNull(spell, "Spell is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+
+        if (caster.getLevel() < spell.level()) {
+            return GameActionResult.error(
+                "You are not experienced enough to cast " + spell.name() + ".");
+        }
+        int manaCost = spell.cost().mana();
+        if (caster.getVitals().getMana() < manaCost) {
+            return GameActionResult.error(
+                "You lack the mana to cast " + spell.name() + " (" + manaCost + " needed).");
+        }
+        if (hasActivePet(caster.getUsername())) {
+            return GameActionResult.error(
+                "You already have a summoned pet. Dismiss it before summoning another.");
+        }
+        MobTemplate petTemplate = petTemplates.isEmpty() ? null : petTemplates.get(0);
+        if (petTemplate == null || petTemplate.summonDurationTicks() == null) {
+            return GameActionResult.error("Your summons fizzles — nothing answers the call.");
+        }
+        MobInstance pet = MobInstance.summoned(
+            petTemplate, roomId, caster.getUsername(), petTemplate.summonDurationTicks());
+        instances.put(pet.instanceId(), pet);
+
+        Player updated = caster.withVitals(caster.getVitals().consumeMana(manaCost));
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You chant the words of summoning and a " + petTemplate.name()
+                + " rises to fight at your side!"));
+        broadcastToRoomExcept(roomId, caster.getUsername(),
+            caster.getUsername().getValue() + " summons a " + petTemplate.name() + "!");
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Dismisses the caster's active summoned pet on command, removing it from the world immediately.
+     * Runs on the tick thread via the caster's command queue (AGENTS.md §5).
+     *
+     * @param caster the player dismissing their pet
+     * @param roomId the caster's current room, used to announce the dismissal to bystanders
+     * @return result with a dismissal message, or an error when the caster has no active pet
+     */
+    public GameActionResult dismissPet(Player caster, RoomId roomId) {
+        Objects.requireNonNull(caster, "Caster is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        MobInstance pet = findActivePet(caster.getUsername());
+        if (pet == null) {
+            return GameActionResult.error("You have no summoned pet to dismiss.");
+        }
+        instances.remove(pet.instanceId());
+        broadcastToRoomExcept(pet.roomId(), caster.getUsername(),
+            "The " + pet.template().name() + " fades back into the ether.");
+        return new GameActionResult(null, null, List.of(GameMessage.toSource(
+            "You release your " + pet.template().name() + " and it fades away.")));
+    }
+
+    private boolean hasActivePet(Username summoner) {
+        return findActivePet(summoner) != null;
+    }
+
+    private MobInstance findActivePet(Username summoner) {
+        for (MobInstance mob : instances.values()) {
+            if (mob.isSummoned() && mob.isAlive() && summoner.equals(mob.summoner())) {
+                return mob;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Pet phase: for each summoned pet, decrement its lifetime (auto-dismissing on expiry), remove it
+     * if it has been destroyed in combat, and otherwise let it strike a hostile mob in its room. Runs
+     * on the tick thread (AGENTS.md §5).
+     */
+    private void runPetCombat() {
+        for (MobInstance pet : List.copyOf(instances.values())) {
+            if (!pet.isSummoned()) {
+                continue;
+            }
+            if (!pet.isAlive()) {
+                removePet(pet, "Your " + pet.template().name() + " has been destroyed!",
+                    "The " + pet.template().name() + " collapses into dust.");
+                continue;
+            }
+            if (pet.tickSummonLifetime()) {
+                removePet(pet, "Your " + pet.template().name() + " fades back into the ether.",
+                    "The " + pet.template().name() + " fades back into the ether.");
+                continue;
+            }
+            runPetAttack(pet);
+        }
+    }
+
+    /**
+     * Removes a summoned pet from the world and notifies its summoner and any bystanders in its room.
+     *
+     * @param pet         the pet to remove
+     * @param summonerMsg the message shown to the pet's summoner
+     * @param roomMsg     the message shown to other players in the pet's room
+     */
+    private void removePet(MobInstance pet, String summonerMsg, String roomMsg) {
+        instances.remove(pet.instanceId());
+        Username summoner = pet.summoner();
+        if (summoner != null) {
+            playerEventBus.publish(summoner,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(summonerMsg))));
+            broadcastToRoomExcept(pet.roomId(), summoner, roomMsg);
+        }
+    }
+
+    /**
+     * Resolves and applies a single pet attack: the pet strikes a hostile mob in its room; a slain
+     * foe awards its full kill rewards to the summoner (never split with the pet), while a surviving
+     * foe retaliates against the pet, destroying it when its HP is exhausted.
+     *
+     * @param pet the acting summoned pet
+     */
+    private void runPetAttack(MobInstance pet) {
+        MobInstance foe = findPetTarget(pet);
+        if (foe == null) {
+            return;
+        }
+        Username summoner = pet.summoner();
+        if (summoner == null) {
+            return;
+        }
+        AttackDefinition petAttack = loadAttack(pet.template().attackId());
+        if (petAttack == null) {
+            return;
+        }
+        String petName = pet.template().name();
+        String foeName = foe.template().name();
+        int damage = rollDamage(petAttack);
+        int remaining = foe.takeDamage(damage);
+
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("Your " + petName + " strikes the " + foeName + " for "
+            + damage + " damage. (" + remaining + " HP remaining)"));
+
+        if (!foe.isAlive()) {
+            Player summonerPlayer = playerRepository.loadPlayer(summoner).orElse(null);
+            if (summonerPlayer != null && !summonerPlayer.isDead()) {
+                Player rewarded = applyMobKillRewards(foe, summonerPlayer, foe.roomId(), messages);
+                saveOrLog(rewarded);
+                playerEventBus.publish(summoner, new GameActionResult(rewarded, null, messages));
+            } else {
+                // Summoner offline/dead: still tear the encounter down cleanly.
+                foe.scheduleRespawn(currentTimeOfDay());
+                endCombatForMob(foe);
+            }
+            return;
+        }
+
+        // Surviving foe retaliates against the pet (not the summoner).
+        AttackDefinition foeAttack = loadAttack(foe.template().attackId());
+        if (foeAttack != null) {
+            int retaliation = rollDamage(foeAttack);
+            int petRemaining = pet.takeDamage(retaliation);
+            messages.add(GameMessage.toSource("The " + foeName + " retaliates against your " + petName
+                + " for " + retaliation + " damage. (" + petRemaining + " HP remaining)"));
+            if (!pet.isAlive()) {
+                instances.remove(pet.instanceId());
+                messages.add(GameMessage.toSource("Your " + petName + " has been destroyed!"));
+                broadcastToRoomExcept(pet.roomId(), summoner,
+                    "The " + petName + " collapses into dust.");
+            }
+        }
+        playerEventBus.publish(summoner, new GameActionResult(null, null, messages));
+    }
+
+    /**
+     * Selects the mob a pet should attack this tick: a live, non-summoned, attackable
+     * ({@code "npc"}-untagged) mob in the pet's room, preferring one already engaged with the pet's
+     * summoner so the pet backs its master up.
+     *
+     * @param pet the acting pet
+     * @return the chosen foe, or {@code null} when the pet's room holds no hostile mob
+     */
+    private MobInstance findPetTarget(MobInstance pet) {
+        Username summoner = pet.summoner();
+        List<MobInstance> foes = instances.values().stream()
+            .filter(m -> m.isAlive()
+                && !m.isSummoned()
+                && m.roomId().equals(pet.roomId())
+                && !m.template().hasTag("npc"))
+            .toList();
+        if (summoner != null) {
+            for (MobInstance foe : foes) {
+                if (foe.engagedPlayers().contains(summoner)) {
+                    return foe;
+                }
+            }
+        }
+        return foes.isEmpty() ? null : foes.get(0);
+    }
+
+    private void broadcastToRoomExcept(RoomId roomId, Username excluded, String message) {
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (!occupant.equals(excluded)) {
+                playerEventBus.publish(occupant,
+                    new GameActionResult(null, null, List.of(GameMessage.toSource(message))));
+            }
         }
     }
 

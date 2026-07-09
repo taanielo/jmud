@@ -1,0 +1,23 @@
+{
+  "schema_version": 2,
+  "id": "spell.summon",
+  "name": "summon",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "NONE",
+  "aliases": [],
+  "effects": [],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You chant the words of summoning."
+    }
+  ]
+}

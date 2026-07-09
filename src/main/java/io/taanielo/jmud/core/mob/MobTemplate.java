@@ -47,7 +47,15 @@ public record MobTemplate(
      * in {@link TimeOfDay#NIGHT}; {@code null} means the mob respawns at the same rate day and
      * night.
      */
-    @Nullable Integer nightRespawnTicks
+    @Nullable Integer nightRespawnTicks,
+    /**
+     * Optional lifetime (in ticks) of a summoned pet spawned from this template (see the
+     * necromancer-style SUMMON spell). When non-null this template is a <em>pet template</em>: it is
+     * never spawned into the world at start-up and never respawns — an instance exists only while a
+     * player's summon is active, and it is removed the moment it dies or this many ticks elapse.
+     * {@code null} for ordinary world mobs.
+     */
+    @Nullable Integer summonDurationTicks
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -65,13 +73,17 @@ public record MobTemplate(
         if (nightRespawnTicks != null && nightRespawnTicks < 0) {
             throw new IllegalArgumentException("Mob nightRespawnTicks must be non-negative");
         }
+        if (summonDurationTicks != null && summonDurationTicks <= 0) {
+            throw new IllegalArgumentException("Mob summonDurationTicks must be positive");
+        }
         lootTable = List.copyOf(lootTable);
         tags = tags == null ? List.of() : List.copyOf(tags);
     }
 
     /**
      * Convenience constructor for callers that don't need a night-specific respawn rate; defaults
-     * {@link #nightRespawnTicks()} to {@code null} (same respawn rate day and night).
+     * {@link #nightRespawnTicks()} and {@link #summonDurationTicks()} to {@code null} (an ordinary
+     * world mob with the same respawn rate day and night).
      */
     public MobTemplate(
         MobId id,
@@ -90,12 +102,48 @@ public record MobTemplate(
         boolean wanders
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, null, null);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a night-specific respawn rate but are not
+     * pet templates; defaults {@link #summonDurationTicks()} to {@code null}.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null);
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */
     public boolean hasTag(String tag) {
         return tags.contains(tag);
+    }
+
+    /**
+     * Returns whether this template describes a summonable pet (see {@link #summonDurationTicks()}).
+     * Pet templates are excluded from world start-up spawning and from respawn; an instance exists
+     * only for the lifetime of an active player summon.
+     *
+     * @return {@code true} when {@link #summonDurationTicks()} is set
+     */
+    public boolean isPetTemplate() {
+        return summonDurationTicks != null;
     }
 
     /**

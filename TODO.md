@@ -13,7 +13,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add ranged weapons (bows, throwing knives) usable on mobs in adjacent rooms before they close in
 - [x] Add buff spells (bless, stoneskin, haste) as timed status effects castable on self and party members
 - [x] Add area-of-effect spells that hit every hostile mob in the room, with mana cost scaling
-- [ ] Add summonable companions: a necromancer-style SUMMON ability that spawns a temporary pet mob fighting for the player
+- [x] Add summonable companions: a necromancer-style SUMMON ability that spawns a temporary pet mob fighting for the player
 - [ ] Add a pet/charm system: tamed mobs follow their owner between rooms and assist in combat
 - [ ] Add Elf race (high mana, low carry) and Orc race (high strength, healing penalty) with matching starting stats
 - [ ] Add Ranger class with TRACK skill that points toward the nearest mob of a named type
