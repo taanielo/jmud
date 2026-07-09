@@ -1,5 +1,6 @@
 {
-  "schema_version": 2,
+  "schema_version": 7,
+  "is_outdoor": true,
   "id": "darkwood-trail",
   "name": "Darkwood Trail",
   "description": "A narrow dirt path winds into a dense, shadow-choked forest.",

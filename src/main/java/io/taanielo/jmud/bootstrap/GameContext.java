@@ -90,6 +90,9 @@ import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickRegistry;
+import io.taanielo.jmud.core.weather.WeatherEngine;
+import io.taanielo.jmud.core.weather.WeatherRoomView;
+import io.taanielo.jmud.core.weather.WeatherSettings;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
 import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
@@ -146,6 +149,7 @@ public record GameContext(
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
     WorldClock worldClock,
+    WeatherEngine weatherEngine,
     ItemDurabilityService itemDurabilityService,
     ItemAffixService itemAffixService,
     DialogueService dialogueService,
@@ -221,6 +225,15 @@ public record GameContext(
                 equipmentArmorResolver, attackRepository,
                 tickClock::currentTick, effectEngine, seededRng, worldSeed);
 
+        // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
+        // deterministic and replayable alongside combat/mob rolls (AGENTS.md §5). Only outdoor rooms
+        // (room schema v7 `is_outdoor`) observe it.
+        WeatherEngine weatherEngine = new WeatherEngine(
+            worldRandom, roomRepository,
+            WeatherSettings.transitionIntervalTicks(), WeatherSettings.intensityStep());
+        tickRegistry.register(weatherEngine);
+        roomService.setWeatherView(new WeatherRoomView(weatherEngine));
+
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 
         HealingEngine healingEngine = new HealingEngine(effectRepository);
@@ -231,7 +244,7 @@ public record GameContext(
 
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            playerRepository, roomService, messageBroadcaster);
+            playerRepository, roomService, messageBroadcaster, weatherEngine);
 
         ItemDurabilityService itemDurabilityService =
             new ItemDurabilityService(config.getInt("jmud.combat.durability_loss_per_hit", 1));
@@ -332,6 +345,7 @@ public record GameContext(
             messageBroadcaster,
             gossipHistory,
             worldClock,
+            weatherEngine,
             itemDurabilityService,
             itemAffixService,
             dialogueService,

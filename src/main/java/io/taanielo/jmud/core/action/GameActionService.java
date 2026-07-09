@@ -33,6 +33,7 @@ import io.taanielo.jmud.core.ability.AbilityUseResult;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatAction;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatResult;
@@ -48,6 +49,8 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
+import io.taanielo.jmud.core.weather.Weather;
+import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.world.ContainerLockingService;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.EquipmentSlot;
@@ -121,6 +124,12 @@ public class GameActionService {
      * {@link #setDuelService(DuelService)} with the single shared instance used across all sessions.
      */
     private DuelService duelService = new DuelService();
+    /**
+     * Optional weather source used to apply ambient combat modifiers to attacks. {@code null} means
+     * the weather subsystem is disabled; combat then resolves with no environmental modifiers. The
+     * composition root wires the shared engine via {@link #setWeatherEngine(WeatherEngine)}.
+     */
+    private @Nullable WeatherEngine weatherEngine;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -387,6 +396,31 @@ public class GameActionService {
     }
 
     /**
+     * Injects the shared weather engine so that outdoor combat picks up ambient weather modifiers.
+     *
+     * <p>Called once by the composition root. When absent, combat resolves with no environmental
+     * modifiers (as it did before the weather system existed).
+     *
+     * @param weatherEngine the shared weather engine
+     */
+    public void setWeatherEngine(WeatherEngine weatherEngine) {
+        this.weatherEngine = Objects.requireNonNull(weatherEngine, "Weather engine is required");
+    }
+
+    /**
+     * Resolves the weather currently affecting the given player's room, or {@link Weather#clear()}
+     * when the weather subsystem is disabled or the player's location is unknown.
+     */
+    private Weather weatherFor(Player player) {
+        if (weatherEngine == null) {
+            return Weather.clear();
+        }
+        return roomService.findPlayerLocation(player.getUsername())
+            .map(weatherEngine::getWeatherAt)
+            .orElseGet(Weather::clear);
+    }
+
+    /**
      * Returns whether the given player is currently engaged in combat, counting both mob combat and
      * an active duel.
      *
@@ -604,7 +638,11 @@ public class GameActionService {
             return GameActionResult.error("You cannot attack yourself.");
         }
         try {
-            CombatResult result = combatEngine.resolve(source, target, resolveAttackId(source));
+            Weather weather = weatherFor(source);
+            CombatAction combatAction = new CombatAction(
+                source, target, resolveAttackId(source),
+                weather.combatHitModifier(), weather.rangedHitModifier());
+            CombatResult result = combatEngine.resolve(combatAction);
             List<GameMessage> messages = new ArrayList<>();
             if (result.sourceMessage() != null && !result.sourceMessage().isBlank()) {
                 messages.add(GameMessage.toSource(result.sourceMessage()));
