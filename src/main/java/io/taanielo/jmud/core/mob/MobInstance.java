@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.TimeOfDay;
@@ -38,11 +40,50 @@ public class MobInstance {
     private final AtomicBoolean specialAbilityUsed = new AtomicBoolean(false);
     /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
     private volatile RoomId currentRoomId;
+    /**
+     * The player who summoned this mob, or {@code null} for ordinary world mobs. A summoned pet
+     * fights alongside its summoner and never attacks them (see {@link #isSummoned()}).
+     */
+    @Nullable
+    private final Username summoner;
+    /**
+     * Remaining lifetime, in ticks, of a summoned pet before it auto-dismisses. Only meaningful when
+     * {@link #summoner} is non-null; decremented on the tick thread via {@link #tickSummonLifetime()}.
+     */
+    private final AtomicInteger summonTicksRemaining = new AtomicInteger(0);
 
     public MobInstance(MobTemplate template) {
         this.template = template;
         this.hp = new AtomicInteger(template.maxHp());
         this.currentRoomId = template.spawnRoomId();
+        this.summoner = null;
+    }
+
+    private MobInstance(MobTemplate template, RoomId spawnRoom, Username summoner, int durationTicks) {
+        this.template = Objects.requireNonNull(template, "Template is required");
+        this.hp = new AtomicInteger(template.maxHp());
+        this.currentRoomId = Objects.requireNonNull(spawnRoom, "Spawn room is required");
+        this.summoner = Objects.requireNonNull(summoner, "Summoner is required");
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException("Summon duration must be positive");
+        }
+        this.summonTicksRemaining.set(durationTicks);
+    }
+
+    /**
+     * Creates a summoned pet instance owned by {@code summoner}, spawned into {@code spawnRoom} and
+     * living for {@code durationTicks} ticks. The pet fights hostile mobs in its room on the caster's
+     * behalf and is removed on death or when its lifetime elapses.
+     *
+     * @param template      the pet template (must be a {@link MobTemplate#isPetTemplate() pet template})
+     * @param spawnRoom     the room to spawn the pet into (normally the summoner's current room)
+     * @param summoner      the player who summoned the pet
+     * @param durationTicks how many ticks the pet lives before auto-dismissing; must be positive
+     * @return the new summoned pet instance
+     */
+    public static MobInstance summoned(
+        MobTemplate template, RoomId spawnRoom, Username summoner, int durationTicks) {
+        return new MobInstance(template, spawnRoom, summoner, durationTicks);
     }
 
     public UUID instanceId() {
@@ -131,6 +172,40 @@ public class MobInstance {
      */
     public void markSpecialAbilityUsed() {
         specialAbilityUsed.set(true);
+    }
+
+    /**
+     * Returns whether this mob is a temporary summoned pet (as opposed to an ordinary world mob).
+     *
+     * @return {@code true} when this instance was created via {@link #summoned}
+     */
+    public boolean isSummoned() {
+        return summoner != null;
+    }
+
+    /**
+     * Returns the player who summoned this pet, or {@code null} for ordinary world mobs.
+     *
+     * @return the summoner's username, or {@code null}
+     */
+    @Nullable
+    public Username summoner() {
+        return summoner;
+    }
+
+    /** Returns the pet's remaining lifetime in ticks (zero for non-summoned mobs). */
+    public int summonTicksRemaining() {
+        return summonTicksRemaining.get();
+    }
+
+    /**
+     * Decrements a summoned pet's remaining lifetime by one tick. Must only be called from the tick
+     * thread and only for summoned pets.
+     *
+     * @return {@code true} when the lifetime has elapsed and the pet should be dismissed
+     */
+    public boolean tickSummonLifetime() {
+        return summonTicksRemaining.decrementAndGet() <= 0;
     }
 
     /** Resets the mob to full HP and returns it to its spawn room, ready to act again. */

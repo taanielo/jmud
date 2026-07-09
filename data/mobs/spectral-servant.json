@@ -1,0 +1,14 @@
+{
+  "schema_version": 3,
+  "id": "spectral-servant",
+  "name": "Spectral Servant",
+  "max_hp": 25,
+  "attack_id": "attack.skeleton",
+  "aggressive": false,
+  "tags": ["undead", "pet"],
+  "spawn_room_id": "training-yard",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "xp_reward": 0,
+  "summon_duration_ticks": 20
+}

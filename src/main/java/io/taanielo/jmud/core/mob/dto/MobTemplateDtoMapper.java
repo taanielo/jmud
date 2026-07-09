@@ -42,7 +42,8 @@ public class MobTemplateDtoMapper {
             goldDrop,
             tags,
             wanders,
-            dto.nightRespawnTicks()
+            dto.nightRespawnTicks(),
+            dto.summonDurationTicks()
         );
     }
 }

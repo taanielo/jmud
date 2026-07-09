@@ -44,7 +44,8 @@ class ClassDefinitionStartingAbilitiesTest {
         assertTrue(ids.contains("spell.heal"), "Mage must have spell.heal");
         assertTrue(ids.contains("spell.stoneskin"), "Mage must have spell.stoneskin");
         assertTrue(ids.contains("spell.haste"), "Mage must have spell.haste");
-        assertEquals(4, ids.size(), "Mage should have exactly 4 starting abilities");
+        assertTrue(ids.contains("spell.summon"), "Mage must have spell.summon");
+        assertEquals(5, ids.size(), "Mage should have exactly 5 starting abilities");
     }
 
     @Test

@@ -1152,6 +1152,56 @@ class SocketCommandContextImpl implements SocketCommandContext {
         sendPrompt();
     }
 
+    /** Ability id of the necromancer-style SUMMON spell (data/skills/spell.summon.json). */
+    private static final AbilityId SUMMON_ABILITY_ID = AbilityId.of("spell.summon");
+
+    @Override
+    public void summon(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to summon.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        if (!player.getLearnedAbilities().contains(SUMMON_ABILITY_ID)) {
+            writeLineWithPrompt("You have not learned how to summon.");
+            return;
+        }
+        Ability spell = abilityRegistry.findById(SUMMON_ABILITY_ID).orElse(null);
+        if (spell == null) {
+            writeLineWithPrompt("You cannot summon right now.");
+            return;
+        }
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("Your summons echoes into nothing.");
+            return;
+        }
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.equalsIgnoreCase("dismiss")) {
+            GameActionResult dismissResult = context.mobRegistry().dismissPet(player, roomIdOpt.get());
+            deliverResult(dismissResult);
+            sendPrompt();
+            return;
+        }
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(spell.id())) {
+            writeLineWithPrompt("Summon is on cooldown ("
+                + cooldowns.remainingTicks(spell.id()) + " ticks remaining).");
+            return;
+        }
+        GameActionResult result = context.mobRegistry().processSummon(player, spell, roomIdOpt.get());
+        if (result.updatedSource() != null && spell.cooldown().ticks() > 0) {
+            cooldowns.startCooldown(spell.id(), spell.cooldown().ticks());
+        }
+        deliverResult(result);
+        sendPrompt();
+    }
+
     @Override
     public void writeItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {

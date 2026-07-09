@@ -467,6 +467,19 @@ public interface SocketCommandContext extends Client {
     default void steal(String args) {}
 
     /**
+     * Casts the necromancer-style SUMMON spell, spawning a temporary pet mob that fights hostile
+     * mobs at the caster's side, or dismisses the active pet when {@code args} is {@code "dismiss"}.
+     *
+     * <p>Requires the player to have learned the summon spell and to meet its level and mana cost;
+     * the spell honours its own cooldown. Only one pet may be active at a time.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command: blank to summon, or {@code "dismiss"} to release the active pet
+     */
+    default void summon(String args) {}
+
+    /**
      * Deposits the specified amount of gold from the player's carried balance into the bank.
      *
      * <p>Requires the player to be in the same room as a bank NPC.
