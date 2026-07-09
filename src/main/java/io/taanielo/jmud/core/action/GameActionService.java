@@ -31,6 +31,7 @@ import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityUseResult;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
+import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatRandom;
@@ -42,6 +43,7 @@ import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
@@ -113,6 +115,12 @@ public class GameActionService {
      * (never finds a mob) when no mob layer is wired.
      */
     private final MobLocatorPort mobLocatorPort;
+    /**
+     * Registry of consensual player-vs-player duels. Defaults to a private, unshared instance so
+     * tests and non-duel code paths work without extra wiring; the composition root replaces it via
+     * {@link #setDuelService(DuelService)} with the single shared instance used across all sessions.
+     */
+    private DuelService duelService = new DuelService();
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -366,6 +374,135 @@ public class GameActionService {
     }
 
     /**
+     * Injects the shared duel registry used to coordinate consensual player-vs-player duels.
+     *
+     * <p>Called once by the composition root so that every per-session service instance references
+     * the same registry; without it, {@link #initiatePlayerDuel}, {@link #acceptPlayerDuel}, and the
+     * duel-aware death path fall back to a private, unshared instance.
+     *
+     * @param duelService the shared duel registry
+     */
+    public void setDuelService(DuelService duelService) {
+        this.duelService = Objects.requireNonNull(duelService, "Duel service is required");
+    }
+
+    /**
+     * Returns whether the given player is currently engaged in combat, counting both mob combat and
+     * an active duel.
+     *
+     * @param player the player to check
+     * @return {@code true} when the player is in mob combat or an active duel
+     */
+    private boolean isEngagedInCombat(Player player) {
+        return inCombatCheck.test(player) || duelService.isDueling(player.getUsername());
+    }
+
+    /**
+     * Initiates a consensual duel by sending a challenge to a player in the same room.
+     *
+     * <p>Validation rejects a blank name, self-targeting, a target who is not present, and either
+     * party already being in combat (mob or duel). On success a pending challenge is recorded with a
+     * {@value DuelService#DEFAULT_TIMEOUT_TICKS}-tick acceptance window and the target is prompted to
+     * {@code ACCEPT}. No game state other than the transient duel registry is mutated.
+     *
+     * @param initiator  the challenging player
+     * @param targetName the raw name of the player to challenge
+     * @return a result carrying the challenge messages, or an error describing why it was rejected
+     */
+    public GameActionResult initiatePlayerDuel(Player initiator, String targetName) {
+        Objects.requireNonNull(initiator, "Initiator is required");
+        String normalized = targetName == null ? "" : targetName.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Usage: duel <player>");
+        }
+        if (isEngagedInCombat(initiator)) {
+            return GameActionResult.error("You cannot start a duel while in combat.");
+        }
+        Optional<Player> targetMatch = abilityTargetResolver.resolve(initiator, normalized);
+        if (targetMatch.isEmpty()) {
+            return GameActionResult.error("There is no one here by that name to duel.");
+        }
+        Player target = targetMatch.get();
+        if (target.getUsername().equals(initiator.getUsername())) {
+            return GameActionResult.error("You cannot duel yourself.");
+        }
+        if (isEngagedInCombat(target)) {
+            return GameActionResult.error(target.getUsername().getValue() + " is already in combat.");
+        }
+        duelService.requestDuel(initiator.getUsername(), target.getUsername());
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You challenge " + target.getUsername().getValue() + " to a duel."));
+        messages.add(GameMessage.toPlayer(
+            target.getUsername(),
+            initiator.getUsername().getValue()
+                + " challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout."));
+        return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Accepts a pending duel challenge, engaging the accepting player and their challenger.
+     *
+     * <p>Fails when no challenge is pending for the accepting player or when they are already in an
+     * active duel. On success both players become dueling combatants; the fight then proceeds through
+     * the normal {@link #attack} command, with duel-aware death handling suppressing loot, gold, and
+     * corpse creation.
+     *
+     * @param target the player accepting a challenge
+     * @return a result carrying the acceptance messages, or an error when there is nothing to accept
+     */
+    public GameActionResult acceptPlayerDuel(Player target) {
+        Objects.requireNonNull(target, "Target is required");
+        if (duelService.isDueling(target.getUsername())) {
+            return GameActionResult.error("You are already in a duel.");
+        }
+        Optional<Username> challengerMatch = duelService.pendingChallenger(target.getUsername());
+        if (challengerMatch.isEmpty()) {
+            return GameActionResult.error("You have no pending duel challenge.");
+        }
+        Username challenger = challengerMatch.get();
+        duelService.activate(challenger, target.getUsername());
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You accept " + challenger.getValue() + "'s duel. Combat begins!"));
+        messages.add(GameMessage.toPlayer(
+            challenger,
+            target.getUsername().getValue() + " accepts your duel. Combat begins!"));
+        return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Ends an active duel when one participant falls to zero HP, suppressing the normal lethal
+     * consequences of a player death.
+     *
+     * <p>Unlike {@link #resolveDeathIfNeeded}, no corpse is spawned, no gold or items are dropped, no
+     * XP or reputation is awarded, and the loser is left alive at 1 HP (near death) in the same room
+     * rather than being sent to respawn. Both participants are disengaged and told the duel is over.
+     *
+     * @param survivor the winning participant
+     * @param loser    the participant reduced to zero HP
+     * @return a result carrying the near-death loser and the duel-end messages
+     */
+    public GameActionResult endPlayerDuel(Player survivor, Player loser) {
+        Objects.requireNonNull(survivor, "Survivor is required");
+        Objects.requireNonNull(loser, "Loser is required");
+        duelService.endDuel(survivor.getUsername(), loser.getUsername());
+        PlayerVitals nearDeathVitals =
+            loser.getVitals().hp() <= 0 ? loser.getVitals().heal(1) : loser.getVitals();
+        // Leave the loser alive at near-death rather than slain: clear the death flag combat set
+        // when their HP hit zero, so no respawn/corpse cascade is triggered.
+        Player nearDeathLoser = loser.withVitals(nearDeathVitals).withDead(false);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You have defeated " + loser.getUsername().getValue() + " in the duel!"));
+        messages.add(GameMessage.toSource("Duel ended."));
+        messages.add(GameMessage.toPlayer(
+            loser.getUsername(),
+            "You have been defeated by " + survivor.getUsername().getValue() + "."));
+        messages.add(GameMessage.toPlayer(loser.getUsername(), "Duel ended."));
+        return new GameActionResult(null, nearDeathLoser, messages);
+    }
+
+    /**
      * Teleports the player back to the starting/town room used by {@link RoomService} for
      * new-character placement and respawn.
      *
@@ -383,6 +520,9 @@ public class GameActionService {
      */
     public GameActionResult recall(Player source) {
         Objects.requireNonNull(source, "Source is required");
+        if (duelService.isDueling(source.getUsername())) {
+            return GameActionResult.error("You cannot recall while dueling!");
+        }
         if (inCombatCheck.test(source)) {
             return GameActionResult.error("You are in combat! You must FLEE before you can recall.");
         }
@@ -425,6 +565,9 @@ public class GameActionService {
      */
     public FleeResult flee(Player source, Room currentRoom) {
         Objects.requireNonNull(source, "Source is required");
+        if (duelService.isDueling(source.getUsername())) {
+            return FleeResult.failure("You cannot flee from a duel!");
+        }
         if (!inCombatCheck.test(source)) {
             return FleeResult.failure("You are not in combat.");
         }
@@ -478,9 +621,19 @@ public class GameActionService {
             for (String effectRoomMessage : result.effectRoomMessages()) {
                 messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), effectRoomMessage));
             }
-            GameActionResult deathResult = resolveDeathIfNeeded(result.target(), source);
-            Player updatedTarget = deathResult.updatedTarget();
-            messages.addAll(deathResult.messages());
+            Player combatTarget = result.target();
+            Player updatedTarget;
+            if (combatTarget.getVitals().hp() <= 0
+                && duelService.areDueling(source.getUsername(), target.getUsername())) {
+                // Duel loss: end the duel with no corpse, no gold/item drop, no XP or reputation.
+                GameActionResult duelEnd = endPlayerDuel(source, combatTarget);
+                updatedTarget = duelEnd.updatedTarget();
+                messages.addAll(duelEnd.messages());
+            } else {
+                GameActionResult deathResult = resolveDeathIfNeeded(combatTarget, source);
+                updatedTarget = deathResult.updatedTarget();
+                messages.addAll(deathResult.messages());
+            }
             // Attacking always breaks stealth (AGENTS.md §5 — same tick as the action).
             Player updatedSource = null;
             if (source.isStealthActive()) {
@@ -547,9 +700,19 @@ public class GameActionService {
                 source.getUsername().getValue() + " emerges from the shadows!"));
         }
 
-        GameActionResult deathResult = resolveDeathIfNeeded(updatedTarget, updatedSource);
-        updatedTarget = deathResult.updatedTarget();
-        messages.addAll(deathResult.messages());
+        boolean duelKill = updatedTarget.getVitals().hp() <= 0
+            && !updatedTarget.getUsername().equals(updatedSource.getUsername())
+            && duelService.areDueling(updatedSource.getUsername(), updatedTarget.getUsername());
+        if (duelKill) {
+            // Duel loss via an ability: end the duel with no corpse, gold, XP, or reputation.
+            GameActionResult duelEnd = endPlayerDuel(updatedSource, updatedTarget);
+            updatedTarget = duelEnd.updatedTarget();
+            messages.addAll(duelEnd.messages());
+        } else {
+            GameActionResult deathResult = resolveDeathIfNeeded(updatedTarget, updatedSource);
+            updatedTarget = deathResult.updatedTarget();
+            messages.addAll(deathResult.messages());
+        }
 
         if (updatedTarget.getUsername().equals(updatedSource.getUsername())) {
             updatedSource = updatedTarget;

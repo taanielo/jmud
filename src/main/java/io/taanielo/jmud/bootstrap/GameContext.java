@@ -63,6 +63,7 @@ import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.DeathSettings;
+import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -144,7 +145,8 @@ public record GameContext(
     ItemAffixService itemAffixService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
-    AchievementService achievementService
+    AchievementService achievementService,
+    DuelService duelService
 ) {
 
     /**
@@ -268,6 +270,9 @@ public record GameContext(
             mobRegistry.setPartyService(partyService);
         }
 
+        DuelService duelService = new DuelService();
+        tickRegistry.register(duelService);
+
         GossipHistory gossipHistory = new GossipHistory();
 
         DialogueService dialogueService = createDialogueService();
@@ -312,7 +317,8 @@ public record GameContext(
             itemAffixService,
             dialogueService,
             itemRepository,
-            achievementService
+            achievementService,
+            duelService
         );
     }
 
