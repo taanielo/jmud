@@ -122,6 +122,7 @@ public class SocketCommandRegistry {
         new QuitCommand(registry);
         new HelpCommand(registry);
         new AliasCommand(registry);
+        new IgnoreCommand(registry);
         new MailCommand(registry);
         new BoardCommand(registry);
         new NoteCommand(registry);

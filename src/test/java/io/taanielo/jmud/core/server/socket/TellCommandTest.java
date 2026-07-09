@@ -16,6 +16,7 @@ import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerIgnoreList;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
 
@@ -122,6 +123,45 @@ class TellCommandTest {
                 "Tell should be delivered even when case differs");
     }
 
+    // --- ignore filtering (issue #339) ---
+
+    @Test
+    void tellFromIgnoredSenderIsSilentlyDropped() {
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient", "Sender");
+
+        TellCommand cmd = new TellCommand(new SocketCommandRegistry());
+        cmd.match("TELL Recipient hello there").get().execute(context);
+
+        assertTrue(context.sentToUsername.isEmpty(),
+                "Recipient ignoring the sender should receive nothing");
+    }
+
+    @Test
+    void senderStillSeesConfirmationWhenIgnored() {
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient", "Sender");
+
+        TellCommand cmd = new TellCommand(new SocketCommandRegistry());
+        cmd.match("TELL Recipient hello there").get().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("You tell Recipient: hello there")),
+                "Sender should see normal confirmation and not learn they were ignored");
+    }
+
+    @Test
+    void tellDeliveredWhenRecipientIgnoresSomeoneElse() {
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient", "Someone");
+
+        TellCommand cmd = new TellCommand(new SocketCommandRegistry());
+        cmd.match("TELL Recipient hello there").get().execute(context);
+
+        assertEquals("Sender tells you: hello there",
+                context.sentToUsername.get("recipient"),
+                "Tell should be delivered when recipient does not ignore the sender");
+    }
+
     // --- helpers ---
 
     private static Player stubPlayer(String name) {
@@ -129,11 +169,16 @@ class TellCommandTest {
         return Player.of(user, "%h/%H hp>");
     }
 
+    private static Player stubPlayerIgnoring(String name, String... ignored) {
+        return stubPlayer(name).withIgnoreList(new PlayerIgnoreList(List.of(ignored)));
+    }
+
     private static class CapturingContext implements SocketCommandContext {
         final List<String> lines = new ArrayList<>();
         String promptMessage = "";
         final Map<String, String> sentToUsername = new HashMap<>();
         private final List<Username> onlinePlayers = new ArrayList<>();
+        private final Map<Username, Player> onlinePlayerObjects = new HashMap<>();
         private final Player player;
 
         CapturingContext(String senderName) {
@@ -142,6 +187,12 @@ class TellCommandTest {
 
         void addOnlinePlayer(String name) {
             onlinePlayers.add(Username.of(name));
+            onlinePlayerObjects.put(Username.of(name), stubPlayer(name));
+        }
+
+        void addOnlinePlayer(String name, String... ignored) {
+            onlinePlayers.add(Username.of(name));
+            onlinePlayerObjects.put(Username.of(name), stubPlayerIgnoring(name, ignored));
         }
 
         @Override public boolean isAuthenticated() { return true; }
@@ -156,6 +207,7 @@ class TellCommandTest {
         @Override public void writeLineWithPrompt(String m) { promptMessage = m; }
         @Override public void writeLineSafe(String m) { lines.add(m); }
         @Override public void sendPrompt() {}
+        @Override public Player getOnlinePlayer(Username u) { return onlinePlayerObjects.get(u); }
         @Override public void sendToUsername(Username u, String m) { sentToUsername.put(u.getValue().toLowerCase(), m); }
         @Override public void sendToRoom(Player s, Player t, String m) {}
         @Override public void sendToRoom(Player s, String m) {}

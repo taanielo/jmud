@@ -111,6 +111,20 @@ public interface SocketCommandContext extends Client {
     void sendPrompt();
 
     /**
+     * Returns the live in-session {@link Player} for the given connected username, or
+     * {@code null} when no client is currently authenticated as that user.
+     *
+     * <p>Used to inspect another online player's state (e.g. their ignore list) on the tick
+     * thread. The default implementation returns {@code null} so existing test stubs do not
+     * need to be updated.
+     *
+     * @param username the username to resolve
+     */
+    default Player getOnlinePlayer(Username username) {
+        return null;
+    }
+
+    /**
      * Sends a message to a specific connected username.
      */
     void sendToUsername(Username username, String message);
@@ -124,6 +138,21 @@ public interface SocketCommandContext extends Client {
      * Sends a message to other occupants in the room, excluding the source.
      */
     void sendToRoom(Player source, String message);
+
+    /**
+     * Broadcasts a {@code SAY} message to the source's room, excluding the source and any
+     * occupant who is ignoring the source (issue #339). Ignored recipients see nothing and the
+     * source is never told they were ignored.
+     *
+     * <p>The default implementation delegates to {@link #sendToRoom(Player, String)} (no
+     * filtering) so existing test stubs do not need to be updated.
+     *
+     * @param source  the speaking player
+     * @param message the fully-rendered room message
+     */
+    default void sendRoomSay(Player source, String message) {
+        sendToRoom(source, message);
+    }
 
     /**
      * Resolves a target in the same room by input.
@@ -585,6 +614,21 @@ public interface SocketCommandContext extends Client {
      * @param args the sub-command and optional arguments (e.g. {@code "k kill"} or {@code "-d k"})
      */
     default void manageAlias(String args) {}
+
+    /**
+     * Executes an IGNORE sub-command: lists the ignored players when {@code args} is blank
+     * (or {@code LIST}), adds a player with {@code ADD <name>}, removes one with
+     * {@code REMOVE <name>}, or clears the whole list with {@code CLEAR}.
+     *
+     * <p>Ignoring silently mutes TELL/SAY from the named player; the sender is never told they
+     * have been ignored. The relationship is one-directional and persisted per player.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ADD Alice"} or {@code "CLEAR"})
+     */
+    default void manageIgnore(String args) {}
 
     /**
      * Executes a MAIL sub-command: lists the player's mail when {@code args} is blank,

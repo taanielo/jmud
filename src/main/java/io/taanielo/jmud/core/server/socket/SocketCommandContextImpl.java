@@ -61,6 +61,7 @@ import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerIgnoreList;
 import io.taanielo.jmud.core.player.PlayerMailService;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
@@ -499,6 +500,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public @Nullable Player getOnlinePlayer(Username username) {
+        return findOnlinePlayer(username);
+    }
+
+    @Override
     public void sendToUsername(Username username, String message) {
         if (message == null || message.isBlank()) {
             return;
@@ -517,6 +523,28 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         deliverRoomMessage(source.getUsername(), null, message);
+    }
+
+    @Override
+    public void sendRoomSay(Player source, String message) {
+        if (source == null || message == null || message.isBlank()) {
+            return;
+        }
+        Username sourceUser = source.getUsername();
+        Optional<RoomId> roomIdOpt = roomService.findPlayerLocation(sourceUser);
+        if (roomIdOpt.isEmpty()) {
+            return;
+        }
+        RoomId roomId = roomIdOpt.get();
+        Set<Username> exclude = new HashSet<>();
+        exclude.add(sourceUser);
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            Player occupantPlayer = findOnlinePlayer(occupant);
+            if (occupantPlayer != null && occupantPlayer.ignoreList().has(sourceUser.getValue())) {
+                exclude.add(occupant);
+            }
+        }
+        context.messageBroadcaster().broadcastToRoom(roomId, new PlainTextMessage(message), exclude);
     }
 
     private void sendToRoom(Room room, Username exclude, String message) {
@@ -2516,6 +2544,89 @@ class SocketCommandContextImpl implements SocketCommandContext {
             saveOrWarn(result.updatedPlayer());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void manageIgnore(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to manage your ignore list.");
+            return;
+        }
+        String normalizedArgs = args == null ? "" : args.trim();
+        if (normalizedArgs.isEmpty() || normalizedArgs.equalsIgnoreCase("LIST")) {
+            listIgnored(player);
+            return;
+        }
+        String[] parts = normalizedArgs.split("\\s+", 2);
+        String subcommand = parts[0].toUpperCase(Locale.ROOT);
+        String target = parts.length > 1 ? parts[1].trim() : "";
+        switch (subcommand) {
+            case "ADD" -> ignoreAdd(player, target);
+            case "REMOVE", "DEL", "DELETE" -> ignoreRemove(player, target);
+            case "CLEAR" -> ignoreClear(player);
+            default -> writeLineWithPrompt(
+                "Usage: IGNORE  |  IGNORE ADD <name>  |  IGNORE REMOVE <name>  |  IGNORE CLEAR");
+        }
+    }
+
+    private void listIgnored(Player player) {
+        var ignored = player.getIgnoredPlayers();
+        if (ignored.isEmpty()) {
+            writeLineWithPrompt("You are not ignoring anyone.");
+            return;
+        }
+        connection.writeLine("You are ignoring:");
+        int index = 1;
+        for (String name : ignored) {
+            connection.writeLine("  " + index++ + ". " + name);
+        }
+        sendPrompt();
+    }
+
+    private void ignoreAdd(Player player, String target) {
+        if (target.isBlank()) {
+            writeLineWithPrompt("Usage: IGNORE ADD <name>");
+            return;
+        }
+        if (Username.of(target).equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot ignore yourself.");
+            return;
+        }
+        if (player.ignoreList().has(target)) {
+            writeLineWithPrompt("You are already ignoring " + target + ".");
+            return;
+        }
+        Player updated = player.withIgnoreList(player.ignoreList().with(target));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are now ignoring " + target + ".");
+    }
+
+    private void ignoreRemove(Player player, String target) {
+        if (target.isBlank()) {
+            writeLineWithPrompt("Usage: IGNORE REMOVE <name>");
+            return;
+        }
+        if (!player.ignoreList().has(target)) {
+            writeLineWithPrompt(target + " is not in your ignore list.");
+            return;
+        }
+        Player updated = player.withIgnoreList(player.ignoreList().without(target));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are no longer ignoring " + target + ".");
+    }
+
+    private void ignoreClear(Player player) {
+        if (player.ignoreList().isEmpty()) {
+            writeLineWithPrompt("Your ignore list is already empty.");
+            return;
+        }
+        Player updated = player.withIgnoreList(PlayerIgnoreList.empty());
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("Your ignore list has been cleared.");
     }
 
     @Override
