@@ -17,7 +17,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add a pet/charm system: tamed mobs follow their owner between rooms and assist in combat
 - [x] Add Elf race (high mana, low carry) and Orc race (high strength, healing penalty) with matching starting stats
 - [x] Add Ranger class with TRACK skill that points toward the nearest mob of a named type
-- [ ] Add Paladin class with a self-heal, an undead-damage bonus, and heavy armour proficiency
+- [x] Add Paladin class with a self-heal, an undead-damage bonus, and heavy armour proficiency
 - [ ] Add NPC dialogue trees: TALK command with numbered responses driven by JSON dialogue data
 - [ ] Add mob factions and reputation: killing one faction's mobs shifts standing and changes NPC prices/aggression
 - [ ] Add delivery quests: NPC hands the player a package to carry to another NPC in a different zone

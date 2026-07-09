@@ -235,6 +235,33 @@ class CombatEngineTest {
     }
 
     @Test
+    void classArmorBonusReducesHitChance() throws Exception {
+        // Base hit chance is 75. With class armor bonus 3, effective hit chance becomes 72.
+        // Rolling 73 would normally hit (73 <= 75) but misses with the class bonus (73 > 72).
+        AttackId attackId = AttackId.of("attack.class-armor");
+        AttackDefinition attack = new AttackDefinition(attackId, "class-armor", 2, 2, 0, 0, 0, List.of());
+        FixedCombatRandom random = new FixedCombatRandom(73);
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            RaceAttackBonusResolver.noOp(),
+            new StubClassArmorBonusResolver(3),
+            EquipmentArmorResolver.noOp(),
+            (tick, actorId) -> random,
+            () -> 0L,
+            null
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertFalse(result.hit());
+        assertEquals(0, result.damage());
+    }
+
+    @Test
     void raceAttackBonusIncreasesHitChance() throws Exception {
         // Base hit chance is 75. With attack bonus +2, effective hit chance becomes 77.
         // Rolling 76 would normally miss (76 > 75) but hits with the attack bonus (76 <= 77).
@@ -488,6 +515,35 @@ class CombatEngineTest {
 
                 @Override
                 public java.util.List<io.taanielo.jmud.core.character.Race> findAll() {
+                    return List.of();
+                }
+            };
+        }
+    }
+
+    private static class StubClassArmorBonusResolver extends ClassArmorBonusResolver {
+        private final int bonus;
+
+        private StubClassArmorBonusResolver(int bonus) {
+            super(emptyClassRepository());
+            this.bonus = bonus;
+        }
+
+        @Override
+        public int armorBonus(Player player) {
+            return bonus;
+        }
+
+        private static io.taanielo.jmud.core.character.repository.ClassRepository emptyClassRepository() {
+            return new io.taanielo.jmud.core.character.repository.ClassRepository() {
+                @Override
+                public Optional<io.taanielo.jmud.core.character.ClassDefinition> findById(
+                    io.taanielo.jmud.core.character.ClassId id) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public java.util.List<io.taanielo.jmud.core.character.ClassDefinition> findAll() {
                     return List.of();
                 }
             };

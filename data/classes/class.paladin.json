@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "id": "paladin",
+  "name": "Paladin",
+  "healing": {
+    "base_modifier": 1
+  },
+  "carry_bonus": 8,
+  "armor_bonus": 5,
+  "ability_ids": ["spell.lay.on.hands", "spell.smite"]
+}
