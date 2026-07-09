@@ -51,12 +51,21 @@ public class MobInstance {
      * {@link #summoner} is non-null; decremented on the tick thread via {@link #tickSummonLifetime()}.
      */
     private final AtomicInteger summonTicksRemaining = new AtomicInteger(0);
+    /**
+     * The player who permanently tamed this mob (see the TAME command), or {@code null} for
+     * ordinary world mobs and temporary summons. Unlike {@link #summoner}, a tamed pet has no
+     * lifetime: it persists across sessions, follows its owner between rooms, and fights alongside
+     * them until it is dismissed or destroyed.
+     */
+    @Nullable
+    private final Username owner;
 
     public MobInstance(MobTemplate template) {
         this.template = template;
         this.hp = new AtomicInteger(template.maxHp());
         this.currentRoomId = template.spawnRoomId();
         this.summoner = null;
+        this.owner = null;
     }
 
     private MobInstance(MobTemplate template, RoomId spawnRoom, Username summoner, int durationTicks) {
@@ -64,10 +73,19 @@ public class MobInstance {
         this.hp = new AtomicInteger(template.maxHp());
         this.currentRoomId = Objects.requireNonNull(spawnRoom, "Spawn room is required");
         this.summoner = Objects.requireNonNull(summoner, "Summoner is required");
+        this.owner = null;
         if (durationTicks <= 0) {
             throw new IllegalArgumentException("Summon duration must be positive");
         }
         this.summonTicksRemaining.set(durationTicks);
+    }
+
+    private MobInstance(MobTemplate template, RoomId spawnRoom, Username owner) {
+        this.template = Objects.requireNonNull(template, "Template is required");
+        this.hp = new AtomicInteger(template.maxHp());
+        this.currentRoomId = Objects.requireNonNull(spawnRoom, "Spawn room is required");
+        this.summoner = null;
+        this.owner = Objects.requireNonNull(owner, "Owner is required");
     }
 
     /**
@@ -84,6 +102,20 @@ public class MobInstance {
     public static MobInstance summoned(
         MobTemplate template, RoomId spawnRoom, Username summoner, int durationTicks) {
         return new MobInstance(template, spawnRoom, summoner, durationTicks);
+    }
+
+    /**
+     * Creates a permanently tamed pet instance owned by {@code owner}, spawned into {@code spawnRoom}.
+     * Unlike a {@link #summoned} pet, a tamed pet never expires: it follows its owner between rooms
+     * and fights hostile mobs at their side until dismissed or destroyed.
+     *
+     * @param template  the tamed mob's template
+     * @param spawnRoom the room to spawn the pet into (normally the owner's current room)
+     * @param owner     the player who tamed the mob
+     * @return the new tamed pet instance
+     */
+    public static MobInstance tamed(MobTemplate template, RoomId spawnRoom, Username owner) {
+        return new MobInstance(template, spawnRoom, owner);
     }
 
     public UUID instanceId() {
@@ -191,6 +223,48 @@ public class MobInstance {
     @Nullable
     public Username summoner() {
         return summoner;
+    }
+
+    /**
+     * Returns whether this mob is a permanently tamed pet (see the TAME command).
+     *
+     * @return {@code true} when this instance was created via {@link #tamed}
+     */
+    public boolean isTamed() {
+        return owner != null;
+    }
+
+    /**
+     * Returns the player who permanently tamed this pet, or {@code null} for ordinary mobs and
+     * temporary summons.
+     *
+     * @return the owner's username, or {@code null}
+     */
+    @Nullable
+    public Username owner() {
+        return owner;
+    }
+
+    /**
+     * Returns whether this mob is a player-controlled pet — either a temporary {@link #isSummoned()
+     * summon} or a permanently {@link #isTamed() tamed} companion. Pets never attack players, never
+     * respawn as world mobs, and fight hostile mobs on their master's behalf.
+     *
+     * @return {@code true} when this instance has a summoner or an owner
+     */
+    public boolean isPet() {
+        return summoner != null || owner != null;
+    }
+
+    /**
+     * Returns the player this pet belongs to — its summoner if summoned, otherwise its owner if
+     * tamed, or {@code null} for ordinary world mobs.
+     *
+     * @return the controlling player's username, or {@code null}
+     */
+    @Nullable
+    public Username petOwner() {
+        return summoner != null ? summoner : owner;
     }
 
     /** Returns the pet's remaining lifetime in ticks (zero for non-summoned mobs). */

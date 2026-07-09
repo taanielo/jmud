@@ -95,6 +95,12 @@ public class MobRegistry implements Tickable, NpcStealPort {
      * on-demand SUMMON path never touches the JSON repository from the tick thread (AGENTS.md §5).
      */
     private final List<MobTemplate> petTemplates = new ArrayList<>();
+    /**
+     * All mob templates keyed by their id string, cached at {@link #init()} so tamed-pet respawn on
+     * login can rebuild a companion instance from its template without touching disk on the tick
+     * thread (AGENTS.md §5).
+     */
+    private final ConcurrentHashMap<String, MobTemplate> templatesById = new ConcurrentHashMap<>();
 
     public MobRegistry(
         MobTemplateRepository templateRepository,
@@ -180,6 +186,7 @@ public class MobRegistry implements Tickable, NpcStealPort {
             return;
         }
         for (MobTemplate template : templates) {
+            templatesById.put(template.id().getValue(), template);
             // Pet templates are never spawned into the world at start-up; an instance exists only
             // while a player's SUMMON is active. Cache them for the on-demand summon path instead.
             if (template.isPetTemplate()) {
@@ -198,11 +205,12 @@ public class MobRegistry implements Tickable, NpcStealPort {
     @Override
     public void tick() {
         runPlayerCombat();
+        runPetFollow();
         runPetCombat();
         runWanderPhase();
         for (MobInstance mob : instances.values()) {
-            // Summoned pets are driven by runPetCombat and never respawn or attack players.
-            if (mob.isSummoned()) {
+            // Pets (summoned or tamed) are driven by runPetCombat and never respawn or attack players.
+            if (mob.isPet()) {
                 continue;
             }
             if (!mob.isAlive()) {
@@ -229,6 +237,10 @@ public class MobRegistry implements Tickable, NpcStealPort {
     private void runWanderPhase() {
         for (MobInstance mob : instances.values()) {
             if (!mob.isAlive()) {
+                continue;
+            }
+            // Pets (summoned or tamed) never wander off on their own; they follow their owner.
+            if (mob.isPet()) {
                 continue;
             }
             if (!mob.template().wanders()) {
@@ -303,8 +315,8 @@ public class MobRegistry implements Tickable, NpcStealPort {
         if (mob == null) {
             return GameActionResult.error("No such target here.");
         }
-        if (mob.isSummoned()) {
-            return GameActionResult.error("You cannot attack a summoned ally.");
+        if (mob.isPet()) {
+            return GameActionResult.error("You cannot attack a friendly companion.");
         }
         if (mob.template().hasTag("npc")) {
             return GameActionResult.error("You cannot attack that.");
@@ -483,8 +495,8 @@ public class MobRegistry implements Tickable, NpcStealPort {
             return GameActionResult.error(
                 "You don't see " + targetName + " to the " + direction.label() + ".");
         }
-        if (mob.isSummoned()) {
-            return GameActionResult.error("You cannot attack a summoned ally.");
+        if (mob.isPet()) {
+            return GameActionResult.error("You cannot attack a friendly companion.");
         }
         if (mob.template().hasTag("npc")) {
             return GameActionResult.error("You cannot attack that.");
@@ -571,7 +583,7 @@ public class MobRegistry implements Tickable, NpcStealPort {
         Objects.requireNonNull(roomId, "Room id is required");
 
         List<MobInstance> targets = getMobsInRoom(roomId).stream()
-            .filter(m -> !m.template().hasTag("npc") && !m.isSummoned())
+            .filter(m -> !m.template().hasTag("npc") && !m.isPet())
             .toList();
         if (targets.isEmpty()) {
             return GameActionResult.error("There are no enemies here to strike.");
@@ -784,22 +796,154 @@ public class MobRegistry implements Tickable, NpcStealPort {
         return null;
     }
 
+    // ── Tamed pets ────────────────────────────────────────────────────
+
+    /** Maximum number of tamed companions a single player may control at once. */
+    static final int MAX_TAMED_PETS = 3;
+
     /**
-     * Pet phase: for each summoned pet, decrement its lifetime (auto-dismissing on expiry), remove it
-     * if it has been destroyed in combat, and otherwise let it strike a hostile mob in its room. Runs
-     * on the tick thread (AGENTS.md §5).
+     * Permanently tames (charms) a charmable mob in the tamer's room, turning it into a persistent
+     * companion that follows its owner between rooms and fights at their side. The captured wild mob
+     * is removed from the world and scheduled to respawn, a tamed instance is spawned in its place,
+     * and the companion is recorded on the tamer's save so it survives logout/login. Runs entirely on
+     * the tick thread via the tamer's command queue (AGENTS.md §5).
+     *
+     * @param tamer  the taming player
+     * @param input  the raw mob-name input to tame
+     * @param roomId the tamer's current room
+     * @return result whose {@code updatedSource} is the tamer with the new companion recorded on
+     *         success, plus tame messages; or an error with no state change when validation fails
+     */
+    public GameActionResult processTame(Player tamer, String input, RoomId roomId) {
+        Objects.requireNonNull(tamer, "Tamer is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (input == null || input.isBlank()) {
+            return GameActionResult.error("Tame what?");
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), input);
+        if (mob == null) {
+            return GameActionResult.error("No such target here.");
+        }
+        if (mob.isPet()) {
+            return GameActionResult.error("That creature already serves someone.");
+        }
+        if (mob.template().hasTag("npc")) {
+            return GameActionResult.error("You cannot tame that.");
+        }
+        if (!mob.template().charmable()) {
+            return GameActionResult.error("The " + mob.template().name() + " cannot be tamed.");
+        }
+        if (countTamedPets(tamer.getUsername()) >= MAX_TAMED_PETS) {
+            return GameActionResult.error(
+                "You cannot care for more than " + MAX_TAMED_PETS + " companions at once.");
+        }
+
+        String petName = mob.template().name();
+        // Consume the wild mob: reduce it to zero HP and schedule its respawn so the world
+        // repopulates, then spawn a fresh tamed companion from the same template.
+        mob.takeDamage(mob.currentHp());
+        mob.scheduleRespawn(currentTimeOfDay());
+        endCombatForMob(mob);
+
+        MobInstance pet = MobInstance.tamed(mob.template(), roomId, tamer.getUsername());
+        instances.put(pet.instanceId(), pet);
+
+        Player updated = tamer.withTamedPets(tamer.pets().tame(mob.template().id().getValue()));
+        saveOrLog(updated);
+
+        broadcastToRoomExcept(roomId, tamer.getUsername(),
+            tamer.getUsername().getValue() + " tames a " + petName + "!");
+        return new GameActionResult(updated, null, List.of(GameMessage.toSource(
+            "You calm the " + petName + " and it now follows you as a loyal companion!")));
+    }
+
+    /**
+     * Lists the player's active tamed companions, one per line, with each pet's current room and HP.
+     * Runs on the tick thread via the player's command queue (AGENTS.md §5).
+     *
+     * @param owner the player whose companions to list
+     * @return result with the companion listing (or a "no companions" notice)
+     */
+    public GameActionResult listCompanions(Player owner) {
+        Objects.requireNonNull(owner, "Owner is required");
+        Username username = owner.getUsername();
+        List<MobInstance> pets = instances.values().stream()
+            .filter(m -> m.isTamed() && m.isAlive() && username.equals(m.owner()))
+            .toList();
+        if (pets.isEmpty()) {
+            return new GameActionResult(null, null, List.of(
+                GameMessage.toSource("You have no companions.")));
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("Your companions:"));
+        for (MobInstance pet : pets) {
+            messages.add(GameMessage.toSource("  " + pet.template().name()
+                + " (" + pet.currentHp() + "/" + pet.template().maxHp() + " HP) in "
+                + pet.roomId().getValue()));
+        }
+        return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Spawns any of the given owner's persisted tamed companions that are not already live in the
+     * world, placing them into the owner's current room. Called when a player enters the world so
+     * their companions rejoin them (AGENTS.md §5 — tick thread). Companions whose template can no
+     * longer be found are skipped.
+     *
+     * @param owner  the player entering the world
+     * @param roomId the owner's current room
+     */
+    public void spawnTamedPets(Player owner, RoomId roomId) {
+        Objects.requireNonNull(owner, "Owner is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        Username username = owner.getUsername();
+        List<String> alreadyLive = new ArrayList<>(instances.values().stream()
+            .filter(m -> m.isTamed() && username.equals(m.owner()))
+            .map(m -> m.template().id().getValue())
+            .toList());
+        for (String templateId : owner.pets().tamedTemplateIds()) {
+            if (alreadyLive.remove(templateId)) {
+                continue;
+            }
+            MobTemplate template = templatesById.get(templateId);
+            if (template == null) {
+                log.warn("Tamed pet template {} for player {} no longer exists", templateId, username);
+                continue;
+            }
+            MobInstance pet = MobInstance.tamed(template, roomId, username);
+            instances.put(pet.instanceId(), pet);
+        }
+    }
+
+    private int countTamedPets(Username owner) {
+        return (int) instances.values().stream()
+            .filter(m -> m.isTamed() && m.isAlive() && owner.equals(m.owner()))
+            .count();
+    }
+
+    /**
+     * Pet phase: for each pet (summoned or tamed), remove it if it has been destroyed in combat,
+     * decrement a summon's lifetime (auto-dismissing on expiry), and otherwise let it strike a
+     * hostile mob in its room. Tamed pets have no lifetime — they persist until dismissed or slain.
+     * Runs on the tick thread (AGENTS.md §5).
      */
     private void runPetCombat() {
         for (MobInstance pet : List.copyOf(instances.values())) {
-            if (!pet.isSummoned()) {
+            if (!pet.isPet()) {
                 continue;
             }
             if (!pet.isAlive()) {
-                removePet(pet, "Your " + pet.template().name() + " has been destroyed!",
-                    "The " + pet.template().name() + " collapses into dust.");
+                if (pet.isTamed()) {
+                    releasePersistedPet(pet);
+                    removePet(pet, "Your " + pet.template().name() + " has been slain!",
+                        "The " + pet.template().name() + " collapses, slain.");
+                } else {
+                    removePet(pet, "Your " + pet.template().name() + " has been destroyed!",
+                        "The " + pet.template().name() + " collapses into dust.");
+                }
                 continue;
             }
-            if (pet.tickSummonLifetime()) {
+            if (pet.isSummoned() && pet.tickSummonLifetime()) {
                 removePet(pet, "Your " + pet.template().name() + " fades back into the ether.",
                     "The " + pet.template().name() + " fades back into the ether.");
                 continue;
@@ -809,19 +953,67 @@ public class MobRegistry implements Tickable, NpcStealPort {
     }
 
     /**
-     * Removes a summoned pet from the world and notifies its summoner and any bystanders in its room.
-     *
-     * @param pet         the pet to remove
-     * @param summonerMsg the message shown to the pet's summoner
-     * @param roomMsg     the message shown to other players in the pet's room
+     * Follow phase: moves each tamed pet to its owner's current room when the owner is present and
+     * standing elsewhere, so a companion trails its master between rooms on the next tick. Offline or
+     * roomless owners are skipped, leaving the pet where it was. Runs on the tick thread (AGENTS.md
+     * §5).
      */
-    private void removePet(MobInstance pet, String summonerMsg, String roomMsg) {
+    private void runPetFollow() {
+        for (MobInstance pet : List.copyOf(instances.values())) {
+            if (!pet.isTamed() || !pet.isAlive()) {
+                continue;
+            }
+            Username owner = pet.owner();
+            if (owner == null) {
+                continue;
+            }
+            RoomId ownerRoom = roomService.findPlayerLocation(owner).orElse(null);
+            if (ownerRoom == null || ownerRoom.equals(pet.roomId())) {
+                continue;
+            }
+            String petName = pet.template().name();
+            broadcastToRoomExcept(pet.roomId(), owner,
+                "The " + petName + " trots away, following its master.");
+            pet.moveTo(ownerRoom);
+            playerEventBus.publish(owner, new GameActionResult(null, null, List.of(
+                GameMessage.toSource("Your " + petName + " pads into the room, following you."))));
+            broadcastToRoomExcept(ownerRoom, owner,
+                "A " + petName + " pads in, following " + owner.getValue() + ".");
+        }
+    }
+
+    /**
+     * Removes a tamed pet from its owner's persisted companion list and saves the owner, so a pet
+     * that is slain does not respawn on the owner's next login. Runs on the tick thread.
+     *
+     * @param pet the tamed pet being removed
+     */
+    private void releasePersistedPet(MobInstance pet) {
+        Username owner = pet.owner();
+        if (owner == null) {
+            return;
+        }
+        Player ownerPlayer = playerRepository.loadPlayer(owner).orElse(null);
+        if (ownerPlayer == null) {
+            return;
+        }
+        saveOrLog(ownerPlayer.withTamedPets(ownerPlayer.pets().release(pet.template().id().getValue())));
+    }
+
+    /**
+     * Removes a pet from the world and notifies its owner and any bystanders in its room.
+     *
+     * @param pet      the pet to remove
+     * @param ownerMsg the message shown to the pet's owner/summoner
+     * @param roomMsg  the message shown to other players in the pet's room
+     */
+    private void removePet(MobInstance pet, String ownerMsg, String roomMsg) {
         instances.remove(pet.instanceId());
-        Username summoner = pet.summoner();
-        if (summoner != null) {
-            playerEventBus.publish(summoner,
-                new GameActionResult(null, null, List.of(GameMessage.toSource(summonerMsg))));
-            broadcastToRoomExcept(pet.roomId(), summoner, roomMsg);
+        Username owner = pet.petOwner();
+        if (owner != null) {
+            playerEventBus.publish(owner,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(ownerMsg))));
+            broadcastToRoomExcept(pet.roomId(), owner, roomMsg);
         }
     }
 
@@ -837,8 +1029,8 @@ public class MobRegistry implements Tickable, NpcStealPort {
         if (foe == null) {
             return;
         }
-        Username summoner = pet.summoner();
-        if (summoner == null) {
+        Username owner = pet.petOwner();
+        if (owner == null) {
             return;
         }
         AttackDefinition petAttack = loadAttack(pet.template().attackId());
@@ -855,20 +1047,20 @@ public class MobRegistry implements Tickable, NpcStealPort {
             + damage + " damage. (" + remaining + " HP remaining)"));
 
         if (!foe.isAlive()) {
-            Player summonerPlayer = playerRepository.loadPlayer(summoner).orElse(null);
-            if (summonerPlayer != null && !summonerPlayer.isDead()) {
-                Player rewarded = applyMobKillRewards(foe, summonerPlayer, foe.roomId(), messages);
+            Player ownerPlayer = playerRepository.loadPlayer(owner).orElse(null);
+            if (ownerPlayer != null && !ownerPlayer.isDead()) {
+                Player rewarded = applyMobKillRewards(foe, ownerPlayer, foe.roomId(), messages);
                 saveOrLog(rewarded);
-                playerEventBus.publish(summoner, new GameActionResult(rewarded, null, messages));
+                playerEventBus.publish(owner, new GameActionResult(rewarded, null, messages));
             } else {
-                // Summoner offline/dead: still tear the encounter down cleanly.
+                // Owner offline/dead: still tear the encounter down cleanly.
                 foe.scheduleRespawn(currentTimeOfDay());
                 endCombatForMob(foe);
             }
             return;
         }
 
-        // Surviving foe retaliates against the pet (not the summoner).
+        // Surviving foe retaliates against the pet (not its owner).
         AttackDefinition foeAttack = loadAttack(foe.template().attackId());
         if (foeAttack != null) {
             int retaliation = rollDamage(foeAttack);
@@ -877,33 +1069,40 @@ public class MobRegistry implements Tickable, NpcStealPort {
                 + " for " + retaliation + " damage. (" + petRemaining + " HP remaining)"));
             if (!pet.isAlive()) {
                 instances.remove(pet.instanceId());
-                messages.add(GameMessage.toSource("Your " + petName + " has been destroyed!"));
-                broadcastToRoomExcept(pet.roomId(), summoner,
-                    "The " + petName + " collapses into dust.");
+                if (pet.isTamed()) {
+                    releasePersistedPet(pet);
+                    messages.add(GameMessage.toSource("Your " + petName + " has been slain!"));
+                    broadcastToRoomExcept(pet.roomId(), owner,
+                        "The " + petName + " collapses, slain.");
+                } else {
+                    messages.add(GameMessage.toSource("Your " + petName + " has been destroyed!"));
+                    broadcastToRoomExcept(pet.roomId(), owner,
+                        "The " + petName + " collapses into dust.");
+                }
             }
         }
-        playerEventBus.publish(summoner, new GameActionResult(null, null, messages));
+        playerEventBus.publish(owner, new GameActionResult(null, null, messages));
     }
 
     /**
-     * Selects the mob a pet should attack this tick: a live, non-summoned, attackable
+     * Selects the mob a pet should attack this tick: a live, non-pet, attackable
      * ({@code "npc"}-untagged) mob in the pet's room, preferring one already engaged with the pet's
-     * summoner so the pet backs its master up.
+     * owner so the pet backs its master up.
      *
      * @param pet the acting pet
      * @return the chosen foe, or {@code null} when the pet's room holds no hostile mob
      */
     private MobInstance findPetTarget(MobInstance pet) {
-        Username summoner = pet.summoner();
+        Username owner = pet.petOwner();
         List<MobInstance> foes = instances.values().stream()
             .filter(m -> m.isAlive()
-                && !m.isSummoned()
+                && !m.isPet()
                 && m.roomId().equals(pet.roomId())
                 && !m.template().hasTag("npc"))
             .toList();
-        if (summoner != null) {
+        if (owner != null) {
             for (MobInstance foe : foes) {
-                if (foe.engagedPlayers().contains(summoner)) {
+                if (foe.engagedPlayers().contains(owner)) {
                     return foe;
                 }
             }

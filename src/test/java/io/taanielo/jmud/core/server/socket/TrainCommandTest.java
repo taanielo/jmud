@@ -228,6 +228,7 @@ class TrainCommandTest {
             null,
             null,
             null,
+            null,
             null
         );
     }
