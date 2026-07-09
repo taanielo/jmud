@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "ice-elemental",
+  "name": "Ice Elemental",
+  "max_hp": 80,
+  "attack_id": "attack.ice-elemental",
+  "aggressive": true,
+  "tags": ["ice", "elemental", "frozen-peaks"],
+  "spawn_room_id": "frozen-peaks-glacier",
+  "max_count": 2,
+  "respawn_ticks": 35,
+  "xp_reward": 75,
+  "loot": [],
+  "gold_drop": {
+    "min": 10,
+    "max": 24
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.frost-imp",
+  "name": "frostbite claws",
+  "min_damage": 4,
+  "max_damage": 9,
+  "hit_bonus": 0,
+  "crit_bonus": 3,
+  "damage_bonus": 1,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 30
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The frost imp rakes you with frostbitten claws for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The frost imp darts in, but you twist away from its icy claws."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The frost imp's claws bite deep and cold into you for {damage}!"
+    }
+  ]
+}

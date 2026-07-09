@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.ice-elemental",
+  "name": "shard barrage",
+  "min_damage": 8,
+  "max_damage": 15,
+  "hit_bonus": 1,
+  "crit_bonus": 2,
+  "damage_bonus": 2,
+  "weapon_type": "PIERCING",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 35
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The ice elemental flings a barrage of jagged shards that tear into you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Shards of ice whistle past you and shatter on the frozen ground."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "A storm of ice shards riddles you for {damage}, leaving you gasping at the cold!"
+    }
+  ]
+}

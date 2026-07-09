@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "frozen-peaks-ice-cavern",
+  "name": "Glacial Ice Cavern",
+  "description": "The fissure opens into a cathedral of ice, its walls smooth and glassy, glowing with a faint inner blue. Icicles hang like spears from the unseen ceiling, and the floor is a treacherous mirror of frozen meltwater. The silence here is total, broken only by the slow drip of ancient ice.",
+  "item_ids": [],
+  "exits": {
+    "west": "frozen-peaks-glacier"
+  },
+  "min_level": 17,
+  "light_level": 1,
+  "ambient_messages": [
+    "An icicle shears loose overhead and shatters on the frozen floor with a crystalline crash.",
+    "The blue glow of the ice walls pulses faintly, as if the cavern itself were breathing.",
+    "A drip of meltwater echoes through the cavern, impossibly loud in the silence."
+  ]
+}

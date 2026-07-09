@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "frozen-peaks-pass",
+  "name": "Windswept Mountain Pass",
+  "description": "The trail narrows into a high pass hemmed by walls of blue-white ice. Wind funnels between the cliffs with a ceaseless, mournful howl, driving needles of snow before it. Drifts pile waist-deep against the rock, and the way north climbs steeply toward a glacier.",
+  "item_ids": [],
+  "exits": {
+    "south": "frozen-peaks-foothills",
+    "north": "frozen-peaks-glacier"
+  },
+  "min_level": 15,
+  "is_outdoor": true,
+  "ambient_messages": [
+    "A blizzard howls down the pass, and for a moment the world is nothing but white.",
+    "The wind shrieks through the cliffs like a chorus of frozen voices.",
+    "Ice groans somewhere in the rock walls, deep and slow, as the cold works at the stone."
+  ]
+}

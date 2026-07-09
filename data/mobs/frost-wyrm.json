@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "frost-wyrm",
+  "name": "Vharixis the Frost Wyrm",
+  "max_hp": 420,
+  "attack_id": "attack.frost-wyrm",
+  "special_attack_id": "attack.frost-wyrm-breath",
+  "aggressive": true,
+  "tags": ["ice", "dragon", "boss", "frozen-peaks"],
+  "spawn_room_id": "frozen-peaks-summit",
+  "max_count": 1,
+  "respawn_ticks": 300,
+  "xp_reward": 900,
+  "loot": [],
+  "gold_drop": {
+    "min": 200,
+    "max": 400
+  }
+}

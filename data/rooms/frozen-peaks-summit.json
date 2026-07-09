@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "frozen-peaks-summit",
+  "name": "Summit of the Frozen Peaks",
+  "description": "The world falls away on every side from this broad, ice-shattered summit, the highest point of the Frozen Peaks. Great fangs of blue ice ring the plateau like the walls of a ruined hall, and the ground is strewn with frost-rimed bones. This is a lair, and the cold here is a living, hungry thing that gnaws at the marrow.",
+  "item_ids": [],
+  "exits": {
+    "south": "frozen-peaks-ridge"
+  },
+  "min_level": 18,
+  "is_outdoor": true,
+  "ambient_messages": [
+    "A blast of glacial wind tears across the summit, and the fangs of ice keen like a war-horn.",
+    "The frozen bones underfoot shift and rattle as the cold deepens.",
+    "The sky darkens with driving snow, and for a heartbeat something vast seems to stir in the storm."
+  ]
+}
