@@ -358,12 +358,15 @@ public class PlayerSession {
 
     /**
      * Enables the healing-tick stage inside the composed {@link PlayerTicker}.
-     * No-op when healing is globally disabled or already active.
+     * No-op when healing is globally disabled, already active, or when the
+     * player is absent or dead (mirrors {@link #registerEffects(EffectMessageSink)});
+     * this avoids constructing a {@link PlayerHealingTicker} with a null effect sink,
+     * which would otherwise throw on a dead-player re-login.
      *
      * @param callback called when healing produces an updated player
      */
     public void registerHealing(Consumer<Player> callback) {
-        if (!HealingSettings.enabled() || playerTicker.isHealingEnabled()) {
+        if (!HealingSettings.enabled() || playerTicker.isHealingEnabled() || player == null || player.isDead()) {
             return;
         }
         playerTicker.enableHealing(
