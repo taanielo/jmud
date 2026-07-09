@@ -98,6 +98,22 @@ public class JsonPlayerRepository implements PlayerRepository {
         return List.copyOf(players);
     }
 
+    @Override
+    public boolean deletePlayer(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        Path playerFilePath = getPlayerFilePath(username);
+        try {
+            boolean deleted = Files.deleteIfExists(playerFilePath);
+            if (deleted) {
+                log.info("Player {} record deleted from {}", username, playerFilePath);
+            }
+            return deleted;
+        } catch (IOException e) {
+            log.error("Failed to delete player {} at {}", username, playerFilePath, e);
+            return false;
+        }
+    }
+
     private Path getPlayerFilePath(Username username) {
         return playersDirPath.resolve(username.getValue() + ".json");
     }

@@ -49,6 +49,9 @@ public class Main {
             context.persistenceQueue(),
             context.auditService()
         );
+        // Install the shutdown sequence into the late-bound handle so the wizard SHUTDOWN command
+        // (registered inside GameContext, before the coordinator exists) can trigger it.
+        context.shutdownHandle().install(shutdownCoordinator::shutdown);
         Runtime.getRuntime().addShutdownHook(
             Thread.ofVirtual().name("jmud-shutdown").unstarted(shutdownCoordinator::shutdown)
         );

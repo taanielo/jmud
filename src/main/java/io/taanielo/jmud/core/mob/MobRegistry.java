@@ -334,6 +334,59 @@ public class MobRegistry implements Tickable, NpcStealPort {
     }
 
     /**
+     * Spawns a fresh instance of the mob template with the given id into the specified room, used by
+     * the wizard {@code SPAWN} command.
+     *
+     * <p>The template is resolved from the in-memory cache populated at {@link #init()}, so no disk
+     * I/O occurs on the tick thread; the new instance is registered so it participates in AI and
+     * combat from the next tick. Runs on the tick thread via the admin's command queue (AGENTS.md §5).
+     *
+     * @param mobId  the template id to instantiate
+     * @param roomId the room to place the new instance in
+     * @return the spawned instance, or empty when no template with that id exists
+     */
+    public Optional<MobInstance> spawnInstance(MobId mobId, RoomId roomId) {
+        Objects.requireNonNull(mobId, "Mob id is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        MobTemplate template = templatesById.get(mobId.getValue());
+        if (template == null) {
+            return Optional.empty();
+        }
+        MobInstance mob = new MobInstance(template);
+        mob.moveTo(roomId);
+        instances.put(mob.instanceId(), mob);
+        log.debug("Spawned mob {} into {} via admin command", template.name(), roomId);
+        return Optional.of(mob);
+    }
+
+    /**
+     * Removes a live mob matching {@code nameInput} from the given room outright, used by the wizard
+     * {@code PURGE} command.
+     *
+     * <p>Matching reuses the same name/prefix rules as combat targeting. The instance is removed with
+     * no respawn scheduled, so a purged mob stays gone until the world is reloaded; any player combat
+     * engagement against it is torn down. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param roomId    the room to search
+     * @param nameInput the mob name (or prefix) to purge
+     * @return the display name of the purged mob, or empty when no live mob in the room matches
+     */
+    public Optional<String> purgeMob(RoomId roomId, String nameInput) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (nameInput == null || nameInput.isBlank()) {
+            return Optional.empty();
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), nameInput);
+        if (mob == null) {
+            return Optional.empty();
+        }
+        instances.remove(mob.instanceId());
+        endCombatForMob(mob);
+        log.debug("Purged mob {} from {} via admin command", mob.template().name(), roomId);
+        return Optional.of(mob.template().name());
+    }
+
+    /**
      * Processes a player's attack against a mob in their current room.
      *
      * @param attacker  the attacking player

@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.player;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -238,6 +239,27 @@ class JsonPlayerRepositoryTest {
         assertEquals(2, all.size());
         assertTrue(all.stream().anyMatch(p -> p.getUsername().getValue().equals("alice") && p.getTotalKills() == 10));
         assertTrue(all.stream().anyMatch(p -> p.getUsername().getValue().equals("bob") && p.getTotalKills() == 3));
+    }
+
+    @Test
+    void deletePlayerRemovesPersistedRecord() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("condemned"), Password.hash("pw", 1));
+        repository.savePlayer(Player.of(user, "%hp> "));
+        assertTrue(repository.loadPlayer(user.getUsername()).isPresent());
+
+        boolean deleted = repository.deletePlayer(user.getUsername());
+
+        assertTrue(deleted, "deletePlayer should report the record was removed");
+        assertTrue(repository.loadPlayer(user.getUsername()).isEmpty(),
+            "deleted player should no longer load");
+    }
+
+    @Test
+    void deletePlayerReturnsFalseWhenNoRecordExists() {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        assertFalse(repository.deletePlayer(Username.of("ghost")),
+            "deleting a non-existent player should report false");
     }
 
     @Test

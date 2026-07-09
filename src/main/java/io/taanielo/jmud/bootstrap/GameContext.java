@@ -88,6 +88,7 @@ import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.socket.LinkdeadTimeoutTicker;
 import io.taanielo.jmud.core.server.socket.PlayerSessionRegistry;
+import io.taanielo.jmud.core.server.socket.ShutdownHandle;
 import io.taanielo.jmud.core.server.socket.SocketCommandRegistry;
 import io.taanielo.jmud.core.server.socket.WizardPolicy;
 import io.taanielo.jmud.core.shop.ShopRepository;
@@ -173,7 +174,8 @@ public record GameContext(
     AchievementService achievementService,
     DuelService duelService,
     NotesService notesService,
-    PlayerSessionRegistry playerSessionRegistry
+    PlayerSessionRegistry playerSessionRegistry,
+    ShutdownHandle shutdownHandle
 ) {
 
     /**
@@ -290,10 +292,9 @@ public record GameContext(
             .collect(Collectors.toUnmodifiableSet());
         WizardPolicy wizardPolicy = new WizardPolicy(wizardUsernames);
 
-        SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
-            equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            playerRepository, roomService, messageBroadcaster, weatherEngine,
-            tickMetricsService, wizardPolicy);
+        // The shutdown coordinator is built later (in Main, once the servers exist), so the wizard
+        // SHUTDOWN command holds this late-bound handle and Main installs the sequence into it.
+        ShutdownHandle shutdownHandle = new ShutdownHandle();
 
         ItemDurabilityService itemDurabilityService =
             new ItemDurabilityService(config.getInt("jmud.combat.durability_loss_per_hit", 1));
@@ -316,6 +317,12 @@ public record GameContext(
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
+
+        // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
+        SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
+            equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
+            playerRepository, roomService, messageBroadcaster, weatherEngine,
+            tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle);
 
         CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
         ShopService shopService = createShopService(itemRepository, reputationService);
@@ -408,7 +415,8 @@ public record GameContext(
             achievementService,
             duelService,
             notesService,
-            playerSessionRegistry
+            playerSessionRegistry,
+            shutdownHandle
         );
     }
 

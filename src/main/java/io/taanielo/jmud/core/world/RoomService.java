@@ -159,6 +159,24 @@ public class RoomService {
         return locationService.getExits(roomId);
     }
 
+    /**
+     * Looks up a room by its id directly from the room store, bypassing player-location resolution.
+     *
+     * <p>Used by administrative commands (e.g. wizard {@code GOTO}/{@code SPAWN}) that must validate
+     * an operator-supplied room id before teleporting a player or spawning a mob into it.
+     *
+     * @param roomId the room id to resolve
+     * @return the room, or empty when no room with that id exists
+     */
+    public Optional<Room> findRoom(RoomId roomId) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        try {
+            return roomRepository.findById(roomId);
+        } catch (RepositoryException e) {
+            return Optional.empty();
+        }
+    }
+
     // ── Item delegation ──────────────────────────────────────────────────────
 
     /**
