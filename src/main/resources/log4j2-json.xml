@@ -8,7 +8,13 @@
   the tick thread; it is absent (not emitted) for log lines outside a command scope.
   This makes server log lines joinable with the audit JSONL on the same field.
 -->
-<Configuration status="WARN">
+<!--
+  shutdownHook="disable": ShutdownCoordinator runs its own JVM shutdown hook
+  that logs through completion. Log4j2's own auto-registered shutdown hook
+  races it and can shut down the logger context (closing appenders) before
+  the coordinator finishes, silently dropping its later log lines.
+-->
+<Configuration status="WARN" shutdownHook="disable">
     <Appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
             <JsonTemplateLayout eventTemplateUri="classpath:jmud-log-template.json"/>

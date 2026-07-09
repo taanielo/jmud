@@ -80,11 +80,26 @@ public class ShutdownCoordinator {
         log.info("Shutdown sequence starting");
         stopAccepting();
         notifyClientsOfShutdown();
-        stopTickScheduler();
-        saveOnlinePlayers();
-        flushAudit();
-        tickRegistry.clear();
+        runStep("stop tick scheduler", this::stopTickScheduler);
+        runStep("save online players", this::saveOnlinePlayers);
+        runStep("flush audit", this::flushAudit);
+        runStep("clear tick registrations", tickRegistry::clear);
         log.info("Shutdown sequence complete");
+    }
+
+    /**
+     * Runs one shutdown step, logging its start/completion and catching any
+     * exception so a single step's failure cannot prevent the remaining
+     * steps (or the final "complete" log line) from running.
+     */
+    private void runStep(String description, Runnable step) {
+        log.info("Shutdown step starting: {}", description);
+        try {
+            step.run();
+            log.info("Shutdown step complete: {}", description);
+        } catch (RuntimeException e) {
+            log.error("Shutdown step failed: {}", description, e);
+        }
     }
 
     private void saveOnlinePlayers() {
