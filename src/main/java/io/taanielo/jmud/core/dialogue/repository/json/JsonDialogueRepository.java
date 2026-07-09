@@ -31,7 +31,8 @@ import io.taanielo.jmud.core.dialogue.DialogueTree;
 @Slf4j
 public class JsonDialogueRepository implements DialogueRepository {
 
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION_BASE = 1;
+    private static final int SCHEMA_VERSION_QUEST_GRANT = 2;
     private static final String DIALOGUES_DIR = "dialogues";
 
     private final ObjectMapper objectMapper;
@@ -66,7 +67,8 @@ public class JsonDialogueRepository implements DialogueRepository {
         try (var stream = Files.list(dialoguesDirPath)) {
             for (Path path : stream.filter(p -> p.toString().endsWith(".json")).sorted().toList()) {
                 DialogueTreeDto dto = readDto(path);
-                if (dto.schemaVersion() != SCHEMA_VERSION) {
+                if (dto.schemaVersion() != SCHEMA_VERSION_BASE
+                        && dto.schemaVersion() != SCHEMA_VERSION_QUEST_GRANT) {
                     throw new DialogueRepositoryException(
                         "Unsupported dialogue schema version " + dto.schemaVersion() + " in " + path);
                 }
@@ -110,7 +112,7 @@ public class JsonDialogueRepository implements DialogueRepository {
                             "Dialogue response in node '" + nodeId + "' of " + source
                                 + " is missing text or target");
                     }
-                    responses.add(new DialogueResponse(r.text(), r.target()));
+                    responses.add(new DialogueResponse(r.text(), r.target(), r.grantQuestId()));
                 }
             }
             nodes.put(nodeId, new DialogueNode(nodeId, text, responses));

@@ -37,6 +37,7 @@ import io.taanielo.jmud.core.creation.CharacterCreationException;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.dialogue.DialogueNode;
+import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
@@ -58,8 +59,11 @@ import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.quest.ActiveQuest;
+import io.taanielo.jmud.core.quest.DeliveryQuestResult;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
+import io.taanielo.jmud.core.quest.QuestId;
 import io.taanielo.jmud.core.quest.QuestKillService;
+import io.taanielo.jmud.core.quest.QuestNpcDeliveryService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.QuestTemplate;
@@ -75,6 +79,8 @@ import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.repository.ItemRepository;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
  * Executes gameplay commands dispatched by {@link SocketCommandDispatcher} on behalf of a single
@@ -1324,8 +1330,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Respond with a number. Usage: RESPOND <number>");
             return;
         }
+        DialogueResponse chosen = dialogueService.selectResponse(tree, currentNodeId, number).orElse(null);
         DialogueNode next = dialogueService.respond(tree, currentNodeId, number).orElse(null);
-        if (next == null) {
+        if (next == null || chosen == null) {
             writeLineWithPrompt("That is not one of your options.");
             return;
         }
@@ -1334,7 +1341,60 @@ class SocketCommandContextImpl implements SocketCommandContext {
         } else {
             session.advanceDialogueNode(next.id());
         }
+        if (chosen.grantQuestId() != null) {
+            grantDialogueQuest(chosen.grantQuestId());
+        }
         writeLineWithPrompt(dialogueService.renderNode(speaker, next));
+    }
+
+    /**
+     * Grants an NPC-delivery quest offered by the chosen dialogue response, handing the player the
+     * package item. Runs on the tick thread as part of {@code RESPOND}; failures (unknown quest,
+     * already-held contract, missing package item) are reported to the player without ending the
+     * conversation.
+     */
+    private void grantDialogueQuest(String questIdValue) {
+        QuestRepository questRepo = context.questRepository();
+        ItemRepository itemRepo = context.itemRepository();
+        if (questRepo == null || itemRepo == null) {
+            return;
+        }
+        QuestTemplate template;
+        try {
+            template = questRepo.findById(QuestId.of(questIdValue)).orElse(null);
+        } catch (QuestRepositoryException e) {
+            log.warn("Failed to load granted quest {}: {}", questIdValue, e.getMessage());
+            return;
+        }
+        if (template == null || !template.isNpcDeliveryQuest()) {
+            log.warn("Dialogue grant references quest '{}' which is not a valid NPC-delivery quest", questIdValue);
+            return;
+        }
+        Player player = session.getPlayer();
+        if (player.getActiveQuest() != null) {
+            connection.writeLine("You already hold an active contract, so you decline the errand for now.");
+            return;
+        }
+        Item packageItem;
+        try {
+            packageItem = itemRepo.findById(ItemId.of(template.packageItemId())).orElse(null);
+        } catch (RepositoryException e) {
+            log.warn("Failed to load package item {}: {}", template.packageItemId(), e.getMessage());
+            return;
+        }
+        if (packageItem == null) {
+            log.warn("NPC-delivery quest '{}' references unknown package item '{}'",
+                questIdValue, template.packageItemId());
+            return;
+        }
+        QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(questRepo);
+        DeliveryQuestResult result = npcDeliverySvc.grant(player, template, packageItem);
+        if (result.success()) {
+            session.replacePlayer(result.player());
+        }
+        for (String msg : result.messages()) {
+            connection.writeLine(msg);
+        }
     }
 
     @Override
@@ -2391,6 +2451,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
         connection.writeLine(String.format("  %-20s %-36s %s", "ID", "Description", "Reward"));
         connection.writeLine("  " + "-".repeat(72));
         for (QuestTemplate t : templates) {
+            // NPC-delivery errands are handed out in conversation, not by the Guild Clerk.
+            if (t.isNpcDeliveryQuest()) {
+                continue;
+            }
             String desc = t.description().length() > 35
                 ? t.description().substring(0, 32) + "..."
                 : t.description();
@@ -2428,6 +2492,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Unknown contract '" + questIdInput.trim() + "'. Use QUEST LIST to see available contracts.");
             return;
         }
+        if (template.isNpcDeliveryQuest()) {
+            writeLineWithPrompt(
+                "That errand is not handled by the Guild Clerk. Speak with "
+                + template.giverNpcId() + " to receive the package.");
+            return;
+        }
         ActiveQuest active = new ActiveQuest(template.id(), template.requiredKills());
         Player updated = player.withActiveQuest(active);
         session.replacePlayer(updated);
@@ -2463,7 +2533,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Unknown quest. Use QUEST ABANDON to clear it.");
             return;
         }
-        if (template.isDeliveryQuest()) {
+        if (template.isNpcDeliveryQuest()) {
+            boolean holdsPackage = player.getInventory().stream()
+                .anyMatch(it -> it.getId().getValue().equalsIgnoreCase(template.packageItemId()));
+            if (holdsPackage) {
+                writeLineWithPrompt(template.name() + ": carry the package to "
+                    + template.receiverNpcId() + " and use QUEST DELIVER there.");
+            } else {
+                writeLineWithPrompt(template.name()
+                    + ": you no longer carry the package. Use QUEST ABANDON to clear it.");
+            }
+        } else if (template.isDeliveryQuest()) {
             int held = 0;
             for (Item it : player.getInventory()) {
                 if (it.getId().getValue().equalsIgnoreCase(template.dropItemId())) {
@@ -2506,6 +2586,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             templateCheck = questRepo.findById(active.templateId()).orElse(null);
         } catch (QuestRepositoryException e) {
             writeLineWithPrompt("Quest lookup failed.");
+            return;
+        }
+        if (templateCheck != null && templateCheck.isNpcDeliveryQuest()) {
+            writeLineWithPrompt(
+                "This is a package errand. Carry the package to " + templateCheck.receiverNpcId()
+                + " and use QUEST DELIVER there.");
             return;
         }
         if (templateCheck != null && templateCheck.isDeliveryQuest()) {
@@ -2561,12 +2647,43 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You are nowhere.");
             return;
         }
-        if (!"courtyard".equals(roomIdOpt.get().getValue())) {
+        RoomId roomId = roomIdOpt.get();
+        ActiveQuest active = player.getActiveQuest();
+        if (active != null) {
+            QuestTemplate template;
+            try {
+                template = questRepo.findById(active.templateId()).orElse(null);
+            } catch (QuestRepositoryException e) {
+                writeLineWithPrompt("Quest lookup failed.");
+                return;
+            }
+            if (template != null && template.isNpcDeliveryQuest()) {
+                handleNpcDelivery(questRepo, player, roomId, template);
+                return;
+            }
+        }
+        if (!"courtyard".equals(roomId.getValue())) {
             writeLineWithPrompt("The Guild Clerk is not here. Find them in the Courtyard.");
             return;
         }
         QuestDeliveryService deliverySvc = new QuestDeliveryService(questRepo);
         QuestDeliveryService.DeliverResult result = deliverySvc.deliver(player);
+        if (result.success()) {
+            session.replacePlayer(result.player());
+        }
+        for (String msg : result.messages()) {
+            connection.writeLine(msg);
+        }
+        sendPrompt();
+    }
+
+    private void handleNpcDelivery(QuestRepository questRepo, Player player, RoomId roomId, QuestTemplate template) {
+        boolean receiverPresent = context.mobRegistry() != null
+            && context.mobRegistry().getMobsInRoom(roomId).stream()
+                .anyMatch(m -> m.isAlive()
+                    && m.template().id().getValue().equalsIgnoreCase(template.receiverNpcId()));
+        QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(questRepo);
+        DeliveryQuestResult result = npcDeliverySvc.deliver(player, roomId, receiverPresent);
         if (result.success()) {
             session.replacePlayer(result.player());
         }

@@ -132,7 +132,8 @@ public record GameContext(
     WorldClock worldClock,
     ItemDurabilityService itemDurabilityService,
     ItemAffixService itemAffixService,
-    DialogueService dialogueService
+    DialogueService dialogueService,
+    ItemRepository itemRepository
 ) {
 
     /**
@@ -287,7 +288,8 @@ public record GameContext(
             worldClock,
             itemDurabilityService,
             itemAffixService,
-            dialogueService
+            dialogueService,
+            itemRepository
         );
     }
 

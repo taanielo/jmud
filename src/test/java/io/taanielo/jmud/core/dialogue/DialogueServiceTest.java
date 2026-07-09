@@ -108,6 +108,21 @@ class DialogueServiceTest {
     }
 
     @Test
+    void selectResponseReturnsChosenResponse() {
+        DialogueTree tree = sampleTree();
+        DialogueResponse chosen = service.selectResponse(tree, "greeting", 1).orElseThrow();
+        assertEquals("Can you repair my gear?", chosen.text());
+        assertEquals("repair", chosen.target());
+    }
+
+    @Test
+    void selectResponseIsEmptyForOutOfRangeNumber() {
+        DialogueTree tree = sampleTree();
+        assertTrue(service.selectResponse(tree, "greeting", 9).isEmpty());
+        assertTrue(service.selectResponse(tree, "greeting", 0).isEmpty());
+    }
+
+    @Test
     void findTreeReturnsRegisteredTree() {
         Optional<DialogueTree> found = service.findTree(DialogueId.of("borin-blacksmith-welcome"));
         assertTrue(found.isPresent());

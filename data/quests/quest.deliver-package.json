@@ -1,0 +1,14 @@
+{
+  "schema_version": 3,
+  "type": "delivery-npc",
+  "id": "deliver-package",
+  "name": "The Quartermaster's Dispatch",
+  "description": "Carry Quartermaster Hale's sealed dispatch from the Armory to Ranger Sella in the Hunter's Clearing.",
+  "giver_npc_id": "quartermaster",
+  "receiver_npc_id": "forest-ranger",
+  "receiver_room_id": "hunters-clearing",
+  "package_item_id": "sealed-dispatch",
+  "gold_reward": 30,
+  "xp_reward": 90,
+  "title_reward": "Courier"
+}

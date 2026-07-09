@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "sealed-dispatch",
+  "name": "a sealed dispatch",
+  "description": "A leather satchel bound with wax and the Quartermaster's seal. This is a quest package — it is meant to be carried to its recipient, not sold or discarded.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 0
+}

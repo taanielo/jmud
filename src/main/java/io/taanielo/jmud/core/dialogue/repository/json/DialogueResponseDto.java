@@ -4,6 +4,7 @@ import org.jspecify.annotations.Nullable;
 
 record DialogueResponseDto(
     @Nullable String text,
-    @Nullable String target
+    @Nullable String target,
+    @Nullable String grantQuestId
 ) {
 }
