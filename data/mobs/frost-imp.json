@@ -10,7 +10,6 @@
   "max_count": 3,
   "respawn_ticks": 25,
   "xp_reward": 40,
-  "wanders": true,
   "loot": [],
   "gold_drop": {
     "min": 5,
