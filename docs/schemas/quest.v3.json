@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:quest:v3",
+  "title": "NPC-delivery quest (v3)",
+  "description": "An errand where a giver NPC hands the player a package item to carry to a receiver NPC standing in another zone. Completing the delivery (QUEST DELIVER while in the receiver's room with the package in hand) grants gold, XP and an optional title. Schema version 1 is a kill quest, version 2 is an item-collection delivery quest; this version 3 covers NPC-to-NPC package delivery. Quests are stored as data/quests/quest.<id>.json and the loader tolerates unknown properties.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "description",
+    "giver_npc_id",
+    "receiver_npc_id",
+    "receiver_room_id",
+    "package_item_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "type": {
+      "type": "string",
+      "const": "delivery-npc",
+      "description": "Optional human-readable discriminator. The effective type is derived from which fields are populated."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique quest id, referenced by a dialogue response's 'grant_quest_id'."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name shown to the player."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short flavour description of the errand."
+    },
+    "giver_npc_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Mob template id of the NPC who hands over the package (informational; the grant is wired via a dialogue response)."
+    },
+    "receiver_npc_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Mob template id of the NPC the package must be delivered to. Must be present in receiver_room_id at delivery time."
+    },
+    "receiver_room_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Room id where the receiver NPC stands. The player must be here to complete the delivery."
+    },
+    "package_item_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Item id of the package handed to the player on grant and consumed on delivery."
+    },
+    "gold_reward": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bonus gold awarded on completion."
+    },
+    "xp_reward": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Bonus XP awarded on completion."
+    },
+    "title_reward": {
+      "type": "string",
+      "description": "Optional title granted to the player on completion."
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.dialogue.repository.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,8 +79,36 @@ class JsonDialogueRepositoryTest {
 
     @Test
     void unsupportedSchemaVersionIsRejected(@TempDir Path dir) throws Exception {
-        write(dir, "bad.json", VALID.replace("\"schema_version\": 1", "\"schema_version\": 2"));
+        write(dir, "bad.json", VALID.replace("\"schema_version\": 1", "\"schema_version\": 99"));
         assertThrows(DialogueRepositoryException.class, () -> new JsonDialogueRepository(dir));
+    }
+
+    @Test
+    void loadsSchemaVersion2WithGrantQuestId(@TempDir Path dir) throws Exception {
+        String v2 = """
+            {
+              "schema_version": 2,
+              "id": "quartermaster-errand",
+              "npc_id": "quartermaster",
+              "start_node": "greeting",
+              "nodes": {
+                "greeting": {
+                  "text": "Carry this?",
+                  "responses": [
+                    { "text": "Yes.", "target": "accepted", "grant_quest_id": "deliver-package" },
+                    { "text": "No.", "target": "accepted" }
+                  ]
+                },
+                "accepted": { "text": "Good.", "responses": [] }
+              }
+            }
+            """;
+        write(dir, "quartermaster.json", v2);
+        JsonDialogueRepository repo = new JsonDialogueRepository(dir);
+
+        DialogueTree tree = repo.findById(DialogueId.of("quartermaster-errand")).orElseThrow();
+        assertEquals("deliver-package", tree.startNode().responses().get(0).grantQuestId());
+        assertNull(tree.startNode().responses().get(1).grantQuestId());
     }
 
     @Test

@@ -89,4 +89,28 @@ public class DialogueService {
         DialogueResponse chosen = responses.get(responseNumber - 1);
         return tree.node(chosen.target());
     }
+
+    /**
+     * Resolves the {@link DialogueResponse} the player selected at the given node, without advancing
+     * the tree. Callers use this to inspect side effects of a choice (e.g. {@code grantQuestId})
+     * alongside {@link #respond(DialogueTree, String, int)}.
+     *
+     * @param tree           the active dialogue tree
+     * @param currentNodeId  the id of the node the player is currently at
+     * @param responseNumber the 1-based response number the player selected
+     * @return the chosen response, or empty when the node is unknown or the number is out of range
+     */
+    public Optional<DialogueResponse> selectResponse(DialogueTree tree, String currentNodeId, int responseNumber) {
+        Objects.requireNonNull(tree, "Dialogue tree is required");
+        Objects.requireNonNull(currentNodeId, "Current node id is required");
+        DialogueNode current = tree.node(currentNodeId).orElse(null);
+        if (current == null) {
+            return Optional.empty();
+        }
+        List<DialogueResponse> responses = current.responses();
+        if (responseNumber < 1 || responseNumber > responses.size()) {
+            return Optional.empty();
+        }
+        return Optional.of(responses.get(responseNumber - 1));
+    }
 }

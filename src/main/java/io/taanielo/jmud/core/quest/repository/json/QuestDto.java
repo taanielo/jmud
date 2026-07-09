@@ -3,15 +3,21 @@ package io.taanielo.jmud.core.quest.repository.json;
 /**
  * JSON transfer object for a quest definition file ({@code quest.*.json}).
  *
- * <p>Fields {@code dropItemId} and {@code requiredDropCount} are optional and
- * used only for delivery quests (schema version 2). Kill quests (schema version 1)
- * use {@code targetMobId} and {@code requiredKills} instead.
+ * <p>Fields are grouped by quest type:
+ * <ul>
+ *   <li>Kill quests (schema version 1) use {@code targetMobId} and {@code requiredKills}.</li>
+ *   <li>Item delivery quests (schema version 2) use {@code dropItemId} and {@code requiredDropCount}.</li>
+ *   <li>NPC delivery quests (schema version 3) use {@code giverNpcId}, {@code receiverNpcId},
+ *       {@code receiverRoomId} and {@code packageItemId}.</li>
+ * </ul>
  *
- * <p>{@code titleReward} is optional for either quest type; when present, the
- * player is granted this title on quest completion.
+ * <p>{@code type} is an optional human-readable discriminator ("kill", "delivery-item",
+ * "delivery-npc") kept for schema documentation; the effective type is derived from which
+ * type-specific fields are populated. {@code titleReward} is optional for any quest type.
  */
 record QuestDto(
     int schemaVersion,
+    String type,
     String id,
     String name,
     String description,
@@ -21,6 +27,10 @@ record QuestDto(
     int xpReward,
     String dropItemId,
     int requiredDropCount,
-    String titleReward
+    String titleReward,
+    String giverNpcId,
+    String receiverNpcId,
+    String receiverRoomId,
+    String packageItemId
 ) {
 }

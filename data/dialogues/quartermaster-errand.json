@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "id": "quartermaster-errand",
+  "npc_id": "quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Ah, a steady pair of hands. I've a sealed dispatch that must reach Ranger Sella out in the Hunter's Clearing. Will you carry it?",
+      "responses": [
+        { "text": "I'll take the dispatch to Ranger Sella.", "target": "accepted", "grant_quest_id": "deliver-package" },
+        { "text": "What's in it for me?", "target": "reward" },
+        { "text": "Not right now.", "target": "declined" }
+      ]
+    },
+    "reward": {
+      "text": "Coin and the Guild's goodwill — thirty gold and a fair measure of experience once Sella has it in hand.",
+      "responses": [
+        { "text": "Fine, I'll carry it.", "target": "accepted", "grant_quest_id": "deliver-package" },
+        { "text": "Maybe later.", "target": "declined" }
+      ]
+    },
+    "accepted": {
+      "text": "Good. Keep it dry and keep it moving — Sella waits in the Hunter's Clearing, west through the Darkwood.",
+      "responses": []
+    },
+    "declined": {
+      "text": "Suit yourself. The dispatch will keep — for a while.",
+      "responses": []
+    }
+  }
+}
