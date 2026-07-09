@@ -22,7 +22,8 @@
     {"item_id": "water"},
     {"item_id": "ale"},
     {"item_id": "torch"},
-    {"item_id": "lantern"}
+    {"item_id": "lantern"},
+    {"item_id": "scroll-of-recall"}
   ],
   "sell_ratio": 0.5
 }

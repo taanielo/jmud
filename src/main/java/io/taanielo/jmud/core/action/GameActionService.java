@@ -138,6 +138,10 @@ public class GameActionService {
     private static final AbilityId RECALL_COOLDOWN_KEY = AbilityId.of("recall");
     /** Number of ticks a player must wait between successful recalls. */
     private static final int RECALL_COOLDOWN_TICKS = 30;
+    /** Id of the consumable Scroll of Recall item, whose READ action triggers {@link #recall}. */
+    private static final ItemId RECALL_SCROLL_ID = ItemId.of("scroll-of-recall");
+    /** Metadata key set by {@link #recall} on a successful teleport. */
+    private static final String RECALL_METADATA_KEY = "recalled";
     /** Ability id of the rogue BACKSTAB skill, which gains a bonus when opened from stealth. */
     private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
     /** Extra damage a BACKSTAB deals when the attacker strikes from stealth. */
@@ -580,7 +584,7 @@ public class GameActionService {
         messages.add(GameMessage.toRoomAt(
             destinationId, source.getUsername(), playerName + " arrives in a flash of light."));
 
-        return new GameActionResult(null, null, messages, Map.of("recalled", Boolean.TRUE));
+        return new GameActionResult(null, null, messages, Map.of(RECALL_METADATA_KEY, Boolean.TRUE));
     }
 
     /**
@@ -1590,6 +1594,9 @@ public class GameActionService {
         if (!item.isIdentified()) {
             return identifyInventoryItem(source, item);
         }
+        if (RECALL_SCROLL_ID.equals(item.getId())) {
+            return readRecallScroll(source, item);
+        }
         AbilityId abilityId = item.getTeachesAbilityRef();
         if (abilityId == null) {
             return GameActionResult.error("There is nothing to learn from that.");
@@ -1628,6 +1635,46 @@ public class GameActionService {
             messages.addAll(emitted);
         }
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Reads a Scroll of Recall, delegating to {@link #recall(Player)} so the teleport behaves
+     * identically to the {@code RECALL} command — including the in-combat, dueling and cooldown
+     * checks. The scroll is consumed (removed from inventory) only on a successful recall; a
+     * rejected attempt (in combat, dueling, or on cooldown) leaves the scroll in place so the
+     * player does not waste it.
+     *
+     * <p>On success the scroll's {@code read}-phase flavor messages are emitted first, followed by
+     * the recall departure/arrival messages produced by {@link #recall(Player)}. The recall
+     * metadata (including the {@code "recalled"} marker) is preserved so the adapter can re-render
+     * the destination room exactly as it does for the {@code RECALL} command.
+     *
+     * @param source the player reading the scroll
+     * @param item   the resolved Scroll of Recall from the player's inventory
+     * @return a rejection result (scroll retained) when recall is blocked, otherwise a success
+     *         result with the scroll removed and the flavor + recall messages combined
+     */
+    private GameActionResult readRecallScroll(Player source, Item item) {
+        GameActionResult recallResult = recall(source);
+        if (!recallResult.metadata().containsKey(RECALL_METADATA_KEY)) {
+            // Recall was rejected (combat, duel, or cooldown): keep the scroll unconsumed.
+            return recallResult;
+        }
+        Player updated = source.removeItem(item);
+        List<GameMessage> messages = new ArrayList<>();
+        MessageContext context = new MessageContext(
+            source.getUsername(),
+            source.getUsername(),
+            source.getUsername().getValue(),
+            source.getUsername().getValue(),
+            item.getName(),
+            null,
+            null,
+            null
+        );
+        messages.addAll(messageEmitter.emit(item.getMessages(), MessagePhase.READ, context));
+        messages.addAll(recallResult.messages());
+        return new GameActionResult(updated, null, messages, recallResult.metadata());
     }
 
     /**

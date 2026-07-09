@@ -1,0 +1,24 @@
+{
+  "schema_version": 4,
+  "id": "scroll-of-recall",
+  "name": "Scroll of Recall",
+  "description": "A worn parchment humming with the magic of homeward passage.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "read",
+      "channel": "self",
+      "text": "You read {item} and the world dissolves around you."
+    },
+    {
+      "phase": "read",
+      "channel": "room",
+      "text": "{source} reads {item} and vanishes in a flash of light."
+    }
+  ],
+  "weight": 1,
+  "value": 50
+}
