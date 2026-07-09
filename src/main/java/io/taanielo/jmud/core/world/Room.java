@@ -34,6 +34,11 @@ public class Room {
      * {@link #requiredLightRadius()}.
      */
     @Nullable Integer lightLevel;
+    /**
+     * Whether this room is exposed to the sky, and therefore subject to the world's dynamic
+     * weather; {@code false} means the room is indoors and never shows weather effects.
+     */
+    boolean outdoor;
 
     /**
      * Light level at or above which a room is considered naturally lit (needs no carried light).
@@ -137,6 +142,34 @@ public class Room {
         @Nullable String nightDescription,
         @Nullable Integer lightLevel
     ) {
+        this(id, name, description, exits, items, occupants, lockedExits, minLevel, nightDescription,
+            lightLevel, false);
+    }
+
+    /**
+     * Constructs a room with all optional attributes including the outdoor/weather flag.
+     *
+     * @param lockedExits       map of direction to required key item id for exits that start locked
+     * @param minLevel          the recommended/minimum level to enter this room, or {@code null} if none
+     * @param nightDescription  the description shown at night instead of {@code description}, or
+     *                          {@code null} if the room looks the same at night
+     * @param lightLevel        the ambient light level ({@code 0} pitch dark, {@code 1} dim,
+     *                          {@code 2}+ lit), or {@code null} for a naturally lit room
+     * @param outdoor           {@code true} if the room is exposed to the sky and subject to weather
+     */
+    public Room(
+        RoomId id,
+        String name,
+        String description,
+        Map<Direction, RoomId> exits,
+        List<Item> items,
+        List<Username> occupants,
+        Map<Direction, ItemId> lockedExits,
+        @Nullable Integer minLevel,
+        @Nullable String nightDescription,
+        @Nullable Integer lightLevel,
+        boolean outdoor
+    ) {
         this.id = Objects.requireNonNull(id, "Room id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Room name must not be blank");
@@ -150,6 +183,7 @@ public class Room {
         this.minLevel = minLevel;
         this.nightDescription = nightDescription;
         this.lightLevel = lightLevel;
+        this.outdoor = outdoor;
     }
 
     /**

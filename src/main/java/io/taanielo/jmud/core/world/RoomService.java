@@ -53,6 +53,11 @@ public class RoomService {
      * cycle is disabled and rooms always render their day description.
      */
     private @Nullable WorldClock worldClock;
+    /**
+     * Optional weather view used to append weather lines to outdoor room descriptions; {@code null}
+     * means the weather subsystem is disabled and rooms render without weather.
+     */
+    private @Nullable RoomWeatherView weatherView;
 
     /**
      * Creates a room service façade wrapping the three focused services.
@@ -99,6 +104,15 @@ public class RoomService {
      */
     public void setWorldClock(@Nullable WorldClock worldClock) {
         this.worldClock = worldClock;
+    }
+
+    /**
+     * Registers the weather view consulted to append weather lines to outdoor room descriptions.
+     *
+     * @param weatherView the weather view; may be null to disable weather rendering
+     */
+    public void setWeatherView(@Nullable RoomWeatherView weatherView) {
+        this.weatherView = weatherView;
     }
 
     // ── Location delegation ──────────────────────────────────────────────────
@@ -216,8 +230,10 @@ public class RoomService {
         Room room = roomOpt.get();
         Room enriched = enrichRoom(room);
         Set<Direction> lockedExits = locationService.getLockedExits(room.getId());
-        return new LookResult(
-            renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay(), styler), enriched);
+        List<String> lines =
+            new ArrayList<>(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay(), styler));
+        appendWeatherLines(lines, enriched);
+        return new LookResult(lines, enriched);
     }
 
     /**
@@ -250,6 +266,7 @@ public class RoomService {
                 List<String> lines = new ArrayList<>();
                 lines.add("You move " + direction.label() + ".");
                 lines.addAll(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay(), styler));
+                appendWeatherLines(lines, enriched);
                 yield new MoveResult(true, lines, enriched);
             }
         };
@@ -333,7 +350,8 @@ public class RoomService {
                 room.getLockedExits(),
                 room.getMinLevel(),
                 room.getNightDescription(),
-                room.getLightLevel()
+                room.getLightLevel(),
+                room.isOutdoor()
             );
             try {
                 roomRepository.save(updated);
@@ -369,6 +387,12 @@ public class RoomService {
         return worldClock != null ? worldClock.timeOfDay() : TimeOfDay.DAY;
     }
 
+    private void appendWeatherLines(List<String> lines, Room room) {
+        if (weatherView != null) {
+            lines.addAll(weatherView.weatherLines(room));
+        }
+    }
+
     private Room enrichRoom(Room room) {
         List<Username> occupants = locationService.getPlayersInRoom(room.getId());
         List<Item> items = itemService.mergeItems(room);
@@ -382,7 +406,8 @@ public class RoomService {
             room.getLockedExits(),
             room.getMinLevel(),
             room.getNightDescription(),
-            room.getLightLevel()
+            room.getLightLevel(),
+            room.isOutdoor()
         );
     }
 
@@ -414,7 +439,8 @@ public class RoomService {
             room.getLockedExits(),
             room.getMinLevel(),
             room.getNightDescription(),
-            room.getLightLevel()
+            room.getLightLevel(),
+            room.isOutdoor()
         );
         try {
             roomRepository.save(updated);

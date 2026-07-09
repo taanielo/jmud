@@ -3,7 +3,12 @@ package io.taanielo.jmud.core.server.socket;
 import java.util.List;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.weather.WeatherEngine;
+import io.taanielo.jmud.core.world.RoomService;
 
 /**
  * Handles the {@code who} command, listing all connected and authenticated
@@ -14,8 +19,33 @@ import io.taanielo.jmud.core.authentication.Username;
  * {@link WhoListing} so the listing logic stays testable without networking.
  */
 public class WhoCommand extends RegistrableCommand {
+
+    private final @Nullable RoomService roomService;
+    private final @Nullable WeatherEngine weatherEngine;
+
+    /**
+     * Creates a WhoCommand with no weather visibility line.
+     *
+     * @param registry the command registry to register with
+     */
     public WhoCommand(SocketCommandRegistry registry) {
+        this(registry, null, null);
+    }
+
+    /**
+     * Creates a WhoCommand that also shows the viewer's local weather visibility line.
+     *
+     * @param registry      the command registry to register with
+     * @param roomService   service used to resolve the viewer's current room; may be null
+     * @param weatherEngine weather source used for the visibility line; may be null
+     */
+    public WhoCommand(
+            SocketCommandRegistry registry,
+            @Nullable RoomService roomService,
+            @Nullable WeatherEngine weatherEngine) {
         super(registry);
+        this.roomService = roomService;
+        this.weatherEngine = weatherEngine;
     }
 
     @Override
@@ -40,10 +70,10 @@ public class WhoCommand extends RegistrableCommand {
         if (!"WHO".equals(token)) {
             return Optional.empty();
         }
-        return Optional.of(new SocketCommandMatch(this, WhoCommand::handleWho));
+        return Optional.of(new SocketCommandMatch(this, this::handleWho));
     }
 
-    private static void handleWho(SocketCommandContext context) {
+    private void handleWho(SocketCommandContext context) {
         if (!context.isAuthenticated() || context.getPlayer() == null) {
             context.writeLineWithPrompt("You must be logged in to see who is online.");
             return;
@@ -51,6 +81,11 @@ public class WhoCommand extends RegistrableCommand {
         List<Username> onlineNames = context.onlinePlayerNames();
         for (String line : WhoListing.format(onlineNames)) {
             context.writeLineSafe(line);
+        }
+        Player player = context.getPlayer();
+        if (roomService != null && player != null) {
+            WeatherVisibilityLine.forPlayer(weatherEngine, roomService, player)
+                .ifPresent(line -> context.writeLineSafe("Weather: " + line));
         }
         context.sendPrompt();
     }

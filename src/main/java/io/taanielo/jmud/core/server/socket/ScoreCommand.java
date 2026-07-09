@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
@@ -12,6 +14,8 @@ import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerSustenance;
 import io.taanielo.jmud.core.player.PlayerVitals;
+import io.taanielo.jmud.core.weather.WeatherEngine;
+import io.taanielo.jmud.core.world.RoomService;
 
 /**
  * Handles the {@code score} / {@code sc} command, displaying the player's level,
@@ -23,9 +27,11 @@ public class ScoreCommand extends RegistrableCommand {
     private final RaceArmorBonusResolver raceArmorBonusResolver;
     private final ClassArmorBonusResolver classArmorBonusResolver;
     private final LightingService lightingService = new LightingService();
+    private final @Nullable RoomService roomService;
+    private final @Nullable WeatherEngine weatherEngine;
 
     /**
-     * Creates a ScoreCommand that computes AC from the given resolvers.
+     * Creates a ScoreCommand that computes AC from the given resolvers, with no weather line.
      *
      * @param registry                the command registry to register with
      * @param equipmentArmorResolver  resolver for AC contributed by equipped armour items
@@ -37,10 +43,32 @@ public class ScoreCommand extends RegistrableCommand {
             EquipmentArmorResolver equipmentArmorResolver,
             RaceArmorBonusResolver raceArmorBonusResolver,
             ClassArmorBonusResolver classArmorBonusResolver) {
+        this(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, null, null);
+    }
+
+    /**
+     * Creates a ScoreCommand that also shows a weather visibility line for the player's room.
+     *
+     * @param registry                the command registry to register with
+     * @param equipmentArmorResolver  resolver for AC contributed by equipped armour items
+     * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
+     * @param classArmorBonusResolver resolver for AC contributed by the player's class
+     * @param roomService             service used to resolve the player's current room; may be null
+     * @param weatherEngine           weather source used for the visibility line; may be null
+     */
+    public ScoreCommand(
+            SocketCommandRegistry registry,
+            EquipmentArmorResolver equipmentArmorResolver,
+            RaceArmorBonusResolver raceArmorBonusResolver,
+            ClassArmorBonusResolver classArmorBonusResolver,
+            @Nullable RoomService roomService,
+            @Nullable WeatherEngine weatherEngine) {
         super(registry);
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "EquipmentArmorResolver is required");
         this.raceArmorBonusResolver = Objects.requireNonNull(raceArmorBonusResolver, "RaceArmorBonusResolver is required");
         this.classArmorBonusResolver = Objects.requireNonNull(classArmorBonusResolver, "ClassArmorBonusResolver is required");
+        this.roomService = roomService;
+        this.weatherEngine = weatherEngine;
     }
 
     @Override
@@ -102,6 +130,10 @@ public class ScoreCommand extends RegistrableCommand {
         List<String> titles = player.titles().earned();
         if (!titles.isEmpty()) {
             context.writeLineSafe("Titles: " + String.join(", ", titles));
+        }
+        if (roomService != null) {
+            WeatherVisibilityLine.forPlayer(weatherEngine, roomService, player)
+                .ifPresent(line -> context.writeLineSafe("Weather: " + line));
         }
         context.sendPrompt();
     }

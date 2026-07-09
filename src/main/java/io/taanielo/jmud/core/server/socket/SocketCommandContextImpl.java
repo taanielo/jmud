@@ -200,6 +200,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.duelService() != null) {
             this.gameActionService.setDuelService(context.duelService());
         }
+        if (context.weatherEngine() != null) {
+            this.gameActionService.setWeatherEngine(context.weatherEngine());
+        }
     }
 
     // ── Client interface ───────────────────────────────────────────────

@@ -306,6 +306,55 @@ class CombatEngineTest {
         assertTrue(result.hit());
     }
 
+    @Test
+    void environmentHitModifierReducesHitChance() throws Exception {
+        // Base hit chance 75; a -5 environment (weather) modifier lowers it to 70. Rolling 73
+        // would hit at 75 but misses at 70.
+        AttackId attackId = AttackId.of("attack.weather");
+        AttackDefinition attack = new AttackDefinition(attackId, "weather", 2, 2, 0, 0, 0, List.of());
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(73)
+        );
+
+        CombatResult result = engine.resolve(
+            new CombatAction(player("attacker", List.of()), player("target", List.of()), attackId, -5, 0));
+
+        assertFalse(result.hit());
+        assertEquals(0, result.damage());
+    }
+
+    @Test
+    void rangedEnvironmentModifierAppliesOnlyToRangedAttacks() throws Exception {
+        // Base hit chance 75. A ranged environment modifier of -10 applies only to ranged attacks
+        // (lowering them to 65); a melee attack keeps 75. Rolling 70 therefore hits melee, misses ranged.
+        AttackId meleeId = AttackId.of("attack.melee-weather");
+        AttackDefinition melee = new AttackDefinition(meleeId, "melee", 2, 2, 0, 0, 0, List.of());
+        AttackId rangedId = AttackId.of("attack.ranged-weather");
+        AttackDefinition ranged = new AttackDefinition(
+            rangedId, "ranged", 2, 2, 0, 0, 0, List.of(), WeaponType.PIERCING, null, RangeType.RANGED);
+        Map<AttackId, AttackDefinition> attacks = Map.of(meleeId, melee, rangedId, ranged);
+
+        CombatEngine meleeEngine = new CombatEngine(
+            new StubAttackRepository(attacks),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(70, 2, 100)
+        );
+        CombatResult meleeResult = meleeEngine.resolve(
+            new CombatAction(player("attacker", List.of()), player("target", List.of()), meleeId, 0, -10));
+        assertTrue(meleeResult.hit(), "ranged modifier must not apply to a melee attack");
+
+        CombatEngine rangedEngine = new CombatEngine(
+            new StubAttackRepository(attacks),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(70)
+        );
+        CombatResult rangedResult = rangedEngine.resolve(
+            new CombatAction(player("attacker", List.of()), player("target", List.of()), rangedId, 0, -10));
+        assertFalse(rangedResult.hit(), "ranged modifier must lower a ranged attack's hit chance");
+    }
+
     // ── Seeded / deterministic tests ──────────────────────────────────────
 
     @Test

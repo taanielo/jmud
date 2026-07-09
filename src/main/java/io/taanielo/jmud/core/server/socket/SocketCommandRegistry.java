@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.world.RoomService;
 
 /**
@@ -30,6 +33,8 @@ public class SocketCommandRegistry {
      * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
      * @param roomService             service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
      * @param messageBroadcaster      scoped delivery service used to fan out {@code SHOUT} to nearby rooms
+     * @param weatherEngine           weather source used to show a visibility line in {@code WHO}/{@code SCORE};
+     *                                {@code null} disables the weather line
      */
     public static SocketCommandRegistry createDefault(
         EquipmentArmorResolver equipmentArmorResolver,
@@ -37,7 +42,8 @@ public class SocketCommandRegistry {
         ClassArmorBonusResolver classArmorBonusResolver,
         PlayerRepository playerRepository,
         RoomService roomService,
-        MessageBroadcaster messageBroadcaster
+        MessageBroadcaster messageBroadcaster,
+        @Nullable WeatherEngine weatherEngine
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
@@ -70,9 +76,10 @@ public class SocketCommandRegistry {
         new WhisperCommand(registry, roomService);
         new ShoutCommand(registry, roomService, messageBroadcaster);
         new GossipCommand(registry);
-        new WhoCommand(registry);
+        new WhoCommand(registry, roomService, weatherEngine);
         new RankCommand(registry, playerRepository);
-        new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver);
+        new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
+            roomService, weatherEngine);
         new AchievementsCommand(registry);
         new AbilityCommand(registry);
         new CastCommand(registry);

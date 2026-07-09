@@ -302,6 +302,10 @@ public class CombatEngine {
             - targetMods.defense().apply(0)
             - targetArmorBonus;
         int hitChance = attackerMods.hitChance().apply(hitChanceBase);
+        hitChance += action.environmentHitModifier();
+        if (attack.isRanged()) {
+            hitChance += action.environmentRangedHitModifier();
+        }
         hitChance = clamp(hitChance, 0, 100);
         int hitRoll = random.roll(1, 100);
         boolean hit = hitRoll <= hitChance;

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:room:v7",
+  "title": "Room (v7)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "description",
+    "item_ids"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 7
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "item_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "exits": {
+      "type": "object",
+      "description": "Optional map of direction (north/south/east/west/up/down) to destination room id.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "locked_exits": {
+      "type": "object",
+      "description": "Optional map of direction to the item id of the key required to unlock that exit.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "min_level": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional recommended/minimum level to enter this room. Advisory only: it never blocks movement, it only triggers a warning message to players below this level. Omit for no restriction."
+    },
+    "night_description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional alternate description shown instead of 'description' when the world clock is at night. Omit for no change at night."
+    },
+    "light_level": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional ambient light level: 0 = pitch dark, 1 = dim, 2 or higher = naturally lit. Omit for a naturally lit room that needs no carried light. Dark rooms hide their contents from players who carry no sufficient light source; a pitch-dark room (0) requires a light radius of at least 1 (a torch), a dim room (1) requires at least 2 (a lantern)."
+    },
+    "is_outdoor": {
+      "type": "boolean",
+      "description": "Optional flag marking the room as exposed to the sky and therefore subject to the world's dynamic weather. Omit or set false for indoor rooms, which never show weather effects."
+    }
+  }
+}

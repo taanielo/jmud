@@ -1,5 +1,6 @@
 {
-  "schema_version" : 2,
+  "schema_version" : 7,
+  "is_outdoor" : true,
   "id" : "training-yard",
   "name" : "Training Yard",
   "description" : "A dusty yard with practice dummies and scattered weapons.",
