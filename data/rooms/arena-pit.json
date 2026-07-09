@@ -1,0 +1,11 @@
+{
+  "schema_version": 6,
+  "id": "arena-pit",
+  "name": "Arena Fighting Pit",
+  "description": "A circle of raked sand sunk below ground level, ringed by battered wooden barriers and stained dark in places best not examined. This is where announced duels are fought. Tiered spectator stands rise to the north, and a ramp leads back up to the entrance.",
+  "item_ids": [],
+  "exits": {
+    "up": "arena-entrance",
+    "north": "arena-stands"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 6,
+  "id": "arena-entrance",
+  "name": "Arena Entrance",
+  "description": "A broad archway of weathered stone opens onto the Arena grounds. Faded banners snap in the wind above a ticket-taker's empty booth, and a low roar of distant crowds drifts from within. A worn path leads down into the fighting pit, while a stairway climbs to the spectator stands. The road back to the training yard runs west.",
+  "item_ids": [],
+  "exits": {
+    "west": "training-yard",
+    "down": "arena-pit",
+    "up": "arena-stands"
+  }
+}

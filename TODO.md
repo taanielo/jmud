@@ -25,7 +25,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add daily quests: one rotating repeatable quest per day (tick-cycle based) with bonus gold/XP
 - [x] Add achievements system: track milestones (first kill, 100 kills, level 10) shown via ACHIEVEMENTS command
 - [x] Add consensual PvP duels: DUEL/ACCEPT commands, fight to near-death in-room, no item/gold loss
-- [ ] Add an arena zone with a spectator stand and periodic announced duel events
+- [x] Add an arena zone with a spectator stand and periodic announced duel events
 - [ ] Add player bulletin boards: BOARD/NOTE commands with persistent per-room note storage
 - [ ] Add weather system on the tick cycle (rain, fog, storm) shown in outdoor room descriptions with small combat/visibility modifiers
 - [ ] Add ambient room messages: zones emit occasional atmospheric lines (dripping water, distant howls) on tick

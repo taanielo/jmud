@@ -1,0 +1,11 @@
+{
+  "schema_version": 6,
+  "id": "arena-stands",
+  "name": "Arena Spectator Stands",
+  "description": "Steep tiers of splintered benches look down over the fighting pit to the south, close enough to catch every ring of steel and cry of the crowd. Vendors' abandoned trays lie scattered underfoot. A stairway descends to the entrance below.",
+  "item_ids": [],
+  "exits": {
+    "down": "arena-entrance",
+    "south": "arena-pit"
+  }
+}
