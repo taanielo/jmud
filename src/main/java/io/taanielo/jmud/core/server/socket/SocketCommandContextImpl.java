@@ -157,7 +157,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
             },
             (roomId, nameInput) -> context.mobRegistry() != null
                 ? context.mobRegistry().findStealTarget(roomId, nameInput)
-                : java.util.Optional.empty()
+                : java.util.Optional.empty(),
+            roomId -> context.mobRegistry() == null
+                ? java.util.List.of()
+                : context.mobRegistry().getMobsInRoom(roomId).stream()
+                    .filter(io.taanielo.jmud.core.mob.MobInstance::isAlive)
+                    .map(mob -> mob.template().name())
+                    .toList()
         );
     }
 
@@ -1148,6 +1154,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         cancelRestIfActive();
         GameActionResult result = gameActionService.steal(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void track(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to track.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.track(session.getPlayer(), args);
         deliverResult(result);
         sendPrompt();
     }

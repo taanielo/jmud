@@ -467,6 +467,20 @@ public interface SocketCommandContext extends Client {
     default void steal(String args) {}
 
     /**
+     * Attempts the ranger TRACK skill, searching the world for the nearest mob of the named type and
+     * reporting a directional hint toward it.
+     *
+     * <p>Only rangers may track. On success the player is told the compass direction of the first
+     * step toward the nearest matching mob (or that it shares their room); on failure an error
+     * explains why (not a ranger, no such mob anywhere, etc.).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the mob type/name to track (e.g. {@code "goblin"})
+     */
+    default void track(String args) {}
+
+    /**
      * Casts the necromancer-style SUMMON spell, spawning a temporary pet mob that fights hostile
      * mobs at the caster's side, or dismisses the active pet when {@code args} is {@code "dismiss"}.
      *

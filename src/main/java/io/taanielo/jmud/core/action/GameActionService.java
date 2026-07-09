@@ -1,14 +1,21 @@
 package io.taanielo.jmud.core.action;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import org.jspecify.annotations.Nullable;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -100,6 +107,12 @@ public class GameActionService {
      * to {@link NpcStealPort#NONE} (never finds a target) when no mob layer is wired.
      */
     private final NpcStealPort npcStealPort;
+    /**
+     * Port used by the ranger TRACK skill to enumerate the mobs in each room while walking the room
+     * graph, without depending on the concrete mob layer. Defaults to {@link MobLocatorPort#NONE}
+     * (never finds a mob) when no mob layer is wired.
+     */
+    private final MobLocatorPort mobLocatorPort;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -210,7 +223,8 @@ public class GameActionService {
     ) {
         this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
             roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
-            containerLockingService, new ThreadLocalCombatRandom(), _ -> { }, NpcStealPort.NONE);
+            containerLockingService, new ThreadLocalCombatRandom(), _ -> { }, NpcStealPort.NONE,
+            MobLocatorPort.NONE);
     }
 
     /**
@@ -239,7 +253,7 @@ public class GameActionService {
         this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
             roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
             new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage,
-            NpcStealPort.NONE);
+            NpcStealPort.NONE, MobLocatorPort.NONE);
     }
 
     /**
@@ -269,7 +283,40 @@ public class GameActionService {
         this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
             roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
             new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage,
-            npcStealPort);
+            npcStealPort, MobLocatorPort.NONE);
+    }
+
+    /**
+     * Creates a game action service with an explicit in-combat predicate, seeded world RNG,
+     * combat-disengage callback, NPC steal port, and mob locator port. This is the full production
+     * constructor used when the mob layer is available to back both the rogue STEAL skill and the
+     * ranger TRACK skill.
+     *
+     * @param inCombatCheck   returns {@code true} when the given player is already engaged in combat
+     * @param worldRandom     seeded RNG port for world/game rolls (flee direction, steal success)
+     * @param combatDisengage disengages the given player from active combat when they flee
+     * @param npcStealPort    port used by the STEAL skill to find/steal-from/aggro a target NPC
+     * @param mobLocatorPort  port used by the TRACK skill to enumerate mobs per room
+     */
+    public GameActionService(
+        AbilityRegistry abilityRegistry,
+        AbilityCostResolver abilityCostResolver,
+        EffectEngine abilityEffectEngine,
+        CombatEngine combatEngine,
+        RoomService roomService,
+        AbilityTargetResolver abilityTargetResolver,
+        AbilityCooldownTracker cooldownTracker,
+        EncumbranceService encumbranceService,
+        Predicate<Player> inCombatCheck,
+        CombatRandom worldRandom,
+        Consumer<Player> combatDisengage,
+        NpcStealPort npcStealPort,
+        MobLocatorPort mobLocatorPort
+    ) {
+        this(abilityRegistry, abilityCostResolver, abilityEffectEngine, combatEngine,
+            roomService, abilityTargetResolver, cooldownTracker, encumbranceService, inCombatCheck,
+            new ContainerLockingService(new ThreadLocalCombatRandom()), worldRandom, combatDisengage,
+            npcStealPort, mobLocatorPort);
     }
 
     /**
@@ -283,6 +330,7 @@ public class GameActionService {
      * @param worldRandom             seeded RNG port for world/game rolls (flee direction)
      * @param combatDisengage         disengages the given player from active combat when they flee
      * @param npcStealPort            port used by the rogue STEAL skill to find/steal-from/aggro an NPC
+     * @param mobLocatorPort          port used by the ranger TRACK skill to enumerate mobs per room
      */
     public GameActionService(
         AbilityRegistry abilityRegistry,
@@ -297,7 +345,8 @@ public class GameActionService {
         ContainerLockingService containerLockingService,
         CombatRandom worldRandom,
         Consumer<Player> combatDisengage,
-        NpcStealPort npcStealPort
+        NpcStealPort npcStealPort,
+        MobLocatorPort mobLocatorPort
     ) {
         this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         this.abilityCostResolver = Objects.requireNonNull(abilityCostResolver, "Ability cost resolver is required");
@@ -313,6 +362,7 @@ public class GameActionService {
         this.worldRandom = Objects.requireNonNull(worldRandom, "World random is required");
         this.combatDisengage = Objects.requireNonNull(combatDisengage, "Combat disengage callback is required");
         this.npcStealPort = Objects.requireNonNull(npcStealPort, "NPC steal port is required");
+        this.mobLocatorPort = Objects.requireNonNull(mobLocatorPort, "Mob locator port is required");
     }
 
     /**
@@ -1000,6 +1050,132 @@ public class GameActionService {
             STEAL_MAX_SUCCESS_PERCENT,
             STEAL_BASE_SUCCESS_PERCENT + STEAL_SUCCESS_PERCENT_PER_LEVEL * level);
         return worldRandom.roll(1, 100) <= chance;
+    }
+
+    /** Maximum number of rooms the ranger TRACK skill will explore before giving up. */
+    private static final int TRACK_MAX_ROOMS_EXPLORED = 512;
+
+    /**
+     * Attempts the ranger TRACK skill, searching the world for the nearest mob whose name matches
+     * the given type and returning a directional hint toward it.
+     *
+     * <p>Only rangers may track. Starting from the ranger's current room, this performs a
+     * breadth-first walk of the room graph via {@link RoomService#getExits} (so distance is measured
+     * in rooms) and, at each room, consults the injected {@link MobLocatorPort} for the live mobs
+     * present. The nearest room containing a name match wins:
+     * <ul>
+     *   <li>a match in the ranger's own room yields "You sense a {@code type} in this room.";</li>
+     *   <li>a match elsewhere yields "The {@code type} lies somewhere to the {@code direction}." where
+     *       {@code direction} is the first step of the shortest path toward it.</li>
+     * </ul>
+     * The walk is bounded by {@link #TRACK_MAX_ROOMS_EXPLORED} so a pathological world cannot stall
+     * the tick. This method only reads game state (AGENTS.md §5) and returns messages; it never
+     * mutates the player or the world.
+     *
+     * @param source       the ranger attempting to track
+     * @param mobTypeInput the mob type/name to search for (e.g. {@code "goblin"})
+     * @return a directional hint on success, or an error when the caller is not a ranger, gives no
+     *         target, or no matching mob can be found anywhere reachable
+     */
+    public GameActionResult track(Player source, String mobTypeInput) {
+        Objects.requireNonNull(source, "Source is required");
+        String normalized = mobTypeInput == null ? "" : mobTypeInput.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Track what?");
+        }
+        if (!isRanger(source)) {
+            return GameActionResult.error("Only rangers know how to track.");
+        }
+        if (source.isDead()) {
+            return GameActionResult.error("You cannot do that right now.");
+        }
+        Optional<RoomId> start = roomService.findPlayerLocation(source.getUsername());
+        if (start.isEmpty()) {
+            return GameActionResult.error("You are lost and cannot get your bearings.");
+        }
+        String query = normalized.toLowerCase(Locale.ROOT);
+        Optional<TrackHit> hit = findNearestMob(start.get(), query);
+        if (hit.isEmpty()) {
+            return GameActionResult.error(
+                "You search for signs of " + normalized + " but find no trace anywhere.");
+        }
+        TrackHit found = hit.get();
+        String message = found.direction() == null
+            ? "You sense " + article(found.mobName()) + found.mobName() + " in this room."
+            : "The " + found.mobName() + " lies somewhere to the " + found.direction().label() + ".";
+        return new GameActionResult(null, null, List.of(GameMessage.toSource(message)));
+    }
+
+    /**
+     * Breadth-first searches the room graph from {@code start} for the nearest room containing a
+     * live mob whose name matches {@code query} (case-insensitive substring). Distance is measured
+     * in rooms; the returned hit carries the display name and the first-step direction of the
+     * shortest path (or {@code null} when the match is in the starting room). The search is bounded
+     * by {@link #TRACK_MAX_ROOMS_EXPLORED}.
+     */
+    private Optional<TrackHit> findNearestMob(RoomId start, String query) {
+        Deque<RoomId> frontier = new ArrayDeque<>();
+        Map<RoomId, Direction> firstStep = new HashMap<>();
+        Set<RoomId> visited = new HashSet<>();
+        frontier.add(start);
+        visited.add(start);
+        int explored = 0;
+        while (!frontier.isEmpty() && explored < TRACK_MAX_ROOMS_EXPLORED) {
+            RoomId current = frontier.removeFirst();
+            explored++;
+            String match = firstMatchingMobName(current, query);
+            if (match != null) {
+                return Optional.of(new TrackHit(match, firstStep.get(current)));
+            }
+            for (Map.Entry<Direction, RoomId> exit : roomService.getExits(current).entrySet()) {
+                RoomId neighbour = exit.getValue();
+                if (visited.add(neighbour)) {
+                    // The first step from the start room is the exit's own direction; deeper rooms
+                    // inherit the direction of the first hop that discovered them.
+                    Direction step = current.equals(start) ? exit.getKey() : firstStep.get(current);
+                    firstStep.put(neighbour, step);
+                    frontier.add(neighbour);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Returns the display name of the first live mob in the given room whose name contains
+     * {@code query} (case-insensitive), or {@code null} when none match.
+     */
+    private String firstMatchingMobName(RoomId roomId, String query) {
+        for (String name : mobLocatorPort.liveMobNamesInRoom(roomId)) {
+            if (name.toLowerCase(Locale.ROOT).contains(query)) {
+                return name;
+            }
+        }
+        return null;
+    }
+
+    /** Returns {@code "a "} or {@code "an "} for the given name, for readable TRACK output. */
+    private static String article(String name) {
+        if (name.isEmpty()) {
+            return "";
+        }
+        return "aeiouAEIOU".indexOf(name.charAt(0)) >= 0 ? "an " : "a ";
+    }
+
+    /**
+     * A resolved TRACK result: the matched mob's display name and the first-step direction toward
+     * it, or {@code null} direction when the mob is in the ranger's own room.
+     */
+    private record TrackHit(String mobName, @Nullable Direction direction) {
+    }
+
+    /**
+     * Returns whether the given player belongs to the ranger class, the only class permitted to use
+     * the TRACK skill.
+     */
+    private static boolean isRanger(Player player) {
+        return player.getClassId() != null
+            && "ranger".equalsIgnoreCase(player.getClassId().getValue());
     }
 
     /**

@@ -37,7 +37,8 @@ class JsonClassRepositoryFindAllTest {
         assertTrue(ids.contains("adventurer"), "Expected 'adventurer' class");
         assertTrue(ids.contains("rogue"), "Expected 'rogue' class");
         assertTrue(ids.contains("cleric"), "Expected 'cleric' class");
-        assertEquals(5, classes.size(), "Expected exactly 5 classes");
+        assertTrue(ids.contains("ranger"), "Expected 'ranger' class");
+        assertEquals(6, classes.size(), "Expected exactly 6 classes");
     }
 
     @Test
