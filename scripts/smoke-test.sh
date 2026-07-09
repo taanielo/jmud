@@ -236,6 +236,21 @@ expect "$T2G" "MAP marks the current room"          '@'
 expect "$T2G" "MAP marks an explored neighbour"     '#'
 expect "$T2G" "MAP shows a legend"                  'Legend:'
 
+# ── phase 2h: ignore list (IGNORE) ───────────────────────────────────────────
+# A full cross-player TELL mute needs two simultaneous connections (like duels),
+# which the sequential smoke harness cannot script. We instead exercise the whole
+# IGNORE sub-command surface in one session: empty list, ADD, list, REMOVE, CLEAR.
+log "Phase 2h: IGNORE mute list"
+T2H="$OUT_DIR/phase2h-ignore.txt"
+run_session "$T2H" "$TEST_USER" "$TEST_PASS" \
+    "ignore" "ignore add Spammer" "ignore" "ignore remove Spammer" "ignore clear" "quit"
+
+expect "$T2H" "IGNORE reports an empty list"        'not ignoring anyone'
+expect "$T2H" "IGNORE ADD confirms the mute"        'now ignoring Spammer'
+expect "$T2H" "IGNORE lists the muted player"       'spammer'
+expect "$T2H" "IGNORE REMOVE confirms un-mute"      'no longer ignoring Spammer'
+expect "$T2H" "IGNORE CLEAR is handled"             'ignore list (has been cleared|is already empty)'
+
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).
 # Broken-pipe writes to just-disconnected clients are demoted to warnings —

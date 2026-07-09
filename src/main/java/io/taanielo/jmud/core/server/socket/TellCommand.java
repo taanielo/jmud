@@ -88,7 +88,13 @@ public class TellCommand extends RegistrableCommand {
             return;
         }
 
-        context.sendToUsername(targetUsername, senderName + " tells you: " + message);
+        // Silently drop delivery if the recipient is ignoring the sender; the sender still
+        // sees normal confirmation and is never told they have been ignored (issue #339).
+        Player targetPlayer = context.getOnlinePlayer(targetUsername);
+        boolean ignored = targetPlayer != null && targetPlayer.ignoreList().has(senderName);
+        if (!ignored) {
+            context.sendToUsername(targetUsername, senderName + " tells you: " + message);
+        }
         context.writeLineSafe("You tell " + targetUsername.getValue() + ": " + message);
         context.sendPrompt();
     }

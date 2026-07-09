@@ -85,6 +85,22 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsIgnoreList() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("hermit"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withIgnoreList(
+            PlayerIgnoreList.empty().with("Spammer").with("Troll"));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().ignoreList().has("spammer"));
+        assertTrue(loaded.get().ignoreList().has("TROLL"));
+        assertEquals(List.of("spammer", "troll"), loaded.get().getIgnoredPlayers());
+    }
+
+    @Test
     void savesAndLoadsUnlockedAchievements() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("hero"), Password.hash("pw", 1000));

@@ -38,7 +38,7 @@ public class SayCommand extends RegistrableCommand {
         }
         Player player = context.getPlayer();
         String roomMessage = player.getUsername().getValue() + " said \"" + message + "\"";
-        context.sendToRoom(player, roomMessage);
+        context.sendRoomSay(player, roomMessage);
         context.writeLineSafe("You say \"" + message + "\"");
         context.sendPrompt();
     }
