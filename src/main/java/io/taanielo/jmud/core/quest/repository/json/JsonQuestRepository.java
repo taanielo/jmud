@@ -28,6 +28,7 @@ public class JsonQuestRepository implements QuestRepository {
     private static final int SCHEMA_VERSION_KILL = 1;
     private static final int SCHEMA_VERSION_DELIVERY = 2;
     private static final int SCHEMA_VERSION_NPC_DELIVERY = 3;
+    private static final int SCHEMA_VERSION_EXPLORATION = 4;
     private static final String QUESTS_DIR = "quests";
 
     private final ObjectMapper objectMapper;
@@ -69,7 +70,8 @@ public class JsonQuestRepository implements QuestRepository {
                 QuestDto dto = readDto(path);
                 if (dto.schemaVersion() != SCHEMA_VERSION_KILL
                         && dto.schemaVersion() != SCHEMA_VERSION_DELIVERY
-                        && dto.schemaVersion() != SCHEMA_VERSION_NPC_DELIVERY) {
+                        && dto.schemaVersion() != SCHEMA_VERSION_NPC_DELIVERY
+                        && dto.schemaVersion() != SCHEMA_VERSION_EXPLORATION) {
                     throw new QuestRepositoryException(
                         "Unsupported quest schema version " + dto.schemaVersion() + " in " + path);
                 }
@@ -98,7 +100,8 @@ public class JsonQuestRepository implements QuestRepository {
                 dto.giverNpcId(),
                 dto.receiverNpcId(),
                 dto.receiverRoomId(),
-                dto.packageItemId()
+                dto.packageItemId(),
+                dto.requiredRoomIds()
             );
         } catch (IllegalArgumentException e) {
             throw new QuestRepositoryException("Invalid quest data in " + source + ": " + e.getMessage(), e);

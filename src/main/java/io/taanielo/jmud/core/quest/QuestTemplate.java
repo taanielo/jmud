@@ -1,11 +1,12 @@
 package io.taanielo.jmud.core.quest;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
  * Immutable definition of a quest contract loaded from data files.
  *
- * <p>Three quest types are supported (see {@link QuestType}); exactly one set of
+ * <p>Four quest types are supported (see {@link QuestType}); exactly one set of
  * type-specific fields must be populated:
  * <ul>
  *   <li><b>Kill quest</b> — {@code targetMobId} and {@code requiredKills} are set.</li>
@@ -13,6 +14,8 @@ import java.util.Objects;
  *   <li><b>NPC delivery quest</b> — {@code giverNpcId}, {@code receiverNpcId},
  *       {@code receiverRoomId} and {@code packageItemId} are set: a giver NPC hands the
  *       player a package to carry to a receiver NPC in another zone.</li>
+ *   <li><b>Exploration quest</b> — {@code requiredRoomIds} lists the rooms the player must
+ *       visit; the quest auto-completes once every room has been entered.</li>
  * </ul>
  *
  * @param id                unique quest identifier
@@ -29,6 +32,8 @@ import java.util.Objects;
  * @param receiverNpcId     mob template id of the NPC the package must be delivered to (NPC delivery quests only)
  * @param receiverRoomId    room id where the receiver NPC stands (NPC delivery quests only)
  * @param packageItemId     item id of the package handed to the player (NPC delivery quests only)
+ * @param requiredRoomIds   room ids that must all be visited to complete the quest (exploration quests only);
+ *                          never {@code null} — an empty list means this is not an exploration quest
  */
 public record QuestTemplate(
     QuestId id,
@@ -44,22 +49,27 @@ public record QuestTemplate(
     String giverNpcId,
     String receiverNpcId,
     String receiverRoomId,
-    String packageItemId
+    String packageItemId,
+    List<String> requiredRoomIds
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
         Objects.requireNonNull(name, "Quest name is required");
         Objects.requireNonNull(description, "Quest description is required");
+        requiredRoomIds = requiredRoomIds == null ? List.of() : List.copyOf(requiredRoomIds);
         boolean isKillQuest = targetMobId != null && requiredKills > 0;
         boolean isItemDeliveryQuest = dropItemId != null && requiredDropCount > 0;
         boolean isNpcDeliveryQuest = giverNpcId != null && receiverNpcId != null
             && receiverRoomId != null && packageItemId != null;
-        int typesDefined = (isKillQuest ? 1 : 0) + (isItemDeliveryQuest ? 1 : 0) + (isNpcDeliveryQuest ? 1 : 0);
+        boolean isExplorationQuest = !requiredRoomIds.isEmpty();
+        int typesDefined = (isKillQuest ? 1 : 0) + (isItemDeliveryQuest ? 1 : 0)
+            + (isNpcDeliveryQuest ? 1 : 0) + (isExplorationQuest ? 1 : 0);
         if (typesDefined != 1) {
             throw new IllegalArgumentException(
                 "Quest must define exactly one of: kill targets (targetMobId + requiredKills), "
                 + "item delivery (dropItemId + requiredDropCount), "
-                + "or NPC delivery (giverNpcId + receiverNpcId + receiverRoomId + packageItemId)");
+                + "NPC delivery (giverNpcId + receiverNpcId + receiverRoomId + packageItemId), "
+                + "or exploration (requiredRoomIds)");
         }
         if (goldReward < 0) {
             throw new IllegalArgumentException("goldReward must be non-negative");
@@ -70,7 +80,7 @@ public record QuestTemplate(
     }
 
     /**
-     * Convenience constructor for kill-count quests (no delivery fields).
+     * Convenience constructor for kill-count quests (no delivery or exploration fields).
      *
      * @param id            unique quest identifier
      * @param name          display name shown to players
@@ -90,11 +100,11 @@ public record QuestTemplate(
         int xpReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null);
+            null, 0, null, null, null, null, null, List.of());
     }
 
     /**
-     * Convenience constructor for kill or item-delivery quests (no NPC delivery fields).
+     * Convenience constructor for kill or item-delivery quests (no NPC delivery or exploration fields).
      *
      * @param id                unique quest identifier
      * @param name              display name shown to players
@@ -120,13 +130,79 @@ public record QuestTemplate(
         String titleReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            dropItemId, requiredDropCount, titleReward, null, null, null, null);
+            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of());
+    }
+
+    /**
+     * Convenience constructor for kill, item-delivery, or NPC-delivery quests (no exploration fields).
+     *
+     * @param id                unique quest identifier
+     * @param name              display name shown to players
+     * @param description       short flavour description of the quest goal
+     * @param targetMobId       mob template id that must be killed (kill quests only)
+     * @param requiredKills     number of kills needed (kill quests only)
+     * @param goldReward        bonus gold awarded on completion
+     * @param xpReward          bonus XP awarded on completion
+     * @param dropItemId        item id that must be collected (item delivery quests only)
+     * @param requiredDropCount number of drop items needed (item delivery quests only)
+     * @param titleReward       title granted on completion, or {@code null}
+     * @param giverNpcId        mob template id of the giver NPC (NPC delivery quests only)
+     * @param receiverNpcId     mob template id of the receiver NPC (NPC delivery quests only)
+     * @param receiverRoomId    room id where the receiver NPC stands (NPC delivery quests only)
+     * @param packageItemId     item id of the package (NPC delivery quests only)
+     */
+    public QuestTemplate(
+        QuestId id,
+        String name,
+        String description,
+        String targetMobId,
+        int requiredKills,
+        int goldReward,
+        int xpReward,
+        String dropItemId,
+        int requiredDropCount,
+        String titleReward,
+        String giverNpcId,
+        String receiverNpcId,
+        String receiverRoomId,
+        String packageItemId
+    ) {
+        this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
+            dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId,
+            receiverRoomId, packageItemId, List.of());
+    }
+
+    /**
+     * Convenience constructor for exploration quests (no kill or delivery fields).
+     *
+     * @param id              unique quest identifier
+     * @param name            display name shown to players
+     * @param description     short flavour description of the quest goal
+     * @param goldReward      bonus gold awarded on completion
+     * @param xpReward        bonus XP awarded on completion
+     * @param titleReward     title granted on completion, or {@code null}
+     * @param requiredRoomIds room ids that must all be visited to complete the quest
+     */
+    public QuestTemplate(
+        QuestId id,
+        String name,
+        String description,
+        int goldReward,
+        int xpReward,
+        String titleReward,
+        List<String> requiredRoomIds
+    ) {
+        this(id, name, description, null, 0, goldReward, xpReward,
+            null, 0, titleReward, null, null, null, null, requiredRoomIds);
     }
 
     /**
      * Returns the type of this quest, derived from which set of type-specific fields is populated.
      */
     public QuestType type() {
+        if (isExplorationQuest()) {
+            return QuestType.EXPLORATION;
+        }
         if (isNpcDeliveryQuest()) {
             return QuestType.DELIVERY_NPC;
         }
@@ -151,5 +227,13 @@ public record QuestTemplate(
     public boolean isNpcDeliveryQuest() {
         return giverNpcId != null && receiverNpcId != null
             && receiverRoomId != null && packageItemId != null;
+    }
+
+    /**
+     * Returns {@code true} when this is an exploration quest where the player must visit every
+     * room listed in {@link #requiredRoomIds()}.
+     */
+    public boolean isExplorationQuest() {
+        return !requiredRoomIds.isEmpty();
     }
 }

@@ -60,6 +60,8 @@ import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.quest.ActiveQuest;
 import io.taanielo.jmud.core.quest.DeliveryQuestResult;
+import io.taanielo.jmud.core.quest.ExplorationQuestResult;
+import io.taanielo.jmud.core.quest.ExplorationQuestService;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
 import io.taanielo.jmud.core.quest.QuestId;
 import io.taanielo.jmud.core.quest.QuestKillService;
@@ -81,6 +83,7 @@ import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
+import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 /**
  * Executes gameplay commands dispatched by {@link SocketCommandDispatcher} on behalf of a single
@@ -807,6 +810,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLine("You move " + direction.label() + ".");
             connection.writeLines(lightingService.darknessLines());
             warnIfRoomTooDangerous(player, destination);
+            recordExplorationVisit(destination);
             sendPrompt();
             return;
         }
@@ -814,8 +818,32 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (result.moved()) {
             writeRoomOccupantLines(result.room());
             warnIfRoomTooDangerous(player, result.room());
+            recordExplorationVisit(destination);
         }
         sendPrompt();
+    }
+
+    /**
+     * Records the player entering {@code destination} against any active exploration quest, emitting
+     * progress or completion messages. Runs on the tick thread (as all command execution does), so it
+     * safely mutates and persists the player snapshot through the session.
+     */
+    private void recordExplorationVisit(@Nullable Room destination) {
+        if (destination == null) {
+            return;
+        }
+        QuestRepository questRepo = context.questRepository();
+        Player player = session.getPlayer();
+        if (questRepo == null || player == null || player.getActiveQuest() == null) {
+            return;
+        }
+        ExplorationQuestService explorationSvc = new ExplorationQuestService(questRepo);
+        explorationSvc.recordRoomVisit(player, destination.getId()).ifPresent(result -> {
+            session.replacePlayer(result.player());
+            for (String message : result.messages()) {
+                connection.writeLine(message);
+            }
+        });
     }
 
     /**
@@ -2498,10 +2526,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 + template.giverNpcId() + " to receive the package.");
             return;
         }
+        if (template.isExplorationQuest() && !explorationRoomsExist(template)) {
+            writeLineWithPrompt("That expedition is not available right now.");
+            return;
+        }
         ActiveQuest active = new ActiveQuest(template.id(), template.requiredKills());
         Player updated = player.withActiveQuest(active);
         session.replacePlayer(updated);
-        if (template.isDeliveryQuest()) {
+        if (template.isExplorationQuest()) {
+            writeLineWithPrompt(
+                "Contract accepted: " + template.name() + ". "
+                    + "Visit all " + template.requiredRoomIds().size()
+                    + " rooms. Use QUEST STATUS to see where you still need to go. Good luck.");
+        } else if (template.isDeliveryQuest()) {
             writeLineWithPrompt(
                 "Contract accepted: " + template.name() + ". "
                     + "Collect " + template.requiredDropCount() + " "
@@ -2512,6 +2549,31 @@ class SocketCommandContextImpl implements SocketCommandContext {
                     + "Kill " + template.requiredKills() + " "
                     + template.targetMobId() + "(s). Good luck.");
         }
+    }
+
+    /**
+     * Validates that every required room of an exploration quest exists in the room repository,
+     * failing loudly (returning {@code false}) when any id is unknown so a misconfigured quest is
+     * never granted.
+     */
+    private boolean explorationRoomsExist(QuestTemplate template) {
+        RoomRepository roomRepository = context.roomRepository();
+        if (roomRepository == null) {
+            return false;
+        }
+        for (String roomId : template.requiredRoomIds()) {
+            try {
+                if (roomRepository.findById(RoomId.of(roomId)).isEmpty()) {
+                    log.warn("Exploration quest {} references unknown room {}",
+                        template.id().getValue(), roomId);
+                    return false;
+                }
+            } catch (RepositoryException e) {
+                log.warn("Failed to validate exploration quest room {}: {}", roomId, e.getMessage());
+                return false;
+            }
+        }
+        return true;
     }
 
     private void handleQuestStatus(QuestRepository questRepo) {
@@ -2533,7 +2595,23 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Unknown quest. Use QUEST ABANDON to clear it.");
             return;
         }
-        if (template.isNpcDeliveryQuest()) {
+        if (template.isExplorationQuest()) {
+            List<String> remaining = new ArrayList<>();
+            for (String roomId : template.requiredRoomIds()) {
+                if (!active.hasVisited(roomId)) {
+                    remaining.add(roomId);
+                }
+            }
+            int visited = template.requiredRoomIds().size() - remaining.size();
+            connection.writeLine(template.name() + ": explored " + visited + " of "
+                + template.requiredRoomIds().size() + " rooms.");
+            if (remaining.isEmpty()) {
+                connection.writeLine("You have explored every required room.");
+            } else {
+                connection.writeLine("Still to visit: " + String.join(", ", remaining) + ".");
+            }
+            sendPrompt();
+        } else if (template.isNpcDeliveryQuest()) {
             boolean holdsPackage = player.getInventory().stream()
                 .anyMatch(it -> it.getId().getValue().equalsIgnoreCase(template.packageItemId()));
             if (holdsPackage) {

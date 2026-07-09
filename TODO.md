@@ -21,7 +21,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add NPC dialogue trees: TALK command with numbered responses driven by JSON dialogue data
 - [x] Add mob factions and reputation: killing one faction's mobs shifts standing and changes NPC prices/aggression
 - [x] Add delivery quests: NPC hands the player a package to carry to another NPC in a different zone
-- [ ] Add exploration quests and achievements for visiting a defined set of rooms (e.g. all Catacombs rooms)
+- [x] Add exploration quests and achievements for visiting a defined set of rooms (e.g. all Catacombs rooms)
 - [ ] Add daily quests: one rotating repeatable quest per day (tick-cycle based) with bonus gold/XP
 - [ ] Add achievements system: track milestones (first kill, 100 kills, level 10) shown via ACHIEVEMENTS command
 - [ ] Add consensual PvP duels: DUEL/ACCEPT commands, fight to near-death in-room, no item/gold loss

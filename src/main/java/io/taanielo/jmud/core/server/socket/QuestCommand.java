@@ -10,7 +10,7 @@ import java.util.Optional;
  * <ul>
  *   <li>{@code QUEST LIST}           — shows available contracts</li>
  *   <li>{@code QUEST ACCEPT <name>}  — accepts the named contract</li>
- *   <li>{@code QUEST STATUS}         — prints current quest progress</li>
+ *   <li>{@code QUEST STATUS}         — prints current quest progress (including explored rooms)</li>
  *   <li>{@code QUEST COMPLETE}       — claims kill-quest reward (must be in Courtyard)</li>
  *   <li>{@code QUEST DELIVER}        — turns in collected items to the Guild Clerk, or hands a package to the receiving NPC</li>
  *   <li>{@code QUEST ABANDON}        — drops the active quest with no penalty</li>
