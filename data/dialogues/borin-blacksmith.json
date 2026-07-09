@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "borin-blacksmith-welcome",
+  "npc_id": "blacksmith",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Aye, what brings ye to my forge?",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "Tell me about this town.", "target": "town" },
+        { "text": "I'll come back later.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "Aye, I can mend yer armor. Bring it to me and I'll set it right.",
+      "responses": [
+        { "text": "What else can you tell me?", "target": "town" },
+        { "text": "Done talking.", "target": "end" }
+      ]
+    },
+    "town": {
+      "text": "Quiet enough these days, though the roads grow dangerous. Keep yer blade sharp.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "Thanks for the warning.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Safe travels.",
+      "responses": []
+    }
+  }
+}

@@ -100,6 +100,10 @@
       "type": "boolean",
       "default": false,
       "description": "When true the mob may be permanently captured as a companion via the TAME command. Omit or set false for mobs that cannot be tamed."
+    },
+    "dialogue_id": {
+      "type": ["string", "null"],
+      "description": "Optional id of a dialogue tree (data/dialogues/) this NPC offers via the TALK command. Omit for mobs with no conversation."
     }
   }
 }

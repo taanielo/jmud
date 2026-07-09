@@ -5,6 +5,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.TimeOfDay;
 
@@ -60,7 +61,12 @@ public record MobTemplate(
      * When {@code true} the mob may be permanently captured as a companion via the TAME command
      * (see the pet/charm system). Defaults to {@code false} — ordinary mobs cannot be tamed.
      */
-    boolean charmable
+    boolean charmable,
+    /**
+     * Optional id of a dialogue tree this NPC offers via the {@code TALK} command; {@code null} when
+     * the mob has no conversation. The referenced tree is loaded from {@code data/dialogues/}.
+     */
+    @Nullable DialogueId dialogueId
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -107,7 +113,7 @@ public record MobTemplate(
         boolean wanders
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false);
+            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null);
     }
 
     /**
@@ -132,7 +138,7 @@ public record MobTemplate(
         @Nullable Integer nightRespawnTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null);
     }
 
     /**
@@ -159,7 +165,35 @@ public record MobTemplate(
         @Nullable Integer summonDurationTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false, null);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a charmable flag but no dialogue tree;
+     * defaults {@link #dialogueId()} to {@code null} (an NPC with no {@code TALK} conversation).
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, null);
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */

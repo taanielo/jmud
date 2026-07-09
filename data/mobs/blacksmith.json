@@ -9,5 +9,6 @@
   "spawn_room_id": "armory",
   "max_count": 1,
   "respawn_ticks": 0,
-  "loot": []
+  "loot": [],
+  "dialogue_id": "borin-blacksmith-welcome"
 }

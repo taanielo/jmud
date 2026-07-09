@@ -104,6 +104,8 @@ public class SocketCommandRegistry {
         new SummonCommand(registry);
         new TameCommand(registry);
         new CompanionsCommand(registry);
+        new TalkCommand(registry);
+        new RespondCommand(registry);
         new QuitCommand(registry);
         new HelpCommand(registry);
         new AliasCommand(registry);
