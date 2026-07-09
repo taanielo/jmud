@@ -1,6 +1,5 @@
 {
   "schema_version" : 7,
-  "is_outdoor" : true,
   "id" : "training-yard",
   "name" : "Training Yard",
   "description" : "A dusty yard with practice dummies and scattered weapons.",
@@ -14,5 +13,7 @@
   "locked_exits" : null,
   "min_level" : null,
   "night_description" : null,
-  "light_level" : null
+  "light_level" : null,
+  "is_outdoor" : true,
+  "ambient_messages" : null
 }
