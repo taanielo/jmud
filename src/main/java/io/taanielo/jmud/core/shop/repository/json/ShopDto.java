@@ -11,6 +11,7 @@ record ShopDto(
     String name,
     String roomId,
     List<StockEntryDto> stock,
-    Double sellRatio
+    Double sellRatio,
+    String factionId
 ) {
 }

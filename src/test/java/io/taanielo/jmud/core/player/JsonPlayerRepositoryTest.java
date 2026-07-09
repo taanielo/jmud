@@ -20,6 +20,8 @@ import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
+import io.taanielo.jmud.core.faction.FactionId;
+import io.taanielo.jmud.core.faction.PlayerReputation;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 class JsonPlayerRepositoryTest {
@@ -62,6 +64,20 @@ class JsonPlayerRepositoryTest {
         assertEquals("warrior", loaded.get().getClassId().getValue());
         assertEquals(1, loaded.get().effects().size());
         assertEquals("stoneskin", loaded.get().effects().get(0).id().getValue());
+    }
+
+    @Test
+    void savesAndLoadsFactionReputation() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("outlaw"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withReputation(
+            PlayerReputation.empty().adjust(FactionId.of("bandits"), -30));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(-30, loaded.get().reputation().standing(FactionId.of("bandits")));
     }
 
     @Test

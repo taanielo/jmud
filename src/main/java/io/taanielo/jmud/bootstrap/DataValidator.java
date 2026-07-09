@@ -75,7 +75,7 @@ public final class DataValidator {
      */
     private static final List<String> DATA_DOMAINS = List.of(
         "rooms", "items", "mobs", "attacks", "skills", "classes",
-        "races", "shops", "quests", "banks", "users", "characters"
+        "races", "shops", "quests", "banks", "users", "characters", "factions"
     );
 
     private final JsonDataFileValidator fileValidator;

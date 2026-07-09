@@ -5,6 +5,7 @@
   "max_hp": 50,
   "attack_id": "attack.bandit",
   "aggressive": true,
+  "faction_id": "bandits",
   "spawn_room_id": "crumbling-courtyard",
   "max_count": 2,
   "respawn_ticks": 30,

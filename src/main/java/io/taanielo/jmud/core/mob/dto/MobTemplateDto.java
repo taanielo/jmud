@@ -21,6 +21,7 @@ public record MobTemplateDto(
     Integer nightRespawnTicks,
     Integer summonDurationTicks,
     Boolean charmable,
-    String dialogueId
+    String dialogueId,
+    String factionId
 ) {
 }

@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.dialogue.DialogueId;
+import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.TimeOfDay;
 
@@ -66,7 +67,13 @@ public record MobTemplate(
      * Optional id of a dialogue tree this NPC offers via the {@code TALK} command; {@code null} when
      * the mob has no conversation. The referenced tree is loaded from {@code data/dialogues/}.
      */
-    @Nullable DialogueId dialogueId
+    @Nullable DialogueId dialogueId,
+    /**
+     * Optional id of a faction this mob belongs to; {@code null} for faction-neutral mobs. Slaying a
+     * faction mob shifts the killer's reputation with the faction, and the faction's hostility rules
+     * govern whether the mob engages a given player (see the reputation system).
+     */
+    @Nullable FactionId factionId
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -113,7 +120,7 @@ public record MobTemplate(
         boolean wanders
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null, null);
     }
 
     /**
@@ -138,7 +145,7 @@ public record MobTemplate(
         @Nullable Integer nightRespawnTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null, null);
     }
 
     /**
@@ -165,7 +172,7 @@ public record MobTemplate(
         @Nullable Integer summonDurationTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false, null, null);
     }
 
     /**
@@ -193,7 +200,7 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, null);
+            charmable, null, null);
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */

@@ -1747,7 +1747,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("There is no shop here.");
             return;
         }
-        for (String line : context.shopService().formatListing(shopOpt.get())) {
+        for (String line : context.shopService().formatListing(shopOpt.get(), player)) {
             connection.writeLine(line);
         }
         sendPrompt();

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.shop.Shop;
 import io.taanielo.jmud.core.shop.ShopId;
 import io.taanielo.jmud.core.shop.ShopRepository;
@@ -88,12 +89,14 @@ public class JsonShopRepository implements ShopRepository {
                 .map(e -> new StockEntry(ItemId.of(e.itemId()), e.price()))
                 .toList();
             double sellRatio = dto.sellRatio() != null ? dto.sellRatio() : DEFAULT_SELL_RATIO;
+            FactionId factionId = dto.factionId() != null ? FactionId.of(dto.factionId()) : null;
             return new Shop(
                 ShopId.of(dto.id()),
                 dto.name(),
                 RoomId.of(dto.roomId()),
                 stock,
-                sellRatio
+                sellRatio,
+                factionId
             );
         } catch (IllegalArgumentException e) {
             throw new ShopRepositoryException("Invalid shop data in " + source + ": " + e.getMessage(), e);

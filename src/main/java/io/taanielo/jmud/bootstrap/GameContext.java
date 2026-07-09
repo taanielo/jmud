@@ -46,6 +46,9 @@ import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
+import io.taanielo.jmud.core.faction.FactionRepositoryException;
+import io.taanielo.jmud.core.faction.ReputationService;
+import io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.messaging.GossipHistory;
@@ -216,6 +219,8 @@ public record GameContext(
         AffixRepository affixRepository = new JsonAffixRepository();
         ItemAffixService itemAffixService = new ItemAffixService(affixRepository);
 
+        ReputationService reputationService = createReputationService();
+
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository, worldRandom);
@@ -223,12 +228,13 @@ public record GameContext(
             mobRegistry.setEffectEngine(effectEngine);
             mobRegistry.setWorldClock(worldClock);
             mobRegistry.setItemDurabilityService(itemDurabilityService);
+            mobRegistry.setReputationService(reputationService);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
 
         CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
-        ShopService shopService = createShopService(itemRepository);
+        ShopService shopService = createShopService(itemRepository, reputationService);
         BankService bankService = createBankService();
         QuestRepository questRepository = createQuestRepository();
         if (mobRegistry != null && questRepository != null) {
@@ -395,12 +401,20 @@ public record GameContext(
         }
     }
 
-    private static ShopService createShopService(ItemRepository itemRepository) {
+    private static ShopService createShopService(ItemRepository itemRepository, ReputationService reputationService) {
         try {
             ShopRepository shopRepository = new JsonShopRepository();
-            return new ShopService(shopRepository, itemRepository);
+            return new ShopService(shopRepository, itemRepository, reputationService);
         } catch (ShopRepositoryException e) {
             throw new IllegalStateException("Failed to initialize shop service: " + e.getMessage(), e);
+        }
+    }
+
+    private static ReputationService createReputationService() {
+        try {
+            return new ReputationService(new JsonFactionRepository());
+        } catch (FactionRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize reputation service: " + e.getMessage(), e);
         }
     }
 
