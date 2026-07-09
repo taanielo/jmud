@@ -55,6 +55,7 @@ public class SocketCommandRegistry {
         new LookCommand(registry);
         new ExamineCommand(registry);
         new MoveCommand(registry);
+        new MapCommand(registry);
         new GetCommand(registry);
         new GetFromCommand(registry);
         new PutCommand(registry);

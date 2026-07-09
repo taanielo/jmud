@@ -42,6 +42,14 @@ public interface SocketCommandContext extends Client {
     void sendLook();
 
     /**
+     * Renders and sends an ASCII minimap of the rooms the player has explored around their current
+     * location (the {@code MAP} command).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void sendMap() {}
+
+    /**
      * Sends a look response for a target player in the same room.
      */
     void sendLookAt(String targetInput);

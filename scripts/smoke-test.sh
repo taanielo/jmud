@@ -221,6 +221,21 @@ expect "$T2F" "NOTE POST is confirmed"              'note has been posted'
 expect "$T2F" "posted note appears on the board"    'Smoke test note'
 expect "$T2F" "NOTE DELETE removes the note"        'has been removed from the board'
 
+# ── phase 2g: explored-room minimap (MAP) ────────────────────────────────────
+# New players spawn in the training-yard (exits: north→armory, east→courtyard,
+# south→sparring-pit). We walk to a few adjacent rooms so they enter the player's
+# explored set, return to the yard, then run MAP. Explored neighbours render as
+# '#', the current room as '@', and unexplored exits as '.'.
+log "Phase 2g: MAP minimap of explored rooms"
+T2G="$OUT_DIR/phase2g-map.txt"
+run_session "$T2G" "$TEST_USER" "$TEST_PASS" \
+    "north" "south" "east" "west" "map" "quit"
+
+expect "$T2G" "MAP renders a header"                'Map of your surroundings:'
+expect "$T2G" "MAP marks the current room"          '@'
+expect "$T2G" "MAP marks an explored neighbour"     '#'
+expect "$T2G" "MAP shows a legend"                  'Legend:'
+
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).
 # Broken-pipe writes to just-disconnected clients are demoted to warnings —
