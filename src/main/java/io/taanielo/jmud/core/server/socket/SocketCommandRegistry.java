@@ -91,6 +91,7 @@ public class SocketCommandRegistry {
         new SellCommand(registry);
         new RepairCommand(registry);
         new QuestCommand(registry);
+        new DailyQuestCommand(registry);
         new TrainCommand(registry);
         new PartyCommand(registry);
         new DepositCommand(registry);

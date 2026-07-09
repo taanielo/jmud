@@ -1,0 +1,53 @@
+{
+  "schema_version": 5,
+  "type": "daily",
+  "pool_id": "slayer",
+  "name": "Daily Slayer",
+  "quests": [
+    {
+      "id": "daily-slayer-rats",
+      "name": "Daily Slayer: Rats",
+      "description": "The keep needs its daily cull of vermin. Slay rats.",
+      "target_mob_id": "rat",
+      "required_kills": 8,
+      "gold_reward": 60,
+      "xp_reward": 120
+    },
+    {
+      "id": "daily-slayer-goblins",
+      "name": "Daily Slayer: Goblins",
+      "description": "Goblin raiders press the borders today. Cut them down.",
+      "target_mob_id": "goblin",
+      "required_kills": 6,
+      "gold_reward": 75,
+      "xp_reward": 150
+    },
+    {
+      "id": "daily-slayer-wolves",
+      "name": "Daily Slayer: Wolves",
+      "description": "A wolf pack hunts near the road. Thin the pack.",
+      "target_mob_id": "wolf",
+      "required_kills": 6,
+      "gold_reward": 70,
+      "xp_reward": 140
+    },
+    {
+      "id": "daily-slayer-kobolds",
+      "name": "Daily Slayer: Kobolds",
+      "description": "Kobolds infest the tunnels this day. Drive them out.",
+      "target_mob_id": "kobold",
+      "required_kills": 6,
+      "gold_reward": 75,
+      "xp_reward": 150
+    },
+    {
+      "id": "daily-slayer-spiders",
+      "name": "Daily Slayer: Spiders",
+      "description": "Giant spiders have grown bold. Burn out their nests.",
+      "target_mob_id": "giant-spider",
+      "required_kills": 5,
+      "gold_reward": 90,
+      "xp_reward": 180
+    }
+  ]
+}

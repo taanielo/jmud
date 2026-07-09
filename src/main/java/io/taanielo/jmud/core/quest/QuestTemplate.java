@@ -34,6 +34,9 @@ import java.util.Objects;
  * @param packageItemId     item id of the package handed to the player (NPC delivery quests only)
  * @param requiredRoomIds   room ids that must all be visited to complete the quest (exploration quests only);
  *                          never {@code null} — an empty list means this is not an exploration quest
+ * @param dailyPoolId       identifier of the daily rotation pool this quest belongs to, or {@code null}
+ *                          when the quest is a normal (non-daily) contract. Daily quests are otherwise
+ *                          ordinary kill quests grouped into a pool that rotates one active quest per game day.
  */
 public record QuestTemplate(
     QuestId id,
@@ -50,7 +53,8 @@ public record QuestTemplate(
     String receiverNpcId,
     String receiverRoomId,
     String packageItemId,
-    List<String> requiredRoomIds
+    List<String> requiredRoomIds,
+    String dailyPoolId
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
@@ -100,7 +104,7 @@ public record QuestTemplate(
         int xpReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of());
+            null, 0, null, null, null, null, null, List.of(), null);
     }
 
     /**
@@ -130,7 +134,7 @@ public record QuestTemplate(
         String titleReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of());
+            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null);
     }
 
     /**
@@ -169,7 +173,7 @@ public record QuestTemplate(
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId,
-            receiverRoomId, packageItemId, List.of());
+            receiverRoomId, packageItemId, List.of(), null);
     }
 
     /**
@@ -193,7 +197,33 @@ public record QuestTemplate(
         List<String> requiredRoomIds
     ) {
         this(id, name, description, null, 0, goldReward, xpReward,
-            null, 0, titleReward, null, null, null, null, requiredRoomIds);
+            null, 0, titleReward, null, null, null, null, requiredRoomIds, null);
+    }
+
+    /**
+     * Convenience constructor for a daily kill quest belonging to a rotation pool.
+     *
+     * @param id            unique quest identifier
+     * @param name          display name shown to players
+     * @param description   short flavour description of the quest goal
+     * @param targetMobId   mob template id that must be killed to progress
+     * @param requiredKills number of kills needed to complete the quest
+     * @param goldReward    bonus gold awarded on completion
+     * @param xpReward      bonus XP awarded on completion
+     * @param dailyPoolId   identifier of the daily rotation pool this quest belongs to
+     */
+    public QuestTemplate(
+        QuestId id,
+        String name,
+        String description,
+        String targetMobId,
+        int requiredKills,
+        int goldReward,
+        int xpReward,
+        String dailyPoolId
+    ) {
+        this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
+            null, 0, null, null, null, null, null, List.of(), dailyPoolId);
     }
 
     /**
@@ -235,5 +265,14 @@ public record QuestTemplate(
      */
     public boolean isExplorationQuest() {
         return !requiredRoomIds.isEmpty();
+    }
+
+    /**
+     * Returns {@code true} when this quest belongs to a daily rotation pool, i.e. it is one of the
+     * rotating repeatable contracts surfaced by the {@code DAILY_QUEST} command rather than a normal
+     * Guild Clerk contract.
+     */
+    public boolean isDaily() {
+        return dailyPoolId != null;
     }
 }
