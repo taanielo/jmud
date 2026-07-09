@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "is_outdoor": true,
   "id": "darkwood-trail",
   "name": "Darkwood Trail",
@@ -8,5 +8,10 @@
   "exits": {
     "south": "courtyard",
     "north": "tangled-undergrowth"
-  }
+  },
+  "ambient_messages": [
+    "A distant howl rises through the trees and fades into silence.",
+    "Branches creak and rustle overhead in a wind you cannot feel.",
+    "Something unseen crashes through the undergrowth off the trail, then goes still."
+  ]
 }

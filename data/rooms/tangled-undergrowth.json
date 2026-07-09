@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 8,
   "id": "tangled-undergrowth",
   "name": "Tangled Undergrowth",
   "description": "Thick briars snag your boots. Something moves in the darkness.",
@@ -8,5 +8,10 @@
     "south": "darkwood-trail",
     "north": "hunters-clearing",
     "east": "wolf-den"
-  }
+  },
+  "ambient_messages": [
+    "A twig snaps somewhere close by, then all falls quiet.",
+    "The briars rustle as something low to the ground slinks past.",
+    "A pair of eyes glints in the darkness for a heartbeat, then vanishes."
+  ]
 }

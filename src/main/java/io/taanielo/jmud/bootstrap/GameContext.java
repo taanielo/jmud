@@ -93,6 +93,8 @@ import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.weather.WeatherRoomView;
 import io.taanielo.jmud.core.weather.WeatherSettings;
+import io.taanielo.jmud.core.world.AmbientMessageEngine;
+import io.taanielo.jmud.core.world.AmbientMessageSettings;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
 import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
@@ -233,6 +235,14 @@ public record GameContext(
             WeatherSettings.transitionIntervalTicks(), WeatherSettings.intensityStep());
         tickRegistry.register(weatherEngine);
         roomService.setWeatherView(new WeatherRoomView(weatherEngine));
+
+        // Ambient flavour lines (dripping water, distant howls) are emitted on the tick thread to
+        // occupied rooms that declare an ambient message pool (room schema v8). It shares the world
+        // RNG so its scheduling and message choices are deterministic and replayable (AGENTS.md §5).
+        AmbientMessageEngine ambientMessageEngine = new AmbientMessageEngine(
+            worldRandom, roomRepository, playerLocationService, messageBroadcaster,
+            AmbientMessageSettings.minIntervalTicks(), AmbientMessageSettings.maxIntervalTicks());
+        tickRegistry.register(ambientMessageEngine);
 
         EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
 

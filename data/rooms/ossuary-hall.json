@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 8,
   "id": "ossuary-hall",
   "name": "Ossuary Hall",
   "description": "A wide underground hall lined with rows of skulls and bones stacked in alcoves along every wall. The bones rattle softly as you move through the chamber. The dead do not rest easy here.",
@@ -11,5 +11,10 @@
   },
   "locked_exits": {
     "north": "crypt-key"
-  }
+  },
+  "ambient_messages": [
+    "A skull shifts in its alcove and settles with a dry rattle of bone.",
+    "The stale air carries a faint, whispering sigh through the stacked bones.",
+    "Dust sifts down from the vaulted ceiling in a slow, silent cascade."
+  ]
 }

@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 8,
   "id": "crypt-corridor",
   "name": "Crypt Corridor",
   "description": "A long stone corridor stretching deeper into the earth. Torch sconces line the walls but have long since burned out, leaving only cold darkness. The passage ends at a heavy iron door to the south.",
@@ -8,5 +8,10 @@
     "north": "ossuary-hall",
     "south": "warden-chamber"
   },
-  "light_level": 0
+  "light_level": 0,
+  "ambient_messages": [
+    "Somewhere in the dark, a single drop of water falls with a hollow plink.",
+    "The cold air stirs, and a dead sconce creaks softly on its bracket.",
+    "A faint scratching sound skitters away down the unseen corridor."
+  ]
 }

@@ -12,8 +12,9 @@ import org.jspecify.annotations.Nullable;
  * {@code minLevel} (serialized as {@code min_level}) field; version 5 adds the optional
  * {@code nightDescription} (serialized as {@code night_description}) field; version 6 adds the
  * optional {@code lightLevel} (serialized as {@code light_level}) field; version 7 adds the
- * optional {@code isOutdoor} (serialized as {@code is_outdoor}) boolean flag.
- * Version 1, 2, 3, 4, 5, and 6 files are still accepted.
+ * optional {@code isOutdoor} (serialized as {@code is_outdoor}) boolean flag; version 8 adds the
+ * optional {@code ambientMessages} (serialized as {@code ambient_messages}) array of flavour lines.
+ * Version 1, 2, 3, 4, 5, 6, and 7 files are still accepted.
  */
 public record RoomDto(
     int schemaVersion,
@@ -26,6 +27,7 @@ public record RoomDto(
     @Nullable Integer minLevel,
     @Nullable String nightDescription,
     @Nullable Integer lightLevel,
-    @JsonProperty("is_outdoor") @Nullable Boolean isOutdoor
+    @JsonProperty("is_outdoor") @Nullable Boolean isOutdoor,
+    @JsonProperty("ambient_messages") @Nullable List<String> ambientMessages
 ) {
 }
