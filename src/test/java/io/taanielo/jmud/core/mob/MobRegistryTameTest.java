@@ -123,7 +123,7 @@ class MobRegistryTameTest {
         Player tamer = tamer("beastmaster");
         Harness h = harness(tamer, charmable(RAT_ID, "Giant Rat", ROOM_A));
 
-        GameActionResult result = h.registry.processTame(tamer, "rat", ROOM_A);
+        GameActionResult result = h.registry.processTame(tamer, "giant rat", ROOM_A);
 
         assertNotNull(result.updatedSource(), "A successful tame returns the updated tamer");
         assertTrue(containsText(result, "loyal companion"), "The tamer is told the mob is now theirs");
@@ -151,7 +151,7 @@ class MobRegistryTameTest {
         Player tamer = tamer("beastmaster");
         Harness h = harness(tamer, charmable(RAT_ID, "Giant Rat", ROOM_B));
 
-        GameActionResult result = h.registry.processTame(tamer, "rat", ROOM_A);
+        GameActionResult result = h.registry.processTame(tamer, "giant rat", ROOM_A);
 
         assertTrue(containsText(result, "No such target here"), "A target elsewhere is not tameable");
         assertNull(result.updatedSource());
@@ -254,7 +254,7 @@ class MobRegistryTameTest {
     void listCompanions_reportsTamedPets() {
         Player tamer = tamer("beastmaster");
         Harness h = harness(tamer, charmable(RAT_ID, "Giant Rat", ROOM_A));
-        Player owner = h.registry.processTame(tamer, "rat", ROOM_A).updatedSource();
+        Player owner = h.registry.processTame(tamer, "giant rat", ROOM_A).updatedSource();
 
         GameActionResult listed = h.registry.listCompanions(owner);
         assertTrue(containsText(listed, "Giant Rat"), "The companion is listed by name");
@@ -267,7 +267,7 @@ class MobRegistryTameTest {
     void tamedPet_cannotBeAttackedByPlayers() {
         Player tamer = tamer("beastmaster");
         Harness h = harness(tamer, charmable(RAT_ID, "Giant Rat", ROOM_A));
-        h.registry.processTame(tamer, "rat", ROOM_A);
+        h.registry.processTame(tamer, "giant rat", ROOM_A);
 
         GameActionResult attack = h.registry.processPlayerAttack(tamer, "Giant Rat", ROOM_A);
         assertTrue(containsText(attack, "friendly companion"),
@@ -278,7 +278,7 @@ class MobRegistryTameTest {
     void tamedPet_isNotSummoned() {
         Player tamer = tamer("beastmaster");
         Harness h = harness(tamer, charmable(RAT_ID, "Giant Rat", ROOM_A));
-        h.registry.processTame(tamer, "rat", ROOM_A);
+        h.registry.processTame(tamer, "giant rat", ROOM_A);
 
         MobInstance pet = h.registry.getMobsInRoom(ROOM_A).stream()
             .filter(MobInstance::isTamed).findFirst().orElseThrow();
