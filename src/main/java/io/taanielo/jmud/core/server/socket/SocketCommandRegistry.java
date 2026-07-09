@@ -73,6 +73,7 @@ public class SocketCommandRegistry {
         new WhoCommand(registry);
         new RankCommand(registry, playerRepository);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver);
+        new AchievementsCommand(registry);
         new AbilityCommand(registry);
         new CastCommand(registry);
         new AbilitiesCommand(registry);

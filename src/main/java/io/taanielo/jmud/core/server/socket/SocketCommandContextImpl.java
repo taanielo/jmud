@@ -1,5 +1,7 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,6 +25,9 @@ import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
+import io.taanielo.jmud.core.achievement.Achievement;
+import io.taanielo.jmud.core.achievement.AchievementService;
+import io.taanielo.jmud.core.achievement.AchievementService.AchievementStatus;
 import io.taanielo.jmud.core.action.FleeResult;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
@@ -99,6 +104,10 @@ import io.taanielo.jmud.core.world.repository.RoomRepository;
  */
 @Slf4j
 class SocketCommandContextImpl implements SocketCommandContext {
+
+    /** Format used to render achievement unlock timestamps in the local time zone. */
+    private static final DateTimeFormatter ACHIEVEMENT_TIME_FORMAT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
     private final SocketClient client;
     private final ClientConnection connection;
@@ -1933,6 +1942,42 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         return context.mobRegistry().getMobsInRoom(roomId).stream()
             .anyMatch(mob -> mob.template().hasTag("blacksmith"));
+    }
+
+    @Override
+    public void showAchievements() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to view achievements.");
+            return;
+        }
+        AchievementService achievementService = context.achievementService();
+        if (achievementService == null || achievementService.definitions().isEmpty()) {
+            writeLineWithPrompt("There are no achievements to earn yet.");
+            return;
+        }
+        Player player = session.getPlayer();
+        List<AchievementStatus> statuses = achievementService.statuses(player);
+        long unlockedCount = statuses.stream().filter(AchievementStatus::unlocked).count();
+        connection.writeLine("Achievements (" + unlockedCount + "/" + statuses.size() + " unlocked):");
+        for (AchievementStatus status : statuses) {
+            connection.writeLine(formatAchievementLine(status));
+        }
+        sendPrompt();
+    }
+
+    private String formatAchievementLine(AchievementStatus status) {
+        Achievement achievement = status.achievement();
+        String marker = status.unlocked() ? "[X]" : "[ ]";
+        String detail;
+        var unlockedAt = status.unlockedAt();
+        if (status.unlocked() && unlockedAt != null) {
+            detail = "unlocked " + ACHIEVEMENT_TIME_FORMAT.format(unlockedAt);
+        } else {
+            detail = status.progress() + "/" + achievement.threshold() + " "
+                + achievement.condition().progressUnit();
+        }
+        return String.format("  %s %-22s %s (%s)",
+            marker, achievement.name(), achievement.description(), detail);
     }
 
     @Override

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "level_25",
+  "name": "Veteran",
+  "description": "Reach character level 25.",
+  "condition": "level",
+  "threshold": 25
+}

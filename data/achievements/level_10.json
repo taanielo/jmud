@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "level_10",
+  "name": "Seasoned Adventurer",
+  "description": "Reach character level 10.",
+  "condition": "level",
+  "threshold": 10
+}

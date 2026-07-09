@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "kills_100",
+  "name": "Centurion",
+  "description": "Slay 100 enemies.",
+  "condition": "total_kills",
+  "threshold": 100
+}

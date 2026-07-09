@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:achievement:v1",
+  "title": "Achievement (v1)",
+  "description": "A single milestone achievement loaded from data/achievements/<id>.json. An achievement unlocks the moment the player's tracked statistic (condition) reaches its threshold. The loader tolerates unknown properties (AGENTS.md §11).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "condition",
+    "threshold"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Unique achievement id, also used as the persisted key on the player record."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable display name shown in the ACHIEVEMENTS command."
+    },
+    "description": {
+      "type": "string",
+      "description": "Short flavour description of how the achievement is earned."
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "total_kills",
+        "level"
+      ],
+      "description": "The player statistic tracked toward this achievement: total_kills (cumulative mob kills) or level (character level)."
+    },
+    "threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The value the condition must reach for the achievement to unlock."
+    }
+  }
+}

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.achievement.AchievementId;
+import io.taanielo.jmud.core.achievement.PlayerAchievements;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -78,6 +81,25 @@ class JsonPlayerRepositoryTest {
 
         assertTrue(loaded.isPresent());
         assertEquals(-30, loaded.get().reputation().standing(FactionId.of("bandits")));
+    }
+
+    @Test
+    void savesAndLoadsUnlockedAchievements() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("hero"), Password.hash("pw", 1000));
+        Instant unlockedAt = Instant.parse("2026-07-09T14:22:00Z");
+        Player player = Player.of(user, "%hp> ").withAchievements(
+            PlayerAchievements.empty().unlock(AchievementId.of("first_kill"), unlockedAt));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent(), "Player should reload after reconnection");
+        PlayerAchievements achievements = loaded.get().achievements();
+        assertTrue(achievements.has(AchievementId.of("first_kill")),
+            "Unlocked achievement should survive the save/load round-trip");
+        assertEquals(Optional.of(unlockedAt), achievements.unlockedAt(AchievementId.of("first_kill")),
+            "Unlock timestamp should round-trip through JSON");
     }
 
     @Test

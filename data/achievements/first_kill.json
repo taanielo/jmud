@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "first_kill",
+  "name": "First Blood",
+  "description": "Slay your first enemy.",
+  "condition": "total_kills",
+  "threshold": 1
+}
