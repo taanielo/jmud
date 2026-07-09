@@ -82,6 +82,8 @@ import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.repository.json.JsonDailyQuestPoolRepository;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.server.ClientPool;
+import io.taanielo.jmud.core.server.socket.LinkdeadTimeoutTicker;
+import io.taanielo.jmud.core.server.socket.PlayerSessionRegistry;
 import io.taanielo.jmud.core.server.socket.SocketCommandRegistry;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
@@ -163,7 +165,8 @@ public record GameContext(
     ItemRepository itemRepository,
     AchievementService achievementService,
     DuelService duelService,
-    NotesService notesService
+    NotesService notesService,
+    PlayerSessionRegistry playerSessionRegistry
 ) {
 
     /**
@@ -333,6 +336,11 @@ public record GameContext(
 
         NotesService notesService = new NotesService(createNotesRepository(), Clock.systemUTC());
 
+        // Tracks live sessions by username (including linkdead ones) and ages out sessions whose
+        // connection dropped and were not reclaimed within the grace period (issue #343).
+        PlayerSessionRegistry playerSessionRegistry = new PlayerSessionRegistry();
+        tickRegistry.register(new LinkdeadTimeoutTicker(playerSessionRegistry));
+
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
         return new GameContext(
@@ -377,7 +385,8 @@ public record GameContext(
             itemRepository,
             achievementService,
             duelService,
-            notesService
+            notesService,
+            playerSessionRegistry
         );
     }
 
