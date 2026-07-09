@@ -11,6 +11,7 @@ import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.tick.TickMetricsService;
 import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.world.RoomService;
 
@@ -35,6 +36,8 @@ public class SocketCommandRegistry {
      * @param messageBroadcaster      scoped delivery service used to fan out {@code SHOUT} to nearby rooms
      * @param weatherEngine           weather source used to show a visibility line in {@code WHO}/{@code SCORE};
      *                                {@code null} disables the weather line
+     * @param tickMetricsService      tick-loop metrics service queried by the wizard {@code STATS} command
+     * @param wizardPolicy            policy deciding which players may run the {@code STATS} command
      */
     public static SocketCommandRegistry createDefault(
         EquipmentArmorResolver equipmentArmorResolver,
@@ -43,7 +46,9 @@ public class SocketCommandRegistry {
         PlayerRepository playerRepository,
         RoomService roomService,
         MessageBroadcaster messageBroadcaster,
-        @Nullable WeatherEngine weatherEngine
+        @Nullable WeatherEngine weatherEngine,
+        TickMetricsService tickMetricsService,
+        WizardPolicy wizardPolicy
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
@@ -51,6 +56,8 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(playerRepository, "Player repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(messageBroadcaster, "Message broadcaster is required");
+        Objects.requireNonNull(tickMetricsService, "Tick metrics service is required");
+        Objects.requireNonNull(wizardPolicy, "Wizard policy is required");
         SocketCommandRegistry registry = new SocketCommandRegistry();
         new LookCommand(registry);
         new ExamineCommand(registry);
@@ -126,6 +133,7 @@ public class SocketCommandRegistry {
         new MailCommand(registry);
         new BoardCommand(registry);
         new NoteCommand(registry);
+        new StatsCommand(registry, tickMetricsService, wizardPolicy);
         return registry;
     }
 

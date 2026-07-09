@@ -68,6 +68,30 @@ class FixedRateTickSchedulerTest {
     }
 
     @Test
+    void recordsPerTickableMetricsWhenMetricsServiceAttached() {
+        TickRegistry registry = new TickRegistry();
+        registry.register(new NamedTickable());
+
+        FixedRateTickScheduler scheduler = new FixedRateTickScheduler(
+            registry,
+            1000,
+            new DirectScheduledExecutorService()
+        );
+        TickMetricsService metricsService = new TickMetricsService(10);
+        scheduler.setMetricsService(metricsService);
+
+        scheduler.runTickForTest();
+        scheduler.runTickForTest();
+
+        assertEquals(2, metricsService.getRecentMetrics().size());
+        TickMetrics first = metricsService.getRecentMetrics().get(0);
+        assertEquals(1L, first.tickNumber());
+        assertTrue(first.tickableCostNanos().containsKey("NamedTickable"),
+            "per-tickable cost is keyed by the tickable's simple class name");
+        assertEquals(2L, metricsService.getSummary().totalTicksRecorded());
+    }
+
+    @Test
     void doesNotRecordOverrunForFastTicks() {
         TickRegistry registry = new TickRegistry();
         registry.register(() -> { });
@@ -81,6 +105,13 @@ class FixedRateTickSchedulerTest {
         scheduler.runTickForTest();
 
         assertEquals(0, scheduler.overrunCount());
+    }
+
+    /** Named tickable so metrics assertions can reference a stable simple class name. */
+    private static final class NamedTickable implements Tickable {
+        @Override
+        public void tick() {
+        }
     }
 
     /**

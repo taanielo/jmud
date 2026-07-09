@@ -182,6 +182,17 @@ run_session "$T2B" "$TEST_USER" "$TEST_PASS" "repair iron sword" "quit"
 
 expect "$T2B" "REPAIR without a blacksmith is handled" 'no blacksmith here'
 
+# ── phase 2b2: STATS command is wizard-gated ─────────────────────────────────
+# The STATS command (issue #345) reports tick-loop health and is restricted to
+# wizards (config key jmud.wizards, empty by default). A regular test user is not
+# a wizard, so STATS must be denied. The metrics aggregation and output format are
+# covered by TickMetricsServiceTest / StatsCommandTest unit tests.
+log "Phase 2b2: STATS is wizard-gated (non-wizard denied)"
+T2B2="$OUT_DIR/phase2b2-stats.txt"
+run_session "$T2B2" "$TEST_USER" "$TEST_PASS" "stats" "quit"
+
+expect "$T2B2" "STATS denied for non-wizard" 'restricted to wizards'
+
 # ── phase 2c: locked container is visible and rogue-gated ────────────────────
 # The training-yard holds a locked treasure chest (issue #277). A locked
 # container shows "(locked)" in LOOK and only a rogue may PICK it; a warrior is

@@ -1,9 +1,12 @@
 package io.taanielo.jmud.bootstrap;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
 
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
@@ -22,6 +25,7 @@ import io.taanielo.jmud.core.authentication.AuthenticationPolicy;
 import io.taanielo.jmud.core.authentication.JsonUserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistry;
 import io.taanielo.jmud.core.authentication.UserRegistryException;
+import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bank.BankRepository;
 import io.taanielo.jmud.core.bank.BankRepositoryException;
 import io.taanielo.jmud.core.bank.BankService;
@@ -85,13 +89,16 @@ import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.socket.LinkdeadTimeoutTicker;
 import io.taanielo.jmud.core.server.socket.PlayerSessionRegistry;
 import io.taanielo.jmud.core.server.socket.SocketCommandRegistry;
+import io.taanielo.jmud.core.server.socket.WizardPolicy;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
 import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
+import io.taanielo.jmud.core.tick.TickMetricsService;
 import io.taanielo.jmud.core.tick.TickRegistry;
+import io.taanielo.jmud.core.tick.TickSettings;
 import io.taanielo.jmud.core.transport.BoatEngine;
 import io.taanielo.jmud.core.transport.FerryRepository;
 import io.taanielo.jmud.core.transport.repository.json.JsonFerryRepository;
@@ -213,6 +220,11 @@ public record GameContext(
         tickRegistry.register(worldClock);
         roomService.setWorldClock(worldClock);
         FixedRateTickScheduler tickScheduler = new FixedRateTickScheduler(tickRegistry, gameMetrics.registry());
+        // Tick-health metrics are recorded and queried entirely on the tick thread (STATS runs via
+        // the player command queue), so no synchronisation is needed (AGENTS.md §5). Attach before
+        // start() so the tick thread only reads an already-set reference.
+        TickMetricsService tickMetricsService = new TickMetricsService(TickSettings.metricsRetention());
+        tickScheduler.setMetricsService(tickMetricsService);
 
         AbilityRegistry abilityRegistry = loadAbilities();
         AuditService auditService = AuditService.create(tickClock::currentTick);
@@ -269,9 +281,19 @@ public record GameContext(
         AbilityCostResolver abilityCostResolver = new BasicAbilityCostResolver();
         AbilityTargetResolver abilityTargetResolver = new RoomAbilityTargetResolver(roomService, playerRepository);
 
+        // Wizard privileges are config-driven for now (jmud.wizards = comma-separated usernames)
+        // until the full role system lands (issue #44).
+        Set<Username> wizardUsernames = Arrays.stream(config.getString("jmud.wizards", "").split(","))
+            .map(String::trim)
+            .filter(name -> !name.isEmpty())
+            .map(Username::of)
+            .collect(Collectors.toUnmodifiableSet());
+        WizardPolicy wizardPolicy = new WizardPolicy(wizardUsernames);
+
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            playerRepository, roomService, messageBroadcaster, weatherEngine);
+            playerRepository, roomService, messageBroadcaster, weatherEngine,
+            tickMetricsService, wizardPolicy);
 
         ItemDurabilityService itemDurabilityService =
             new ItemDurabilityService(config.getInt("jmud.combat.durability_loss_per_hit", 1));
