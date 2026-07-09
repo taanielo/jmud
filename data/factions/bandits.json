@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "bandits",
+  "name": "the Bandit Brotherhood",
+  "description": "A loose brotherhood of highwaymen and cutthroats who prey on the roads. They neither forgive nor forget those who cut down their own.",
+  "kill_reputation_delta": -10,
+  "hostile_threshold": 0,
+  "price_modifier_per_point": 0.02
+}

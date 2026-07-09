@@ -33,6 +33,9 @@ import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.faction.Faction;
+import io.taanielo.jmud.core.faction.FactionId;
+import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
@@ -87,6 +90,8 @@ public class MobRegistry implements Tickable, NpcStealPort {
     private WorldClock worldClock;
     /** Optional durability service used to wear down equipped gear on hit; may be null when disabled. */
     private ItemDurabilityService itemDurabilityService;
+    /** Optional reputation service governing faction-based aggression and kill standing; may be null. */
+    private ReputationService reputationService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -170,6 +175,16 @@ public class MobRegistry implements Tickable, NpcStealPort {
         this.itemDurabilityService = itemDurabilityService;
     }
 
+    /**
+     * Registers the reputation service that governs faction-based mob aggression (whether a faction
+     * mob engages a given player) and the standing change applied when a faction mob is slain.
+     *
+     * @param reputationService the reputation service; may be null to disable faction reputation
+     */
+    public void setReputationService(ReputationService reputationService) {
+        this.reputationService = reputationService;
+    }
+
     private TimeOfDay currentTimeOfDay() {
         return worldClock != null ? worldClock.timeOfDay() : TimeOfDay.DAY;
     }
@@ -223,7 +238,12 @@ public class MobRegistry implements Tickable, NpcStealPort {
             if (mob.template().attackId() == null) {
                 continue;
             }
-            if (!mob.template().aggressive() && mob.engagedPlayers().isEmpty()) {
+            // A mob may initiate combat when it is inherently aggressive, when it belongs to a
+            // faction (its hostility is then decided per-player in runMobAi from reputation), or
+            // when it is already engaged in a fight.
+            boolean couldInitiate = mob.template().aggressive()
+                || (reputationService != null && mob.template().factionId() != null);
+            if (!couldInitiate && mob.engagedPlayers().isEmpty()) {
                 continue;
             }
             runMobAi(mob);
@@ -417,6 +437,18 @@ public class MobRegistry implements Tickable, NpcStealPort {
                 for (String msg : killResult.get().messages()) {
                     messages.add(GameMessage.toSource(msg));
                 }
+            }
+        }
+        FactionId factionId = mob.template().factionId();
+        if (reputationService != null && factionId != null) {
+            int before = afterXp.reputation().standing(factionId);
+            afterXp = reputationService.recordKill(afterXp, factionId);
+            int after = afterXp.reputation().standing(factionId);
+            if (after != before) {
+                String factionName = reputationService.findFaction(factionId)
+                    .map(Faction::name).orElse(factionId.getValue());
+                messages.add(GameMessage.toSource("Your reputation with " + factionName
+                    + (after < before ? " decreases." : " increases.")));
             }
         }
         afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
@@ -1145,6 +1177,14 @@ public class MobRegistry implements Tickable, NpcStealPort {
         if (firstEngagement && target.isStealthActive()) {
             return;
         }
+        // Faction membership governs first aggression: a faction mob only picks a fight with a player
+        // its faction is hostile toward (standing below the faction's threshold). Once engaged it
+        // keeps fighting regardless. Mobs with no faction (or when reputation is disabled) fall back
+        // to their inherent aggressive flag, filtered by the tick() gate above.
+        if (firstEngagement && reputationService != null && mob.template().factionId() != null
+            && !reputationService.isHostile(target.reputation(), mob.template().factionId())) {
+            return;
+        }
         boolean useSpecial = mob.template().specialAttackId() != null
             && !mob.specialAbilityUsed()
             && firstEngagement;
@@ -1367,6 +1407,18 @@ public class MobRegistry implements Tickable, NpcStealPort {
                         for (String msg : killResult.get().messages()) {
                             messages.add(GameMessage.toSource(msg));
                         }
+                    }
+                }
+                FactionId factionId = mob.template().factionId();
+                if (reputationService != null && factionId != null) {
+                    int before = afterXp.reputation().standing(factionId);
+                    afterXp = reputationService.recordKill(afterXp, factionId);
+                    int after = afterXp.reputation().standing(factionId);
+                    if (after != before) {
+                        String factionName = reputationService.findFaction(factionId)
+                            .map(Faction::name).orElse(factionId.getValue());
+                        messages.add(GameMessage.toSource("Your reputation with " + factionName
+                            + (after < before ? " decreases." : " increases.")));
                     }
                 }
                 afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);

@@ -6,11 +6,13 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
+
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.faction.ReputationPriceResolver;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.Item;
-import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -27,10 +29,58 @@ public class ShopService {
 
     private final ShopRepository shopRepository;
     private final ItemRepository itemRepository;
+    /** Optional resolver that shifts prices by the player's faction reputation; {@code null} disables it. */
+    @Nullable
+    private final ReputationPriceResolver priceResolver;
 
     public ShopService(ShopRepository shopRepository, ItemRepository itemRepository) {
+        this(shopRepository, itemRepository, null);
+    }
+
+    /**
+     * Creates a shop service whose prices are adjusted by the given reputation resolver.
+     *
+     * @param shopRepository the shop repository
+     * @param itemRepository the item repository
+     * @param priceResolver  resolver applying reputation-based price shifts, or {@code null} to
+     *                       always use base prices
+     */
+    public ShopService(
+        ShopRepository shopRepository,
+        ItemRepository itemRepository,
+        @Nullable ReputationPriceResolver priceResolver
+    ) {
         this.shopRepository = Objects.requireNonNull(shopRepository, "shopRepository is required");
         this.itemRepository = Objects.requireNonNull(itemRepository, "itemRepository is required");
+        this.priceResolver = priceResolver;
+    }
+
+    /**
+     * Applies the shop's faction reputation adjustment (if any) to a buy price.
+     *
+     * @param basePrice the un-adjusted price
+     * @param player    the buying player
+     * @param shop      the shop being visited
+     * @return the reputation-adjusted buy price
+     */
+    private int adjustedBuyPrice(int basePrice, Player player, Shop shop) {
+        return priceResolver == null
+            ? basePrice
+            : priceResolver.buyPrice(basePrice, player, shop.factionId());
+    }
+
+    /**
+     * Applies the shop's faction reputation adjustment (if any) to a sell payout.
+     *
+     * @param baseValue the un-adjusted payout
+     * @param player    the selling player
+     * @param shop      the shop being visited
+     * @return the reputation-adjusted sell payout
+     */
+    private int adjustedSellValue(int baseValue, Player player, Shop shop) {
+        return priceResolver == null
+            ? baseValue
+            : priceResolver.sellValue(baseValue, player, shop.factionId());
     }
 
     /**
@@ -53,6 +103,18 @@ public class ShopService {
      * @return lines ready to be sent to the player's connection
      */
     public List<String> formatListing(Shop shop) {
+        return formatListing(shop, null);
+    }
+
+    /**
+     * Produces a formatted listing of the shop's stock with prices adjusted for the given player's
+     * reputation with the shop's faction.
+     *
+     * @param shop   the shop to list
+     * @param player the viewing player, or {@code null} to show un-adjusted base prices
+     * @return lines ready to be sent to the player's connection
+     */
+    public List<String> formatListing(Shop shop, @Nullable Player player) {
         Objects.requireNonNull(shop, "shop is required");
         List<String> lines = new ArrayList<>();
         lines.add(shop.name() + " — wares for sale:");
@@ -68,6 +130,10 @@ public class ShopService {
                 Item item = itemOpt.get();
                 int price = entry.price() != null ? entry.price() : item.getValue();
                 int sellValue = (int) Math.floor(item.getValue() * shop.sellRatio());
+                if (player != null) {
+                    price = adjustedBuyPrice(price, player, shop);
+                    sellValue = adjustedSellValue(sellValue, player, shop);
+                }
                 String desc = item.getDescription();
                 if (desc.length() > 29) {
                     desc = desc.substring(0, 26) + "...";
@@ -123,7 +189,7 @@ public class ShopService {
                 "The shop does not carry '" + itemInput.trim() + "'.");
         }
 
-        int price = entry.price() != null ? entry.price() : item.getValue();
+        int price = adjustedBuyPrice(entry.price() != null ? entry.price() : item.getValue(), player, shop);
         if (player.getGold() < price) {
             return ShopTransactionResult.failure(
                 "You cannot afford that. It costs " + price + " gold and you only have "
@@ -175,7 +241,7 @@ public class ShopService {
                 "You are not carrying '" + itemInput.trim() + "'.");
         }
 
-        int earned = (int) Math.floor(found.getValue() * shop.sellRatio());
+        int earned = adjustedSellValue((int) Math.floor(found.getValue() * shop.sellRatio()), player, shop);
         Player updated = player.removeItem(found).addGold(earned);
         return ShopTransactionResult.success(
             "You sell the " + found.getName() + " for " + earned + " gold. "

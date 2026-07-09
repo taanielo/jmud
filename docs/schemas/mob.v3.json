@@ -104,6 +104,10 @@
     "dialogue_id": {
       "type": ["string", "null"],
       "description": "Optional id of a dialogue tree (data/dialogues/) this NPC offers via the TALK command. Omit for mobs with no conversation."
+    },
+    "faction_id": {
+      "type": ["string", "null"],
+      "description": "Optional id of a faction (data/factions/) this mob belongs to. Slaying the mob shifts the killer's reputation with the faction, and the faction's hostility rules govern whether it engages a given player. Omit for faction-neutral mobs."
     }
   }
 }

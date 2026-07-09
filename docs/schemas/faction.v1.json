@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:faction:v1",
+  "title": "Faction (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "kill_reputation_delta": {
+      "type": "integer",
+      "description": "Signed change applied to a killer's standing with this faction per slain faction mob. Usually negative. Defaults to -10 when omitted."
+    },
+    "hostile_threshold": {
+      "type": "integer",
+      "description": "A faction mob is hostile to any player whose standing is strictly below this value. Defaults to 0 when omitted."
+    },
+    "price_modifier_per_point": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Fractional price shift per standing point at shops aligned to this faction. Friendly standing lowers buy prices and raises sell payouts. Defaults to 0 (no price effect) when omitted."
+    }
+  }
+}

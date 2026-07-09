@@ -6,6 +6,7 @@
   "attack_id": "attack.bandit-captain",
   "special_attack_id": "attack.rally-cry",
   "aggressive": true,
+  "faction_id": "bandits",
   "spawn_room_id": "bandit-captains-den",
   "max_count": 1,
   "respawn_ticks": 60,
