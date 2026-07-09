@@ -17,7 +17,9 @@ public class RaceMapper {
             dto.name(),
             healingDto.baseModifier(),
             dto.carryBase(),
-            dto.armorBonus()
+            dto.armorBonus(),
+            dto.manaModifier(),
+            dto.attackModifier()
         );
     }
 }

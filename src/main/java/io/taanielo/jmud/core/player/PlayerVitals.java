@@ -143,6 +143,12 @@ public class PlayerVitals {
         return new PlayerVitals(nextHp, maxHp, baseMaxHp, mana, maxMana, move, maxMove);
     }
 
+    public PlayerVitals withMaxMana(int maxMana) {
+        validateMax(maxMana, "max mana");
+        int nextMana = Math.min(mana, maxMana);
+        return new PlayerVitals(hp, maxHp, baseMaxHp, nextMana, maxMana, move, maxMove);
+    }
+
     public PlayerVitals consumeMana(int amount) {
         validateAmount(amount, "Mana consumption");
         int nextMana = Math.max(0, mana - amount);

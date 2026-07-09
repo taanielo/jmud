@@ -43,6 +43,16 @@
     "armor_bonus": {
       "type": "integer",
       "default": 0
+    },
+    "mana_modifier": {
+      "type": "integer",
+      "default": 0,
+      "description": "Signed adjustment applied to a new character's maximum mana at creation. Positive values grant a deeper mana pool (e.g. Elf); negative values shrink it (e.g. Orc)."
+    },
+    "attack_modifier": {
+      "type": "integer",
+      "default": 0,
+      "description": "Signed adjustment applied to the character's combat hit chance, representing physical prowess. Positive values improve landing attacks (e.g. Orc)."
     }
   }
 }

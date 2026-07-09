@@ -5,5 +5,7 @@
   "healing": {
     "base_modifier": -2
   },
-  "carry_base": 40
+  "carry_base": 40,
+  "mana_modifier": 10,
+  "attack_modifier": -1
 }
