@@ -61,7 +61,7 @@ class JsonDailyQuestPoolRepositoryTest {
     }
 
     @Test
-    void rejectsUnsupportedSchemaVersion(@TempDir Path dataRoot) throws IOException {
+    void rejectsUnsupportedSchemaVersion(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
         writePool(dataRoot, "bad.json", """
             {
               "schema_version": 4,
