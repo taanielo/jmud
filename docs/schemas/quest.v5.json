@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:quest:v5",
+  "title": "Daily quest pool (v5)",
+  "description": "A pool of rotating daily kill quests. Each pool file holds several quest variants that share a single daily rotation slot; exactly one variant is active per game day, and the active variant advances by one position every time the WorldClock transitions from NIGHT back to DAY (see DailyQuestService / DailyQuestRotationTicker). Players accept the active variant with DAILY_QUEST ACCEPT <pool_id>, track kill progress through the day, and claim a bonus gold/XP reward with DAILY_QUEST COMPLETE. Schema versions 1-4 describe single normal contracts (kill, item delivery, NPC delivery, exploration); this version 5 describes a daily rotation pool. Pool files live under data/quests/daily/<name>.json and the loader tolerates unknown properties (AGENTS.md §11).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "pool_id",
+    "name",
+    "quests"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 5
+    },
+    "type": {
+      "type": "string",
+      "const": "daily",
+      "description": "Optional human-readable discriminator. Daily quest variants are otherwise ordinary kill quests."
+    },
+    "pool_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique pool id, accepted via DAILY_QUEST ACCEPT <pool_id>. Becomes the daily_pool_id of every variant in the pool."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name of the pool."
+    },
+    "quests": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The ordered list of quest variants that rotate through this pool, one active per game day.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "target_mob_id",
+          "required_kills"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Unique quest id, unique across all daily pools."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Display name shown to the player."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Short flavour description of the quest goal."
+          },
+          "target_mob_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Mob template id that must be killed to progress."
+          },
+          "required_kills": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of kills needed to complete the quest."
+          },
+          "gold_reward": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Bonus gold awarded on completion."
+          },
+          "xp_reward": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Bonus XP awarded on completion."
+          },
+          "title_reward": {
+            "type": "string",
+            "description": "Optional title granted to the player on completion."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 5,
+      "type": "daily",
+      "pool_id": "slayer",
+      "name": "Daily Slayer",
+      "quests": [
+        {
+          "id": "daily-slayer-rats",
+          "name": "Daily Slayer: Rats",
+          "description": "The keep needs its daily cull of vermin. Slay rats.",
+          "target_mob_id": "rat",
+          "required_kills": 8,
+          "gold_reward": 60,
+          "xp_reward": 120
+        },
+        {
+          "id": "daily-slayer-goblins",
+          "name": "Daily Slayer: Goblins",
+          "description": "Goblin raiders press the borders today. Cut them down.",
+          "target_mob_id": "goblin",
+          "required_kills": 6,
+          "gold_reward": 75,
+          "xp_reward": 150
+        }
+      ]
+    }
+  ]
+}

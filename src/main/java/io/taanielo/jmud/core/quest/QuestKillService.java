@@ -73,7 +73,11 @@ public class QuestKillService {
 
         List<String> messages = new ArrayList<>();
         if (updated.isComplete()) {
-            messages.add("You have fulfilled your contract. Return to the Guild Clerk to claim your reward.");
+            if (template.isDaily()) {
+                messages.add("Daily quest complete! Use DAILY_QUEST COMPLETE to claim your reward.");
+            } else {
+                messages.add("You have fulfilled your contract. Return to the Guild Clerk to claim your reward.");
+            }
         } else {
             int done = template.requiredKills() - updated.killsRemaining();
             messages.add(template.name() + ": " + done + "/" + template.requiredKills() + " kills.");

@@ -1,6 +1,7 @@
 package io.taanielo.jmud.bootstrap;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
 
@@ -62,9 +63,14 @@ import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.quest.CompositeQuestRepository;
+import io.taanielo.jmud.core.quest.DailyQuestPool;
+import io.taanielo.jmud.core.quest.DailyQuestRotationTicker;
+import io.taanielo.jmud.core.quest.DailyQuestService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.repository.json.JsonDailyQuestPoolRepository;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.socket.SocketCommandRegistry;
@@ -125,6 +131,7 @@ public record GameContext(
     CharacterCreationService characterCreationService,
     ShopService shopService,
     QuestRepository questRepository,
+    DailyQuestService dailyQuestService,
     PartyService partyService,
     BankService bankService,
     MessageBroadcaster messageBroadcaster,
@@ -237,10 +244,18 @@ public record GameContext(
         CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
         ShopService shopService = createShopService(itemRepository, reputationService);
         BankService bankService = createBankService();
-        QuestRepository questRepository = createQuestRepository();
-        if (mobRegistry != null && questRepository != null) {
+        QuestRepository baseQuestRepository = createQuestRepository();
+        DailyQuestService dailyQuestService = createDailyQuestService();
+        // Daily quests reuse the single active-quest slot and the normal kill-progress path, so
+        // expose them through a composite that resolves accepted daily variants by id while keeping
+        // them out of the Guild Clerk's QUEST LIST (AGENTS.md §3.3 — reuse the canonical quest flow).
+        QuestRepository questRepository =
+            new CompositeQuestRepository(baseQuestRepository, dailyQuestService);
+        if (mobRegistry != null) {
             mobRegistry.setQuestKillService(new QuestKillService(questRepository));
         }
+        tickRegistry.register(
+            new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
 
         PartyService partyService = new PartyService();
         if (mobRegistry != null) {
@@ -281,6 +296,7 @@ public record GameContext(
             characterCreationService,
             shopService,
             questRepository,
+            dailyQuestService,
             partyService,
             bankService,
             messageBroadcaster,
@@ -442,6 +458,15 @@ public record GameContext(
             return new JsonQuestRepository();
         } catch (QuestRepositoryException e) {
             throw new IllegalStateException("Failed to initialize quest repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static DailyQuestService createDailyQuestService() {
+        try {
+            List<DailyQuestPool> pools = new JsonDailyQuestPoolRepository().findAll();
+            return new DailyQuestService(pools);
+        } catch (QuestRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize daily quest service: " + e.getMessage(), e);
         }
     }
 }

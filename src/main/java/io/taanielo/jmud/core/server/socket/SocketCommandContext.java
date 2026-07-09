@@ -374,6 +374,18 @@ public interface SocketCommandContext extends Client {
     default void executeQuest(String args) {}
 
     /**
+     * Executes a DAILY_QUEST sub-command (empty/LIST, ACCEPT &lt;pool_id&gt;, STATUS, COMPLETE).
+     *
+     * <p>Lets players view the rotating daily quest active in each pool, accept it into their active
+     * quest slot, track progress, and claim the daily bonus reward on completion.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ACCEPT slayer"})
+     */
+    default void executeDailyQuest(String args) {}
+
+    /**
      * Executes a TRAIN sub-command (LIST or an ability id).
      *
      * <p>The command requires the player to be in the Training Yard with the

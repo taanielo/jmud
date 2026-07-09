@@ -59,6 +59,8 @@ import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.quest.ActiveQuest;
+import io.taanielo.jmud.core.quest.DailyQuestCompletionResult;
+import io.taanielo.jmud.core.quest.DailyQuestService;
 import io.taanielo.jmud.core.quest.DeliveryQuestResult;
 import io.taanielo.jmud.core.quest.ExplorationQuestService;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
@@ -1962,6 +1964,128 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void executeDailyQuest(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to manage daily quests.");
+            return;
+        }
+        DailyQuestService dailyQuestService = context.dailyQuestService();
+        if (dailyQuestService == null || dailyQuestService.poolIds().isEmpty()) {
+            writeLineWithPrompt("Daily quests are not available.");
+            return;
+        }
+
+        String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+        String sub = parts[0]; // already uppercased by splitInput
+        String subArgs = parts[1];
+
+        switch (sub) {
+            case "", "LIST" -> handleDailyQuestList(dailyQuestService);
+            case "ACCEPT" -> handleDailyQuestAccept(dailyQuestService, subArgs);
+            case "STATUS" -> handleDailyQuestStatus(dailyQuestService);
+            case "COMPLETE" -> handleDailyQuestComplete(dailyQuestService);
+            default -> writeLineWithPrompt(
+                "Usage: DAILY_QUEST [LIST|ACCEPT <pool>|STATUS|COMPLETE]");
+        }
+    }
+
+    private void handleDailyQuestList(DailyQuestService dailyQuestService) {
+        List<QuestTemplate> active = dailyQuestService.activeDailyQuests();
+        if (active.isEmpty()) {
+            writeLineWithPrompt("There are no daily quests today.");
+            return;
+        }
+        connection.writeLine("Today's Daily Quests:");
+        connection.writeLine(String.format("  %-14s %-24s %s", "POOL", "QUEST", "REWARD"));
+        connection.writeLine("  " + "-".repeat(60));
+        for (QuestTemplate t : active) {
+            connection.writeLine(String.format(
+                "  %-14s %-24s %dg / %dxp",
+                t.dailyPoolId(), t.name(), t.goldReward(), t.xpReward()));
+        }
+        connection.writeLine("Accept one with DAILY_QUEST ACCEPT <pool>.");
+        sendPrompt();
+    }
+
+    private void handleDailyQuestAccept(DailyQuestService dailyQuestService, String poolInput) {
+        if (poolInput == null || poolInput.isBlank()) {
+            writeLineWithPrompt("Accept which daily quest? Use DAILY_QUEST ACCEPT <pool>.");
+            return;
+        }
+        Player player = session.getPlayer();
+        if (player.getActiveQuest() != null) {
+            writeLineWithPrompt("You already hold an active contract. QUEST ABANDON it first.");
+            return;
+        }
+        String poolId = poolInput.trim().toLowerCase(Locale.ROOT);
+        QuestTemplate template = dailyQuestService.getActiveDailyQuest(poolId).orElse(null);
+        if (template == null) {
+            writeLineWithPrompt("Unknown daily pool '" + poolInput.trim()
+                + "'. Use DAILY_QUEST to see today's quests.");
+            return;
+        }
+        ActiveQuest activeQuest = new ActiveQuest(template.id(), template.requiredKills());
+        session.replacePlayer(player.withActiveQuest(activeQuest));
+        writeLineWithPrompt(
+            "Daily quest accepted: " + template.name() + ". "
+                + "Kill " + template.requiredKills() + " " + template.targetMobId()
+                + "(s), then use DAILY_QUEST COMPLETE to claim your reward. Good luck.");
+    }
+
+    private void handleDailyQuestStatus(DailyQuestService dailyQuestService) {
+        Player player = session.getPlayer();
+        ActiveQuest active = player.getActiveQuest();
+        if (active == null) {
+            writeLineWithPrompt("You have no active daily quest.");
+            return;
+        }
+        QuestTemplate template = dailyQuestService.findQuestById(active.templateId()).orElse(null);
+        if (template == null || !template.isDaily()) {
+            writeLineWithPrompt("Your active contract is not a daily quest. Use QUEST STATUS instead.");
+            return;
+        }
+        if (active.isComplete()) {
+            writeLineWithPrompt(template.name() + ": complete — use DAILY_QUEST COMPLETE to claim your reward.");
+        } else {
+            int done = template.requiredKills() - active.killsRemaining();
+            writeLineWithPrompt(template.name() + ": " + done + "/" + template.requiredKills() + " kills.");
+        }
+    }
+
+    private void handleDailyQuestComplete(DailyQuestService dailyQuestService) {
+        Player player = session.getPlayer();
+        ActiveQuest active = player.getActiveQuest();
+        if (active == null) {
+            writeLineWithPrompt("You have no active daily quest to complete.");
+            return;
+        }
+        QuestTemplate template = dailyQuestService.findQuestById(active.templateId()).orElse(null);
+        if (template == null || !template.isDaily()) {
+            writeLineWithPrompt("Your active contract is not a daily quest. Use QUEST COMPLETE instead.");
+            return;
+        }
+        DailyQuestCompletionResult result = dailyQuestService.completeDailyQuest(player, active.templateId());
+        if (result.success()) {
+            Player rewarded = result.player();
+            session.replacePlayer(rewarded);
+            List<String> messages = result.messages();
+            connection.writeLine(messages.get(0));
+            connection.writeLine(messages.get(1));
+            if (result.leveledUp()) {
+                connection.writeLine("You have advanced to level " + rewarded.getLevel() + "!");
+            }
+            for (int i = 2; i < messages.size(); i++) {
+                connection.writeLine(messages.get(i));
+            }
+            sendPrompt();
+        } else {
+            writeLineWithPrompt(result.messages().isEmpty()
+                ? "You cannot complete that daily quest yet."
+                : result.messages().get(0));
+        }
+    }
+
+    @Override
     public void executeTrain(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to train.");
@@ -2594,6 +2718,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Unknown quest. Use QUEST ABANDON to clear it.");
             return;
         }
+        if (template.isDaily()) {
+            writeLineWithPrompt("That is a daily quest. Use DAILY_QUEST STATUS instead.");
+            return;
+        }
         if (template.isExplorationQuest()) {
             List<String> remaining = new ArrayList<>();
             for (String roomId : template.requiredRoomIds()) {
@@ -2673,6 +2801,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         if (templateCheck != null && templateCheck.isDeliveryQuest()) {
             writeLineWithPrompt("This contract requires item delivery. Use QUEST DELIVER instead.");
+            return;
+        }
+        if (templateCheck != null && templateCheck.isDaily()) {
+            writeLineWithPrompt("This is a daily quest. Use DAILY_QUEST COMPLETE to claim your reward.");
             return;
         }
         if (!active.isComplete()) {
