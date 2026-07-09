@@ -18,6 +18,8 @@ import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
 import io.taanielo.jmud.core.ability.AbilityOperation;
 import io.taanielo.jmud.core.ability.AbilityStat;
+import io.taanielo.jmud.core.achievement.Achievement;
+import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.NpcStealPort;
@@ -92,6 +94,8 @@ public class MobRegistry implements Tickable, NpcStealPort {
     private ItemDurabilityService itemDurabilityService;
     /** Optional reputation service governing faction-based aggression and kill standing; may be null. */
     private ReputationService reputationService;
+    /** Optional achievement service that unlocks milestone achievements on kill/level-up; may be null. */
+    private AchievementService achievementService;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -183,6 +187,16 @@ public class MobRegistry implements Tickable, NpcStealPort {
      */
     public void setReputationService(ReputationService reputationService) {
         this.reputationService = reputationService;
+    }
+
+    /**
+     * Registers the achievement service that unlocks milestone achievements (e.g. first kill, 100
+     * kills, level 10) whenever a player's kill or level state advances on a mob kill.
+     *
+     * @param achievementService the achievement service; may be null to disable achievements
+     */
+    public void setAchievementService(AchievementService achievementService) {
+        this.achievementService = achievementService;
     }
 
     private TimeOfDay currentTimeOfDay() {
@@ -457,6 +471,14 @@ public class MobRegistry implements Tickable, NpcStealPort {
         if (levelUpResult.leveledUp()) {
             messages.add(GameMessage.toSource(
                 "You have advanced to level " + afterXp.getLevel() + "!"));
+        }
+        // Unlock any milestone achievements the new kill count / level just satisfied.
+        if (achievementService != null) {
+            AchievementService.UnlockResult achievementResult = achievementService.checkAndUnlock(afterXp);
+            afterXp = achievementResult.player();
+            for (Achievement unlocked : achievementResult.newlyUnlocked()) {
+                messages.add(GameMessage.toSource("Achievement unlocked: " + unlocked.name() + "!"));
+            }
         }
 
         // Award XP to other party members in the same room.

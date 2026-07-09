@@ -608,4 +608,13 @@ public interface SocketCommandContext extends Client {
      */
     default void respond(String numberInput) {}
 
+    /**
+     * Displays the player's milestone achievements via the {@code ACHIEVEMENTS} command: unlocked
+     * achievements with the date/time they were earned, and locked achievements with current
+     * progress toward their threshold (e.g. {@code 5/100 kills}).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void showAchievements() {}
+
 }

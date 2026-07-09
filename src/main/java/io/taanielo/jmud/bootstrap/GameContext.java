@@ -12,6 +12,9 @@ import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
 import io.taanielo.jmud.core.ability.RoomAbilityTargetResolver;
 import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
 import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
+import io.taanielo.jmud.core.achievement.AchievementRepositoryException;
+import io.taanielo.jmud.core.achievement.AchievementService;
+import io.taanielo.jmud.core.achievement.repository.json.JsonAchievementRepository;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.authentication.AuthenticationLimiter;
@@ -140,7 +143,8 @@ public record GameContext(
     ItemDurabilityService itemDurabilityService,
     ItemAffixService itemAffixService,
     DialogueService dialogueService,
-    ItemRepository itemRepository
+    ItemRepository itemRepository,
+    AchievementService achievementService
 ) {
 
     /**
@@ -228,6 +232,7 @@ public record GameContext(
         ItemAffixService itemAffixService = new ItemAffixService(affixRepository);
 
         ReputationService reputationService = createReputationService();
+        AchievementService achievementService = createAchievementService();
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
@@ -237,6 +242,7 @@ public record GameContext(
             mobRegistry.setWorldClock(worldClock);
             mobRegistry.setItemDurabilityService(itemDurabilityService);
             mobRegistry.setReputationService(reputationService);
+            mobRegistry.setAchievementService(achievementService);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -305,7 +311,8 @@ public record GameContext(
             itemDurabilityService,
             itemAffixService,
             dialogueService,
-            itemRepository
+            itemRepository,
+            achievementService
         );
     }
 
@@ -433,6 +440,14 @@ public record GameContext(
             return new ReputationService(new JsonFactionRepository());
         } catch (FactionRepositoryException e) {
             throw new IllegalStateException("Failed to initialize reputation service: " + e.getMessage(), e);
+        }
+    }
+
+    private static AchievementService createAchievementService() {
+        try {
+            return new AchievementService(new JsonAchievementRepository());
+        } catch (AchievementRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize achievement service: " + e.getMessage(), e);
         }
     }
 

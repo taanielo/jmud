@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "kills_1000",
+  "name": "Slayer of Thousands",
+  "description": "Slay 1000 enemies.",
+  "condition": "total_kills",
+  "threshold": 1000
+}
