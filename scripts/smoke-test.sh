@@ -267,6 +267,55 @@ else
     grep -iE 'exception|severe|\bERROR\b' "$SESSION_LOG" | grep -vE 'Broken pipe|Socket is closed|Error sending message|Error writing' | head -5
 fi
 
+# ── phase 4: graceful shutdown on SIGTERM ────────────────────────────────────
+# SIGTERM (the default kill signal) must trigger ShutdownCoordinator's orderly
+# sequence: stop accepting connections, notify clients, stop the tick scheduler,
+# save online players, flush audit, clear the tick registry — then the JVM exits
+# on its own. This must be the last phase: it terminates the server. We keep a
+# player connected across the shutdown so the online-player save path runs, send
+# SIGTERM (never kill -9), wait for the process to exit unaided, then assert the
+# log shows the sequence both started and completed.
+log "Phase 4: graceful shutdown on SIGTERM"
+SHUTDOWN_PID="$(server_pid || true)"
+if [ -z "${SHUTDOWN_PID:-}" ]; then
+    fail "server not running before shutdown test"
+else
+    SHUTDOWN_OFFSET=$(wc -c < "$SERVER_LOG")
+    # Hold a live session open across the shutdown so an online player is saved.
+    # The server closes the connection when it shuts down, so nc exits on its own.
+    T4="$OUT_DIR/phase4-shutdown.txt"
+    {
+        sleep 1.5
+        printf '%s\r\n' "$TEST_USER"
+        sleep 1.5
+        printf '%s\r\n' "$TEST_PASS"
+        sleep 30   # idle, holding the connection until the server shuts down
+    } | timeout 45 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T4" &
+    NC_PID=$!
+    sleep 6   # let the login land on a tick before we pull the plug
+
+    kill "$SHUTDOWN_PID" 2>/dev/null   # SIGTERM — the graceful path
+    exited=0
+    for _ in $(seq 1 15); do
+        kill -0 "$SHUTDOWN_PID" 2>/dev/null || { exited=1; break; }
+        sleep 1
+    done
+    wait "$NC_PID" 2>/dev/null
+
+    if [ "$exited" -eq 1 ]; then
+        pass "server exited on its own after SIGTERM (no kill -9 needed)"
+    else
+        fail "server did not exit within 15s of SIGTERM — forcing kill -9"
+        kill -9 "$SHUTDOWN_PID" 2>/dev/null
+    fi
+
+    # Scan only the log produced from SIGTERM onward.
+    SHUTDOWN_LOG="$OUT_DIR/server-shutdown-window.log"
+    tail -c "+$((SHUTDOWN_OFFSET + 1))" "$SERVER_LOG" > "$SHUTDOWN_LOG"
+    expect "$SHUTDOWN_LOG" "shutdown sequence started"   'Shutdown sequence starting'
+    expect "$SHUTDOWN_LOG" "shutdown sequence completed" 'Shutdown sequence complete'
+fi
+
 # ── summary ──────────────────────────────────────────────────────────────────
 log ""
 if [ "$FAILURES" -eq 0 ]; then
@@ -277,5 +326,8 @@ else
     log "--- transcript phase 1 (tail) ---"; tail -15 "$T1"
     log "--- transcript phase 2 (tail) ---"; tail -15 "$T2"
     log "--- server log (tail) ---";         tail -15 "$SERVER_LOG"
+    if [ -n "${SHUTDOWN_LOG:-}" ] && [ -f "$SHUTDOWN_LOG" ]; then
+        log "--- shutdown log window (tail) ---"; tail -15 "$SHUTDOWN_LOG"
+    fi
     exit 1
 fi

@@ -38,7 +38,7 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 
 ## Planned — Technical & Architecture
 
-- [ ] Add graceful shutdown: SIGTERM handler broadcasts a warning, saves all players, and stops the tick loop cleanly
+- [x] Add graceful shutdown: SIGTERM handler broadcasts a warning, saves all players, and stops the tick loop cleanly
 - [ ] Add reconnect support: a dropped connection keeps the player linkdead in-world for N ticks and a new login reattaches to the live session
 - [ ] Add tick health metrics: measure per-tick duration and per-Tickable cost, log overruns, expose a wizard-only STATS command
 - [ ] Add admin/wizard command set (GOTO, SPAWN, PURGE, SHUTDOWN) gated by a role flag on the user record
