@@ -440,7 +440,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             format = PromptSettings.defaultFormat();
         }
         String partyHp = format.contains("{partyHp}") ? buildPartyHpString(player) : "";
-        String promptLine = promptRenderer.render(format, player, partyHp);
+        String promptLine = promptRenderer.render(format, player, partyHp, player.isAnsiEnabled());
         connection.write(promptLine + "> ");
     }
 
@@ -1022,6 +1022,87 @@ class SocketCommandContextImpl implements SocketCommandContext {
     @Override
     public void updateAnsi(String args) {
         handleAnsiCommand(args);
+    }
+
+    @Override
+    public void updatePrompt(String args) {
+        handlePromptCommand(args);
+    }
+
+    private void handlePromptCommand(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to change your prompt.");
+            return;
+        }
+        String raw = args == null ? "" : args.trim();
+        if (raw.isEmpty()) {
+            showPromptFormat(player);
+            return;
+        }
+        String[] parts = raw.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        String rest = parts.length > 1 ? parts[1].trim() : "";
+        switch (sub) {
+            case "SET" -> setPromptFormat(rest);
+            case "COLOR", "COLOUR" -> handlePromptColor(rest);
+            default -> writeLineWithPrompt(
+                "Usage: PROMPT | PROMPT SET <format> | PROMPT COLOR [on|off|toggle|status]");
+        }
+    }
+
+    private void showPromptFormat(Player player) {
+        String format = player.getPromptFormat();
+        if (format == null || format.isBlank()) {
+            format = PromptSettings.defaultFormat();
+        }
+        connection.writeLine("Your prompt format: " + format);
+        connection.writeLine(
+            "Tokens: %h/%H hp, %m/%M mana, %v moves, %x exp, %l level, %% for a literal percent.");
+        connection.writeLine(
+            "Also supported: {hp} {maxHp} {mana} {maxMana} {move} {maxMove} {exp} {partyHp}.");
+        connection.writeLine("Prompt color is " + (player.isAnsiEnabled() ? "ON" : "OFF")
+            + " (change with PROMPT COLOR on|off).");
+        connection.writeLine("Set a new format with: PROMPT SET <format>");
+        sendPrompt();
+    }
+
+    private void setPromptFormat(String format) {
+        if (format == null || format.isBlank()) {
+            writeLineWithPrompt("Usage: PROMPT SET <format>");
+            return;
+        }
+        Player updated = session.getPlayer().withPromptFormat(format);
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("Prompt format updated.");
+    }
+
+    private void handlePromptColor(String arg) {
+        Player player = session.getPlayer();
+        String normalized = arg == null ? "" : arg.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.equals("STATUS")) {
+            writeLineWithPrompt("Prompt color is " + (player.isAnsiEnabled() ? "ON" : "OFF"));
+            return;
+        }
+        switch (normalized) {
+            case "ON" -> setPromptColorEnabled(true);
+            case "OFF" -> setPromptColorEnabled(false);
+            case "TOGGLE" -> setPromptColorEnabled(!player.isAnsiEnabled());
+            default -> writeLineWithPrompt("Usage: PROMPT COLOR [on|off|toggle|status]");
+        }
+    }
+
+    private void setPromptColorEnabled(boolean enabled) {
+        Player player = session.getPlayer();
+        if (player.isAnsiEnabled() == enabled) {
+            writeLineWithPrompt("Prompt color is already " + (enabled ? "ON" : "OFF"));
+            return;
+        }
+        session.replacePlayer(player.withAnsiEnabled(enabled));
+        session.setTextStyler(TextStylers.forEnabled(session.getPlayer().isAnsiEnabled()));
+        saveOrWarn(session.getPlayer());
+        writeLineWithPrompt("Prompt color is now " + (enabled ? "ON" : "OFF"));
     }
 
     @Override

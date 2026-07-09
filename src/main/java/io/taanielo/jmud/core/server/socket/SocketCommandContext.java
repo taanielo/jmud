@@ -84,6 +84,18 @@ public interface SocketCommandContext extends Client {
     void updateAnsi(String args);
 
     /**
+     * Handles the {@code PROMPT} command: shows the current prompt format with no arguments,
+     * updates and persists it with {@code SET <format>}, or toggles prompt colorization with
+     * {@code COLOR [on|off|toggle|status]}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "SET [%h/%Hhp] >"})
+     */
+    default void updatePrompt(String args) {}
+
+    /**
      * Sends a line and prompt to the player.
      */
     void writeLineWithPrompt(String message);
