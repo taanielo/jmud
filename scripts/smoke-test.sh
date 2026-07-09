@@ -181,6 +181,19 @@ expect "$T2D" "SNEAK reveals on second toggle"      'emerge from stealth'
 # The training dummy carries no gold, so STEAL resolves cleanly to its no-gold outcome.
 expect "$T2D" "STEAL command executes"              'nothing worth stealing|lift .* gold|caught'
 
+# ── phase 2e: consensual duel (DUEL/ACCEPT) command wiring ───────────────────
+# Duels (issue #317) require two players connected at once, which the sequential
+# single-session harness cannot coordinate; the full fight-to-near-death flow and
+# its loot/XP suppression are covered by GameActionServicePlayerDuelTest. Here we
+# assert both commands are registered and give their expected guidance when used
+# solo: DUEL against an absent target, and ACCEPT with no pending challenge.
+log "Phase 2e: DUEL/ACCEPT command wiring"
+T2E="$OUT_DIR/phase2e-duel.txt"
+run_session "$T2E" "$TEST_USER" "$TEST_PASS" "duel nobody" "accept" "quit"
+
+expect "$T2E" "DUEL against an absent player is handled" 'no one here by that name to duel'
+expect "$T2E" "ACCEPT with no pending challenge is handled" 'no pending duel challenge'
+
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).
 # Broken-pipe writes to just-disconnected clients are demoted to warnings —

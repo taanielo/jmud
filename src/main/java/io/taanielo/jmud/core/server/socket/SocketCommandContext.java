@@ -617,4 +617,26 @@ public interface SocketCommandContext extends Client {
      */
     default void showAchievements() {}
 
+    /**
+     * Challenges a player in the same room to a consensual duel via the {@code DUEL} command.
+     *
+     * <p>Sends a private challenge to the named target, who may respond with {@code ACCEPT} within the
+     * timeout window. Fails with a clear message when the name is blank, the target is absent, either
+     * party is already in combat, or the player targets themselves.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param targetName the name of the player to challenge
+     */
+    default void initiateDuel(String targetName) {}
+
+    /**
+     * Accepts a pending duel challenge via the {@code ACCEPT} command, engaging both participants.
+     *
+     * <p>Fails with a clear message when the player has no pending challenge or is already dueling.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void acceptDuel() {}
+
 }

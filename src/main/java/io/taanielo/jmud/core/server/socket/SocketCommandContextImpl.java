@@ -188,6 +188,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
                     .map(mob -> mob.template().name())
                     .toList()
         );
+        if (context.duelService() != null) {
+            this.gameActionService.setDuelService(context.duelService());
+        }
     }
 
     // ── Client interface ───────────────────────────────────────────────
@@ -807,6 +810,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
             metadata
         );
         if (result.moved()) {
+            if (context.duelService() != null) {
+                // Leaving the room dissolves any pending or active duel involving this player.
+                context.duelService().clearFor(player.getUsername());
+            }
             if (oldRoom != null) {
                 String leaveMessage = player.getUsername().getValue()
                     + " leaves " + direction.label() + ".";
@@ -978,6 +985,30 @@ class SocketCommandContextImpl implements SocketCommandContext {
         cancelRestIfActive();
         GameActionResult result = gameActionService.attack(session.getPlayer(), args);
         auditAttack(result, args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void initiateDuel(String targetName) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to duel.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.initiatePlayerDuel(session.getPlayer(), targetName);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void acceptDuel() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to accept a duel.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.acceptPlayerDuel(session.getPlayer());
         deliverResult(result);
         sendPrompt();
     }

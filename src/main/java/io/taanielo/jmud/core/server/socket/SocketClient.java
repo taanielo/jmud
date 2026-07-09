@@ -181,6 +181,10 @@ public class SocketClient implements Client {
         if (context.playerEventBus() != null && session.getPlayer() != null) {
             context.playerEventBus().unregister(session.getPlayer().getUsername());
         }
+        if (context.duelService() != null && session.getPlayer() != null) {
+            // Clear any pending/active duel so a disconnect never leaves the opponent stuck.
+            context.duelService().clearFor(session.getPlayer().getUsername());
+        }
         session.close();
         connection.close();
         clientPool.remove(this);
