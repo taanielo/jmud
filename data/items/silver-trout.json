@@ -1,0 +1,13 @@
+{
+  "schema_version": 10,
+  "id": "silver-trout",
+  "name": "Silver Trout",
+  "description": "A plump, silver-scaled trout still slick with cold dock water. A cook could grill it into a hearty meal.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 6
+}

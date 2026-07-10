@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "south-dock-eel-rocks",
+  "room_id": "south-dock",
+  "yield_item": "reef-eel",
+  "respawn_ticks": 20,
+  "name": "eel-haunted rocks",
+  "look_description": "Reef eels twist between the barnacled rocks at the foot of the south dock (GATHER)."
+}

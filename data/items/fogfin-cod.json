@@ -1,0 +1,13 @@
+{
+  "schema_version": 10,
+  "id": "fogfin-cod",
+  "name": "Fogfin Cod",
+  "description": "A pale, heavy cod pulled from the fog-shrouded surf of the Shrouded Isle. Its flesh flakes white and clean under a knife.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 8
+}

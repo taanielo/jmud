@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "shrouded-isle-shore-cod-surf",
+  "room_id": "shrouded-isle-shore",
+  "yield_item": "fogfin-cod",
+  "respawn_ticks": 22,
+  "name": "cod-rich surf",
+  "look_description": "Heavy fogfin cod roll in the grey surf along the tideline, half-hidden by the mist (GATHER)."
+}
