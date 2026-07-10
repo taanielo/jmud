@@ -78,6 +78,38 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsActiveTitle() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("champ"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .grantTitle("Centurion")
+            .grantTitle("Slayer")
+            .withActiveTitle("Slayer");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("Centurion", "Slayer"), loaded.get().getTitles());
+        assertEquals("Slayer", loaded.get().titles().active());
+    }
+
+    @Test
+    void loadsPlayerWithoutActiveTitleFieldAsNoneActive() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("legacy"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").grantTitle("Centurion");
+
+        // Save produces a file without an activeTitle field (none selected), mirroring old saves.
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("Centurion"), loaded.get().getTitles());
+        assertTrue(loaded.get().titles().active() == null);
+    }
+
+    @Test
     void savesAndLoadsFactionReputation() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("outlaw"), Password.hash("pw", 1000));

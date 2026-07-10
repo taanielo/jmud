@@ -166,6 +166,24 @@ class ScoreCommandTest {
     }
 
     @Test
+    void marksActiveTitleInTitlesLine() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty())
+            .grantTitle("Rat Slayer")
+            .grantTitle("Centurion")
+            .withActiveTitle("Centurion");
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Titles: Rat Slayer, *Centurion* (active)")),
+            "Expected active title marked in output, got: " + context.lines);
+    }
+
+    @Test
     void unauthenticatedPlayerGetsErrorMessage() {
         ScoreCommand cmd = makeCommand(EquipmentArmorResolver.noOp(), RaceArmorBonusResolver.noOp());
         CapturingContext context = new CapturingContext(null, false);

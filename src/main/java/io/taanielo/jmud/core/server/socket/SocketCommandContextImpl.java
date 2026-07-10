@@ -2521,6 +2521,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
         return guildService.guildTag(username).map(name -> " [" + name + "]").orElse("");
     }
 
+    @Override
+    public String activeTitle(Username username) {
+        if (username == null) {
+            return "";
+        }
+        Player player = findOnlinePlayer(username);
+        if (player == null) {
+            return "";
+        }
+        String active = player.titles().active();
+        return active == null ? "" : " the " + active;
+    }
+
     private void handleGuildCreate(GuildService guildService, String name) {
         Player player = session.getPlayer();
         if (name == null || name.isBlank()) {
@@ -3018,6 +3031,55 @@ class SocketCommandContextImpl implements SocketCommandContext {
             saveOrWarn(result.updatedPlayer());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void manageTitle(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to manage titles.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            listTitles(player);
+            return;
+        }
+        if (normalized.equalsIgnoreCase("NONE") || normalized.equalsIgnoreCase("CLEAR")) {
+            Player updated = player.clearActiveTitle();
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            writeLineWithPrompt("You are no longer displaying a title.");
+            return;
+        }
+        Optional<String> matched = player.titles().matchEarned(normalized);
+        if (matched.isEmpty()) {
+            writeLineWithPrompt("You have not earned the title \"" + normalized + "\".");
+            return;
+        }
+        String canonical = matched.get();
+        Player updated = player.withActiveTitle(canonical);
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are now displaying the title \"" + canonical + "\".");
+    }
+
+    private void listTitles(Player player) {
+        List<String> earned = player.titles().earned();
+        if (earned.isEmpty()) {
+            writeLineWithPrompt("You haven't earned any titles yet.");
+            return;
+        }
+        String active = player.titles().active();
+        connection.writeLine("Your titles:");
+        for (String title : earned) {
+            boolean isActive = title.equals(active);
+            connection.writeLine("  " + title + (isActive ? " (active)" : ""));
+        }
+        if (active == null) {
+            connection.writeLine("Active title: none. Use TITLE <name> to display one.");
+        }
+        sendPrompt();
     }
 
     @Override

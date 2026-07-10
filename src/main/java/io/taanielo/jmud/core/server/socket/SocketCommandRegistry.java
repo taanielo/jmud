@@ -136,6 +136,7 @@ public class SocketCommandRegistry {
         new TrainCommand(registry);
         new PartyCommand(registry);
         new GuildCommand(registry);
+        new TitleCommand(registry);
         new DepositCommand(registry);
         new WithdrawCommand(registry);
         new StoreCommand(registry);

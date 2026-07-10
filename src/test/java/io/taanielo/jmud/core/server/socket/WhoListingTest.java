@@ -79,4 +79,33 @@ class WhoListingTest {
             "2 players online."
         ), lines);
     }
+
+    @Test
+    void appendsActiveTitleAfterGuildTag() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Sparky"), Username.of("Bob")),
+            name -> name.getValue().equals("Sparky") ? " [Ironclad]" : "",
+            name -> name.getValue().equals("Sparky") ? " the Centurion" : "");
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Sparky [Ironclad] the Centurion",
+            "  Bob",
+            "2 players online."
+        ), lines);
+    }
+
+    @Test
+    void appendsActiveTitleWithoutGuildTag() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Solo")),
+            name -> "",
+            name -> " the Wanderer");
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Solo the Wanderer",
+            "1 player online."
+        ), lines);
+    }
 }
