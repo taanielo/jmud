@@ -893,6 +893,16 @@ class SocketCommandContextImpl implements SocketCommandContext {
         String fromRoom = resolveRoomId(player);
         RoomService.MoveResult result =
             roomService.move(player.getUsername(), direction, session.getTextStyler());
+        emitMoveAudit(player, direction, fromRoom, result);
+        renderMoveOutcome(player, direction, oldRoom, result, null);
+        if (result.moved()) {
+            triggerAutoFollow(player.getUsername(), fromRoom, direction);
+        }
+    }
+
+    /** Emits the {@code player.move} audit event for a move attempt (successful or blocked). */
+    private void emitMoveAudit(Player player, Direction direction, String fromRoom,
+                               RoomService.MoveResult result) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("direction", direction.label());
         metadata.put("fromRoom", fromRoom);
@@ -905,6 +915,26 @@ class SocketCommandContextImpl implements SocketCommandContext {
             result.moved() ? "success" : "blocked",
             metadata
         );
+    }
+
+    /**
+     * Renders the outcome of a completed {@link RoomService#move} to this player's connection:
+     * departure/arrival room broadcasts, the destination description (or darkness), danger warnings,
+     * exploration tracking, and a trailing prompt.
+     *
+     * <p>Shared by manually-typed moves ({@link #sendMove}) and auto-follow moves
+     * ({@link #performFollowMove}). When {@code selfMovePrefix} is non-null it is printed to the mover
+     * before the room text — auto-follow passes a {@code "You follow X east."} line so the follower
+     * understands why they moved.
+     *
+     * @param player         the moving player
+     * @param direction      the direction moved
+     * @param oldRoom        the room the player left (may be {@code null})
+     * @param result         the resolved move result
+     * @param selfMovePrefix an optional line shown to the mover before the room text
+     */
+    private void renderMoveOutcome(Player player, Direction direction, @Nullable Room oldRoom,
+                                   RoomService.MoveResult result, @Nullable String selfMovePrefix) {
         if (result.moved()) {
             if (context.duelService() != null) {
                 // Leaving the room dissolves any pending or active duel involving this player.
@@ -920,13 +950,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         Room destination = result.room();
         if (result.moved() && destination != null && !lightingService.canSeeRoom(player, destination)) {
-            connection.writeLine("You move " + direction.label() + ".");
+            connection.writeLine(selfMovePrefix != null
+                ? selfMovePrefix
+                : "You move " + direction.label() + ".");
             connection.writeLines(lightingService.darknessLines());
             warnIfRoomTooDangerous(player, destination);
             markRoomExplored(destination.getId());
             recordExplorationVisit(destination);
             sendPrompt();
             return;
+        }
+        if (selfMovePrefix != null) {
+            connection.writeLine(selfMovePrefix);
         }
         connection.writeLines(result.lines());
         if (result.moved()) {
@@ -938,6 +973,116 @@ class SocketCommandContextImpl implements SocketCommandContext {
             recordExplorationVisit(destination);
         }
         sendPrompt();
+    }
+
+    /**
+     * After this player successfully moved, walks along every party member auto-following them who is
+     * still in the room the leader just left, reusing the same {@link RoomService#move} path. Followers
+     * who have gone offline/linkdead or left the party have their relationship silently cleared here so
+     * no dangling follow can accumulate.
+     *
+     * <p>Runs on the tick thread as part of the leader's move command, so each follower's step lands in
+     * the same tick (AGENTS.md &sect;5).
+     *
+     * @param leader      the player who just moved
+     * @param fromRoomId  the room id the leader departed
+     * @param direction   the direction the leader travelled
+     */
+    private void triggerAutoFollow(Username leader, @Nullable String fromRoomId, Direction direction) {
+        PartyService partyService = context.partyService();
+        if (partyService == null || fromRoomId == null) {
+            return;
+        }
+        List<Username> followers = partyService.followersOf(leader);
+        if (followers.isEmpty()) {
+            return;
+        }
+        RoomId fromRoom = RoomId.of(fromRoomId);
+        for (Username followerName : followers) {
+            SocketClient followerClient = findSocketClient(followerName);
+            if (followerClient == null || followerClient.session().isLinkdead()) {
+                // Offline or linkdead: drop the stale relationship (cannot notify an absent follower).
+                partyService.clearFollowsInvolving(followerName);
+                continue;
+            }
+            if (!partyService.inSameParty(followerName, leader)) {
+                partyService.unfollow(followerName);
+                sendToUsername(followerName,
+                    "You are no longer in a party with " + leader.getValue() + "; you stop following.");
+                continue;
+            }
+            Optional<RoomId> followerRoom = roomService.findPlayerLocation(followerName);
+            if (followerRoom.isEmpty() || !followerRoom.get().equals(fromRoom)) {
+                // The follower is not in the room the leader left — nothing to do for this step.
+                continue;
+            }
+            followerClient.autoFollow(direction, leader);
+        }
+    }
+
+    /**
+     * Performs an auto-follow step for this player behind {@code leaderName}, invoked on the follower's
+     * own command context so all room description, prompt, and exploration side effects land on the
+     * follower's connection. Cancels the follow (with a one-line notice) when the follower is in combat,
+     * overburdened, or cannot take the same exit — never leaving a silent stuck state.
+     *
+     * @param direction  the direction to follow
+     * @param leaderName the leader being followed
+     */
+    void performFollowMove(Direction direction, Username leaderName) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            return;
+        }
+        PartyService partyService = context.partyService();
+        if (partyService == null) {
+            return;
+        }
+        // Combat lockout mirrors the RECALL restriction (context.mobRegistry().isInCombat(...)).
+        if (context.mobRegistry() != null && context.mobRegistry().isInCombat(player.getUsername())) {
+            cancelFollow(partyService, player.getUsername(),
+                "You are locked in combat and stop following " + leaderName.getValue() + ".");
+            return;
+        }
+        if (encumbranceService.isOverburdened(player)) {
+            cancelFollow(partyService, player.getUsername(),
+                "You are carrying too much and stop following " + leaderName.getValue() + ".");
+            return;
+        }
+        cancelRestIfActive();
+        session.clearDialogue();
+        RoomService.LookResult currentLook = roomService.look(player.getUsername(), session.getTextStyler());
+        Room oldRoom = currentLook.room();
+        String fromRoom = resolveRoomId(player);
+        RoomService.MoveResult result =
+            roomService.move(player.getUsername(), direction, session.getTextStyler());
+        emitMoveAudit(player, direction, fromRoom, result);
+        if (!result.moved()) {
+            cancelFollow(partyService, player.getUsername(),
+                "You cannot follow " + leaderName.getValue() + " " + direction.label() + " from here.");
+            return;
+        }
+        renderMoveOutcome(player, direction, oldRoom, result,
+            "You follow " + leaderName.getValue() + " " + direction.label() + ".");
+    }
+
+    /** Clears this follower's auto-follow relationship and notifies them with the given reason. */
+    private void cancelFollow(PartyService partyService, Username follower, String reason) {
+        partyService.unfollow(follower);
+        writeLineWithPrompt(reason);
+    }
+
+    /**
+     * Looks up the connected {@link SocketClient} authenticated as {@code username}, or {@code null}
+     * when no such client is connected.
+     */
+    private @Nullable SocketClient findSocketClient(Username username) {
+        for (Client c : clientPool.clients()) {
+            if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
+                return sc;
+            }
+        }
+        return null;
     }
 
     /**
@@ -2957,6 +3102,49 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void executeFollow(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to follow.");
+            return;
+        }
+        PartyService partyService = context.partyService();
+        if (partyService == null) {
+            writeLineWithPrompt("The party system is not available.");
+            return;
+        }
+        String target = args == null ? "" : args.trim();
+        if (target.isEmpty()) {
+            Optional<Username> leader = partyService.leaderOf(player.getUsername());
+            if (leader.isPresent()) {
+                writeLineWithPrompt("You are following " + leader.get().getValue()
+                    + ". Type FOLLOW OFF to stop.");
+            } else {
+                writeLineWithPrompt("You are not following anyone. Usage: FOLLOW <player> | FOLLOW OFF");
+            }
+            return;
+        }
+        if (target.equalsIgnoreCase("OFF") || target.equalsIgnoreCase("STOP")
+            || target.equalsIgnoreCase("NONE")) {
+            PartyService.PartyResult result = partyService.unfollow(player.getUsername());
+            writeLineWithPrompt(result.message());
+            return;
+        }
+        Username leaderName = Username.of(target);
+        if (leaderName.equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot follow yourself.");
+            return;
+        }
+        boolean leaderOnline = findOnlinePlayer(leaderName) != null;
+        PartyService.PartyResult result = partyService.follow(
+            player.getUsername(), leaderName, leaderOnline);
+        writeLineWithPrompt(result.message());
+        if (result.success()) {
+            sendToUsername(leaderName, player.getUsername().getValue() + " starts following you.");
+        }
+    }
+
+    @Override
     public void executeGuild(String args) {
         Player player = session.getPlayer();
         if (!session.isAuthenticated() || player == null) {
@@ -4308,7 +4496,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
         for (Username memberId : party.memberIds()) {
             String hp = findMemberCurrentHp(memberId);
             String leaderTag = party.isLeader(memberId) ? " (leader)" : "";
-            connection.writeLine("  " + memberId.getValue() + leaderTag + "  HP: " + hp);
+            String followTag = partyService.leaderOf(memberId)
+                .map(followed -> " - following " + followed.getValue())
+                .orElse("");
+            connection.writeLine("  " + memberId.getValue() + leaderTag + "  HP: " + hp + followTag);
         }
         connection.writeLine("Loot mode: " + party.lootMode().label());
         sendPrompt();

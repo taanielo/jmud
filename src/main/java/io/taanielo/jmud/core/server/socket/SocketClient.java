@@ -35,6 +35,7 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.server.connection.TransportSecurity;
+import io.taanielo.jmud.core.world.Direction;
 
 /**
  * Thin transport adapter: read a line → enqueue → render results (AGENTS.md §3.3, issue #182).
@@ -253,6 +254,10 @@ public class SocketClient implements Client {
             // Clear any pending/active duel so a disconnect never leaves the opponent stuck.
             context.duelService().clearFor(session.getPlayer().getUsername());
         }
+        if (context.partyService() != null && session.getPlayer() != null) {
+            // Clear any auto-follow relationship so a disconnect never leaves a follower stuck.
+            context.partyService().clearFollowsInvolving(session.getPlayer().getUsername());
+        }
         session.close();
         connection.close();
         clientPool.remove(this);
@@ -440,6 +445,18 @@ public class SocketClient implements Client {
         if (isAuthenticatedUser(updated.getUsername())) {
             session.replacePlayer(updated);
         }
+    }
+
+    /**
+     * Walks this client one step behind an auto-followed party leader. Pure delegation to the
+     * command context (where the movement logic lives, AGENTS.md §3.3); invoked on the tick thread by
+     * the leader's move handler so the follower's step lands in the same tick.
+     *
+     * @param direction  the direction to follow
+     * @param leaderName the leader being followed
+     */
+    void autoFollow(Direction direction, Username leaderName) {
+        commandContext.performFollowMove(direction, leaderName);
     }
     PlayerSession session() {
         return session;

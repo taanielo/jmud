@@ -147,6 +147,7 @@ public class SocketCommandRegistry {
         new DailyQuestCommand(registry);
         new TrainCommand(registry);
         new PartyCommand(registry);
+        new FollowCommand(registry);
         new GuildCommand(registry);
         new TitleCommand(registry);
         new DepositCommand(registry);

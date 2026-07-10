@@ -437,4 +437,148 @@ class PartyServiceTest {
 
         assertTrue(others.isEmpty());
     }
+
+    // ── AUTO-FOLLOW ───────────────────────────────────────────────────
+
+    private void formPartyOf(Username leader, Username member) {
+        partyService.form(leader);
+        partyService.invite(leader, member, true);
+        partyService.accept(member);
+    }
+
+    @Test
+    void follow_succeedsForSamePartyMember() {
+        formPartyOf(ALICE, BOB);
+
+        PartyResult result = partyService.follow(BOB, ALICE, true);
+
+        assertTrue(result.success());
+        assertTrue(result.message().contains("following Alice"));
+        assertEquals(Optional.of(ALICE), partyService.leaderOf(BOB));
+        assertEquals(List.of(BOB), partyService.followersOf(ALICE));
+    }
+
+    @Test
+    void follow_failsWhenLeaderOffline() {
+        formPartyOf(ALICE, BOB);
+
+        PartyResult result = partyService.follow(BOB, ALICE, false);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("not online"));
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+    }
+
+    @Test
+    void follow_failsWhenNotInSameParty() {
+        partyService.form(ALICE);
+        partyService.form(BOB);
+
+        PartyResult result = partyService.follow(BOB, ALICE, true);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("not in your party"));
+    }
+
+    @Test
+    void follow_failsWhenFollowingSelf() {
+        formPartyOf(ALICE, BOB);
+
+        PartyResult result = partyService.follow(BOB, BOB, true);
+
+        assertFalse(result.success());
+    }
+
+    @Test
+    void unfollow_clearsRelationship() {
+        formPartyOf(ALICE, BOB);
+        partyService.follow(BOB, ALICE, true);
+
+        PartyResult result = partyService.unfollow(BOB);
+
+        assertTrue(result.success());
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+        assertTrue(partyService.followersOf(ALICE).isEmpty());
+    }
+
+    @Test
+    void unfollow_failsWhenNotFollowing() {
+        PartyResult result = partyService.unfollow(BOB);
+
+        assertFalse(result.success());
+    }
+
+    @Test
+    void inSameParty_reflectsMembership() {
+        formPartyOf(ALICE, BOB);
+
+        assertTrue(partyService.inSameParty(ALICE, BOB));
+        assertFalse(partyService.inSameParty(ALICE, CAROL));
+    }
+
+    @Test
+    void leave_clearsFollowInvolvingDepartingMember() {
+        // 3-member party so it survives a leave.
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+        partyService.follow(BOB, ALICE, true);
+        partyService.follow(CAROL, ALICE, true);
+
+        // ALICE (the followed leader) leaves — both follow relationships pointing at her clear.
+        partyService.leave(ALICE);
+
+        assertTrue(partyService.followersOf(ALICE).isEmpty());
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+        assertTrue(partyService.leaderOf(CAROL).isEmpty());
+    }
+
+    @Test
+    void leave_clearsFollowWhenFollowerLeaves() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+        partyService.follow(BOB, ALICE, true);
+
+        partyService.leave(BOB);
+
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+        assertTrue(partyService.followersOf(ALICE).isEmpty());
+    }
+
+    @Test
+    void disband_clearsAllFollowRelationships() {
+        formPartyOf(ALICE, BOB);
+        partyService.follow(BOB, ALICE, true);
+
+        partyService.disband(ALICE);
+
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+        assertTrue(partyService.followersOf(ALICE).isEmpty());
+    }
+
+    @Test
+    void clearFollowsInvolving_removesAsFollowerAndLeader() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+        partyService.follow(BOB, ALICE, true);   // BOB follows ALICE
+        partyService.follow(ALICE, CAROL, true); // ALICE follows CAROL
+
+        // Simulate ALICE disconnecting: she is removed as both a follower and a leader.
+        partyService.clearFollowsInvolving(ALICE);
+
+        // ALICE is gone from both roles, and BOB (who followed ALICE) is now unshackled.
+        assertTrue(partyService.leaderOf(ALICE).isEmpty());
+        assertTrue(partyService.followersOf(ALICE).isEmpty());
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+        // CAROL had no relationships of her own beyond being ALICE's leader, now cleared.
+        assertTrue(partyService.followersOf(CAROL).isEmpty());
+    }
 }
