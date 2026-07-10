@@ -382,6 +382,7 @@ public record GameContext(
             mobRegistry.setReputationService(reputationService);
             mobRegistry.setAchievementService(achievementService);
             mobRegistry.setPartyService(partyService);
+            mobRegistry.setEncumbranceService(encumbranceService);
             mobRegistry.setWorldBossAnnouncer(
                 new WorldBossAnnouncer(messageBroadcaster, roomService, guildService, partyService));
             mobRegistry.init();

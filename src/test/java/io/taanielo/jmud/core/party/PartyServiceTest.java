@@ -1,5 +1,9 @@
 package io.taanielo.jmud.core.party;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -9,10 +13,6 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.party.PartyService.PartyResult;
 import io.taanielo.jmud.core.world.RoomId;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PartyServiceTest {
 
@@ -305,6 +305,117 @@ class PartyServiceTest {
 
         assertEquals(3, recipients.size());
         assertEquals(33, xpPerMember); // floor(100/3)
+    }
+
+    // ── LOOT MODE ─────────────────────────────────────────────────────
+
+    @Test
+    void lootMode_defaultsToFreeForSoloOrPartylessPlayer() {
+        assertEquals(LootMode.FREE, partyService.lootMode(ALICE));
+
+        partyService.form(ALICE);
+        assertEquals(LootMode.FREE, partyService.lootMode(ALICE));
+    }
+
+    @Test
+    void setLootMode_leaderCanSwitchToRoundRobin() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+
+        PartyResult result = partyService.setLootMode(ALICE, LootMode.ROUND_ROBIN);
+
+        assertTrue(result.success());
+        assertEquals(LootMode.ROUND_ROBIN, partyService.lootMode(ALICE));
+        // Mode is party-wide: every member sees it.
+        assertEquals(LootMode.ROUND_ROBIN, partyService.lootMode(BOB));
+    }
+
+    @Test
+    void setLootMode_rejectedForNonLeader() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+
+        PartyResult result = partyService.setLootMode(BOB, LootMode.ROUND_ROBIN);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("leader"));
+        assertEquals(LootMode.FREE, partyService.lootMode(ALICE));
+    }
+
+    @Test
+    void setLootMode_rejectedForPlayerNotInParty() {
+        PartyResult result = partyService.setLootMode(ALICE, LootMode.ROUND_ROBIN);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("not in a party"));
+    }
+
+    @Test
+    void lootMode_preservedAcrossMembershipChanges() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.setLootMode(ALICE, LootMode.ROUND_ROBIN);
+
+        // A new member joining must not reset the mode.
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+        assertEquals(LootMode.ROUND_ROBIN, partyService.lootMode(CAROL));
+
+        // Nor should a member leaving.
+        partyService.leave(BOB);
+        assertEquals(LootMode.ROUND_ROBIN, partyService.lootMode(ALICE));
+    }
+
+    // ── nextLootRecipient rotation ────────────────────────────────────
+
+    @Test
+    void nextLootRecipient_cyclesThroughMembersAcrossCalls() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+        partyService.setLootMode(ALICE, LootMode.ROUND_ROBIN);
+
+        List<Username> eligible = List.of(ALICE, BOB, CAROL);
+        // Everyone can always receive.
+        assertEquals(Optional.of(ALICE), partyService.nextLootRecipient(ALICE, eligible, u -> true));
+        assertEquals(Optional.of(BOB), partyService.nextLootRecipient(ALICE, eligible, u -> true));
+        assertEquals(Optional.of(CAROL), partyService.nextLootRecipient(ALICE, eligible, u -> true));
+        // Pointer wraps around for the next kill.
+        assertEquals(Optional.of(ALICE), partyService.nextLootRecipient(ALICE, eligible, u -> true));
+    }
+
+    @Test
+    void nextLootRecipient_skipsMembersThatCannotReceive() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.setLootMode(ALICE, LootMode.ROUND_ROBIN);
+
+        List<Username> eligible = List.of(ALICE, BOB);
+        // ALICE cannot receive → BOB gets it, and the pointer advances past BOB.
+        assertEquals(Optional.of(BOB),
+            partyService.nextLootRecipient(ALICE, eligible, u -> !u.equals(ALICE)));
+        // Next call starts after BOB (wraps to ALICE); ALICE still can't, so BOB again.
+        assertEquals(Optional.of(BOB),
+            partyService.nextLootRecipient(ALICE, eligible, u -> !u.equals(ALICE)));
+    }
+
+    @Test
+    void nextLootRecipient_emptyWhenNobodyCanReceive() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.setLootMode(ALICE, LootMode.ROUND_ROBIN);
+
+        Optional<Username> recipient =
+            partyService.nextLootRecipient(ALICE, List.of(ALICE, BOB), u -> false);
+
+        assertTrue(recipient.isEmpty());
     }
 
     // ── getOtherMembers ───────────────────────────────────────────────
