@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "militia",
+  "name": "the Kingsreach Militia",
+  "description": "The town watch and levied folk of Kingsreach who hold the roads and villages against goblins, kobolds, wolves, and worse. They remember those who bleed to keep the common folk safe, and reward proven monster-hunters with fair prices and their finest gear.",
+  "kill_reputation_delta": 0,
+  "hostile_threshold": -100,
+  "price_modifier_per_point": 0.01
+}

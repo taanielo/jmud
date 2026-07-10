@@ -6,5 +6,7 @@
   "target_mob_id": "crypt-warden",
   "required_kills": 3,
   "gold_reward": 120,
-  "xp_reward": 300
+  "xp_reward": 300,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 10
 }

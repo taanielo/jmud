@@ -7,5 +7,7 @@
   "required_kills": 5,
   "gold_reward": 60,
   "xp_reward": 150,
-  "title_reward": "Goblin Crusher"
+  "title_reward": "Goblin Crusher",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 5
 }

@@ -6,5 +6,7 @@
   "target_mob_id": "skeleton",
   "required_kills": 5,
   "gold_reward": 80,
-  "xp_reward": 200
+  "xp_reward": 200,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 6
 }

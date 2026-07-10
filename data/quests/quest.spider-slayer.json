@@ -6,5 +6,7 @@
   "target_mob_id": "giant-spider",
   "required_kills": 3,
   "gold_reward": 100,
-  "xp_reward": 250
+  "xp_reward": 250,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 8
 }
