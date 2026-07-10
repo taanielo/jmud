@@ -72,6 +72,7 @@ import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerFriendList;
 import io.taanielo.jmud.core.player.PlayerGuildMembership;
 import io.taanielo.jmud.core.player.PlayerIgnoreList;
 import io.taanielo.jmud.core.player.PlayerMailService;
@@ -3287,6 +3288,103 @@ class SocketCommandContextImpl implements SocketCommandContext {
         session.replacePlayer(updated);
         saveOrWarn(updated);
         writeLineWithPrompt("Your ignore list has been cleared.");
+    }
+
+    @Override
+    public boolean isFriend(Username username) {
+        Player player = session.getPlayer();
+        if (player == null || username == null) {
+            return false;
+        }
+        return player.friendList().has(username.getValue());
+    }
+
+    @Override
+    public void manageFriends(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to manage your friends list.");
+            return;
+        }
+        String normalizedArgs = args == null ? "" : args.trim();
+        if (normalizedArgs.isEmpty() || normalizedArgs.equalsIgnoreCase("LIST")) {
+            listFriends(player);
+            return;
+        }
+        String[] parts = normalizedArgs.split("\\s+", 2);
+        String subcommand = parts[0].toUpperCase(Locale.ROOT);
+        String target = parts.length > 1 ? parts[1].trim() : "";
+        switch (subcommand) {
+            case "ADD" -> friendAdd(player, target);
+            case "REMOVE", "DEL", "DELETE" -> friendRemove(player, target);
+            case "CLEAR" -> friendClear(player);
+            default -> writeLineWithPrompt(
+                "Usage: FRIEND  |  FRIEND ADD <name>  |  FRIEND REMOVE <name>  |  FRIEND CLEAR");
+        }
+    }
+
+    private void listFriends(Player player) {
+        var friends = player.getFriends();
+        if (friends.isEmpty()) {
+            writeLineWithPrompt("You have no friends on your list.");
+            return;
+        }
+        connection.writeLine("Your friends:");
+        int index = 1;
+        for (String name : friends) {
+            boolean online = findOnlinePlayer(Username.of(name)) != null;
+            connection.writeLine("  " + index++ + ". " + name + (online ? " (online)" : " (offline)"));
+        }
+        sendPrompt();
+    }
+
+    private void friendAdd(Player player, String target) {
+        if (target.isBlank()) {
+            writeLineWithPrompt("Usage: FRIEND ADD <name>");
+            return;
+        }
+        if (Username.of(target).equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot add yourself as a friend.");
+            return;
+        }
+        if (player.friendList().has(target)) {
+            writeLineWithPrompt(target + " is already on your friends list.");
+            return;
+        }
+        if (resolvePlayerByUsername(Username.of(target)) == null) {
+            writeLineWithPrompt("There is no player named " + target + ".");
+            return;
+        }
+        Player updated = player.withFriendList(player.friendList().with(target));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt(target + " has been added to your friends list.");
+    }
+
+    private void friendRemove(Player player, String target) {
+        if (target.isBlank()) {
+            writeLineWithPrompt("Usage: FRIEND REMOVE <name>");
+            return;
+        }
+        if (!player.friendList().has(target)) {
+            writeLineWithPrompt(target + " is not on your friends list.");
+            return;
+        }
+        Player updated = player.withFriendList(player.friendList().without(target));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt(target + " has been removed from your friends list.");
+    }
+
+    private void friendClear(Player player) {
+        if (player.friendList().isEmpty()) {
+            writeLineWithPrompt("Your friends list is already empty.");
+            return;
+        }
+        Player updated = player.withFriendList(PlayerFriendList.empty());
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("Your friends list has been cleared.");
     }
 
     @Override
