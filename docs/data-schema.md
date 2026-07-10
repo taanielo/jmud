@@ -25,6 +25,7 @@ Each JSON file includes a `schema_version` field. Versioned JSON schemas live un
 - Attacks: `docs/schemas/attack.v1.json`
 - Races: `docs/schemas/race.v1.json`
 - Classes: `docs/schemas/class.v1.json`
+- Auction listings: `docs/schemas/auction.v1.json` (`data/auctions/listings.json`; the static Auction House definition lives in `data/auctions/auction-house.*.json`, following the `data/banks/bank.*.json` shape)
 
 ## Examples
 

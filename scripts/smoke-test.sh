@@ -39,6 +39,14 @@ BOARD_FILE="data/boards/training-yard.json"
 BOARD_BACKUP="$OUT_DIR/training-yard.board.bak"
 if [ -f "$BOARD_FILE" ]; then cp "$BOARD_FILE" "$BOARD_BACKUP"; fi
 
+# The AUCTION phase lists an item, which the auction repository persists to
+# data/auctions/listings.json. Snapshot it (it may not exist yet) so cleanup can
+# restore the committed state — or remove a file this test created.
+AUCTION_FILE="data/auctions/listings.json"
+AUCTION_BACKUP="$OUT_DIR/auctions.listings.bak"
+AUCTION_EXISTED=0
+if [ -f "$AUCTION_FILE" ]; then cp "$AUCTION_FILE" "$AUCTION_BACKUP"; AUCTION_EXISTED=1; fi
+
 log()  { printf '%s\n' "$*"; }
 pass() { CHECKS=$((CHECKS + 1)); log "  PASS: $*"; }
 fail() { CHECKS=$((CHECKS + 1)); FAILURES=$((FAILURES + 1)); log "  FAIL: $*"; }
@@ -82,6 +90,12 @@ cleanup() {
         cp "$BOARD_BACKUP" "$BOARD_FILE"
     else
         rm -f "$BOARD_FILE"
+    fi
+    # Restore/remove the auction listings file so the smoke test leaves no trace.
+    if [ "$AUCTION_EXISTED" -eq 1 ] && [ -f "$AUCTION_BACKUP" ]; then
+        cp "$AUCTION_BACKUP" "$AUCTION_FILE"
+    else
+        rm -f "$AUCTION_FILE"
     fi
 }
 trap cleanup EXIT
@@ -277,6 +291,22 @@ expect "$T2H" "IGNORE ADD confirms the mute"        'now ignoring Spammer'
 expect "$T2H" "IGNORE lists the muted player"       'spammer'
 expect "$T2H" "IGNORE REMOVE confirms un-mute"      'no longer ignoring Spammer'
 expect "$T2H" "IGNORE CLEAR is handled"             'ignore list (has been cleared|is already empty)'
+
+# ── phase 2i: Auction House (AUCTION SELL/LIST) ──────────────────────────────
+# The Auction House (issue #357) sits in the courtyard (east of the training-yard,
+# alongside the bank). A new warrior spawns in the training-yard carrying nothing,
+# so we pick up the iron sword lying there, walk east to the courtyard, list it,
+# then LIST the auctions and assert the listing appears. Buying to an offline
+# seller and expiry-return are covered by AuctionService / AuctionExpiryTicker unit
+# tests. The cleanup trap restores/removes data/auctions/listings.json.
+log "Phase 2i: AUCTION SELL then LIST at the Auction House"
+T2I="$OUT_DIR/phase2i-auction.txt"
+run_session "$T2I" "$TEST_USER" "$TEST_PASS" \
+    "get iron sword" "east" "auction sell iron sword 100" "auction list" "quit"
+
+expect "$T2I" "AUCTION SELL confirms the listing"   'You list Iron Sword for 100 gold'
+expect "$T2I" "AUCTION LIST shows the listed item"  'Iron Sword'
+expect "$T2I" "AUCTION LIST shows the asking price" '100'
 
 # ── phase 3: server health ───────────────────────────────────────────────────
 # Scan only log content produced after startup (see LOG_OFFSET above).

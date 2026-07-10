@@ -98,6 +98,7 @@ class ArchitectureTest {
                             "..core.quest",
                             "..core.shop",
                             "..core.bank",
+                            "..core.auction",
                             "..core.party",
                             "..core.guild")
                     .should()

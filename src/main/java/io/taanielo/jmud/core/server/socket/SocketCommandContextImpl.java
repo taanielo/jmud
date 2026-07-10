@@ -32,6 +32,10 @@ import io.taanielo.jmud.core.action.FleeResult;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
+import io.taanielo.jmud.core.auction.AuctionListing;
+import io.taanielo.jmud.core.auction.AuctionService;
+import io.taanielo.jmud.core.auction.AuctionSettings;
+import io.taanielo.jmud.core.auction.AuctionTransactionResult;
 import io.taanielo.jmud.core.audit.AuditEvent;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
@@ -3046,6 +3050,120 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (result.updatedPlayer() != null) {
             session.replacePlayer(result.updatedPlayer());
             saveOrWarn(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void manageAuction(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use the Auction House.");
+            return;
+        }
+        AuctionService auctionService = context.auctionService();
+        RoomId roomId = currentRoomId(player);
+        if (auctionService == null || roomId == null
+                || auctionService.findAuctionHouseInRoom(roomId).isEmpty()) {
+            writeLineWithPrompt("There is no Auction House here.");
+            return;
+        }
+        long currentTick = context.tickClock().currentTick();
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty() || normalized.equalsIgnoreCase("LIST")) {
+            listAuctions(auctionService, currentTick);
+            return;
+        }
+        String[] parts = normalized.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        String rest = parts.length > 1 ? parts[1].trim() : "";
+        switch (sub) {
+            case "SELL" -> auctionSell(auctionService, player, roomId, rest, currentTick);
+            case "BUY" -> auctionBuy(auctionService, player, rest, currentTick);
+            case "CANCEL" -> auctionCancel(auctionService, player, rest, currentTick);
+            default -> writeLineWithPrompt(
+                "Usage: AUCTION LIST | AUCTION SELL <item> <price> | AUCTION BUY <#> | AUCTION CANCEL <#>");
+        }
+    }
+
+    private void listAuctions(AuctionService auctionService, long currentTick) {
+        List<AuctionListing> listings = auctionService.activeListings(currentTick);
+        if (listings.isEmpty()) {
+            writeLineWithPrompt("There are no items up for auction.");
+            return;
+        }
+        connection.writeLine("Items up for auction:");
+        connection.writeLine(String.format("%-4s %-28s %-8s %-14s %s", "#", "Item", "Price", "Seller", "Ticks left"));
+        var styler = session.getTextStyler();
+        int index = 1;
+        for (AuctionListing listing : listings) {
+            Item item = listing.item();
+            String name = styler.rarity(item.presentationName(), item.presentationRarity());
+            connection.writeLine(String.format("%-4d %-28s %-8d %-14s %d",
+                index++, name, listing.price(), listing.seller().getValue(), listing.ticksRemaining(currentTick)));
+        }
+        sendPrompt();
+    }
+
+    private void auctionSell(
+        AuctionService auctionService, Player player, RoomId roomId, String rest, long currentTick) {
+        int lastSpace = rest.lastIndexOf(' ');
+        if (rest.isBlank() || lastSpace < 0) {
+            writeLineWithPrompt("Usage: AUCTION SELL <item> <price>");
+            return;
+        }
+        String itemInput = rest.substring(0, lastSpace).trim();
+        String priceInput = rest.substring(lastSpace + 1).trim();
+        int price;
+        try {
+            price = Integer.parseInt(priceInput);
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("'" + priceInput + "' is not a valid price.");
+            return;
+        }
+        long expiryTick = currentTick + AuctionSettings.listingTicks();
+        AuctionTransactionResult result =
+            auctionService.sell(player, itemInput, price, roomId, currentTick, expiryTick);
+        if (result.success() && result.updatedActor() != null) {
+            session.replacePlayer(result.updatedActor());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void auctionBuy(AuctionService auctionService, Player player, String rest, long currentTick) {
+        Integer number = parseMailIndex(rest);
+        if (number == null) {
+            writeLineWithPrompt("Usage: AUCTION BUY <#>");
+            return;
+        }
+        AuctionTransactionResult result = auctionService.buy(player, number, currentTick);
+        if (result.success() && result.updatedActor() != null && result.listing() != null) {
+            session.replacePlayer(result.updatedActor());
+            creditAuctionSeller(auctionService, result.listing(), currentTick);
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void creditAuctionSeller(AuctionService auctionService, AuctionListing listing, long currentTick) {
+        Player seller = resolvePlayerByUsername(listing.seller());
+        if (seller == null) {
+            log.warn("Auction sale of {} completed but seller {} could not be found to credit",
+                listing.item().getName(), listing.seller().getValue());
+            return;
+        }
+        Player credited = auctionService.applySaleCredit(seller, listing, currentTick);
+        updateTarget(credited);
+    }
+
+    private void auctionCancel(AuctionService auctionService, Player player, String rest, long currentTick) {
+        Integer number = parseMailIndex(rest);
+        if (number == null) {
+            writeLineWithPrompt("Usage: AUCTION CANCEL <#>");
+            return;
+        }
+        AuctionTransactionResult result = auctionService.cancel(player, number, currentTick);
+        if (result.success() && result.updatedActor() != null) {
+            session.replacePlayer(result.updatedActor());
         }
         writeLineWithPrompt(result.message());
     }

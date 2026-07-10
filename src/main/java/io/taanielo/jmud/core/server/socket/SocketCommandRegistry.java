@@ -138,6 +138,7 @@ public class SocketCommandRegistry {
         new GuildCommand(registry);
         new DepositCommand(registry);
         new WithdrawCommand(registry);
+        new AuctionCommand(registry);
         new LockCommand(registry);
         new UnlockCommand(registry);
         new PickCommand(registry);

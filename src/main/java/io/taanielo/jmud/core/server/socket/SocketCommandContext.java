@@ -656,6 +656,22 @@ public interface SocketCommandContext extends Client {
     default void manageMail(String args) {}
 
     /**
+     * Executes an AUCTION sub-command at the Auction House: {@code LIST} shows all active listings,
+     * {@code SELL <item> <price>} lists an item from the player's inventory, {@code BUY <#>} purchases
+     * a listing, and {@code CANCEL <#>} withdraws the player's own listing.
+     *
+     * <p>Every form requires the player to be standing in the Auction House room. A completed sale
+     * credits the (possibly offline) seller's gold and mails them a notification via the same
+     * cross-player update path as {@code MAIL}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "SELL longsword 100"} or
+     *             {@code "BUY 2"})
+     */
+    default void manageAuction(String args) {}
+
+    /**
      * Displays the bulletin board of the player's current room via the {@code BOARD} command:
      * every note pinned there, numbered oldest-first, with each note's author, timestamp, and text.
      *
