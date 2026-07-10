@@ -69,6 +69,10 @@ import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.faction.FactionRepositoryException;
 import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository;
+import io.taanielo.jmud.core.gathering.ResourceGatheringService;
+import io.taanielo.jmud.core.gathering.ResourceNode;
+import io.taanielo.jmud.core.gathering.ResourceNodeRespawnTicker;
+import io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
@@ -194,6 +198,7 @@ public record GameContext(
     ItemDurabilityService itemDurabilityService,
     ItemAffixService itemAffixService,
     CraftingService craftingService,
+    ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
     AchievementService achievementService,
@@ -328,6 +333,14 @@ public record GameContext(
         ItemAffixService itemAffixService = new ItemAffixService(affixRepository);
 
         CraftingService craftingService = createCraftingService(itemRepository);
+
+        // Resource gathering: node definitions load once at startup and their depletion/respawn
+        // state is tracked in memory on the tick thread (AGENTS.md §5), the same transient tradeoff
+        // mob respawns make. The respawn ticker drives node availability off tick counts, not the
+        // wall clock.
+        ResourceGatheringService resourceGatheringService =
+            createResourceGatheringService(itemRepository);
+        tickRegistry.register(new ResourceNodeRespawnTicker(resourceGatheringService));
 
         ReputationService reputationService = createReputationService();
         AchievementService achievementService = createAchievementService();
@@ -466,6 +479,7 @@ public record GameContext(
             itemDurabilityService,
             itemAffixService,
             craftingService,
+            resourceGatheringService,
             dialogueService,
             itemRepository,
             achievementService,
@@ -600,6 +614,16 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository);
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize crafting service: " + e.getMessage(), e);
+        }
+    }
+
+    private static ResourceGatheringService createResourceGatheringService(ItemRepository itemRepository) {
+        try {
+            List<ResourceNode> nodes = new JsonResourceNodeRepository().findAll();
+            return new ResourceGatheringService(nodes, itemRepository);
+        } catch (RepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize resource gathering service: " + e.getMessage(), e);
         }
     }
 

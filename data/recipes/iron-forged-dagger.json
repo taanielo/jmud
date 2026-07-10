@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "iron-forged-dagger",
+  "name": "Iron-Forged Dagger",
+  "output_item": "iron-forged-dagger",
+  "gold_cost": 20,
+  "materials": [
+    { "item": "iron-ore", "quantity": 2 },
+    { "item": "wild-herbs", "quantity": 1 }
+  ]
+}

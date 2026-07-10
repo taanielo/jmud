@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "wild-herbs",
+  "name": "Wild Herbs",
+  "description": "A fragrant bundle of wild medicinal herbs, still damp with forest dew. Their tough fibres make a durable binding for a weapon's grip.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 5
+}

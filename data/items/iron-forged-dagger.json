@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "iron-forged-dagger",
+  "name": "Iron-Forged Dagger",
+  "description": "A sturdy dagger smelted from raw iron ore, its grip wrapped in tough herb-fibre binding for a sure hold.",
+  "attributes": {
+    "stats": {
+      "strength": 1,
+      "dexterity": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 2,
+  "value": 45,
+  "attack_ref": "attack.dagger"
+}
