@@ -1,15 +1,21 @@
 package io.taanielo.jmud.core.bank;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerEquipment;
+import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.RoomId;
 
 /**
- * Application service for bank interactions: depositing and withdrawing gold.
+ * Application service for bank interactions: depositing and withdrawing gold, and
+ * storing and claiming items in a player's personal vault.
  *
  * <p>All operations are stateless with respect to the bank; the {@link Player}
  * passed in is never mutated. Callers receive an updated {@link Player} in the
@@ -17,15 +23,31 @@ import io.taanielo.jmud.core.world.RoomId;
  *
  * <p>Banked gold survives death and is never lost to mob drops or corpse decay.
  * Gold can only be moved between carried and banked balances — no gold is ever
- * created or destroyed.
+ * created or destroyed. The same guarantee applies to vaulted items: they are
+ * simply moved between carried inventory and the vault, never duplicated or lost.
  */
 @Slf4j
 public class BankService {
 
     private final BankRepository bankRepository;
+    private final int vaultCapacity;
 
     public BankService(BankRepository bankRepository) {
+        this(bankRepository, BankSettings.vaultCapacity());
+    }
+
+    public BankService(BankRepository bankRepository, int vaultCapacity) {
         this.bankRepository = Objects.requireNonNull(bankRepository, "bankRepository is required");
+        this.vaultCapacity = Math.max(0, vaultCapacity);
+    }
+
+    /**
+     * Returns the maximum number of items a player may keep in their vault.
+     *
+     * @return the configured vault capacity
+     */
+    public int vaultCapacity() {
+        return vaultCapacity;
     }
 
     /**
@@ -100,5 +122,98 @@ public class BankService {
                 + "Banked: " + updated.getBankedGold() + " gold.",
             updated
         );
+    }
+
+    /**
+     * Moves an item matching {@code itemName} from the player's carried inventory into their
+     * vault, unequipping it first if worn (mirroring GIVE/DROP behaviour).
+     *
+     * <p>Fails without any state change if the name is blank, no carried item matches, or the
+     * vault is already at {@link #vaultCapacity() capacity}.
+     *
+     * @param player   the storing player; never mutated
+     * @param itemName the name or id of the item to store
+     * @return a result describing success or failure
+     */
+    public BankTransactionResult storeItem(Player player, String itemName) {
+        Objects.requireNonNull(player, "player is required");
+        String normalized = itemName == null ? "" : itemName.trim();
+        if (normalized.isEmpty()) {
+            return BankTransactionResult.failure("Store what? Usage: STORE <item name>");
+        }
+        Item item = matchItem(player.getInventory(), normalized);
+        if (item == null) {
+            return BankTransactionResult.failure("You aren't carrying '" + normalized + "'.");
+        }
+        if (player.getBankedItems().size() >= vaultCapacity) {
+            return BankTransactionResult.failure("Your vault is full.");
+        }
+        PlayerEquipment equipment = player.getEquipment();
+        if (equipment.isEquipped(item.getId())) {
+            EquipmentSlot slot = equipment.equippedSlot(item.getId());
+            if (slot != null) {
+                equipment = equipment.unequip(slot);
+            }
+        }
+        Player updated = player.removeItem(item).withEquipment(equipment).addBankedItem(item);
+        return BankTransactionResult.success(
+            "You store " + item.getName() + " in your vault.",
+            updated
+        );
+    }
+
+    /**
+     * Moves an item matching {@code itemName} from the player's vault back into carried inventory.
+     *
+     * <p>Fails without any state change if the name is blank, no stored item matches, or claiming
+     * the item would push the player's carried weight above {@code maxCarry}.
+     *
+     * @param player   the claiming player; never mutated
+     * @param itemName the name or id of the item to claim
+     * @param maxCarry the player's maximum carry weight (see {@code EncumbranceService#maxCarry})
+     * @return a result describing success or failure
+     */
+    public BankTransactionResult claimItem(Player player, String itemName, int maxCarry) {
+        Objects.requireNonNull(player, "player is required");
+        String normalized = itemName == null ? "" : itemName.trim();
+        if (normalized.isEmpty()) {
+            return BankTransactionResult.failure("Claim what? Usage: CLAIM <item name>");
+        }
+        Item item = matchItem(player.getBankedItems(), normalized);
+        if (item == null) {
+            return BankTransactionResult.failure("You don't have '" + normalized + "' stored in your vault.");
+        }
+        int carried = 0;
+        for (Item carriedItem : player.getInventory()) {
+            carried += carriedItem.getWeight();
+        }
+        if (carried + item.getWeight() > maxCarry) {
+            return BankTransactionResult.failure(
+                "You can't carry " + item.getName() + " right now. Lighten your load first.");
+        }
+        Player updated = player.removeBankedItem(item).addItem(item);
+        return BankTransactionResult.success(
+            "You claim " + item.getName() + " from your vault.",
+            updated
+        );
+    }
+
+    /**
+     * Finds the first item in {@code items} whose name or id equals or is prefixed by
+     * {@code input} (case-insensitive), or {@code null} when none match.
+     */
+    private static Item matchItem(List<Item> items, String input) {
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+        for (Item item : items) {
+            String name = item.getName().toLowerCase(Locale.ROOT);
+            if (name.equals(normalized) || name.startsWith(normalized)) {
+                return item;
+            }
+            String id = item.getId().getValue().toLowerCase(Locale.ROOT);
+            if (id.equals(normalized) || id.startsWith(normalized)) {
+                return item;
+            }
+        }
+        return null;
     }
 }

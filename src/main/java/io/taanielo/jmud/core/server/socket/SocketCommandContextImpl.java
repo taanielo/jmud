@@ -2814,6 +2814,72 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void storeItemInBank(String args) {
+        if (!bankReady()) {
+            return;
+        }
+        Player player = session.getPlayer();
+        BankTransactionResult result = context.bankService().storeItem(player, args);
+        if (result.success()) {
+            session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void claimItemFromBank(String args) {
+        if (!bankReady()) {
+            return;
+        }
+        Player player = session.getPlayer();
+        int maxCarry = encumbranceService.maxCarry(player);
+        BankTransactionResult result = context.bankService().claimItem(player, args, maxCarry);
+        if (result.success()) {
+            session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void sendVault() {
+        if (!bankReady()) {
+            return;
+        }
+        Player player = session.getPlayer();
+        int capacity = context.bankService().vaultCapacity();
+        for (String line : VaultListing.format(player.getBankedItems(), capacity, session.getTextStyler())) {
+            connection.writeLine(line);
+        }
+        sendPrompt();
+    }
+
+    /**
+     * Validates that the player is logged in and standing in a bank room, emitting the appropriate
+     * message when not. Returns {@code true} when a vault operation may proceed.
+     */
+    private boolean bankReady() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to use the bank.");
+            return false;
+        }
+        if (context.bankService() == null) {
+            writeLineWithPrompt("There is no bank here.");
+            return false;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return false;
+        }
+        if (context.bankService().findBankInRoom(roomIdOpt.get()).isEmpty()) {
+            writeLineWithPrompt("There is no bank here.");
+            return false;
+        }
+        return true;
+    }
+
+    @Override
     public void manageAlias(String args) {
         Player player = session.getPlayer();
         if (!session.isAuthenticated() || player == null) {

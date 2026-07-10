@@ -615,6 +615,37 @@ public interface SocketCommandContext extends Client {
     default void withdrawFromBank(String args) {}
 
     /**
+     * Stores an item from the player's carried inventory into their personal bank vault.
+     *
+     * <p>Requires the player to be in the same room as a bank NPC. Unequips the item first if worn.
+     * Fails with a clear message if no bank is present, the item isn't found, or the vault is full.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need updating.
+     *
+     * @param args the item name to store
+     */
+    default void storeItemInBank(String args) {}
+
+    /**
+     * Claims an item from the player's bank vault back into their carried inventory.
+     *
+     * <p>Requires the player to be in the same room as a bank NPC. Fails with a clear message if no
+     * bank is present, the item isn't in the vault, or claiming it would exceed the carry weight.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need updating.
+     *
+     * @param args the item name to claim
+     */
+    default void claimItemFromBank(String args) {}
+
+    /**
+     * Sends the current player's bank-vault listing (stored items).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need updating.
+     */
+    default void sendVault() {}
+
+    /**
      * Executes an ALIAS sub-command: lists the player's aliases when {@code args} is
      * blank, removes an alias with {@code -d <name>}, or defines/overwrites an alias
      * with {@code <name> <expansion>}.

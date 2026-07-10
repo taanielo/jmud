@@ -6,11 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -26,6 +29,9 @@ import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.faction.PlayerReputation;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -168,6 +174,42 @@ class JsonPlayerRepositoryTest {
         assertTrue(loaded.isPresent());
         assertEquals(0, loaded.get().getGold(),
             "Player with no gold field set should load as 0 gold");
+    }
+
+    @Test
+    void savesBankedItemsToJsonFile() throws Exception {
+        // The player mapper cannot re-hydrate raw Item objects (Item has no Jackson creator — the
+        // same pre-existing limitation that applies to the "inventory" field), so we assert on the
+        // persisted write path: the vault is serialised alongside inventory under "bankedItems".
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("vaulter"), Password.hash("pw", 1));
+        Item trophy = Item.builder(
+                ItemId.of("trophy"), "a dragon trophy", "A gleaming trophy.", ItemAttributes.empty())
+            .weight(3)
+            .build();
+        Player player = Player.of(user, "%hp> ").addBankedItem(trophy);
+
+        repository.savePlayer(player);
+
+        Path file = tempDir.resolve("players").resolve("vaulter.json");
+        JsonNode root = new ObjectMapper().readTree(Files.readString(file));
+        JsonNode banked = root.get("bankedItems");
+        assertTrue(banked.isArray() && banked.size() == 1, "vault should be persisted under bankedItems");
+        assertEquals("a dragon trophy", banked.get(0).get("name").asText());
+    }
+
+    @Test
+    void loadingOldSaveFileWithoutBankedItemsDefaultsToEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("novault"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().getBankedItems().isEmpty(),
+            "Player with no bankedItems field should load with an empty vault");
     }
 
     @Test
