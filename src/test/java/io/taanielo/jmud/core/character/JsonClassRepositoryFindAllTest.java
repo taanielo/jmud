@@ -22,7 +22,7 @@ import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 class JsonClassRepositoryFindAllTest {
 
     @Test
-    void findAll_returnsAllThreeClasses() throws ClassRepositoryException {
+    void findAll_returnsAllClasses() throws ClassRepositoryException {
         JsonClassRepository repo = new JsonClassRepository(Path.of("data"));
 
         List<ClassDefinition> classes = repo.findAll();
@@ -39,7 +39,8 @@ class JsonClassRepositoryFindAllTest {
         assertTrue(ids.contains("cleric"), "Expected 'cleric' class");
         assertTrue(ids.contains("ranger"), "Expected 'ranger' class");
         assertTrue(ids.contains("paladin"), "Expected 'paladin' class");
-        assertEquals(7, classes.size(), "Expected exactly 7 classes");
+        assertTrue(ids.contains("bard"), "Expected 'bard' class");
+        assertEquals(8, classes.size(), "Expected exactly 8 classes");
     }
 
     @Test
