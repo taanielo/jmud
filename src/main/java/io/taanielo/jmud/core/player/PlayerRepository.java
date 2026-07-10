@@ -39,4 +39,21 @@ public interface PlayerRepository {
     default List<Player> findAll() {
         return List.of();
     }
+
+    /**
+     * Deletes the persisted record for the given player.
+     *
+     * <p>Used by administrative tooling (the wizard {@code PURGE} command) to remove an offline
+     * character from persistent storage. Deleting an online player is the caller's responsibility to
+     * guard against; this method only touches the persisted record.
+     *
+     * <p>The default implementation is a no-op returning {@code false} so existing test doubles do
+     * not need to be updated.
+     *
+     * @param username the player whose persisted record should be removed
+     * @return {@code true} if a record existed and was deleted, {@code false} otherwise
+     */
+    default boolean deletePlayer(Username username) {
+        return false;
+    }
 }

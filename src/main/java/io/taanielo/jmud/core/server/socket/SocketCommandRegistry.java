@@ -10,9 +10,11 @@ import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
+import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.tick.TickMetricsService;
 import io.taanielo.jmud.core.weather.WeatherEngine;
+import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomService;
 
 /**
@@ -37,7 +39,11 @@ public class SocketCommandRegistry {
      * @param weatherEngine           weather source used to show a visibility line in {@code WHO}/{@code SCORE};
      *                                {@code null} disables the weather line
      * @param tickMetricsService      tick-loop metrics service queried by the wizard {@code STATS} command
-     * @param wizardPolicy            policy deciding which players may run the {@code STATS} command
+     * @param wizardPolicy            policy deciding which players may run wizard commands
+     * @param playerLocationService   service used by the wizard {@code GOTO} command to relocate the admin
+     * @param mobRegistry             live mob registry used by the wizard {@code SPAWN}/{@code PURGE}
+     *                                commands; {@code null} when the mob subsystem failed to load
+     * @param shutdownHandle          late-bound handle used by the wizard {@code SHUTDOWN} command
      */
     public static SocketCommandRegistry createDefault(
         EquipmentArmorResolver equipmentArmorResolver,
@@ -48,7 +54,10 @@ public class SocketCommandRegistry {
         MessageBroadcaster messageBroadcaster,
         @Nullable WeatherEngine weatherEngine,
         TickMetricsService tickMetricsService,
-        WizardPolicy wizardPolicy
+        WizardPolicy wizardPolicy,
+        PlayerLocationService playerLocationService,
+        @Nullable MobRegistry mobRegistry,
+        ShutdownHandle shutdownHandle
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
@@ -58,6 +67,8 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(messageBroadcaster, "Message broadcaster is required");
         Objects.requireNonNull(tickMetricsService, "Tick metrics service is required");
         Objects.requireNonNull(wizardPolicy, "Wizard policy is required");
+        Objects.requireNonNull(playerLocationService, "Player location service is required");
+        Objects.requireNonNull(shutdownHandle, "Shutdown handle is required");
         SocketCommandRegistry registry = new SocketCommandRegistry();
         new LookCommand(registry);
         new ExamineCommand(registry);
@@ -134,6 +145,10 @@ public class SocketCommandRegistry {
         new BoardCommand(registry);
         new NoteCommand(registry);
         new StatsCommand(registry, tickMetricsService, wizardPolicy);
+        new GotoCommand(registry, wizardPolicy, playerLocationService, roomService, messageBroadcaster);
+        new SpawnCommand(registry, wizardPolicy, mobRegistry, roomService, messageBroadcaster);
+        new PurgeCommand(registry, wizardPolicy, mobRegistry, roomService, playerRepository, messageBroadcaster);
+        new ShutdownCommand(registry, wizardPolicy, shutdownHandle, messageBroadcaster);
         return registry;
     }
 
