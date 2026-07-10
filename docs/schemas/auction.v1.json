@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:auction:v1",
+  "title": "Auction House listings (v1)",
+  "description": "The dynamic set of active player auction listings, persisted as data/auctions/listings.json and rewritten in full on every change (issue #357). The static Auction House definition (which room and auctioneer) lives separately in data/auctions/auction-house.*.json. The loader tolerates unknown properties (AGENTS.md §11).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "listings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "listings": {
+      "type": "array",
+      "description": "The active listings, in insertion (oldest-first) order. AUCTION LIST numbers them 1..N in this order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "seller",
+          "item",
+          "price",
+          "room_id",
+          "created_tick",
+          "expiry_tick"
+        ],
+        "properties": {
+          "seller": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Username of the player who listed the item; receives the gold (via MAIL/offline credit) when it sells and the item back if it expires."
+          },
+          "item": {
+            "type": "object",
+            "description": "The listed item, serialised with the shared item schema (docs/schemas/item.v*.json)."
+          },
+          "price": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "Asking price in gold; must be positive."
+          },
+          "room_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id of the Auction House room the listing was created at."
+          },
+          "created_tick": {
+            "type": "integer",
+            "description": "Game tick the listing was created."
+          },
+          "expiry_tick": {
+            "type": "integer",
+            "description": "Game tick at which the listing expires and is returned to the seller."
+          }
+        }
+      }
+    }
+  }
+}

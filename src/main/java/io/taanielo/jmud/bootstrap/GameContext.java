@@ -3,6 +3,7 @@ package io.taanielo.jmud.bootstrap;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
@@ -19,6 +20,13 @@ import io.taanielo.jmud.core.achievement.AchievementRepositoryException;
 import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.achievement.repository.json.JsonAchievementRepository;
 import io.taanielo.jmud.core.action.PlayerEventBus;
+import io.taanielo.jmud.core.auction.AuctionExpiryTicker;
+import io.taanielo.jmud.core.auction.AuctionHouseRepository;
+import io.taanielo.jmud.core.auction.AuctionRepository;
+import io.taanielo.jmud.core.auction.AuctionRepositoryException;
+import io.taanielo.jmud.core.auction.AuctionService;
+import io.taanielo.jmud.core.auction.repository.json.JsonAuctionHouseRepository;
+import io.taanielo.jmud.core.auction.repository.json.JsonAuctionRepository;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.authentication.AuthenticationLimiter;
 import io.taanielo.jmud.core.authentication.AuthenticationPolicy;
@@ -82,6 +90,7 @@ import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.OnlinePlayersSupplier;
+import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.quest.CompositeQuestRepository;
 import io.taanielo.jmud.core.quest.DailyQuestPool;
@@ -97,6 +106,7 @@ import io.taanielo.jmud.core.reload.ItemContentReloader;
 import io.taanielo.jmud.core.reload.RoomContentReloader;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.socket.LinkdeadTimeoutTicker;
+import io.taanielo.jmud.core.server.socket.PlayerSession;
 import io.taanielo.jmud.core.server.socket.PlayerSessionRegistry;
 import io.taanielo.jmud.core.server.socket.ShutdownHandle;
 import io.taanielo.jmud.core.server.socket.SocketCommandRegistry;
@@ -174,6 +184,7 @@ public record GameContext(
     DailyQuestService dailyQuestService,
     PartyService partyService,
     BankService bankService,
+    AuctionService auctionService,
     GuildService guildService,
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
@@ -399,6 +410,16 @@ public record GameContext(
         PlayerSessionRegistry playerSessionRegistry = new PlayerSessionRegistry();
         tickRegistry.register(new LinkdeadTimeoutTicker(playerSessionRegistry));
 
+        // Auction House: returns expired listings to their sellers each tick, crediting/mailing the
+        // seller wherever they are (live session or on disk) via the same cross-player update path as
+        // MAIL. All state mutation runs on the tick thread (AGENTS.md §5).
+        AuctionService auctionService = createAuctionService();
+        tickRegistry.register(new AuctionExpiryTicker(
+            auctionService,
+            tickClock::currentTick,
+            seller -> resolveAuctionSeller(seller, playerSessionRegistry, playerRepository),
+            updated -> persistAuctionSeller(updated, playerSessionRegistry, persistenceQueue)));
+
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
         return new GameContext(
@@ -433,6 +454,7 @@ public record GameContext(
             dailyQuestService,
             partyService,
             bankService,
+            auctionService,
             guildService,
             messageBroadcaster,
             gossipHistory,
@@ -609,6 +631,43 @@ public record GameContext(
             return new BankService(bankRepository);
         } catch (BankRepositoryException e) {
             throw new IllegalStateException("Failed to initialize bank service: " + e.getMessage(), e);
+        }
+    }
+
+    private static AuctionService createAuctionService() {
+        try {
+            AuctionHouseRepository houseRepository = new JsonAuctionHouseRepository();
+            AuctionRepository listingRepository = new JsonAuctionRepository();
+            return new AuctionService(houseRepository, listingRepository);
+        } catch (AuctionRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize auction service: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Resolves a seller's current {@link Player} state for the Auction House expiry ticker, preferring
+     * a live in-session player and falling back to the persisted player file for offline sellers.
+     */
+    private static Optional<Player> resolveAuctionSeller(
+        Username seller, PlayerSessionRegistry sessions, PlayerRepository playerRepository) {
+        PlayerSession session = sessions.lookup(seller).orElse(null);
+        if (session != null && session.getPlayer() != null) {
+            return Optional.of(session.getPlayer());
+        }
+        return playerRepository.loadPlayer(seller);
+    }
+
+    /**
+     * Persists an updated seller after an Auction House expiry return, replacing the live session when
+     * the seller is online and otherwise enqueuing a write-behind save for the offline player.
+     */
+    private static void persistAuctionSeller(
+        Player updated, PlayerSessionRegistry sessions, PersistenceQueue persistenceQueue) {
+        PlayerSession session = sessions.lookup(updated.getUsername()).orElse(null);
+        if (session != null) {
+            session.replacePlayer(updated);
+        } else {
+            persistenceQueue.enqueueSave(updated);
         }
     }
 
