@@ -49,4 +49,54 @@ class JsonQuestRepositoryTest {
         assertEquals(150, template.xpReward());
         assertEquals("Catacomb Cartographer", template.titleReward());
     }
+
+    @Test
+    void loadsItemRewardWithDefaultQuantity(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
+        Path questsDir = Files.createDirectories(dataRoot.resolve("quests"));
+        Files.writeString(questsDir.resolve("quest.troll-bane.json"), """
+            {
+              "schema_version": 1,
+              "id": "troll-bane",
+              "name": "Troll Bane",
+              "description": "Slay the forest troll.",
+              "target_mob_id": "forest-troll",
+              "required_kills": 1,
+              "gold_reward": 100,
+              "xp_reward": 350,
+              "item_reward": "troll-tooth-charm"
+            }
+            """);
+
+        JsonQuestRepository repository = new JsonQuestRepository(dataRoot);
+        QuestTemplate template = repository.findById(QuestId.of("troll-bane")).orElseThrow();
+
+        assertTrue(template.hasItemReward());
+        assertEquals("troll-tooth-charm", template.itemReward());
+        assertEquals(1, template.itemRewardQuantity());
+    }
+
+    @Test
+    void loadsItemRewardWithExplicitQuantity(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
+        Path questsDir = Files.createDirectories(dataRoot.resolve("quests"));
+        Files.writeString(questsDir.resolve("quest.stock-up.json"), """
+            {
+              "schema_version": 1,
+              "id": "stock-up",
+              "name": "Stock Up",
+              "description": "Slay rats.",
+              "target_mob_id": "rat",
+              "required_kills": 3,
+              "gold_reward": 10,
+              "xp_reward": 20,
+              "item_reward": "health-potion",
+              "item_reward_quantity": 5
+            }
+            """);
+
+        JsonQuestRepository repository = new JsonQuestRepository(dataRoot);
+        QuestTemplate template = repository.findById(QuestId.of("stock-up")).orElseThrow();
+
+        assertEquals("health-potion", template.itemReward());
+        assertEquals(5, template.itemRewardQuantity());
+    }
 }

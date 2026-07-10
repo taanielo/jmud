@@ -15,8 +15,19 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.character.ClassId;
+import io.taanielo.jmud.core.character.Race;
+import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
+import io.taanielo.jmud.core.character.repository.RaceRepository;
+import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.prompt.PromptSettings;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.repository.ItemRepository;
 
 /**
  * Unit tests for {@link QuestKillService}.
@@ -151,6 +162,115 @@ class QuestKillServiceTest {
 
         assertEquals(1, result.player().titles().earned().size());
         assertFalse(result.messages().stream().anyMatch(m -> m.contains("You have earned the title")));
+    }
+
+    // ── Item reward on completion ──────────────────────────────────────────
+
+    @Test
+    void grantCompletionRewardGrantsItemIntoInventory() {
+        Item charm = item("troll-tooth-charm", "Troll Tooth Charm");
+        QuestTemplate quest = RAT_CATCHER.withItemReward("troll-tooth-charm", 1);
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(quest)),
+            new QuestItemRewardService(itemRepo(charm), encumbrance(false)));
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, quest);
+
+        assertEquals(1, result.player().getInventory().size());
+        assertTrue(result.droppedItems().isEmpty());
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.contains("and Troll Tooth Charm.")),
+            "Receipt should mention the item reward: " + result.messages());
+    }
+
+    @Test
+    void grantCompletionRewardDropsItemWhenOverweight() {
+        Item charm = item("troll-tooth-charm", "Troll Tooth Charm");
+        QuestTemplate quest = RAT_CATCHER.withItemReward("troll-tooth-charm", 1);
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(quest)),
+            new QuestItemRewardService(itemRepo(charm), encumbrance(true)));
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, quest);
+
+        assertTrue(result.player().getInventory().isEmpty());
+        assertEquals(1, result.droppedItems().size());
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.contains("falls to the ground at your feet")));
+    }
+
+    @Test
+    void grantCompletionRewardWithoutItemRewardIsUnchanged() {
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(RAT_CATCHER)),
+            new QuestItemRewardService(itemRepo(), encumbrance(false)));
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, RAT_CATCHER);
+
+        assertTrue(result.player().getInventory().isEmpty());
+        assertTrue(result.droppedItems().isEmpty());
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.equals("You receive 30 gold and 75 experience.")));
+    }
+
+    // ── fakes ──────────────────────────────────────────────────────────────
+
+    private static Item item(String id, String name) {
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())
+            .weight(1)
+            .build();
+    }
+
+    private static ItemRepository itemRepo(Item... items) {
+        return new ItemRepository() {
+            @Override
+            public void save(Item item) {
+            }
+
+            @Override
+            public Optional<Item> findById(ItemId id) {
+                for (Item item : items) {
+                    if (item.getId().equals(id)) {
+                        return Optional.of(item);
+                    }
+                }
+                return Optional.empty();
+            }
+        };
+    }
+
+    private static EncumbranceService encumbrance(boolean overburdened) {
+        RaceRepository races = new RaceRepository() {
+            @Override
+            public Optional<Race> findById(RaceId id) {
+                return Optional.empty();
+            }
+
+            @Override
+            public List<Race> findAll() {
+                return List.of();
+            }
+        };
+        ClassRepository classes = new ClassRepository() {
+            @Override
+            public Optional<ClassDefinition> findById(ClassId id) {
+                return Optional.empty();
+            }
+
+            @Override
+            public List<ClassDefinition> findAll() {
+                return List.of();
+            }
+        };
+        return new EncumbranceService(races, classes) {
+            @Override
+            public boolean isOverburdened(Player player) {
+                return overburdened;
+            }
+        };
     }
 
     // ── Stub ──────────────────────────────────────────────────────────────

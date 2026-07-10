@@ -37,6 +37,10 @@ import java.util.Objects;
  * @param dailyPoolId       identifier of the daily rotation pool this quest belongs to, or {@code null}
  *                          when the quest is a normal (non-daily) contract. Daily quests are otherwise
  *                          ordinary kill quests grouped into a pool that rotates one active quest per game day.
+ * @param itemReward        item id granted directly into the player's inventory on completion, or
+ *                          {@code null} when the quest awards no item. Applicable to any quest type.
+ * @param itemRewardQuantity number of copies of {@code itemReward} to grant; must be positive when
+ *                          {@code itemReward} is set and exactly zero when it is {@code null}
  */
 public record QuestTemplate(
     QuestId id,
@@ -54,7 +58,9 @@ public record QuestTemplate(
     String receiverRoomId,
     String packageItemId,
     List<String> requiredRoomIds,
-    String dailyPoolId
+    String dailyPoolId,
+    String itemReward,
+    int itemRewardQuantity
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
@@ -81,6 +87,14 @@ public record QuestTemplate(
         if (xpReward < 0) {
             throw new IllegalArgumentException("xpReward must be non-negative");
         }
+        if (itemReward != null && itemRewardQuantity <= 0) {
+            throw new IllegalArgumentException(
+                "itemRewardQuantity must be positive when itemReward is set");
+        }
+        if (itemReward == null && itemRewardQuantity != 0) {
+            throw new IllegalArgumentException(
+                "itemRewardQuantity must be zero when itemReward is not set");
+        }
     }
 
     /**
@@ -104,7 +118,7 @@ public record QuestTemplate(
         int xpReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), null);
+            null, 0, null, null, null, null, null, List.of(), null, null, 0);
     }
 
     /**
@@ -134,7 +148,7 @@ public record QuestTemplate(
         String titleReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null);
+            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0);
     }
 
     /**
@@ -173,7 +187,7 @@ public record QuestTemplate(
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId,
-            receiverRoomId, packageItemId, List.of(), null);
+            receiverRoomId, packageItemId, List.of(), null, null, 0);
     }
 
     /**
@@ -197,7 +211,7 @@ public record QuestTemplate(
         List<String> requiredRoomIds
     ) {
         this(id, name, description, null, 0, goldReward, xpReward,
-            null, 0, titleReward, null, null, null, null, requiredRoomIds, null);
+            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0);
     }
 
     /**
@@ -223,7 +237,28 @@ public record QuestTemplate(
         String dailyPoolId
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), dailyPoolId);
+            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0);
+    }
+
+    /**
+     * Returns a copy of this quest with the given item reward attached.
+     *
+     * @param itemReward         item id to grant on completion; {@code null} clears any item reward
+     * @param itemRewardQuantity number of copies to grant; must be positive when {@code itemReward}
+     *                           is set and zero otherwise
+     * @return a new {@link QuestTemplate} carrying the item reward
+     */
+    public QuestTemplate withItemReward(String itemReward, int itemRewardQuantity) {
+        return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
+            dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
+            packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity);
+    }
+
+    /**
+     * Returns {@code true} when this quest grants a guaranteed item reward on completion.
+     */
+    public boolean hasItemReward() {
+        return itemReward != null;
     }
 
     /**

@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
+import io.taanielo.jmud.core.world.Item;
 
 /**
  * Domain service that processes mob kills against a player's active quest.
@@ -23,9 +25,22 @@ import io.taanielo.jmud.core.player.Player;
 public class QuestKillService {
 
     private final QuestRepository questRepository;
+    private final QuestItemRewardService itemRewardService;
 
     public QuestKillService(QuestRepository questRepository) {
+        this(questRepository, null);
+    }
+
+    /**
+     * Creates a kill-quest service that additionally grants configured item rewards on completion.
+     *
+     * @param questRepository   the quest repository; must not be null
+     * @param itemRewardService grants a quest's optional item reward, or {@code null} to disable item
+     *                          rewards (leaving gold/XP/title behaviour unchanged)
+     */
+    public QuestKillService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
+        this.itemRewardService = itemRewardService;
     }
 
     /**
@@ -108,9 +123,16 @@ public class QuestKillService {
         LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(rewarded, template.xpReward());
         rewarded = lvResult.player();
 
+        ItemRewardGrant itemGrant = itemRewardService != null
+            ? itemRewardService.grant(rewarded, template)
+            : ItemRewardGrant.none(rewarded);
+        rewarded = itemGrant.player();
+
         List<String> messages = new ArrayList<>();
         messages.add("The Guild Clerk nods approvingly. Contract complete: " + template.name() + ".");
-        messages.add("You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
+        messages.add(QuestItemRewardService.receiveLine(
+            template.goldReward(), template.xpReward(), itemGrant.description()));
+        messages.addAll(itemGrant.messages());
 
         String titleReward = template.titleReward();
         if (titleReward != null && !rewarded.titles().has(titleReward)) {
@@ -118,7 +140,8 @@ public class QuestKillService {
             messages.add("You have earned the title: " + titleReward + "!");
         }
 
-        return new CompletionResult(rewarded, lvResult.leveledUp(), List.copyOf(messages));
+        return new CompletionResult(
+            rewarded, lvResult.leveledUp(), List.copyOf(messages), itemGrant.droppedItems());
     }
 
     /**
@@ -132,9 +155,17 @@ public class QuestKillService {
     /**
      * Result of granting a kill-quest completion reward.
      *
-     * @param player    the updated player with reward applied and active quest cleared
-     * @param leveledUp {@code true} when the XP reward caused a level-up
-     * @param messages  messages describing the reward (and any title earned)
+     * @param player       the updated player with reward applied and active quest cleared
+     * @param leveledUp    {@code true} when the XP reward caused a level-up
+     * @param messages     messages describing the reward (and any title earned)
+     * @param droppedItems item-reward copies that did not fit and must be dropped at the player's feet
+     *                     by the caller; never null, empty when none overflowed
      */
-    public record CompletionResult(Player player, boolean leveledUp, List<String> messages) {}
+    public record CompletionResult(
+        Player player, boolean leveledUp, List<String> messages, List<Item> droppedItems) {
+
+        public CompletionResult {
+            droppedItems = droppedItems == null ? List.of() : List.copyOf(droppedItems);
+        }
+    }
 }

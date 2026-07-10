@@ -86,6 +86,11 @@ public class JsonQuestRepository implements QuestRepository {
 
     private QuestTemplate toDomain(QuestDto dto, Path source) throws QuestRepositoryException {
         try {
+            // item_reward_quantity defaults to 1 when an item reward is present but no explicit
+            // quantity was provided (Jackson leaves the primitive at 0 for a missing field).
+            int itemRewardQuantity = dto.itemReward() != null && dto.itemRewardQuantity() <= 0
+                ? 1
+                : dto.itemRewardQuantity();
             return new QuestTemplate(
                 QuestId.of(dto.id()),
                 dto.name(),
@@ -102,7 +107,9 @@ public class JsonQuestRepository implements QuestRepository {
                 dto.receiverRoomId(),
                 dto.packageItemId(),
                 dto.requiredRoomIds(),
-                null
+                null,
+                dto.itemReward(),
+                itemRewardQuantity
             );
         } catch (IllegalArgumentException e) {
             throw new QuestRepositoryException("Invalid quest data in " + source + ": " + e.getMessage(), e);

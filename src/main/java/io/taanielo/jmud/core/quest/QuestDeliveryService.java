@@ -8,6 +8,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 
@@ -25,9 +26,22 @@ import io.taanielo.jmud.core.world.ItemId;
 public class QuestDeliveryService {
 
     private final QuestRepository questRepository;
+    private final QuestItemRewardService itemRewardService;
 
     public QuestDeliveryService(QuestRepository questRepository) {
+        this(questRepository, null);
+    }
+
+    /**
+     * Creates a delivery service that additionally grants configured item rewards on completion.
+     *
+     * @param questRepository   the quest repository; must not be null
+     * @param itemRewardService grants a quest's optional item reward, or {@code null} to disable item
+     *                          rewards
+     */
+    public QuestDeliveryService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
+        this.itemRewardService = itemRewardService;
     }
 
     /**
@@ -125,9 +139,16 @@ public class QuestDeliveryService {
         long newXp = updated.getExperience() + template.xpReward();
         updated = updated.withIdentity(updated.identity().withExperience(newXp));
 
+        ItemRewardGrant itemGrant = itemRewardService != null
+            ? itemRewardService.grant(updated, template)
+            : ItemRewardGrant.none(updated);
+        updated = itemGrant.player();
+
         List<String> messages = new ArrayList<>();
         messages.add("The Guild Clerk nods approvingly. Contract complete: " + template.name() + ".");
-        messages.add("You receive " + template.goldReward() + " gold and " + template.xpReward() + " experience.");
+        messages.add(QuestItemRewardService.receiveLine(
+            template.goldReward(), template.xpReward(), itemGrant.description()));
+        messages.addAll(itemGrant.messages());
 
         String titleReward = template.titleReward();
         if (titleReward != null && !updated.titles().has(titleReward)) {
@@ -135,7 +156,7 @@ public class QuestDeliveryService {
             messages.add("You have earned the title: " + titleReward + "!");
         }
 
-        return DeliverResult.success(updated, messages);
+        return DeliverResult.success(updated, messages, itemGrant.droppedItems());
     }
 
     // ── private helpers ────────────────────────────────────────────────
@@ -168,18 +189,25 @@ public class QuestDeliveryService {
     /**
      * Result of a delivery attempt.
      *
-     * @param player   updated player state after a successful delivery; {@code null} on failure
-     * @param messages messages to deliver to the player
-     * @param success  {@code true} when the delivery was accepted and reward granted
+     * @param player       updated player state after a successful delivery; {@code null} on failure
+     * @param messages     messages to deliver to the player
+     * @param success      {@code true} when the delivery was accepted and reward granted
+     * @param droppedItems item-reward copies that did not fit and must be dropped at the player's feet
+     *                     by the caller; never null, empty when none overflowed
      */
-    public record DeliverResult(Player player, List<String> messages, boolean success) {
+    public record DeliverResult(
+        Player player, List<String> messages, boolean success, List<Item> droppedItems) {
 
-        static DeliverResult success(Player player, List<String> messages) {
-            return new DeliverResult(player, List.copyOf(messages), true);
+        public DeliverResult {
+            droppedItems = droppedItems == null ? List.of() : List.copyOf(droppedItems);
+        }
+
+        static DeliverResult success(Player player, List<String> messages, List<Item> droppedItems) {
+            return new DeliverResult(player, List.copyOf(messages), true, droppedItems);
         }
 
         static DeliverResult failure(String message) {
-            return new DeliverResult(null, List.of(message), false);
+            return new DeliverResult(null, List.of(message), false, List.of());
         }
     }
 }

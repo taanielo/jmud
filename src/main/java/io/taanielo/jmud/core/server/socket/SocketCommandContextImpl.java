@@ -87,6 +87,7 @@ import io.taanielo.jmud.core.quest.DeliveryQuestResult;
 import io.taanielo.jmud.core.quest.ExplorationQuestService;
 import io.taanielo.jmud.core.quest.QuestDeliveryService;
 import io.taanielo.jmud.core.quest.QuestId;
+import io.taanielo.jmud.core.quest.QuestItemRewardService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestNpcDeliveryService;
 import io.taanielo.jmud.core.quest.QuestRepository;
@@ -972,9 +973,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (questRepo == null || player == null || player.getActiveQuest() == null) {
             return;
         }
-        ExplorationQuestService explorationSvc = new ExplorationQuestService(questRepo);
+        ExplorationQuestService explorationSvc =
+            new ExplorationQuestService(questRepo, context.questItemRewardService());
         explorationSvc.recordRoomVisit(player, destination.getId()).ifPresent(result -> {
             session.replacePlayer(result.player());
+            dropQuestRewardOverflow(result.player(), result.droppedItems());
             for (String message : result.messages()) {
                 connection.writeLine(message);
             }
@@ -2504,8 +2507,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         connection.writeLine("  " + "-".repeat(60));
         for (QuestTemplate t : active) {
             connection.writeLine(String.format(
-                "  %-14s %-24s %dg / %dxp",
-                t.dailyPoolId(), t.name(), t.goldReward(), t.xpReward()));
+                "  %-14s %-24s %s",
+                t.dailyPoolId(), t.name(), formatQuestReward(t)));
         }
         connection.writeLine("Accept one with DAILY_QUEST ACCEPT <pool>.");
         sendPrompt();
@@ -2572,6 +2575,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (result.success()) {
             Player rewarded = result.player();
             session.replacePlayer(rewarded);
+            dropQuestRewardOverflow(rewarded, result.droppedItems());
             List<String> messages = result.messages();
             connection.writeLine(messages.get(0));
             connection.writeLine(messages.get(1));
@@ -4383,10 +4387,26 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 ? t.description().substring(0, 32) + "..."
                 : t.description();
             connection.writeLine(String.format(
-                "  %-20s %-36s %dg / %dxp",
-                t.id().getValue(), desc, t.goldReward(), t.xpReward()));
+                "  %-20s %-36s %s",
+                t.id().getValue(), desc, formatQuestReward(t)));
         }
         sendPrompt();
+    }
+
+    /**
+     * Formats a quest's reward for the listing/status preview, e.g. {@code "100g / 350xp"} or
+     * {@code "100g / 350xp / Troll Tooth Charm"} when an item reward is configured.
+     */
+    private String formatQuestReward(QuestTemplate template) {
+        String reward = template.goldReward() + "g / " + template.xpReward() + "xp";
+        QuestItemRewardService rewardService = context.questItemRewardService();
+        if (rewardService != null) {
+            String itemReward = rewardService.describeReward(template).orElse(null);
+            if (itemReward != null) {
+                reward += " / " + itemReward;
+            }
+        }
+        return reward;
     }
 
     private void handleQuestAccept(QuestRepository questRepo, String questIdInput) {
@@ -4605,10 +4625,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
             session.replacePlayer(player.withActiveQuest(null));
             return;
         }
-        QuestKillService questKillSvc = new QuestKillService(questRepo);
+        QuestKillService questKillSvc = new QuestKillService(questRepo, context.questItemRewardService());
         QuestKillService.CompletionResult result = questKillSvc.grantCompletionReward(player, template);
         Player rewarded = result.player();
         session.replacePlayer(rewarded);
+        dropQuestRewardOverflow(rewarded, result.droppedItems());
         List<String> messages = result.messages();
         // Reward/gold/xp messages first, then any level-up notice, then the title message (if any).
         connection.writeLine(messages.get(0));
@@ -4648,10 +4669,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("The Guild Clerk is not here. Find them in the Courtyard.");
             return;
         }
-        QuestDeliveryService deliverySvc = new QuestDeliveryService(questRepo);
+        QuestDeliveryService deliverySvc =
+            new QuestDeliveryService(questRepo, context.questItemRewardService());
         QuestDeliveryService.DeliverResult result = deliverySvc.deliver(player);
         if (result.success()) {
             session.replacePlayer(result.player());
+            dropQuestRewardOverflow(result.player(), result.droppedItems());
         }
         for (String msg : result.messages()) {
             connection.writeLine(msg);
@@ -4664,10 +4687,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             && context.mobRegistry().getMobsInRoom(roomId).stream()
                 .anyMatch(m -> m.isAlive()
                     && m.template().id().getValue().equalsIgnoreCase(template.receiverNpcId()));
-        QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(questRepo);
+        QuestNpcDeliveryService npcDeliverySvc =
+            new QuestNpcDeliveryService(questRepo, context.questItemRewardService());
         DeliveryQuestResult result = npcDeliverySvc.deliver(player, roomId, receiverPresent);
         if (result.success()) {
             session.replacePlayer(result.player());
+            dropQuestRewardOverflow(result.player(), result.droppedItems());
         }
         for (String msg : result.messages()) {
             connection.writeLine(msg);
@@ -4683,6 +4708,22 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         session.replacePlayer(player.withActiveQuest(null));
         writeLineWithPrompt("Contract abandoned. No reward will be granted.");
+    }
+
+    /**
+     * Drops quest item-reward copies that did not fit in the player's inventory at their feet in the
+     * current room, mirroring the overweight-loot convention. No-op when nothing overflowed. Runs on
+     * the tick thread; the room mutation is in-memory (AGENTS.md §5).
+     */
+    private void dropQuestRewardOverflow(Player player, List<Item> droppedItems) {
+        if (droppedItems.isEmpty()) {
+            return;
+        }
+        roomService.findPlayerLocation(player.getUsername()).ifPresent(roomId -> {
+            for (Item item : droppedItems) {
+                roomService.addItem(roomId, item);
+            }
+        });
     }
 
     /** Called by the resting ticker to apply regenerated vitals. */

@@ -110,6 +110,7 @@ import io.taanielo.jmud.core.quest.CompositeQuestRepository;
 import io.taanielo.jmud.core.quest.DailyQuestPool;
 import io.taanielo.jmud.core.quest.DailyQuestRotationTicker;
 import io.taanielo.jmud.core.quest.DailyQuestService;
+import io.taanielo.jmud.core.quest.QuestItemRewardService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
@@ -198,6 +199,7 @@ public record GameContext(
     ShopService shopService,
     QuestRepository questRepository,
     DailyQuestService dailyQuestService,
+    QuestItemRewardService questItemRewardService,
     PartyService partyService,
     TradeService tradeService,
     BankService bankService,
@@ -408,7 +410,9 @@ public record GameContext(
         ShopService shopService = createShopService(itemRepository, reputationService);
         BankService bankService = createBankService();
         QuestRepository baseQuestRepository = createQuestRepository();
-        DailyQuestService dailyQuestService = createDailyQuestService();
+        QuestItemRewardService questItemRewardService =
+            new QuestItemRewardService(itemRepository, encumbranceService);
+        DailyQuestService dailyQuestService = createDailyQuestService(questItemRewardService);
         // Daily quests reuse the single active-quest slot and the normal kill-progress path, so
         // expose them through a composite that resolves accepted daily variants by id while keeping
         // them out of the Guild Clerk's QUEST LIST (AGENTS.md §3.3 — reuse the canonical quest flow).
@@ -496,6 +500,7 @@ public record GameContext(
             shopService,
             questRepository,
             dailyQuestService,
+            questItemRewardService,
             partyService,
             tradeService,
             bankService,
@@ -818,10 +823,10 @@ public record GameContext(
         }
     }
 
-    private static DailyQuestService createDailyQuestService() {
+    private static DailyQuestService createDailyQuestService(QuestItemRewardService itemRewardService) {
         try {
             List<DailyQuestPool> pools = new JsonDailyQuestPoolRepository().findAll();
-            return new DailyQuestService(pools);
+            return new DailyQuestService(pools, itemRewardService);
         } catch (QuestRepositoryException e) {
             throw new IllegalStateException("Failed to initialize daily quest service: " + e.getMessage(), e);
         }

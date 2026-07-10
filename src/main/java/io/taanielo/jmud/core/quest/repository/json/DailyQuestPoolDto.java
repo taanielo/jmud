@@ -35,6 +35,8 @@ record DailyQuestPoolDto(
      * @param goldReward   bonus gold awarded on completion
      * @param xpReward     bonus XP awarded on completion
      * @param titleReward  optional title granted on completion
+     * @param itemReward   optional item id granted directly to inventory on completion
+     * @param itemRewardQuantity number of copies of {@code itemReward} to grant (defaults to 1)
      */
     record DailyQuestVariantDto(
         String id,
@@ -44,7 +46,9 @@ record DailyQuestPoolDto(
         int requiredKills,
         int goldReward,
         int xpReward,
-        String titleReward
+        String titleReward,
+        String itemReward,
+        int itemRewardQuantity
     ) {
     }
 }

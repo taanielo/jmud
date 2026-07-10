@@ -72,6 +72,16 @@
     "title_reward": {
       "type": "string",
       "description": "Optional title granted to the player on completion."
+    },
+    "item_reward": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Optional item id granted directly to the player's inventory on completion. Must exist under data/items/. Applies to any quest type. Copies that would exceed the player's carry weight drop at their feet in the current room."
+    },
+    "item_reward_quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of copies of item_reward to grant. Defaults to 1 when item_reward is present and this field is omitted; must be omitted (or 0) when item_reward is absent."
     }
   }
 }
