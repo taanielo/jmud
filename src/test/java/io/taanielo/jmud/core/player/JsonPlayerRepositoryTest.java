@@ -329,6 +329,45 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsMailboxItemAttachment() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("itemmailee"), Password.hash("pw", 1));
+        Item sword = Item.builder(ItemId.of("sword"), "a runed longsword", "A sharp blade.", ItemAttributes.empty())
+            .weight(7)
+            .build();
+        Player player = Player.of(user, "%hp> ").withMailbox(PlayerMailbox.empty().add(
+            PlayerMailMessage.withAttachments("sender", 5, "for you", false, 30, sword)));
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        PlayerMailMessage message = loaded.get().mailbox().messages().get(0);
+        assertEquals(30, message.attachedGold());
+        assertTrue(message.hasItemAttachment());
+        assertEquals("a runed longsword", message.resolveAttachedItem().getName());
+        assertEquals(7, message.resolveAttachedItem().getWeight());
+    }
+
+    @Test
+    void loadingLegacyMailMessageWithoutItemFieldLoadsWithNoAttachment() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("legacymail"), Password.hash("pw", 1));
+        // A message constructed the pre-item-attachment way: gold-only, no attachedItem field.
+        Player player = Player.of(user, "%hp> ")
+            .withMailbox(PlayerMailbox.empty().add(new PlayerMailMessage("sender", 5, "old mail", false, 25)));
+
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        PlayerMailMessage message = loaded.get().mailbox().messages().get(0);
+        assertEquals(25, message.attachedGold());
+        assertFalse(message.hasItemAttachment());
+        assertEquals(null, message.resolveAttachedItem());
+    }
+
+    @Test
     void findAllReturnsEveryPersistedPlayer() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         Player alice = Player.of(User.of(Username.of("alice"), Password.hash("pw", 1)), "%hp> ").withTotalKills(10);

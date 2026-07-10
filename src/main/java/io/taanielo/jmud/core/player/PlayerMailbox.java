@@ -120,6 +120,22 @@ public class PlayerMailbox {
     }
 
     /**
+     * Returns a copy of this mailbox with the item attachment on the message at the given
+     * zero-based index cleared, so the item can never be claimed twice.
+     *
+     * @param index zero-based index into {@link #messages()}
+     * @throws IndexOutOfBoundsException if the index is out of range
+     */
+    public PlayerMailbox clearItemAttachment(int index) {
+        if (index < 0 || index >= messages.size()) {
+            throw new IndexOutOfBoundsException("No mail at index " + index);
+        }
+        List<PlayerMailMessage> next = new ArrayList<>(messages);
+        next.set(index, next.get(index).withoutItemAttachment());
+        return new PlayerMailbox(next);
+    }
+
+    /**
      * Returns a copy of this mailbox with every message marked read.
      */
     public PlayerMailbox markAllRead() {
