@@ -14,6 +14,7 @@ import java.util.Optional;
  *   <li>{@code PARTY DECLINE}        — decline a pending invitation</li>
  *   <li>{@code PARTY LEAVE}          — leave the current party (disbands if last member)</li>
  *   <li>{@code PARTY DISBAND}        — disband the party (leader only)</li>
+ *   <li>{@code PARTY LOOT <mode>}    — set item loot mode to {@code free} or {@code round-robin} (leader only)</li>
  * </ul>
  */
 public class PartyCommand extends RegistrableCommand {
@@ -47,8 +48,11 @@ public class PartyCommand extends RegistrableCommand {
              + "  PARTY DECLINE          — decline a pending party invitation\n"
              + "  PARTY LEAVE            — leave your current party\n"
              + "  PARTY DISBAND          — disband the party (leader only)\n"
+             + "  PARTY LOOT <mode>      — set loot mode: free (floor drops) or round-robin (leader only)\n"
              + "\n"
              + "XP earned from mob kills is split equally among party members in the same room.\n"
+             + "In round-robin loot mode, dropped items are handed to party members in turn instead of\n"
+             + "landing on the floor. PARTY LOOT with no argument reports the current mode.\n"
              + "Add {partyHp} to your prompt format to display party member HP at a glance.";
     }
 

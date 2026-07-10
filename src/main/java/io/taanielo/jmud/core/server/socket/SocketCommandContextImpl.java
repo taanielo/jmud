@@ -63,6 +63,7 @@ import io.taanielo.jmud.core.notes.NoteDeletionResult;
 import io.taanielo.jmud.core.notes.NotesService;
 import io.taanielo.jmud.core.notes.PlayerNote;
 import io.taanielo.jmud.core.output.TextStylers;
+import io.taanielo.jmud.core.party.LootMode;
 import io.taanielo.jmud.core.party.Party;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
@@ -2910,9 +2911,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "DECLINE" -> handlePartyDecline(player, partyService);
             case "LEAVE" -> handlePartyLeave(player, partyService);
             case "DISBAND" -> handlePartyDisband(player, partyService);
+            case "LOOT" -> handlePartyLoot(player, partyService, subArgs);
             case "" -> handlePartyStatus(player, partyService);
             default -> writeLineWithPrompt(
-                "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND]");
+                "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND|LOOT <free|round-robin>]");
         }
     }
 
@@ -4270,7 +4272,34 @@ class SocketCommandContextImpl implements SocketCommandContext {
             String leaderTag = party.isLeader(memberId) ? " (leader)" : "";
             connection.writeLine("  " + memberId.getValue() + leaderTag + "  HP: " + hp);
         }
+        connection.writeLine("Loot mode: " + party.lootMode().label());
         sendPrompt();
+    }
+
+    private void handlePartyLoot(Player player, PartyService partyService, String modeArg) {
+        String arg = modeArg == null ? "" : modeArg.trim();
+        if (arg.isEmpty() || "STATUS".equalsIgnoreCase(arg)) {
+            Optional<Party> partyOpt = partyService.findParty(player.getUsername());
+            if (partyOpt.isEmpty()) {
+                writeLineWithPrompt("You are not in a party. Use PARTY FORM to create one.");
+                return;
+            }
+            writeLineWithPrompt("Party loot mode: " + partyOpt.get().lootMode().label() + ".");
+            return;
+        }
+        Optional<LootMode> mode = LootMode.parse(arg);
+        if (mode.isEmpty()) {
+            writeLineWithPrompt("Usage: PARTY LOOT <free|round-robin>");
+            return;
+        }
+        PartyService.PartyResult result = partyService.setLootMode(player.getUsername(), mode.get());
+        writeLineWithPrompt(result.message());
+        if (result.success()) {
+            for (Username other : partyService.getOtherMembers(player.getUsername())) {
+                sendToUsername(other, player.getUsername().getValue()
+                    + " sets the party loot mode to " + mode.get().label() + ".");
+            }
+        }
     }
 
     private void handleTrainList(Player player) {

@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.world.RoomId;
@@ -115,7 +116,7 @@ public class PartyService {
         }
         List<Username> newMembers = new ArrayList<>(old.memberIds());
         newMembers.add(invitee);
-        parties.put(partyId, new Party(old.leaderId(), newMembers));
+        parties.put(partyId, old.withMembers(old.leaderId(), newMembers));
         memberToParty.put(invitee, partyId);
         return new PartyResult(true, "You have joined " + inviter.getValue() + "'s party.");
     }
@@ -166,7 +167,7 @@ public class PartyService {
             return new PartyResult(true, "You have left the party. The party has been disbanded.");
         }
         Username newLeader = old.isLeader(member) ? remaining.get(0) : old.leaderId();
-        parties.put(partyId, new Party(newLeader, remaining));
+        parties.put(partyId, old.withMembers(newLeader, remaining));
         String suffix = old.isLeader(member)
             ? " " + newLeader.getValue() + " is now the party leader."
             : "";
@@ -194,6 +195,91 @@ public class PartyService {
             memberToParty.remove(m);
         }
         return new PartyResult(true, "Party disbanded.");
+    }
+
+    // ── Loot mode ─────────────────────────────────────────────────────
+
+    /**
+     * Sets the party's {@link LootMode}. Only the party leader may change it.
+     *
+     * <p>Switching mode resets the round-robin rotation pointer so a freshly enabled round-robin
+     * begins with the first eligible member.
+     *
+     * @param leader the player changing the loot mode (must be the party leader)
+     * @param mode   the loot mode to apply
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult setLootMode(Username leader, LootMode mode) {
+        Objects.requireNonNull(leader, "leader is required");
+        Objects.requireNonNull(mode, "mode is required");
+        UUID partyId = memberToParty.get(leader);
+        if (partyId == null) {
+            return new PartyResult(false, "You are not in a party. Use PARTY FORM first.");
+        }
+        Party party = parties.get(partyId);
+        if (party == null || !party.isLeader(leader)) {
+            return new PartyResult(false, "Only the party leader can change the loot mode.");
+        }
+        parties.put(partyId, party.withLootMode(mode));
+        return new PartyResult(true, "Party loot mode set to " + mode.label() + ".");
+    }
+
+    /**
+     * Returns the {@link LootMode} of {@code member}'s party, or {@link LootMode#FREE} when the
+     * player is not in a party.
+     *
+     * @param member the reference player
+     * @return the party's loot mode, defaulting to {@link LootMode#FREE}
+     */
+    public LootMode lootMode(Username member) {
+        Objects.requireNonNull(member, "member is required");
+        return findParty(member).map(Party::lootMode).orElse(LootMode.FREE);
+    }
+
+    /**
+     * Selects the next party member to receive a round-robin loot item, advancing the party's
+     * rotation pointer past the chosen recipient so a subsequent call continues with the following
+     * member. Candidates are tried starting at the current pointer; the first for which
+     * {@code canReceive} returns {@code true} is chosen. When no candidate can receive the item the
+     * pointer is left unchanged and an empty result is returned, letting the caller fall back to a
+     * floor drop.
+     *
+     * @param member     any member of the party whose rotation to advance
+     * @param eligible   the ordered list of members eligible to receive (typically those present in
+     *                   the kill room); must be stable across calls for the rotation to be meaningful
+     * @param canReceive predicate deciding whether a given candidate can currently hold the item
+     * @return the chosen recipient, or empty when nobody eligible can receive the item
+     */
+    public synchronized Optional<Username> nextLootRecipient(
+        Username member,
+        List<Username> eligible,
+        Predicate<Username> canReceive
+    ) {
+        Objects.requireNonNull(member, "member is required");
+        Objects.requireNonNull(eligible, "eligible is required");
+        Objects.requireNonNull(canReceive, "canReceive is required");
+        if (eligible.isEmpty()) {
+            return Optional.empty();
+        }
+        UUID partyId = memberToParty.get(member);
+        if (partyId == null) {
+            return Optional.empty();
+        }
+        Party party = parties.get(partyId);
+        if (party == null) {
+            return Optional.empty();
+        }
+        int size = eligible.size();
+        int start = Math.floorMod(party.lootCursor(), size);
+        for (int i = 0; i < size; i++) {
+            int index = (start + i) % size;
+            Username candidate = eligible.get(index);
+            if (canReceive.test(candidate)) {
+                parties.put(partyId, party.withLootCursor(index + 1));
+                return Optional.of(candidate);
+            }
+        }
+        return Optional.empty();
     }
 
     // ── Queries ───────────────────────────────────────────────────────

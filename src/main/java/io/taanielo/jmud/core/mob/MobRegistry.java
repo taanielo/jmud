@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.mob;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,8 +45,10 @@ import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageRenderer;
 import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.party.LootMode;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
+import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
@@ -87,8 +91,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
-    /** Optional party service for XP splitting; may be null when parties are disabled. */
+    /** Optional party service for XP splitting and round-robin loot; may be null when disabled. */
     private PartyService partyService;
+    /** Optional encumbrance service used to skip full-inventory members in round-robin loot; may be null. */
+    private EncumbranceService encumbranceService;
     /** Optional effect engine used to apply on-hit status effects (e.g. poison); may be null when disabled. */
     private EffectEngine effectEngine;
     /** Optional world clock used to pick day/night respawn delays; may be null when disabled. */
@@ -162,6 +168,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      */
     public void setPartyService(PartyService partyService) {
         this.partyService = partyService;
+    }
+
+    /**
+     * Registers the encumbrance service used to decide whether a party member can hold a
+     * round-robin loot item without becoming overburdened (see
+     * {@link EncumbranceService#isOverburdened(Player)}). When null, members are treated as always
+     * able to receive an item.
+     *
+     * @param encumbranceService the encumbrance service; may be null to disable the capacity check
+     */
+    public void setEncumbranceService(EncumbranceService encumbranceService) {
+        this.encumbranceService = encumbranceService;
     }
 
     /**
@@ -512,24 +530,46 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private Player applyMobKillRewards(
         MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
         messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-        List<Item> drops = dropLoot(mob);
-        for (Item dropped : drops) {
-            messages.add(GameMessage.toSource(
-                "A " + dropped.getName() + " drops to the ground."));
-        }
+        List<Item> drops = rollLoot(mob);
         handleWorldBossKill(mob, attacker.getUsername(), drops, messages);
         mob.scheduleRespawn(currentTimeOfDay());
         endCombatForMob(mob);
 
-        // Determine XP share: split equally among party members in the same room.
-        List<Username> xpRecipients = partyService != null
+        // Determine recipients: party members present in the room (includes the attacker), or just
+        // the attacker when solo. Used both for XP splitting and round-robin loot assignment.
+        List<Username> partyRecipients = partyService != null
             ? partyService.getPartyMembersInRoom(
                 attacker.getUsername(), roomId, roomService::findPlayerLocation)
             : List.of(attacker.getUsername());
-        int xpPerMember = (int) Math.floor(
-            (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
 
-        LevelUpResult levelUpResult = levelUpService.awardXp(attacker, xpPerMember);
+        // Build working snapshots for every alive recipient so loot can be assigned to inventories
+        // before XP is applied and a single combined save is written; this avoids a stale reload in
+        // a later pass clobbering an item just assigned (the persistence queue writes behind).
+        Map<Username, Player> working = new LinkedHashMap<>();
+        List<Username> eligible = new ArrayList<>();
+        for (Username member : partyRecipients) {
+            if (member.equals(attacker.getUsername())) {
+                working.put(member, attacker);
+                eligible.add(member);
+                continue;
+            }
+            Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
+            if (memberPlayer == null || memberPlayer.isDead()) {
+                continue;
+            }
+            working.put(member, memberPlayer);
+            eligible.add(member);
+        }
+
+        Map<Username, List<GameMessage>> memberMessages = new HashMap<>();
+        distributeLoot(mob, attacker.getUsername(), drops, eligible, working, messages, memberMessages);
+
+        // XP is split by every party member in the room (dead members still count toward the divisor
+        // but receive nothing, preserving the historical split), matching pre-loot behaviour.
+        int xpPerMember = (int) Math.floor(
+            (double) mob.template().xpReward() / Math.max(1, partyRecipients.size()));
+
+        LevelUpResult levelUpResult = levelUpService.awardXp(working.get(attacker.getUsername()), xpPerMember);
         Player afterXp = levelUpResult.player();
         if (mob.template().goldDrop() != null) {
             int gold = mob.template().goldDrop().roll(random);
@@ -577,16 +617,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             }
         }
 
-        // Award XP to other party members in the same room.
-        for (Username member : xpRecipients) {
+        // Award XP to other party members in the same room, folding in any loot they received this
+        // kill so a single save carries both (their working snapshot already holds the loot items).
+        for (Username member : eligible) {
             if (member.equals(attacker.getUsername())) {
                 continue;
             }
-            Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
-            if (memberPlayer == null || memberPlayer.isDead()) {
-                continue;
-            }
-            LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
+            LevelUpResult memberLvl = levelUpService.awardXp(working.get(member), xpPerMember);
             Player memberAfterXp = memberLvl.player()
                 .withTotalKills(memberLvl.player().getTotalKills() + 1);
             saveOrLog(memberAfterXp);
@@ -598,9 +635,117 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 memberMsgs.add(GameMessage.toSource(
                     "You have advanced to level " + memberAfterXp.getLevel() + "!"));
             }
+            List<GameMessage> lootMsgs = memberMessages.get(member);
+            if (lootMsgs != null) {
+                memberMsgs.addAll(lootMsgs);
+            }
             playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
         }
         return afterXp;
+    }
+
+    /**
+     * Assigns each rolled loot item to its destination. In {@link LootMode#FREE} (or when the killer
+     * is not in a party) every item drops to the room floor as before. In {@link LootMode#ROUND_ROBIN}
+     * each item is handed to the next eligible party member in rotation — skipping members whose
+     * inventory is full — and only falls to the floor (with an explanatory message) when no eligible
+     * member can carry it, so an item is never lost. Recipients get a {@code "You loot ..."} message
+     * and the rest of the party in the room sees who received it. Working inventory snapshots are
+     * mutated in place so capacity checks and the eventual save reflect every assignment. Runs on the
+     * tick thread (AGENTS.md §5).
+     *
+     * @param mob            the slain mob (source of the room to floor unclaimed drops into)
+     * @param attacker       the killer, whose party and rotation pointer drive the assignment
+     * @param drops          the items rolled from the loot table this kill
+     * @param eligible       ordered list of alive recipients present in the room (includes attacker)
+     * @param working        mutable per-recipient player snapshots, updated as items are assigned
+     * @param attackerMessages the attacker-facing message list to append the attacker's notices to
+     * @param memberMessages the per-member message map to append other recipients' notices to
+     */
+    private void distributeLoot(
+        MobInstance mob,
+        Username attacker,
+        List<Item> drops,
+        List<Username> eligible,
+        Map<Username, Player> working,
+        List<GameMessage> attackerMessages,
+        Map<Username, List<GameMessage>> memberMessages) {
+        LootMode mode = partyService != null ? partyService.lootMode(attacker) : LootMode.FREE;
+        boolean roundRobin = mode == LootMode.ROUND_ROBIN && !eligible.isEmpty();
+        for (Item item : drops) {
+            if (!roundRobin) {
+                roomService.addItem(mob.roomId(), item);
+                attackerMessages.add(GameMessage.toSource(
+                    "A " + item.getName() + " drops to the ground."));
+                continue;
+            }
+            Optional<Username> recipientOpt = partyService.nextLootRecipient(
+                attacker, eligible, candidate -> canReceiveItem(working.get(candidate), item));
+            if (recipientOpt.isEmpty()) {
+                roomService.addItem(mob.roomId(), item);
+                String note = "No one has room for the " + item.getName()
+                    + ", so it drops to the ground.";
+                for (Username member : eligible) {
+                    routeLootMessage(member, attacker, note, attackerMessages, memberMessages);
+                }
+                continue;
+            }
+            Username recipient = recipientOpt.get();
+            working.put(recipient, working.get(recipient).addItem(item));
+            routeLootMessage(recipient, attacker,
+                "You loot a " + item.getName() + ".", attackerMessages, memberMessages);
+            for (Username member : eligible) {
+                if (member.equals(recipient)) {
+                    continue;
+                }
+                routeLootMessage(member, attacker,
+                    recipient.getValue() + " loots a " + item.getName() + ".",
+                    attackerMessages, memberMessages);
+            }
+        }
+    }
+
+    /**
+     * Returns whether the given member could hold {@code item} without becoming overburdened. A null
+     * member (offline/dead) can never receive; when no {@link EncumbranceService} is configured the
+     * member is treated as always able to carry the item.
+     *
+     * @param member the working player snapshot, or null when the member is unavailable
+     * @param item   the item to test
+     * @return whether the member can receive the item
+     */
+    private boolean canReceiveItem(Player member, Item item) {
+        if (member == null) {
+            return false;
+        }
+        if (encumbranceService == null) {
+            return true;
+        }
+        return !encumbranceService.isOverburdened(member.addItem(item));
+    }
+
+    /**
+     * Routes a loot-related message to the correct sink: the attacker's inline message list when the
+     * recipient is the attacker, otherwise the per-member message map delivered via the event bus.
+     *
+     * @param recipient        the player the message is for
+     * @param attacker         the killer whose messages travel back inline
+     * @param text             the message text
+     * @param attackerMessages the attacker's inline message list
+     * @param memberMessages   the per-member message map
+     */
+    private void routeLootMessage(
+        Username recipient,
+        Username attacker,
+        String text,
+        List<GameMessage> attackerMessages,
+        Map<Username, List<GameMessage>> memberMessages) {
+        if (recipient.equals(attacker)) {
+            attackerMessages.add(GameMessage.toSource(text));
+        } else {
+            memberMessages.computeIfAbsent(recipient, k -> new ArrayList<>())
+                .add(GameMessage.toSource(text));
+        }
     }
 
     /**
@@ -1489,90 +1634,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                     + remaining + " HP remaining)"));
 
             if (!mob.isAlive()) {
-                messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-                List<Item> drops = dropLoot(mob);
-                for (Item dropped : drops) {
-                    messages.add(GameMessage.toSource(
-                        "A " + dropped.getName() + " drops to the ground."));
-                }
-                handleWorldBossKill(mob, username, drops, messages);
-                mob.scheduleRespawn(currentTimeOfDay());
-                endCombatForMob(mob);
-
-                // Determine XP share: split equally among party members in the same room.
-                RoomId killRoom = playerRoom;
-                List<Username> xpRecipients = partyService != null
-                    ? partyService.getPartyMembersInRoom(
-                        username, killRoom, roomService::findPlayerLocation)
-                    : List.of(username);
-                int xpPerMember = (int) Math.floor(
-                    (double) mob.template().xpReward() / Math.max(1, xpRecipients.size()));
-
-                Player reloaded = playerRepository.loadPlayer(username).orElse(player);
-                LevelUpResult levelUpResult = levelUpService.awardXp(reloaded, xpPerMember);
-                Player afterXp = levelUpResult.player();
-                if (mob.template().goldDrop() != null) {
-                    int gold = mob.template().goldDrop().roll(random);
-                    if (gold > 0) {
-                        afterXp = afterXp.addGold(gold);
-                        messages.add(GameMessage.toSource(
-                            "The " + mob.template().name() + " drops " + gold + " gold coin"
-                                + (gold == 1 ? "" : "s") + "."));
-                    }
-                }
-                if (questKillService != null) {
-                    var killResult = questKillService.recordKill(afterXp, mob.template().id().getValue());
-                    if (killResult.isPresent()) {
-                        afterXp = killResult.get().player();
-                        for (String msg : killResult.get().messages()) {
-                            messages.add(GameMessage.toSource(msg));
-                        }
-                    }
-                }
-                FactionId factionId = mob.template().factionId();
-                if (reputationService != null && factionId != null) {
-                    int before = afterXp.reputation().standing(factionId);
-                    afterXp = reputationService.recordKill(afterXp, factionId);
-                    int after = afterXp.reputation().standing(factionId);
-                    if (after != before) {
-                        String factionName = reputationService.findFaction(factionId)
-                            .map(Faction::name).orElse(factionId.getValue());
-                        messages.add(GameMessage.toSource("Your reputation with " + factionName
-                            + (after < before ? " decreases." : " increases.")));
-                    }
-                }
-                afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
-                saveOrLog(afterXp);
-                messages.add(GameMessage.toSource(
-                    "You gain " + xpPerMember + " experience points."));
-                if (levelUpResult.leveledUp()) {
-                    messages.add(GameMessage.toSource(
-                        "You have advanced to level " + afterXp.getLevel() + "!"));
-                }
-
-                // Award XP to other party members in the same room.
-                for (Username member : xpRecipients) {
-                    if (member.equals(username)) {
-                        continue;
-                    }
-                    Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
-                    if (memberPlayer == null || memberPlayer.isDead()) {
-                        continue;
-                    }
-                    LevelUpResult memberLvl = levelUpService.awardXp(memberPlayer, xpPerMember);
-                    Player memberAfterXp = memberLvl.player()
-                        .withTotalKills(memberLvl.player().getTotalKills() + 1);
-                    saveOrLog(memberAfterXp);
-                    List<GameMessage> memberMsgs = new ArrayList<>();
-                    memberMsgs.add(GameMessage.toSource(
-                        "Your party slay the " + mob.template().name()
-                            + "! You gain " + xpPerMember + " experience points."));
-                    if (memberLvl.leveledUp()) {
-                        memberMsgs.add(GameMessage.toSource(
-                            "You have advanced to level " + memberAfterXp.getLevel() + "!"));
-                    }
-                    playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
-                }
+                // Shared post-kill rewards (loot distribution, party XP, gold, quest credit, etc.)
+                // live in applyMobKillRewards so this tick-driven auto-attack path and the direct
+                // ATTACK/SHOOT/AoE paths behave identically.
+                awardMobKill(mob, player, playerRoom, messages);
             }
             playerEventBus.publish(username, new GameActionResult(null, null, messages));
         }
@@ -1587,23 +1652,21 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     // ── Helpers ───────────────────────────────────────────────────────
 
     /**
-     * Rolls loot for a dead mob, places each dropped item in the mob's room,
-     * and returns the list of items that actually dropped.
+     * Rolls loot for a dead mob and returns the list of items that actually dropped, without placing
+     * them anywhere. Where each item ends up (the room floor, or a party member's inventory under
+     * {@link LootMode#ROUND_ROBIN}) is decided by {@link #distributeLoot}.
      *
      * @param mob the mob that just died
-     * @return items placed on the room floor (never null, may be empty)
+     * @return the rolled items (never null, may be empty)
      */
-    private List<Item> dropLoot(MobInstance mob) {
+    private List<Item> rollLoot(MobInstance mob) {
         List<Item> dropped = new ArrayList<>();
         for (LootEntry entry : mob.template().lootTable()) {
             if (random.nextDouble() <= entry.dropChance()) {
                 try {
-                    itemRepository.findById(entry.itemId()).ifPresent(item -> {
-                        roomService.addItem(mob.roomId(), item);
-                        dropped.add(item);
-                    });
+                    itemRepository.findById(entry.itemId()).ifPresent(dropped::add);
                 } catch (RepositoryException e) {
-                    log.warn("Failed to drop loot item {}: {}", entry.itemId(), e.getMessage());
+                    log.warn("Failed to roll loot item {}: {}", entry.itemId(), e.getMessage());
                 }
             }
         }
