@@ -424,6 +424,18 @@ public interface SocketCommandContext extends Client {
     default void craft(String args) {}
 
     /**
+     * Executes the {@code SALVAGE} command. With blank arguments it lists the carried, unequipped
+     * weapon and armor items that can be broken down, previewing the material(s) each would yield;
+     * with an item name it destroys that carried item and adds the yielded materials for its rarity
+     * tier to the player's inventory. Requires a blacksmith in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the item name to salvage, or blank to list salvageable items
+     */
+    default void salvage(String args) {}
+
+    /**
      * Executes the {@code BREW} command. With blank arguments it lists the potion recipes an alchemist
      * can make, with live {@code have/need} herb counts; with a potion name it attempts to brew it,
      * consuming the required herbs and gold. Requires an alchemist in the current room.

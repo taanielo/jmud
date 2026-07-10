@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:salvage-tier:v1",
+  "title": "Salvage tier definition (v1)",
+  "description": "The single salvage tier file at data/salvage/salvage-tiers.json. Each entry maps an item rarity tier to the materials a player recovers when they break down an item of that tier at a blacksmith via the SALVAGE command.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tiers"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "tiers": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One salvage yield definition per rarity tier. At most one entry per rarity.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rarity",
+          "materials"
+        ],
+        "properties": {
+          "rarity": {
+            "type": "string",
+            "enum": ["common", "uncommon", "rare"],
+            "description": "The item rarity tier this yield applies to."
+          },
+          "materials": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Materials produced by salvaging an item of this tier. Each item id must exist under data/items/.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "item"
+              ],
+              "properties": {
+                "item": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9-]+$",
+                  "description": "Id of the yielded material item (data/items/<id>.json)."
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 1,
+                  "description": "How many copies of the material the salvage yields. Defaults to 1 when omitted."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -120,6 +120,10 @@ import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.reload.ContentReloadService;
 import io.taanielo.jmud.core.reload.ItemContentReloader;
 import io.taanielo.jmud.core.reload.RoomContentReloader;
+import io.taanielo.jmud.core.salvage.SalvageService;
+import io.taanielo.jmud.core.salvage.SalvageTier;
+import io.taanielo.jmud.core.salvage.SalvageTierRepositoryException;
+import io.taanielo.jmud.core.salvage.repository.json.JsonSalvageTierRepository;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.socket.LinkdeadTimeoutTicker;
 import io.taanielo.jmud.core.server.socket.PlayerSession;
@@ -216,6 +220,7 @@ public record GameContext(
     CraftingService craftingService,
     CraftingService alchemyService,
     CraftingService cookingService,
+    SalvageService salvageService,
     EnchantingService enchantingService,
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
@@ -354,6 +359,7 @@ public record GameContext(
         CraftingService craftingService = createCraftingService(itemRepository);
         CraftingService alchemyService = createAlchemyService(itemRepository);
         CraftingService cookingService = createCookingService(itemRepository);
+        SalvageService salvageService = createSalvageService(itemRepository);
         EnchantingService enchantingService =
             createEnchantingService(itemRepository, affixRepository, itemAffixService);
 
@@ -522,6 +528,7 @@ public record GameContext(
             craftingService,
             alchemyService,
             cookingService,
+            salvageService,
             enchantingService,
             resourceGatheringService,
             dialogueService,
@@ -709,6 +716,15 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository, CrafterProfile.cook());
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize cooking service: " + e.getMessage(), e);
+        }
+    }
+
+    private static SalvageService createSalvageService(ItemRepository itemRepository) {
+        try {
+            List<SalvageTier> tiers = new JsonSalvageTierRepository().findAll();
+            return new SalvageService(tiers, itemRepository);
+        } catch (SalvageTierRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize salvage service: " + e.getMessage(), e);
         }
     }
 

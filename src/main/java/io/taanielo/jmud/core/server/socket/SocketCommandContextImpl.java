@@ -95,6 +95,7 @@ import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.QuestReputationRewardService;
 import io.taanielo.jmud.core.quest.QuestTemplate;
+import io.taanielo.jmud.core.salvage.SalvageOutcome;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
@@ -2239,6 +2240,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player crafted = outcome.updatedPlayer();
         if (outcome.success() && crafted != null) {
             session.replacePlayer(crafted);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
+    public void salvage(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to salvage items.");
+            return;
+        }
+        if (context.salvageService() == null) {
+            writeLineWithPrompt("There is no blacksmith here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isBlacksmithPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no blacksmith here to salvage with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.salvageService().preview(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        SalvageOutcome outcome = context.salvageService().salvage(player, args);
+        Player salvaged = outcome.updatedPlayer();
+        if (outcome.success() && salvaged != null) {
+            session.replacePlayer(salvaged);
         }
         writeLineWithPrompt(outcome.message());
     }
