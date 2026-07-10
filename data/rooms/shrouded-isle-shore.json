@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "shrouded-isle-shore",
+  "name": "Tidal Shore",
+  "description": "Grey waves slap against a shingle beach where the coastal ferry's passengers first set foot. Fog rolls in off the water so thick that the rest of the island is only a smudge of darker grey. Kelp and shattered crab shells litter the tideline, and a weathered stone path climbs north into the mist.",
+  "night_description": "Grey waves slap unseen against the shingle, their crash the only proof the sea is still there. The fog has gone from grey to black, and the stone path north vanishes after a single pace. Something small skitters over the shells in the dark.",
+  "min_level": 8,
+  "item_ids": [],
+  "exits": {
+    "south": "south-dock",
+    "north": "shrouded-isle-driftwood-path"
+  },
+  "ambient_messages": [
+    "A cold wave hisses up the shingle and drags a rattle of shells back with it.",
+    "The fog shifts, and for a heartbeat you glimpse a shape out on the water that is gone when you look again.",
+    "Gulls cry somewhere overhead, unseen through the murk."
+  ]
+}

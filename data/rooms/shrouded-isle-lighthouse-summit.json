@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "shrouded-isle-lighthouse-summit",
+  "name": "Lantern Room of the Ruined Lighthouse",
+  "description": "The iron stair ends at a shattered lantern room open to the sky. The great lamp is long dead, its cracked lens furred with salt, yet a drowned, greenish light pools here all the same. From this height the whole fog-drowned island spreads below, and the sea beyond is a wall of grey. This is the island's high point, and something has claimed it as a throne.",
+  "night_description": "The lantern room is drowned in a cold green glow that has nothing to do with the dead lamp. It leaks from the salt-furred lens, from the stones, from the very fog, and it throws long shadows across the ruined floor. Whatever waits here belongs to the deep, and it knows you have come.",
+  "min_level": 8,
+  "item_ids": [],
+  "exits": {
+    "down": "shrouded-isle-lighthouse"
+  },
+  "ambient_messages": [
+    "The dead lamp's cracked lens catches the drowned green light and scatters it across the walls.",
+    "Far below, the surf beats against the rocks with the slow rhythm of a sleeping heart.",
+    "A wet, salt-heavy wind gusts through the open lantern room and is gone."
+  ]
+}

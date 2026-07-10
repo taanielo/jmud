@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "shrouded-isle-driftwood-path",
+  "name": "Driftwood Path",
+  "description": "A crooked trail of bleached driftwood planks, half-sunk into the sand, threads between dunes of pale grass. The fog muffles every sound to a hush. The path forks here: north toward a dark hulk looming through the mist, and east down a narrow gully toward the sound of sheltered water.",
+  "min_level": 8,
+  "item_ids": [],
+  "exits": {
+    "south": "shrouded-isle-shore",
+    "north": "shrouded-isle-shipwreck",
+    "east": "shrouded-isle-cove"
+  },
+  "ambient_messages": [
+    "A driftwood plank shifts underfoot with a hollow, waterlogged groan.",
+    "Tendrils of fog curl between the dune grass like reaching fingers.",
+    "The dunes exhale a damp, salt-rotten wind that chills you to the bone."
+  ]
+}

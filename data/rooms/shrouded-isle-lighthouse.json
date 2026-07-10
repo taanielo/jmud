@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "shrouded-isle-lighthouse",
+  "name": "Foot of the Ruined Lighthouse",
+  "description": "A squat, storm-battered lighthouse rises out of the fog, its white paint long since flayed away to bare, weeping stone. The lamp above has been dark for years. A rusted iron stair spirals up its inside toward the lantern room, and the wreck lies back east through the mist.",
+  "night_description": "The dead lighthouse is a black finger against a blacker sky. No lamp burns at its crown, yet a faint, cold glow seems to seep from the lantern room far above, up the rusted spiral stair. The wreck is lost in the dark to the east.",
+  "min_level": 8,
+  "item_ids": [],
+  "exits": {
+    "east": "shrouded-isle-shipwreck",
+    "up": "shrouded-isle-lighthouse-summit"
+  },
+  "ambient_messages": [
+    "Wind moans through the lighthouse's empty windows high above.",
+    "Flakes of rust drift down the spiral stair and settle at your feet.",
+    "The old stone weeps a trickle of brine that smells of the deep sea."
+  ]
+}

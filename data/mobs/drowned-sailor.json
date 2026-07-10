@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "drowned-sailor",
+  "name": "Drowned Sailor",
+  "max_hp": 48,
+  "attack_id": "attack.drowned-sailor",
+  "aggressive": true,
+  "tags": ["undead"],
+  "spawn_room_id": "shrouded-isle-shipwreck",
+  "max_count": 3,
+  "respawn_ticks": 30,
+  "loot": [
+    {
+      "item_id": "tide-worn-trinket",
+      "drop_chance": 0.5
+    }
+  ],
+  "xp_reward": 55,
+  "gold_drop": {
+    "min": 8,
+    "max": 18
+  }
+}

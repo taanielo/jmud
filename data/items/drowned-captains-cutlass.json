@@ -1,0 +1,21 @@
+{
+  "schema_version": 10,
+  "id": "drowned-captains-cutlass",
+  "name": "the Drowned Captain's cutlass",
+  "description": "A heavy sabre hauled up from the deep with its wielder. Barnacles crust the guard and the blade is pitted with rust, yet it holds a cruel edge and seems to weigh nothing at all in the hand, as though the sea still bears it up.",
+  "attributes": {
+    "stats": {
+      "strength": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 4,
+  "value": 95,
+  "attack_ref": "attack.iron-sword",
+  "rarity": "uncommon",
+  "affixes": ["of-the-fox"],
+  "max_durability": 60,
+  "durability": 60
+}

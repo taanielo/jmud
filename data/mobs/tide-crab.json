@@ -1,0 +1,22 @@
+{
+  "schema_version": 4,
+  "id": "tide-crab",
+  "name": "Tide Crab",
+  "max_hp": 26,
+  "attack_id": "attack.tide-crab",
+  "aggressive": false,
+  "spawn_room_id": "shrouded-isle-shore",
+  "max_count": 3,
+  "respawn_ticks": 20,
+  "loot": [
+    {
+      "item_id": "tide-worn-trinket",
+      "drop_chance": 0.35
+    }
+  ],
+  "xp_reward": 30,
+  "gold_drop": {
+    "min": 2,
+    "max": 7
+  }
+}
