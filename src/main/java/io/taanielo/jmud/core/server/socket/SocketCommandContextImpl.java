@@ -51,6 +51,7 @@ import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.enchant.EnchantOutcome;
 import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildMember;
@@ -99,6 +100,7 @@ import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.DoorActionResult;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAffix;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
@@ -1938,7 +1940,39 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 .forEach(e -> sb.append(" ").append(e.getKey()).append(" +").append(e.getValue()));
             connection.writeLine(sb.toString());
         }
+        writeAffixLines(found);
         sendPrompt();
+    }
+
+    /**
+     * Writes the enchantment lines for an identified item: the label of each attached affix and the
+     * item's effective stats (base attributes plus affix bonuses). Silent when the item bears no
+     * affixes or the affix data cannot be read.
+     */
+    private void writeAffixLines(Item item) {
+        if (context.itemAffixService() == null || item.getAffixes().isEmpty()) {
+            return;
+        }
+        try {
+            List<ItemAffix> affixes = context.itemAffixService().resolve(item);
+            if (!affixes.isEmpty()) {
+                StringBuilder labels = new StringBuilder("Enchantments:");
+                for (ItemAffix affix : affixes) {
+                    labels.append(' ').append(affix.label());
+                }
+                connection.writeLine(labels.toString());
+            }
+            Map<String, Integer> effective = context.itemAffixService().effectiveStats(item);
+            if (!effective.isEmpty()) {
+                StringBuilder sb = new StringBuilder("Effective stats:");
+                effective.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(e -> sb.append(' ').append(e.getKey()).append(" +").append(e.getValue()));
+                connection.writeLine(sb.toString());
+            }
+        } catch (RepositoryException e) {
+            // Affix data unavailable; base stats already shown, so skip the enchantment lines.
+        }
     }
 
     @Override
@@ -2272,6 +2306,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void enchant(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to enchant items.");
+            return;
+        }
+        if (context.enchantingService() == null) {
+            writeLineWithPrompt("There is no enchanter here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isEnchanterPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no enchanter here to enchant with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.enchantingService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        EnchantOutcome outcome = context.enchantingService().enchant(player, args);
+        Player enchanted = outcome.updatedPlayer();
+        if (outcome.success() && enchanted != null) {
+            session.replacePlayer(enchanted);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
     public void gather() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to gather resources.");
@@ -2320,6 +2389,15 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         return context.mobRegistry().getMobsInRoom(roomId).stream()
             .anyMatch(mob -> mob.template().hasTag("cook"));
+    }
+
+    /** Returns whether an enchanter NPC (tagged {@code enchanter}) is alive in the given room. */
+    private boolean isEnchanterPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("enchanter"));
     }
 
     @Override

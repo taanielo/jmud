@@ -446,6 +446,19 @@ public interface SocketCommandContext extends Client {
     default void cook(String args) {}
 
     /**
+     * Executes the {@code ENCHANT} command. With blank arguments it lists the enchantments an
+     * Enchanter can apply, with each affix's stat bonus and live {@code have/need} material counts;
+     * with an {@code <item> <enchantment>} argument it permanently imbues that carried, equippable
+     * item with the named affix, consuming the required materials and gold. Requires an Enchanter in
+     * the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the {@code <item> <enchantment>} argument, or blank to list enchantments
+     */
+    default void enchant(String args) {}
+
+    /**
      * Executes the {@code GATHER} command, harvesting the raw-material yield of an available resource
      * node in the player's current room and adding it to their inventory. If no node is present, or
      * the node has already been harvested and not yet respawned, a clear failure message is sent and
