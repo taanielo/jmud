@@ -1,0 +1,24 @@
+{
+  "schema_version": 4,
+  "id": "fog-wraith",
+  "name": "Fog Wraith",
+  "max_hp": 35,
+  "attack_id": "attack.fog-wraith",
+  "aggressive": true,
+  "tags": ["undead"],
+  "spawn_room_id": "shrouded-isle-driftwood-path",
+  "max_count": 2,
+  "respawn_ticks": 25,
+  "night_respawn_ticks": 15,
+  "loot": [
+    {
+      "item_id": "tide-worn-trinket",
+      "drop_chance": 0.4
+    }
+  ],
+  "xp_reward": 45,
+  "gold_drop": {
+    "min": 4,
+    "max": 12
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "shrouded-isle-cove",
+  "name": "Hidden Cove",
+  "description": "The gully opens into a crescent of black sand cupped by dripping rock walls, so sheltered that the fog hangs almost motionless over the still water. Smugglers or worse once used this place: rotten crates and a rusted anchor lie half-buried at the waterline, and the tide has left a rime of salt on everything. The only way out is back west up the gully.",
+  "night_description": "The cove is a bowl of darkness, its still water a black mirror that gives back no light at all. The rotten crates are hunched shadows, and the drip of water off the rock walls is loud in the silence. Nothing here should feel this watched.",
+  "min_level": 8,
+  "item_ids": [],
+  "exits": {
+    "west": "shrouded-isle-driftwood-path"
+  },
+  "ambient_messages": [
+    "Water drips steadily from the rock walls into the motionless pool.",
+    "The rusted anchor gives a faint groan as the tide tugs at it.",
+    "A rotten crate settles with a soft, sodden crunch."
+  ]
+}

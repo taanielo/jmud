@@ -1,0 +1,28 @@
+{
+  "schema_version": 4,
+  "id": "drowned-captain",
+  "name": "The Drowned Captain",
+  "max_hp": 135,
+  "attack_id": "attack.drowned-captain",
+  "special_attack_id": "attack.drowned-captain-surge",
+  "aggressive": true,
+  "tags": ["undead", "boss"],
+  "spawn_room_id": "shrouded-isle-lighthouse-summit",
+  "max_count": 1,
+  "respawn_ticks": 120,
+  "loot": [
+    {
+      "item_id": "drowned-captains-cutlass",
+      "drop_chance": 0.85
+    },
+    {
+      "item_id": "tide-worn-trinket",
+      "drop_chance": 0.6
+    }
+  ],
+  "xp_reward": 260,
+  "gold_drop": {
+    "min": 45,
+    "max": 85
+  }
+}

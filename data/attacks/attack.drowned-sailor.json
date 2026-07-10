@@ -1,0 +1,28 @@
+{
+  "schema_version": 5,
+  "id": "attack.drowned-sailor",
+  "name": "rusted cutlass",
+  "min_damage": 8,
+  "max_damage": 16,
+  "hit_bonus": 1,
+  "crit_bonus": 1,
+  "damage_bonus": 2,
+  "weapon_type": "SLASHING",
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The drowned sailor drags its rusted cutlass across you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The drowned sailor swings wide, its waterlogged limbs too slow to land the blow."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The drowned sailor buries its rusted cutlass in your side for {damage}!"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "is_outdoor": true,
+  "id": "shrouded-isle-shipwreck",
+  "name": "Wreck of the Grey Gull",
+  "description": "A great three-masted ship lies broken across the rocks, its hull cracked open like a rib cage and its rigging trailing in the surf. The name Grey Gull is just legible under a crust of barnacles. Drowned things shelter in the shadow of the wreck, and the whole scene stinks of brine and rot. A ruined tower stands to the west; the driftwood path runs back south.",
+  "min_level": 8,
+  "item_ids": [],
+  "exits": {
+    "south": "shrouded-isle-driftwood-path",
+    "west": "shrouded-isle-lighthouse"
+  },
+  "ambient_messages": [
+    "Torn rigging creaks and slaps against the broken hull.",
+    "The surf sucks and gurgles through a hole in the ship's shattered side.",
+    "Something heavy shifts deep inside the wreck, then goes still."
+  ]
+}

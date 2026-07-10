@@ -1,0 +1,28 @@
+{
+  "schema_version": 5,
+  "id": "attack.tide-crab",
+  "name": "pincer snap",
+  "min_damage": 5,
+  "max_damage": 11,
+  "hit_bonus": 0,
+  "crit_bonus": 1,
+  "damage_bonus": 1,
+  "weapon_type": "PIERCING",
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The tide crab lunges and snaps a pincer shut on your leg for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The tide crab clacks its pincers at you and scuttles sideways, missing."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The tide crab's pincer shears clean through your guard for {damage}!"
+    }
+  ]
+}

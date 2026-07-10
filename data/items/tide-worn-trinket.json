@@ -1,0 +1,13 @@
+{
+  "schema_version": 10,
+  "id": "tide-worn-trinket",
+  "name": "a tide-worn trinket",
+  "description": "A small keepsake pried from the island's drowned dead: a locket, a coin, or a carved bone charm, so scoured by salt and sand that its original shape is a guess. A collector on the mainland might still pay for it.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 14
+}
