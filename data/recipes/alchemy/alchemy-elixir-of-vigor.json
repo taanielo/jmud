@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "alchemy-elixir-of-vigor",
+  "name": "Elixir of Vigor",
+  "output_item": "elixir-of-vigor",
+  "gold_cost": 25,
+  "materials": [
+    { "item": "wild-herbs", "quantity": 2 },
+    { "item": "glowcap-mushroom", "quantity": 3 }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "alchemy-mana-potion",
+  "name": "Mana Potion",
+  "output_item": "mana-potion",
+  "gold_cost": 8,
+  "materials": [
+    { "item": "wild-herbs", "quantity": 1 },
+    { "item": "glowcap-mushroom", "quantity": 1 }
+  ]
+}

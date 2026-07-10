@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "tangled-glowcap-cluster",
+  "room_id": "tangled-undergrowth",
+  "yield_item": "glowcap-mushroom",
+  "respawn_ticks": 25,
+  "name": "glowcap mushroom cluster",
+  "look_description": "A cluster of faintly glowing blue mushrooms sprouts from a rotting log among the briars (GATHER)."
+}

@@ -1,5 +1,6 @@
 package io.taanielo.jmud.bootstrap;
 
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
@@ -54,6 +55,7 @@ import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
+import io.taanielo.jmud.core.craft.CrafterProfile;
 import io.taanielo.jmud.core.craft.CraftingService;
 import io.taanielo.jmud.core.craft.Recipe;
 import io.taanielo.jmud.core.craft.RecipeRepositoryException;
@@ -198,6 +200,7 @@ public record GameContext(
     ItemDurabilityService itemDurabilityService,
     ItemAffixService itemAffixService,
     CraftingService craftingService,
+    CraftingService alchemyService,
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
@@ -333,6 +336,7 @@ public record GameContext(
         ItemAffixService itemAffixService = new ItemAffixService(affixRepository);
 
         CraftingService craftingService = createCraftingService(itemRepository);
+        CraftingService alchemyService = createAlchemyService(itemRepository);
 
         // Resource gathering: node definitions load once at startup and their depletion/respawn
         // state is tracked in memory on the tick thread (AGENTS.md §5), the same transient tradeoff
@@ -479,6 +483,7 @@ public record GameContext(
             itemDurabilityService,
             itemAffixService,
             craftingService,
+            alchemyService,
             resourceGatheringService,
             dialogueService,
             itemRepository,
@@ -614,6 +619,15 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository);
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize crafting service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createAlchemyService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes = new JsonRecipeRepository(Path.of("data"), "recipes/alchemy").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.alchemist());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize alchemy service: " + e.getMessage(), e);
         }
     }
 

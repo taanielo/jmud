@@ -27,16 +27,31 @@ public class CraftingService {
 
     private final List<Recipe> recipes;
     private final ItemRepository itemRepository;
+    private final CrafterProfile profile;
 
     /**
-     * Creates a crafting service over a fixed set of recipes.
+     * Creates a crafting service over a fixed set of recipes backed by the default blacksmith
+     * profile (the {@code CRAFT} command).
      *
      * @param recipes        the known recipes; copied defensively, may be empty
      * @param itemRepository repository used to resolve material and output item definitions
      */
     public CraftingService(List<Recipe> recipes, ItemRepository itemRepository) {
+        this(recipes, itemRepository, CrafterProfile.blacksmith());
+    }
+
+    /**
+     * Creates a crafting service over a fixed set of recipes backed by a specific crafter profile,
+     * allowing the same logic to serve both {@code CRAFT} (blacksmith) and {@code BREW} (alchemist).
+     *
+     * @param recipes        the known recipes; copied defensively, may be empty
+     * @param itemRepository repository used to resolve material and output item definitions
+     * @param profile        the crafter profile controlling player-facing wording
+     */
+    public CraftingService(List<Recipe> recipes, ItemRepository itemRepository, CrafterProfile profile) {
         this.recipes = List.copyOf(Objects.requireNonNull(recipes, "Recipes are required"));
         this.itemRepository = Objects.requireNonNull(itemRepository, "Item repository is required");
+        this.profile = Objects.requireNonNull(profile, "Crafter profile is required");
     }
 
     /**
@@ -59,10 +74,11 @@ public class CraftingService {
         Objects.requireNonNull(player, "Player is required");
         List<String> lines = new ArrayList<>();
         if (recipes.isEmpty()) {
-            lines.add("The blacksmith has no recipes to offer.");
+            lines.add("The " + profile.crafter() + " has no recipes to offer.");
             return lines;
         }
-        lines.add("The blacksmith can craft the following (CRAFT <item> to make one):");
+        lines.add("The " + profile.crafter() + " can " + profile.verb() + " the following ("
+            + profile.command() + " <item> to make one):");
         for (Recipe recipe : recipes) {
             List<String> parts = new ArrayList<>();
             for (RecipeMaterial material : recipe.materials()) {
@@ -90,12 +106,14 @@ public class CraftingService {
     public CraftOutcome craft(Player player, @Nullable String input) {
         Objects.requireNonNull(player, "Player is required");
         if (input == null || input.isBlank()) {
-            return CraftOutcome.failure("Craft what? Type CRAFT to see what the blacksmith can make.");
+            return CraftOutcome.failure(profile.capitalizedVerb() + " what? Type " + profile.command()
+                + " to see what the " + profile.crafter() + " can make.");
         }
         String normalized = input.trim().toLowerCase(Locale.ROOT);
         Optional<Recipe> recipeOpt = findRecipe(normalized);
         if (recipeOpt.isEmpty()) {
-            return CraftOutcome.failure("The blacksmith knows no recipe for '" + input.trim() + "'.");
+            return CraftOutcome.failure(
+                "The " + profile.crafter() + " knows no recipe for '" + input.trim() + "'.");
         }
         Recipe recipe = recipeOpt.get();
 
@@ -112,8 +130,8 @@ public class CraftingService {
         }
         if (!shortfalls.isEmpty()) {
             return CraftOutcome.failure(
-                "You cannot craft the " + resolveOutputName(recipe) + " yet. You still need: "
-                    + String.join(", ", shortfalls) + ".");
+                "You cannot " + profile.verb() + " the " + resolveOutputName(recipe)
+                    + " yet. You still need: " + String.join(", ", shortfalls) + ".");
         }
 
         Item output;
@@ -121,13 +139,13 @@ public class CraftingService {
             Optional<Item> outputOpt = itemRepository.findById(recipe.outputItemId());
             if (outputOpt.isEmpty()) {
                 return CraftOutcome.failure(
-                    "The blacksmith fumbles — the " + resolveOutputName(recipe)
+                    "The " + profile.crafter() + " fumbles — the " + resolveOutputName(recipe)
                         + " cannot be made right now.");
             }
             output = outputOpt.get();
         } catch (RepositoryException e) {
             return CraftOutcome.failure(
-                "The blacksmith fumbles — the " + resolveOutputName(recipe)
+                "The " + profile.crafter() + " fumbles — the " + resolveOutputName(recipe)
                     + " cannot be made right now.");
         }
 
@@ -137,8 +155,8 @@ public class CraftingService {
         }
         Player updated = player.withInventory(inventory).addGold(-recipe.goldCost()).addItem(output);
         return CraftOutcome.success(
-            "The blacksmith works your materials into a " + output.getName() + " for "
-                + recipe.goldCost() + " gold. You now have " + updated.getGold() + " gold.",
+            "The " + profile.crafter() + " " + profile.craftAction() + " a " + output.getName()
+                + " for " + recipe.goldCost() + " gold. You now have " + updated.getGold() + " gold.",
             updated);
     }
 

@@ -424,6 +424,17 @@ public interface SocketCommandContext extends Client {
     default void craft(String args) {}
 
     /**
+     * Executes the {@code BREW} command. With blank arguments it lists the potion recipes an alchemist
+     * can make, with live {@code have/need} herb counts; with a potion name it attempts to brew it,
+     * consuming the required herbs and gold. Requires an alchemist in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output potion name to brew, or blank to list recipes
+     */
+    default void brew(String args) {}
+
+    /**
      * Executes the {@code GATHER} command, harvesting the raw-material yield of an available resource
      * node in the player's current room and adding it to their inventory. If no node is present, or
      * the node has already been harvested and not yet respawned, a clear failure message is sent and
