@@ -201,6 +201,7 @@ public record GameContext(
     ItemAffixService itemAffixService,
     CraftingService craftingService,
     CraftingService alchemyService,
+    CraftingService cookingService,
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
@@ -337,6 +338,7 @@ public record GameContext(
 
         CraftingService craftingService = createCraftingService(itemRepository);
         CraftingService alchemyService = createAlchemyService(itemRepository);
+        CraftingService cookingService = createCookingService(itemRepository);
 
         // Resource gathering: node definitions load once at startup and their depletion/respawn
         // state is tracked in memory on the tick thread (AGENTS.md §5), the same transient tradeoff
@@ -484,6 +486,7 @@ public record GameContext(
             itemAffixService,
             craftingService,
             alchemyService,
+            cookingService,
             resourceGatheringService,
             dialogueService,
             itemRepository,
@@ -628,6 +631,15 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository, CrafterProfile.alchemist());
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize alchemy service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createCookingService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes = new JsonRecipeRepository(Path.of("data"), "recipes/cooking").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.cook());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize cooking service: " + e.getMessage(), e);
         }
     }
 

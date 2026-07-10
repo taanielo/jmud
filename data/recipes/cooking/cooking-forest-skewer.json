@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "cooking-forest-skewer",
+  "name": "Forest Skewer",
+  "output_item": "forest-skewer",
+  "gold_cost": 6,
+  "materials": [
+    { "item": "meat", "quantity": 1 },
+    { "item": "glowcap-mushroom", "quantity": 1 }
+  ]
+}

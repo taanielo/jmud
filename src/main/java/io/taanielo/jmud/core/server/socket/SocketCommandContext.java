@@ -435,6 +435,17 @@ public interface SocketCommandContext extends Client {
     default void brew(String args) {}
 
     /**
+     * Executes the {@code COOK} command. With blank arguments it lists the meal recipes a cook can
+     * make, with live {@code have/need} ingredient counts; with a meal name it attempts to cook it,
+     * consuming the required ingredients and gold. Requires a cook in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output meal name to cook, or blank to list recipes
+     */
+    default void cook(String args) {}
+
+    /**
      * Executes the {@code GATHER} command, harvesting the raw-material yield of an available resource
      * node in the player's current room and adding it to their inventory. If no node is present, or
      * the node has already been harvested and not yet respawned, a clear failure message is sent and

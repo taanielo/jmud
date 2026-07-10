@@ -132,6 +132,7 @@ public class SocketCommandRegistry {
         new RepairCommand(registry);
         new CraftCommand(registry);
         new BrewCommand(registry);
+        new CookCommand(registry);
         new GatherCommand(registry);
         new QuestCommand(registry);
         new DailyQuestCommand(registry);

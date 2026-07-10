@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "cooking-hearty-stew",
+  "name": "Hearty Stew",
+  "output_item": "hearty-stew",
+  "gold_cost": 10,
+  "materials": [
+    { "item": "meat", "quantity": 1 },
+    { "item": "wild-herbs", "quantity": 2 }
+  ]
+}

@@ -2236,6 +2236,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void cook(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to cook meals.");
+            return;
+        }
+        if (context.cookingService() == null) {
+            writeLineWithPrompt("There is no cook here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isCookPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no cook here to cook with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.cookingService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.cookingService().craft(player, args);
+        Player cooked = outcome.updatedPlayer();
+        if (outcome.success() && cooked != null) {
+            session.replacePlayer(cooked);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
     public void gather() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to gather resources.");
@@ -2275,6 +2310,15 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         return context.mobRegistry().getMobsInRoom(roomId).stream()
             .anyMatch(mob -> mob.template().hasTag("alchemist"));
+    }
+
+    /** Returns whether a cook NPC (tagged {@code cook}) is alive in the given room. */
+    private boolean isCookPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("cook"));
     }
 
     @Override

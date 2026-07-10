@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "well-fed",
+  "name": "Well Fed",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 2
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "The hearty meal fills you with vigor."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} looks invigorated after a hearty meal."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The warmth of your meal fades."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} no longer looks so well fed."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks well fed."
+    }
+  ]
+}

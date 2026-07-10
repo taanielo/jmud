@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "id": "forest-skewer",
+  "name": "Forest Skewer",
+  "description": "Chunks of meat and glowcap mushroom charred over an open flame.",
+  "attributes": {
+    "stats": {
+      "hunger": 50
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You slide the pieces off {item} and eat them one by one."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} eats a {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 20
+}

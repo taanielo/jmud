@@ -33,6 +33,11 @@ public record CrafterProfile(String crafter, String command, String verb, String
         return new CrafterProfile("alchemist", "BREW", "brew", "brews your herbs into");
     }
 
+    /** Returns the cook profile used by the {@code COOK} command. */
+    public static CrafterProfile cook() {
+        return new CrafterProfile("cook", "COOK", "cook", "cooks your ingredients into");
+    }
+
     /** Returns the action verb with its first letter capitalized (e.g. {@code "Craft"}, {@code "Brew"}). */
     public String capitalizedVerb() {
         if (verb.isEmpty()) {

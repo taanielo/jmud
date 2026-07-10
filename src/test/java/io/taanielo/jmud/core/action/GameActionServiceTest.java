@@ -434,6 +434,78 @@ class GameActionServiceTest {
     }
 
     @Test
+    void eatItemRestoresHungerAndAppliesTimedBuffEffect() {
+        EffectId wellFed = EffectId.of("well-fed");
+        EffectDefinition definition = new EffectDefinition(
+            wellFed,
+            "Well Fed",
+            60,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(new MessageSpec(MessagePhase.APPLY, MessageChannel.SELF, "You feel invigorated."))
+        );
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of(wellFed, definition)));
+        service = new GameActionService(
+            testAbilityRegistry(),
+            new BasicAbilityCostResolver(),
+            effectEngine,
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService()
+        );
+        Item stew = Item.builder(
+            ItemId.of("hearty-stew"), "Hearty Stew", "A thick stew.", new ItemAttributes(Map.of("hunger", 40)))
+            .effects(List.of(new io.taanielo.jmud.core.world.ItemEffect(wellFed, 60)))
+            .build();
+        Player hungry = attacker
+            .withSustenance(new io.taanielo.jmud.core.player.PlayerSustenance(30, 50))
+            .addItem(stew);
+
+        GameActionResult result = service.eatItem(hungry, "hearty stew");
+
+        assertEquals(70, result.updatedSource().getSustenance().hunger(), "hunger restored by 40");
+        assertTrue(result.updatedSource().effects().stream().anyMatch(e -> e.id().equals(wellFed)),
+            "well-fed buff applied");
+        assertTrue(result.messages().stream().anyMatch(m -> m.text().equals("You feel invigorated.")),
+            "effect apply message emitted");
+        assertTrue(result.updatedSource().getInventory().stream().noneMatch(i -> i.getId().equals(stew.getId())),
+            "meal consumed");
+    }
+
+    @Test
+    void eatItemWithoutEffectsRestoresHungerWithoutError() {
+        Item bread = Item.builder(
+            ItemId.of("bread"), "Loaf of Bread", "A crusty loaf.", new ItemAttributes(Map.of("hunger", 30)))
+            .build();
+        Player hungry = attacker
+            .withSustenance(new io.taanielo.jmud.core.player.PlayerSustenance(40, 50))
+            .addItem(bread);
+
+        GameActionResult result = service.eatItem(hungry, "bread");
+
+        assertEquals(70, result.updatedSource().getSustenance().hunger());
+        assertTrue(result.updatedSource().effects().isEmpty());
+    }
+
+    @Test
+    void eatItemRejectsInedibleItem() {
+        Item rock = Item.builder(
+            ItemId.of("rock"), "Rock", "A plain rock.", ItemAttributes.empty()).build();
+        Player withRock = attacker.addItem(rock);
+
+        GameActionResult result = service.eatItem(withRock, "rock");
+
+        assertEquals("You can't eat that.", result.messages().getFirst().text());
+    }
+
+    @Test
     void quaffCurePotionRemovesPoisonEffect() {
         EffectId poisonId = EffectId.of("poison");
         EffectDefinition poisonDefinition = new EffectDefinition(
