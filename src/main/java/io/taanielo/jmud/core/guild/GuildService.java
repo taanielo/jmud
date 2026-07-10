@@ -104,10 +104,10 @@ public class GuildService {
     }
 
     /**
-     * Records a pending invitation from {@code inviter} to {@code invitee}. The inviter must be a
-     * guild leader; the invitee must be online and not already in a guild.
+     * Records a pending invitation from {@code inviter} to {@code invitee}. The inviter must be the
+     * guild leader or an officer; the invitee must be online and not already in a guild.
      *
-     * @param inviter       the inviting player (must be a guild leader)
+     * @param inviter       the inviting player (must be the guild leader or an officer)
      * @param invitee       the player being invited
      * @param inviteeOnline whether the invitee is currently connected
      * @return the result; on success carries the inviter's guild
@@ -122,8 +122,8 @@ public class GuildService {
         if (guild == null) {
             return GuildResult.failure("You are not in a guild.");
         }
-        if (!guild.isLeader(inviter)) {
-            return GuildResult.failure("Only the guild leader can invite players.");
+        if (!guild.canModerate(inviter)) {
+            return GuildResult.failure("Only the guild leader or an officer can invite players.");
         }
         if (!inviteeOnline) {
             return GuildResult.failure(invitee.getValue() + " is not online.");
@@ -208,13 +208,48 @@ public class GuildService {
     }
 
     /**
-     * Removes {@code target} from the guild led by {@code leader}.
+     * Removes {@code target} from the guild moderated by {@code remover}. The remover must be the
+     * guild leader or an officer; the guild leader can never be kicked.
      *
-     * @param leader the guild leader issuing the kick
-     * @param target the member to remove
+     * @param remover the guild leader or officer issuing the kick
+     * @param target  the member to remove
      * @return the result; on success carries the updated guild
      */
-    public synchronized GuildResult kick(Username leader, Username target) {
+    public synchronized GuildResult kick(Username remover, Username target) {
+        Objects.requireNonNull(remover, "remover is required");
+        Objects.requireNonNull(target, "target is required");
+        @Nullable Guild guild = guildOf(remover).orElse(null);
+        if (guild == null) {
+            return GuildResult.failure("You are not in a guild.");
+        }
+        if (!guild.canModerate(remover)) {
+            return GuildResult.failure("Only the guild leader or an officer can kick members.");
+        }
+        if (target.equals(remover)) {
+            return GuildResult.failure("You cannot kick yourself. Use GUILD DISBAND or GUILD LEAVE.");
+        }
+        if (!guild.isMember(target)) {
+            return GuildResult.failure(target.getValue() + " is not in your guild.");
+        }
+        if (guild.isLeader(target)) {
+            return GuildResult.failure("You cannot kick the guild leader.");
+        }
+        Guild updated = guild.withoutMember(target);
+        guildIdByMember.remove(target);
+        guildsById.put(updated.id(), updated);
+        return GuildResult.success("You remove " + target.getValue() + " from " + guild.name() + ".", updated);
+    }
+
+    /**
+     * Promotes {@code target} to {@link GuildRank#OFFICER} within the guild led by {@code leader}.
+     * Leader-only: the target must already be a member of the leader's guild and cannot be the
+     * leader themself. Promoting a member who is already an officer is reported as a no-op.
+     *
+     * @param leader the guild leader issuing the promotion
+     * @param target the member to promote
+     * @return the result; on success carries the updated guild
+     */
+    public synchronized GuildResult promote(Username leader, Username target) {
         Objects.requireNonNull(leader, "leader is required");
         Objects.requireNonNull(target, "target is required");
         @Nullable Guild guild = guildOf(leader).orElse(null);
@@ -222,18 +257,58 @@ public class GuildService {
             return GuildResult.failure("You are not in a guild.");
         }
         if (!guild.isLeader(leader)) {
-            return GuildResult.failure("Only the guild leader can kick members.");
+            return GuildResult.failure("Only the guild leader can promote members.");
         }
         if (target.equals(leader)) {
-            return GuildResult.failure("You cannot kick yourself. Use GUILD DISBAND or GUILD LEAVE.");
+            return GuildResult.failure("You cannot promote yourself.");
         }
         if (!guild.isMember(target)) {
             return GuildResult.failure(target.getValue() + " is not in your guild.");
         }
-        Guild updated = guild.withoutMember(target);
-        guildIdByMember.remove(target);
+        if (guild.isOfficer(target)) {
+            return GuildResult.failure(target.getValue() + " is already an officer.");
+        }
+        Guild updated = guild.withMemberRank(target, GuildRank.OFFICER);
         guildsById.put(updated.id(), updated);
-        return GuildResult.success("You remove " + target.getValue() + " from " + guild.name() + ".", updated);
+        repository.save(updated);
+        return GuildResult.success(
+            "You promote " + target.getValue() + " to officer in " + guild.name() + ".", updated);
+    }
+
+    /**
+     * Demotes {@code target} from {@link GuildRank#OFFICER} back to {@link GuildRank#MEMBER} within
+     * the guild led by {@code leader}. Leader-only: the target must already be a member of the
+     * leader's guild and cannot be the leader themself. Demoting someone who is not currently an
+     * officer is reported as a no-op.
+     *
+     * @param leader the guild leader issuing the demotion
+     * @param target the officer to demote
+     * @return the result; on success carries the updated guild
+     */
+    public synchronized GuildResult demote(Username leader, Username target) {
+        Objects.requireNonNull(leader, "leader is required");
+        Objects.requireNonNull(target, "target is required");
+        @Nullable Guild guild = guildOf(leader).orElse(null);
+        if (guild == null) {
+            return GuildResult.failure("You are not in a guild.");
+        }
+        if (!guild.isLeader(leader)) {
+            return GuildResult.failure("Only the guild leader can demote officers.");
+        }
+        if (target.equals(leader)) {
+            return GuildResult.failure("You cannot demote yourself.");
+        }
+        if (!guild.isMember(target)) {
+            return GuildResult.failure(target.getValue() + " is not in your guild.");
+        }
+        if (!guild.isOfficer(target)) {
+            return GuildResult.failure(target.getValue() + " is not an officer.");
+        }
+        Guild updated = guild.withMemberRank(target, GuildRank.MEMBER);
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+        return GuildResult.success(
+            "You demote " + target.getValue() + " to member in " + guild.name() + ".", updated);
     }
 
     /**

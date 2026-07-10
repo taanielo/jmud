@@ -164,6 +164,133 @@ class GuildServiceTest {
     }
 
     @Test
+    void leaderCanPromoteMemberToOfficer() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+
+        GuildResult result = service.promote(ALICE, BOB);
+
+        assertTrue(result.success());
+        assertTrue(service.guildOf(BOB).orElseThrow().isOfficer(BOB));
+        assertEquals(GuildRank.OFFICER,
+            repository.saved.get(result.guild().id()).member(BOB).orElseThrow().rank());
+    }
+
+    @Test
+    void promoteRejectsNonLeaderAndAlreadyOfficerAndSelfAndNonMember() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.invite(ALICE, CAROL, true);
+        service.accept(CAROL);
+
+        // An officer cannot promote another member.
+        service.promote(ALICE, BOB);
+        assertFalse(service.promote(BOB, CAROL).success());
+        // Leader cannot promote self.
+        assertFalse(service.promote(ALICE, ALICE).success());
+        // Promoting an existing officer is a no-op-with-message.
+        assertFalse(service.promote(ALICE, BOB).success());
+        // Cannot promote a non-member.
+        assertFalse(service.promote(ALICE, Username.of("Dave")).success());
+    }
+
+    @Test
+    void leaderCanDemoteOfficerBackToMember() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.promote(ALICE, BOB);
+
+        GuildResult result = service.demote(ALICE, BOB);
+
+        assertTrue(result.success());
+        assertFalse(service.guildOf(BOB).orElseThrow().isOfficer(BOB));
+        assertEquals(GuildRank.MEMBER,
+            service.guildOf(BOB).orElseThrow().member(BOB).orElseThrow().rank());
+    }
+
+    @Test
+    void demoteIsNoOpWhenTargetNotOfficer() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+
+        assertFalse(service.demote(ALICE, BOB).success());
+    }
+
+    @Test
+    void demoteRejectsNonLeader() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.promote(ALICE, BOB);
+
+        // Officer cannot demote themselves or anyone else.
+        assertFalse(service.demote(BOB, BOB).success());
+        assertTrue(service.guildOf(BOB).orElseThrow().isOfficer(BOB));
+    }
+
+    @Test
+    void officerCanInviteAndKick() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.promote(ALICE, BOB);
+
+        GuildResult invite = service.invite(BOB, CAROL, true);
+        assertTrue(invite.success());
+        service.accept(CAROL);
+
+        GuildResult kick = service.kick(BOB, CAROL);
+        assertTrue(kick.success());
+        assertTrue(service.guildOf(CAROL).isEmpty());
+    }
+
+    @Test
+    void officerCannotPromoteDemoteWithdrawOrDisband() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.invite(ALICE, CAROL, true);
+        service.accept(CAROL);
+        service.promote(ALICE, BOB);
+        service.deposit(ALICE, 50);
+
+        assertFalse(service.promote(BOB, CAROL).success());
+        assertFalse(service.demote(BOB, BOB).success());
+        assertFalse(service.withdraw(BOB, 10).success());
+        assertFalse(service.disband(BOB).success());
+        assertTrue(service.guildOf(ALICE).isPresent());
+    }
+
+    @Test
+    void plainMemberCanModerateNothing() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.invite(ALICE, CAROL, true);
+        service.accept(CAROL);
+
+        assertFalse(service.invite(BOB, Username.of("Dave"), true).success());
+        assertFalse(service.kick(BOB, CAROL).success());
+        assertFalse(service.promote(BOB, CAROL).success());
+        assertFalse(service.demote(BOB, CAROL).success());
+    }
+
+    @Test
+    void officerCannotKickLeader() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.promote(ALICE, BOB);
+
+        assertFalse(service.kick(BOB, ALICE).success());
+        assertTrue(service.guildOf(ALICE).isPresent());
+    }
+
+    @Test
     void disbandIsLeaderOnlyAndClearsEveryMember() {
         service.create(ALICE, "Ironclad");
         service.invite(ALICE, BOB, true);
