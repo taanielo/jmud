@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,11 +80,15 @@ class ShroudedIsleZoneSmokeTest {
         JsonMobTemplateRepository mobRepository = new JsonMobTemplateRepository(DATA_ROOT);
         AttackRepository attackRepository = new JsonAttackRepository(DATA_ROOT);
 
-        List<MobTemplate> islandMobs = mobRepository.findAll().stream()
-            .filter(m -> roomRepository.findById(m.spawnRoomId())
+        List<MobTemplate> islandMobs = new ArrayList<>();
+        for (MobTemplate template : mobRepository.findAll()) {
+            boolean onIsland = roomRepository.findById(template.spawnRoomId())
                 .map(r -> r.getId().getValue().startsWith("shrouded-isle-"))
-                .orElse(false))
-            .toList();
+                .orElse(false);
+            if (onIsland) {
+                islandMobs.add(template);
+            }
+        }
 
         // shore (tide-crab + keeper), driftwood (fog-wraith), shipwreck (drowned-sailor),
         // summit (drowned-captain) — five templates in all.
