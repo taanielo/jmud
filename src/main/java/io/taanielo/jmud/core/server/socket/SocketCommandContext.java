@@ -506,6 +506,21 @@ public interface SocketCommandContext extends Client {
     default void executeTrain(String args) {}
 
     /**
+     * Executes a TRADE sub-command (a player name to propose, ACCEPT, DECLINE, ADD, REMOVE, CONFIRM,
+     * CANCEL, STATUS, or empty for status).
+     *
+     * <p>Manages a secure two-way item/gold exchange between two players in the same room. All
+     * validation and the atomic swap run here on the tick thread; nothing leaves a player's
+     * inventory until both parties confirm matching offers.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ADD GOLD 100"})
+     */
+    default void executeTrade(String args) {}
+
+    /**
      * Executes a PARTY sub-command (FORM, INVITE, ACCEPT, DECLINE, LEAVE, DISBAND, or empty).
      *
      * <p>Manages in-memory party groups that share XP on mob kills and display

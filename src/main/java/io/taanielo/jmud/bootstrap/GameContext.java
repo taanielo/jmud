@@ -10,6 +10,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.ability.AbilityCostResolver;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
@@ -87,6 +89,7 @@ import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.messaging.GossipHistory;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
+import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.WorldBossAnnouncer;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
@@ -132,6 +135,8 @@ import io.taanielo.jmud.core.tick.TickMetricsService;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSettings;
 import io.taanielo.jmud.core.tick.TickThreadDispatcher;
+import io.taanielo.jmud.core.trade.TradeParticipantStatus;
+import io.taanielo.jmud.core.trade.TradeService;
 import io.taanielo.jmud.core.transport.BoatEngine;
 import io.taanielo.jmud.core.transport.FerryRepository;
 import io.taanielo.jmud.core.transport.repository.json.JsonFerryRepository;
@@ -194,6 +199,7 @@ public record GameContext(
     QuestRepository questRepository,
     DailyQuestService dailyQuestService,
     PartyService partyService,
+    TradeService tradeService,
     BankService bankService,
     AuctionService auctionService,
     GuildService guildService,
@@ -428,6 +434,15 @@ public record GameContext(
         tickRegistry.register(
             new ArenaEventTicker(duelService, messageBroadcaster, onlinePlayers, worldRandom));
 
+        // Secure two-way player trading (issue #387). The service auto-cancels open sessions each
+        // tick when a participant leaves the shared room, goes offline, dies, or enters combat; the
+        // status snapshot is read from the live client pool and world services (AGENTS.md §5).
+        final MobRegistry tradeMobRegistry = mobRegistry;
+        TradeService tradeService = new TradeService(
+            username -> tradeStatusOf(username, clientPool, roomService, tradeMobRegistry, duelService),
+            (username, message) -> messageBroadcaster.sendToPlayer(username, new PlainTextMessage(message)));
+        tickRegistry.register(tradeService);
+
         GossipHistory gossipHistory = new GossipHistory();
 
         DialogueService dialogueService = createDialogueService();
@@ -482,6 +497,7 @@ public record GameContext(
             questRepository,
             dailyQuestService,
             partyService,
+            tradeService,
             bankService,
             auctionService,
             guildService,
@@ -504,6 +520,39 @@ public record GameContext(
             playerSessionRegistry,
             shutdownHandle
         );
+    }
+
+    /**
+     * Resolves a live trade-participant status snapshot from the connected client pool and world
+     * services, for the {@link TradeService} auto-cancel guard.
+     *
+     * @param username    the participant to inspect
+     * @param clientPool  the connected client pool
+     * @param roomService resolves player locations
+     * @param mobRegistry combat tracker (may be {@code null} in minimal boots)
+     * @param duelService duel tracker
+     * @return the participant's current status, or {@link TradeParticipantStatus#OFFLINE}
+     */
+    private static TradeParticipantStatus tradeStatusOf(
+        Username username,
+        ClientPool clientPool,
+        RoomService roomService,
+        @Nullable MobRegistry mobRegistry,
+        DuelService duelService
+    ) {
+        @Nullable Player player = clientPool.clients().stream()
+            .filter(client -> client.isInWorld())
+            .flatMap(client -> client.currentPlayer().stream())
+            .filter(candidate -> candidate.getUsername().equals(username))
+            .findFirst()
+            .orElse(null);
+        if (player == null) {
+            return TradeParticipantStatus.OFFLINE;
+        }
+        @Nullable RoomId room = roomService.findPlayerLocation(username).orElse(null);
+        boolean inCombat = (mobRegistry != null && mobRegistry.isInCombat(username))
+            || duelService.isDueling(username);
+        return new TradeParticipantStatus(true, room, player.isDead(), inCombat);
     }
 
     private static NotesRepository createNotesRepository() {
