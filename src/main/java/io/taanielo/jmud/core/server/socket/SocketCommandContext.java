@@ -424,6 +424,16 @@ public interface SocketCommandContext extends Client {
     default void craft(String args) {}
 
     /**
+     * Executes the {@code GATHER} command, harvesting the raw-material yield of an available resource
+     * node in the player's current room and adding it to their inventory. If no node is present, or
+     * the node has already been harvested and not yet respawned, a clear failure message is sent and
+     * nothing changes.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void gather() {}
+
+    /**
      * Executes a QUEST sub-command (LIST, ACCEPT, STATUS, COMPLETE, ABANDON).
      *
      * <p>The default implementation is a no-op so that existing test stubs

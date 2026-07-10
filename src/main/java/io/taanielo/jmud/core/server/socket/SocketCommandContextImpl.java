@@ -51,6 +51,7 @@ import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildMember;
 import io.taanielo.jmud.core.guild.GuildRank;
@@ -801,8 +802,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         connection.writeLines(result.lines());
+        writeResourceNodeLines(result.room());
         writeRoomOccupantLines(result.room());
         sendPrompt();
+    }
+
+    /** Writes the look-description line for any available resource node in the given room. */
+    private void writeResourceNodeLines(@Nullable Room room) {
+        if (room == null || context.resourceGatheringService() == null) {
+            return;
+        }
+        for (String line : context.resourceGatheringService().describeAvailableNodes(room.getId())) {
+            connection.writeLine(line);
+        }
     }
 
     @Override
@@ -2184,6 +2196,30 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player crafted = outcome.updatedPlayer();
         if (outcome.success() && crafted != null) {
             session.replacePlayer(crafted);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
+    public void gather() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to gather resources.");
+            return;
+        }
+        if (context.resourceGatheringService() == null) {
+            writeLineWithPrompt("There is nothing here to gather.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        GatherOutcome outcome = context.resourceGatheringService().gather(player, roomIdOpt.get());
+        Player updated = outcome.updatedPlayer();
+        if (outcome.success() && updated != null) {
+            session.replacePlayer(updated);
         }
         writeLineWithPrompt(outcome.message());
     }

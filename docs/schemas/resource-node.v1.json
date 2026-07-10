@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:resource-node:v1",
+  "title": "Resource node definition (v1)",
+  "description": "A single harvestable resource node file under data/resource-nodes/. Ties a raw-material item to a room; the GATHER command harvests one copy of the yield item and depletes the node until it respawns after respawn_ticks ticks. Depletion state is transient (in-memory, not persisted).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "room_id",
+    "yield_item",
+    "respawn_ticks",
+    "name",
+    "look_description"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique resource-node identifier."
+    },
+    "room_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the room (data/rooms/<id>.json) the node lives in."
+    },
+    "yield_item": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the raw-material item (data/items/<id>.json) added to the harvester's inventory on a successful GATHER."
+    },
+    "respawn_ticks": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of ticks a depleted node takes to become harvestable again."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short node label used in harvest messages, with no leading article (e.g. \"iron ore vein\")."
+    },
+    "look_description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Full sentence shown in the room's LOOK description while the node is available."
+    }
+  }
+}

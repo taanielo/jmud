@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "sewers-iron-vein",
+  "room_id": "sewers-tunnel",
+  "yield_item": "iron-ore",
+  "respawn_ticks": 30,
+  "name": "iron ore vein",
+  "look_description": "A rich vein of iron ore runs through the crumbling brick wall here, ripe for the taking (GATHER)."
+}
