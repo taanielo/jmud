@@ -619,6 +619,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
 
         // Award XP to other party members in the same room, folding in any loot they received this
         // kill so a single save carries both (their working snapshot already holds the loot items).
+        // Kill-quest progress and faction reputation are credited to each eligible member too, exactly
+        // as if they had landed the kill individually (issue #395), so grouped questing rewards the
+        // whole party consistently with the XP/loot split above.
         for (Username member : eligible) {
             if (member.equals(attacker.getUsername())) {
                 continue;
@@ -626,7 +629,6 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             LevelUpResult memberLvl = levelUpService.awardXp(working.get(member), xpPerMember);
             Player memberAfterXp = memberLvl.player()
                 .withTotalKills(memberLvl.player().getTotalKills() + 1);
-            saveOrLog(memberAfterXp);
             List<GameMessage> memberMsgs = new ArrayList<>();
             memberMsgs.add(GameMessage.toSource(
                 "Your party slay the " + mob.template().name()
@@ -635,6 +637,27 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 memberMsgs.add(GameMessage.toSource(
                     "You have advanced to level " + memberAfterXp.getLevel() + "!"));
             }
+            if (questKillService != null) {
+                var memberKillResult = questKillService.recordKill(memberAfterXp, mob.template().id().getValue());
+                if (memberKillResult.isPresent()) {
+                    memberAfterXp = memberKillResult.get().player();
+                    for (String msg : memberKillResult.get().messages()) {
+                        memberMsgs.add(GameMessage.toSource(msg));
+                    }
+                }
+            }
+            if (reputationService != null && factionId != null) {
+                int memberBefore = memberAfterXp.reputation().standing(factionId);
+                memberAfterXp = reputationService.recordKill(memberAfterXp, factionId);
+                int memberAfter = memberAfterXp.reputation().standing(factionId);
+                if (memberAfter != memberBefore) {
+                    String factionName = reputationService.findFaction(factionId)
+                        .map(Faction::name).orElse(factionId.getValue());
+                    memberMsgs.add(GameMessage.toSource("Your reputation with " + factionName
+                        + (memberAfter < memberBefore ? " decreases." : " increases.")));
+                }
+            }
+            saveOrLog(memberAfterXp);
             List<GameMessage> lootMsgs = memberMessages.get(member);
             if (lootMsgs != null) {
                 memberMsgs.addAll(lootMsgs);
