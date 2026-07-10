@@ -96,6 +96,9 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
+import io.taanielo.jmud.core.trade.TradeExecutionService;
+import io.taanielo.jmud.core.trade.TradeService;
+import io.taanielo.jmud.core.trade.TradeSession;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.DoorActionResult;
 import io.taanielo.jmud.core.world.Item;
@@ -149,6 +152,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final PlayerMailService playerMailService;
     private final LightingService lightingService;
     private final @Nullable NotesService notesService;
+    private final TradeExecutionService tradeExecutionService = new TradeExecutionService();
 
     /**
      * Creates a command context by extracting all game-logic dependencies from the provided
@@ -2615,6 +2619,268 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "" -> writeLineWithPrompt("Usage: TRAIN LIST  or  TRAIN <ability-id>");
             default -> handleTrainAbility(player, sub + (subArgs.isBlank() ? "" : " " + subArgs));
         }
+    }
+
+    @Override
+    public void executeTrade(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to trade.");
+            return;
+        }
+        TradeService tradeService = context.tradeService();
+        if (tradeService == null) {
+            writeLineWithPrompt("The trade system is not available.");
+            return;
+        }
+        String[] parts = SocketCommandParsing.splitInput(args);
+        String sub = parts[0];
+        String subArgs = parts[1];
+        switch (sub) {
+            case "ACCEPT" -> handleTradeAccept(player, tradeService);
+            case "DECLINE" -> handleTradeDecline(player, tradeService);
+            case "ADD" -> handleTradeAdd(player, tradeService, subArgs);
+            case "REMOVE" -> handleTradeRemove(player, tradeService, subArgs);
+            case "CONFIRM" -> handleTradeConfirm(player, tradeService);
+            case "CANCEL" -> handleTradeCancel(player, tradeService);
+            case "STATUS", "" -> handleTradeStatus(player, tradeService);
+            default -> {
+                String rawName = (args == null ? "" : args.trim()).split("\\s+", 2)[0];
+                handleTradePropose(player, tradeService, rawName);
+            }
+        }
+    }
+
+    private void handleTradePropose(Player player, TradeService tradeService, String targetName) {
+        if (targetName.isBlank()) {
+            writeLineWithPrompt("Trade with whom? Usage: TRADE <player>");
+            return;
+        }
+        Username target = onlinePlayerNames().stream()
+            .filter(u -> u.equals(Username.of(targetName)))
+            .findFirst()
+            .orElse(Username.of(targetName));
+        TradeService.TradeResult result = tradeService.propose(player.getUsername(), target);
+        writeLineWithPrompt(result.message());
+        if (result.success()) {
+            sendToUsername(target, player.getUsername().getValue()
+                + " wants to trade with you. Type TRADE ACCEPT or TRADE DECLINE.");
+        }
+    }
+
+    private void handleTradeAccept(Player player, TradeService tradeService) {
+        TradeService.TradeResult result = tradeService.accept(player.getUsername());
+        writeLineWithPrompt(result.message());
+        if (result.success()) {
+            tradeService.session(player.getUsername()).ifPresent(sessionState ->
+                sendToUsername(sessionState.other(player.getUsername()),
+                    player.getUsername().getValue()
+                        + " accepted your trade. Stage your offer with TRADE ADD <item> and TRADE CONFIRM."));
+        }
+    }
+
+    private void handleTradeDecline(Player player, TradeService tradeService) {
+        Username other = tradeService.session(player.getUsername())
+            .map(sessionState -> sessionState.other(player.getUsername()))
+            .orElse(null);
+        TradeService.TradeResult result = tradeService.decline(player.getUsername());
+        writeLineWithPrompt(result.message());
+        if (result.success() && other != null) {
+            sendToUsername(other, player.getUsername().getValue() + " declined the trade.");
+        }
+    }
+
+    private void handleTradeCancel(Player player, TradeService tradeService) {
+        Username other = tradeService.session(player.getUsername())
+            .map(sessionState -> sessionState.other(player.getUsername()))
+            .orElse(null);
+        TradeService.TradeResult result = tradeService.cancel(player.getUsername());
+        writeLineWithPrompt(result.message());
+        if (result.success() && other != null) {
+            sendToUsername(other, player.getUsername().getValue() + " cancelled the trade.");
+        }
+    }
+
+    private void handleTradeAdd(Player player, TradeService tradeService, String subArgs) {
+        String[] addParts = SocketCommandParsing.splitInput(subArgs);
+        if ("GOLD".equals(addParts[0])) {
+            handleTradeAddGold(player, tradeService, addParts[1]);
+            return;
+        }
+        if (subArgs.isBlank()) {
+            writeLineWithPrompt("Add what? Usage: TRADE ADD <item> | TRADE ADD GOLD <amount>");
+            return;
+        }
+        TradeSession sessionState = tradeService.session(player.getUsername()).orElse(null);
+        if (sessionState == null || !sessionState.isAccepted()) {
+            writeLineWithPrompt("You are not in an active trade.");
+            return;
+        }
+        Item item = matchItemByName(player.getInventory(), subArgs);
+        if (item == null) {
+            writeLineWithPrompt("You aren't carrying that.");
+            return;
+        }
+        boolean hadConfirm = anyConfirmed(sessionState);
+        TradeService.TradeResult result = tradeService.addItem(player.getUsername(), item);
+        reportOfferChange(player, sessionState.other(player.getUsername()), result,
+            "adds " + item.getName() + " to", hadConfirm);
+    }
+
+    private void handleTradeAddGold(Player player, TradeService tradeService, String amountInput) {
+        TradeSession sessionState = tradeService.session(player.getUsername()).orElse(null);
+        if (sessionState == null || !sessionState.isAccepted()) {
+            writeLineWithPrompt("You are not in an active trade.");
+            return;
+        }
+        int amount;
+        try {
+            amount = Integer.parseInt(amountInput.trim());
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("Add how much gold? Usage: TRADE ADD GOLD <amount>");
+            return;
+        }
+        if (amount <= 0) {
+            writeLineWithPrompt("Add how much gold? Usage: TRADE ADD GOLD <amount>");
+            return;
+        }
+        int alreadyOffered = sessionState.goldOf(player.getUsername());
+        if (alreadyOffered + amount > player.getGold()) {
+            writeLineWithPrompt("You do not have that much gold to offer.");
+            return;
+        }
+        boolean hadConfirm = anyConfirmed(sessionState);
+        TradeService.TradeResult result = tradeService.addGold(player.getUsername(), amount);
+        reportOfferChange(player, sessionState.other(player.getUsername()), result,
+            "adds " + amount + " gold to", hadConfirm);
+    }
+
+    private void handleTradeRemove(Player player, TradeService tradeService, String subArgs) {
+        TradeSession sessionState = tradeService.session(player.getUsername()).orElse(null);
+        if (sessionState == null || !sessionState.isAccepted()) {
+            writeLineWithPrompt("You are not in an active trade.");
+            return;
+        }
+        boolean hadConfirm = anyConfirmed(sessionState);
+        TradeService.TradeResult result = tradeService.removeItem(player.getUsername(), subArgs);
+        reportOfferChange(player, sessionState.other(player.getUsername()), result,
+            "changes their side of", hadConfirm);
+    }
+
+    private void handleTradeConfirm(Player player, TradeService tradeService) {
+        TradeSession sessionState = tradeService.session(player.getUsername()).orElse(null);
+        if (sessionState == null || !sessionState.isAccepted()) {
+            writeLineWithPrompt("You are not in an active trade.");
+            return;
+        }
+        TradeService.TradeResult result = tradeService.confirm(player.getUsername());
+        if (!result.success()) {
+            writeLineWithPrompt(result.message());
+            return;
+        }
+        connection.writeLine(result.message());
+        Username otherUser = sessionState.other(player.getUsername());
+        sendToUsername(otherUser, player.getUsername().getValue() + " has confirmed the trade.");
+        if (!sessionState.bothConfirmed()) {
+            sendPrompt();
+            return;
+        }
+        executeConfirmedTrade(player, tradeService, sessionState, otherUser);
+    }
+
+    private void executeConfirmedTrade(
+        Player player,
+        TradeService tradeService,
+        TradeSession sessionState,
+        Username otherUser
+    ) {
+        Player proposerPlayer = findOnlinePlayer(sessionState.proposer());
+        Player targetPlayer = findOnlinePlayer(sessionState.target());
+        if (proposerPlayer == null || targetPlayer == null) {
+            tradeService.cancel(player.getUsername());
+            writeLineWithPrompt("The trade was cancelled; the other party is no longer available.");
+            sendToUsername(otherUser, "The trade was cancelled; the other party is no longer available.");
+            return;
+        }
+        TradeExecutionService.TradeExecutionResult exec = tradeExecutionService.execute(
+            proposerPlayer, targetPlayer, sessionState, encumbranceService::isOverburdened);
+        if (!exec.success()) {
+            tradeService.resetConfirms(player.getUsername());
+            String message = exec.error() + " Both confirmations have been reset.";
+            writeLineWithPrompt(message);
+            sendToUsername(otherUser, message);
+            return;
+        }
+        boolean selfIsProposer = player.getUsername().equals(sessionState.proposer());
+        Player updatedSelf = selfIsProposer ? exec.updatedProposer() : exec.updatedTarget();
+        Player updatedOther = selfIsProposer ? exec.updatedTarget() : exec.updatedProposer();
+        String selfSummary = selfIsProposer ? exec.proposerSummary() : exec.targetSummary();
+        String otherSummary = selfIsProposer ? exec.targetSummary() : exec.proposerSummary();
+        tradeService.complete(player.getUsername());
+        deliverResult(new GameActionResult(updatedSelf, updatedOther, List.of(
+            GameMessage.toSource(selfSummary),
+            GameMessage.toPlayer(otherUser, otherSummary))));
+        sendPrompt();
+    }
+
+    private void handleTradeStatus(Player player, TradeService tradeService) {
+        TradeSession sessionState = tradeService.session(player.getUsername()).orElse(null);
+        if (sessionState == null) {
+            writeLineWithPrompt("You are not in a trade.");
+            return;
+        }
+        Username self = player.getUsername();
+        Username other = sessionState.other(self);
+        if (!sessionState.isAccepted()) {
+            writeLineWithPrompt(sessionState.proposer().equals(self)
+                ? "Awaiting " + other.getValue() + "'s response to your trade proposal."
+                : other.getValue() + " has proposed a trade. Type TRADE ACCEPT or TRADE DECLINE.");
+            return;
+        }
+        connection.writeLine("Trade with " + other.getValue() + ":");
+        connection.writeLine("  Your offer:   " + describeOffer(sessionState, self)
+            + (sessionState.hasConfirmed(self) ? "  [confirmed]" : ""));
+        connection.writeLine("  Their offer:  " + describeOffer(sessionState, other)
+            + (sessionState.hasConfirmed(other) ? "  [confirmed]" : ""));
+        sendPrompt();
+    }
+
+    private String describeOffer(TradeSession sessionState, Username who) {
+        List<String> parts = new ArrayList<>();
+        for (Item item : sessionState.itemsOf(who)) {
+            parts.add(item.getName());
+        }
+        int gold = sessionState.goldOf(who);
+        if (gold > 0) {
+            parts.add(gold + " gold");
+        }
+        return parts.isEmpty() ? "nothing" : String.join(", ", parts);
+    }
+
+    private void reportOfferChange(
+        Player player,
+        Username other,
+        TradeService.TradeResult result,
+        String verbPhrase,
+        boolean hadConfirm
+    ) {
+        if (!result.success()) {
+            writeLineWithPrompt(result.message());
+            return;
+        }
+        String selfMessage = hadConfirm
+            ? result.message() + " Both confirmations have been reset."
+            : result.message();
+        writeLineWithPrompt(selfMessage);
+        sendToUsername(other, player.getUsername().getValue() + " " + verbPhrase + " the trade.");
+        if (hadConfirm) {
+            sendToUsername(other, "The offer changed; both confirmations have been reset.");
+        }
+    }
+
+    private static boolean anyConfirmed(TradeSession sessionState) {
+        return sessionState.hasConfirmed(sessionState.proposer())
+            || sessionState.hasConfirmed(sessionState.target());
     }
 
     @Override

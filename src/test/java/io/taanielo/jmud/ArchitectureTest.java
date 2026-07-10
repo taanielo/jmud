@@ -100,6 +100,7 @@ class ArchitectureTest {
                             "..core.bank",
                             "..core.auction",
                             "..core.party",
+                            "..core.trade",
                             "..core.guild")
                     .should()
                     .dependOnClassesThat()
