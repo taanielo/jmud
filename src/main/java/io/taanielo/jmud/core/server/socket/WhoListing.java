@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.taanielo.jmud.core.authentication.Username;
 
@@ -70,16 +71,41 @@ public final class WhoListing {
             List<Username> onlineNames,
             Function<Username, String> tagResolver,
             Function<Username, String> titleResolver) {
+        return format(onlineNames, tagResolver, titleResolver, name -> false);
+    }
+
+    /**
+     * Formats the given online player names into display lines, appending each player's guild tag
+     * and active title suffix and marking those on the viewer's friends list.
+     *
+     * <p>Behaves like {@link #format(List, Function, Function)} but replaces the two-space indent
+     * with a {@code "* "} prefix for any name for which {@code isFriend} returns {@code true},
+     * visually distinguishing the viewer's friends. A fully-decorated friend line reads
+     * {@code "* Sparky [Ironclad] the Centurion"}.
+     *
+     * @param onlineNames   the authenticated, connected player names to list
+     * @param tagResolver   resolves the guild-tag suffix for each name
+     * @param titleResolver resolves the active-title suffix for each name
+     * @param isFriend      tests whether each name is on the viewer's friends list
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(
+            List<Username> onlineNames,
+            Function<Username, String> tagResolver,
+            Function<Username, String> titleResolver,
+            Predicate<Username> isFriend) {
         Objects.requireNonNull(onlineNames, "Online names are required");
         Objects.requireNonNull(tagResolver, "Tag resolver is required");
         Objects.requireNonNull(titleResolver, "Title resolver is required");
+        Objects.requireNonNull(isFriend, "Friend predicate is required");
         List<String> lines = new ArrayList<>(onlineNames.size() + 2);
         lines.add(HEADER);
         for (Username name : onlineNames) {
             Username resolved = Objects.requireNonNull(name, "Online name is required");
             String tag = Objects.requireNonNullElse(tagResolver.apply(resolved), "");
             String title = Objects.requireNonNullElse(titleResolver.apply(resolved), "");
-            lines.add("  " + resolved.getValue() + tag + title);
+            String prefix = isFriend.test(resolved) ? "* " : "  ";
+            lines.add(prefix + resolved.getValue() + tag + title);
         }
         lines.add(footer(onlineNames.size()));
         return List.copyOf(lines);

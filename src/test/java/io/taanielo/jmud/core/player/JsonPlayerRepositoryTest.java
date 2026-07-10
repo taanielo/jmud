@@ -78,6 +78,34 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsFriendList() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("buddy"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withFriendList(new PlayerFriendList(List.of("Alice", "Bob")));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("alice", "bob"), loaded.get().getFriends());
+        assertTrue(loaded.get().friendList().has("Alice"));
+    }
+
+    @Test
+    void loadsPlayerWithoutFriendsFieldAsEmptyList() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("lonely"), Password.hash("pw", 1000));
+        // Save a player with no friends field, mirroring existing/legacy saves.
+        repository.savePlayer(Player.of(user, "%hp> "));
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().friendList().isEmpty());
+        assertTrue(loaded.get().getFriends().isEmpty());
+    }
+
+    @Test
     void savesAndLoadsActiveTitle() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("champ"), Password.hash("pw", 1000));

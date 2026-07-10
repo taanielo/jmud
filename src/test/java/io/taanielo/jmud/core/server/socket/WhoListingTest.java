@@ -108,4 +108,35 @@ class WhoListingTest {
             "1 player online."
         ), lines);
     }
+
+    @Test
+    void marksFriendsWithStarPrefix() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Alice"), Username.of("Bob")),
+            name -> "",
+            name -> "",
+            name -> name.getValue().equals("Alice"));
+
+        assertEquals(List.of(
+            "Players online:",
+            "* Alice",
+            "  Bob",
+            "2 players online."
+        ), lines);
+    }
+
+    @Test
+    void friendPrefixCombinesWithGuildTagAndTitle() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Sparky")),
+            name -> " [Ironclad]",
+            name -> " the Centurion",
+            name -> true);
+
+        assertEquals(List.of(
+            "Players online:",
+            "* Sparky [Ironclad] the Centurion",
+            "1 player online."
+        ), lines);
+    }
 }

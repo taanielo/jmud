@@ -705,6 +705,35 @@ public interface SocketCommandContext extends Client {
     default void manageIgnore(String args) {}
 
     /**
+     * Executes a FRIEND sub-command: lists the player's friends and their online status when
+     * {@code args} is blank (or {@code LIST}), adds a player with {@code ADD <name>}, removes one
+     * with {@code REMOVE <name>}, or clears the whole list with {@code CLEAR}.
+     *
+     * <p>The friend relationship is one-directional and requires no consent; the befriended player
+     * is never notified. Friends are persisted per player and highlighted in {@code WHO}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ADD Alice"} or {@code "CLEAR"})
+     */
+    default void manageFriends(String args) {}
+
+    /**
+     * Returns {@code true} when the given player is on the current (viewing) player's friends list.
+     * Used by {@code WHO} to visually distinguish friends from other online players.
+     *
+     * <p>The default implementation returns {@code false} so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player to test against the viewer's friends list
+     * @return {@code true} when {@code username} is a friend of the viewing player
+     */
+    default boolean isFriend(Username username) {
+        return false;
+    }
+
+    /**
      * Executes a MAIL sub-command: lists the player's mail when {@code args} is blank,
      * shows a full message with {@code READ <n>}, removes a message with {@code DELETE <n>},
      * or leaves a message for a named player (who may be offline) with
