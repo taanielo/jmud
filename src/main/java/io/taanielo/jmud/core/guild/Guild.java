@@ -13,18 +13,26 @@ import io.taanielo.jmud.core.authentication.Username;
  * <p>The roster is the authoritative record of who belongs to the guild. Every mutating operation
  * returns a new {@link Guild} instance; instances are never modified in place, so a snapshot handed
  * to another thread (e.g. the write-behind persistence worker) is always stable.
+ *
+ * <p>{@code treasuryGold} is the guild's shared bank balance: gold pooled by members and drawn only
+ * by the leader. It is always non-negative and never created or destroyed by treasury operations —
+ * every deposit/withdraw is matched by an equal, opposite change to a player's personal balance by
+ * the caller.
  */
-public record Guild(GuildId id, String name, Username leaderId, List<GuildMember> members) {
+public record Guild(GuildId id, String name, Username leaderId, List<GuildMember> members, int treasuryGold) {
 
     public Guild {
         Objects.requireNonNull(id, "Guild id is required");
         Objects.requireNonNull(name, "Guild name is required");
         Objects.requireNonNull(leaderId, "Guild leaderId is required");
         members = List.copyOf(Objects.requireNonNull(members, "Guild members are required"));
+        if (treasuryGold < 0) {
+            throw new IllegalArgumentException("Guild treasuryGold must not be negative");
+        }
     }
 
     /**
-     * Founds a new guild with {@code leader} as its sole member and leader.
+     * Founds a new guild with {@code leader} as its sole member and leader and an empty treasury.
      *
      * @param id     the new guild's id
      * @param name   the guild's display name
@@ -32,7 +40,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
      * @return the newly created guild
      */
     public static Guild found(GuildId id, String name, Username leader) {
-        return new Guild(id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)));
+        return new Guild(id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0);
     }
 
     /** Returns {@code true} when the given player is the guild leader. */
@@ -71,7 +79,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         int nextOrder = members.stream().mapToInt(GuildMember::joinOrder).max().orElse(-1) + 1;
         List<GuildMember> next = new ArrayList<>(members);
         next.add(new GuildMember(username, GuildRank.MEMBER, nextOrder));
-        return new Guild(id, name, leaderId, next);
+        return new Guild(id, name, leaderId, next, treasuryGold);
     }
 
     /**
@@ -91,7 +99,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
             .filter(m -> !m.username().equals(username))
             .toList());
         if (remaining.isEmpty()) {
-            return new Guild(id, name, leaderId, List.of());
+            return new Guild(id, name, leaderId, List.of(), treasuryGold);
         }
         Username newLeader = leaderId;
         if (leaderId.equals(username)) {
@@ -103,6 +111,37 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
                 .map(m -> m.username().equals(successor.username()) ? m.withRank(GuildRank.LEADER) : m)
                 .toList();
         }
-        return new Guild(id, name, newLeader, remaining);
+        return new Guild(id, name, newLeader, remaining, treasuryGold);
+    }
+
+    /**
+     * Returns a copy of this guild whose treasury has been increased by {@code amount}.
+     *
+     * @param amount the non-negative amount of gold to add to the treasury
+     * @return the updated guild
+     * @throws IllegalArgumentException when {@code amount} is negative
+     */
+    public Guild depositTreasury(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("Deposit amount must not be negative");
+        }
+        return new Guild(id, name, leaderId, members, treasuryGold + amount);
+    }
+
+    /**
+     * Returns a copy of this guild whose treasury has been decreased by {@code amount}.
+     *
+     * @param amount the non-negative amount of gold to remove from the treasury
+     * @return the updated guild
+     * @throws IllegalArgumentException when {@code amount} is negative or exceeds the balance
+     */
+    public Guild withdrawTreasury(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("Withdraw amount must not be negative");
+        }
+        if (amount > treasuryGold) {
+            throw new IllegalArgumentException("Withdraw amount exceeds treasury balance");
+        }
+        return new Guild(id, name, leaderId, members, treasuryGold - amount);
     }
 }

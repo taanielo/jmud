@@ -17,6 +17,9 @@ import java.util.Optional;
  *   <li>{@code GUILD KICK <player>}  — remove a member (leader only)</li>
  *   <li>{@code GUILD DISBAND}        — permanently disband your guild (leader only, needs confirm)</li>
  *   <li>{@code GUILD WHO}            — list members with online/offline status</li>
+ *   <li>{@code GUILD BANK}           — show the guild's shared treasury balance</li>
+ *   <li>{@code GUILD DEPOSIT <amt>}  — deposit gold from your balance into the treasury</li>
+ *   <li>{@code GUILD WITHDRAW <amt>} — withdraw gold from the treasury (leader only)</li>
  *   <li>{@code GUILD <message>}      — send a message to online guildmates (also {@code GC})</li>
  * </ul>
  */
@@ -54,6 +57,9 @@ public class GuildCommand extends RegistrableCommand {
              + "  GUILD KICK <player>    — remove a member (leader only)\n"
              + "  GUILD DISBAND          — disband your guild (leader only; GUILD DISBAND CONFIRM)\n"
              + "  GUILD WHO              — list members with online/offline status\n"
+             + "  GUILD BANK             — show the guild treasury balance\n"
+             + "  GUILD DEPOSIT <amount> — deposit gold into the guild treasury\n"
+             + "  GUILD WITHDRAW <amount>— withdraw gold from the treasury (leader only)\n"
              + "  GUILD <message>        — chat to online guildmates (or use GC <message>)";
     }
 
