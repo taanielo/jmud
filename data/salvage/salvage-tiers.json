@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "tiers": [
+    {
+      "rarity": "common",
+      "materials": [
+        { "item": "iron-ore", "quantity": 1 }
+      ]
+    },
+    {
+      "rarity": "uncommon",
+      "materials": [
+        { "item": "iron-ore", "quantity": 2 },
+        { "item": "arcane-dust", "quantity": 1 }
+      ]
+    },
+    {
+      "rarity": "rare",
+      "materials": [
+        { "item": "iron-ore", "quantity": 3 },
+        { "item": "arcane-dust", "quantity": 2 }
+      ]
+    }
+  ]
+}
