@@ -37,6 +37,9 @@ record DailyQuestPoolDto(
      * @param titleReward  optional title granted on completion
      * @param itemReward   optional item id granted directly to inventory on completion
      * @param itemRewardQuantity number of copies of {@code itemReward} to grant (defaults to 1)
+     * @param reputationRewardFactionId optional faction id whose standing changes on completion
+     * @param reputationRewardDelta signed, non-zero standing change applied when
+     *                     {@code reputationRewardFactionId} is set
      */
     record DailyQuestVariantDto(
         String id,
@@ -48,7 +51,9 @@ record DailyQuestPoolDto(
         int xpReward,
         String titleReward,
         String itemReward,
-        int itemRewardQuantity
+        int itemRewardQuantity,
+        String reputationRewardFactionId,
+        int reputationRewardDelta
     ) {
     }
 }

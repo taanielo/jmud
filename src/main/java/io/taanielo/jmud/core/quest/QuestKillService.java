@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
+import io.taanielo.jmud.core.quest.QuestReputationRewardService.ReputationRewardGrant;
 import io.taanielo.jmud.core.world.Item;
 
 /**
@@ -26,9 +27,10 @@ public class QuestKillService {
 
     private final QuestRepository questRepository;
     private final QuestItemRewardService itemRewardService;
+    private final QuestReputationRewardService reputationRewardService;
 
     public QuestKillService(QuestRepository questRepository) {
-        this(questRepository, null);
+        this(questRepository, null, null);
     }
 
     /**
@@ -39,8 +41,24 @@ public class QuestKillService {
      *                          rewards (leaving gold/XP/title behaviour unchanged)
      */
     public QuestKillService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
+        this(questRepository, itemRewardService, null);
+    }
+
+    /**
+     * Creates a kill-quest service that additionally grants configured item and reputation rewards on
+     * completion.
+     *
+     * @param questRepository         the quest repository; must not be null
+     * @param itemRewardService       grants a quest's optional item reward, or {@code null} to disable
+     *                                item rewards
+     * @param reputationRewardService applies a quest's optional reputation reward, or {@code null} to
+     *                                disable reputation rewards
+     */
+    public QuestKillService(QuestRepository questRepository, QuestItemRewardService itemRewardService,
+            QuestReputationRewardService reputationRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
         this.itemRewardService = itemRewardService;
+        this.reputationRewardService = reputationRewardService;
     }
 
     /**
@@ -133,6 +151,12 @@ public class QuestKillService {
         messages.add(QuestItemRewardService.receiveLine(
             template.goldReward(), template.xpReward(), itemGrant.description()));
         messages.addAll(itemGrant.messages());
+
+        ReputationRewardGrant reputationGrant = reputationRewardService != null
+            ? reputationRewardService.grant(rewarded, template)
+            : ReputationRewardGrant.none(rewarded);
+        rewarded = reputationGrant.player();
+        reputationGrant.messageText().ifPresent(messages::add);
 
         String titleReward = template.titleReward();
         if (titleReward != null && !rewarded.titles().has(titleReward)) {

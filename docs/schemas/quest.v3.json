@@ -82,6 +82,15 @@
       "type": "integer",
       "minimum": 1,
       "description": "Number of copies of item_reward to grant. Defaults to 1 when item_reward is present and this field is omitted; must be omitted (or 0) when item_reward is absent."
+    },
+    "reputation_reward_faction_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Optional faction id whose standing changes on completion. Must exist under data/factions/. Applies to any quest type."
+    },
+    "reputation_reward_delta": {
+      "type": "integer",
+      "description": "Signed, non-zero change applied to the player's standing with reputation_reward_faction_id on completion (positive raises standing, negative lowers it). Must be omitted (or 0) when reputation_reward_faction_id is absent, and non-zero when it is present."
     }
   }
 }

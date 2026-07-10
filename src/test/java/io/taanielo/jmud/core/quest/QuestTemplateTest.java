@@ -38,4 +38,28 @@ class QuestTemplateTest {
     void rejectsItemIdWithoutPositiveQuantity() {
         assertThrows(IllegalArgumentException.class, () -> KILL_QUEST.withItemReward("troll-tooth-charm", 0));
     }
+
+    @Test
+    void hasNoReputationRewardByDefault() {
+        assertFalse(KILL_QUEST.hasReputationReward());
+        assertEquals(0, KILL_QUEST.reputationRewardDelta());
+    }
+
+    @Test
+    void withReputationRewardAttachesReward() {
+        QuestTemplate quest = KILL_QUEST.withReputationReward("bandits", -25);
+        assertTrue(quest.hasReputationReward());
+        assertEquals("bandits", quest.reputationRewardFactionId());
+        assertEquals(-25, quest.reputationRewardDelta());
+    }
+
+    @Test
+    void rejectsFactionIdWithZeroDelta() {
+        assertThrows(IllegalArgumentException.class, () -> KILL_QUEST.withReputationReward("bandits", 0));
+    }
+
+    @Test
+    void rejectsNonZeroDeltaWithoutFactionId() {
+        assertThrows(IllegalArgumentException.class, () -> KILL_QUEST.withReputationReward(null, -25));
+    }
 }

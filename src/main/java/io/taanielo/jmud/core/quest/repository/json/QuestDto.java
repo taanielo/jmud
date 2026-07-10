@@ -22,6 +22,10 @@ import java.util.List;
  * {@code itemReward} names an item id, that many copies are granted directly to the player's
  * inventory on completion. {@code itemRewardQuantity} defaults to {@code 1} when an item reward is
  * present but no quantity is specified.
+ *
+ * <p>{@code reputationRewardFactionId}/{@code reputationRewardDelta} are optional and apply to any
+ * quest type: when {@code reputationRewardFactionId} names a faction id, the player's standing with
+ * that faction changes by {@code reputationRewardDelta} (a signed, non-zero integer) on completion.
  */
 record QuestDto(
     int schemaVersion,
@@ -42,6 +46,8 @@ record QuestDto(
     String packageItemId,
     List<String> requiredRoomIds,
     String itemReward,
-    int itemRewardQuantity
+    int itemRewardQuantity,
+    String reputationRewardFactionId,
+    int reputationRewardDelta
 ) {
 }

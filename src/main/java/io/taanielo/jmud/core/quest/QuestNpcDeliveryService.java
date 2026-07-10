@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
+import io.taanielo.jmud.core.quest.QuestReputationRewardService.ReputationRewardGrant;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.RoomId;
 
@@ -27,9 +28,10 @@ public class QuestNpcDeliveryService {
     private final QuestRepository questRepository;
     private final LevelUpService levelUpService;
     private final QuestItemRewardService itemRewardService;
+    private final QuestReputationRewardService reputationRewardService;
 
     public QuestNpcDeliveryService(QuestRepository questRepository) {
-        this(questRepository, null);
+        this(questRepository, null, null);
     }
 
     /**
@@ -40,9 +42,25 @@ public class QuestNpcDeliveryService {
      *                          rewards
      */
     public QuestNpcDeliveryService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
+        this(questRepository, itemRewardService, null);
+    }
+
+    /**
+     * Creates an NPC-delivery service that additionally grants configured item and reputation rewards
+     * on delivery.
+     *
+     * @param questRepository         the quest repository; must not be null
+     * @param itemRewardService       grants a quest's optional item reward, or {@code null} to disable
+     *                                item rewards
+     * @param reputationRewardService applies a quest's optional reputation reward, or {@code null} to
+     *                                disable reputation rewards
+     */
+    public QuestNpcDeliveryService(QuestRepository questRepository, QuestItemRewardService itemRewardService,
+            QuestReputationRewardService reputationRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
         this.levelUpService = new LevelUpService();
         this.itemRewardService = itemRewardService;
+        this.reputationRewardService = reputationRewardService;
     }
 
     /**
@@ -146,6 +164,13 @@ public class QuestNpcDeliveryService {
         messages.add(QuestItemRewardService.receiveLine(
             template.goldReward(), template.xpReward(), itemGrant.description()));
         messages.addAll(itemGrant.messages());
+
+        ReputationRewardGrant reputationGrant = reputationRewardService != null
+            ? reputationRewardService.grant(updated, template)
+            : ReputationRewardGrant.none(updated);
+        updated = reputationGrant.player();
+        reputationGrant.messageText().ifPresent(messages::add);
+
         if (lvResult.leveledUp()) {
             messages.add("You have advanced to level " + updated.getLevel() + "!");
         }

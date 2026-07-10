@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
+import io.taanielo.jmud.core.quest.QuestReputationRewardService.ReputationRewardGrant;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 
@@ -27,9 +28,10 @@ public class QuestDeliveryService {
 
     private final QuestRepository questRepository;
     private final QuestItemRewardService itemRewardService;
+    private final QuestReputationRewardService reputationRewardService;
 
     public QuestDeliveryService(QuestRepository questRepository) {
-        this(questRepository, null);
+        this(questRepository, null, null);
     }
 
     /**
@@ -40,8 +42,24 @@ public class QuestDeliveryService {
      *                          rewards
      */
     public QuestDeliveryService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
+        this(questRepository, itemRewardService, null);
+    }
+
+    /**
+     * Creates a delivery service that additionally grants configured item and reputation rewards on
+     * completion.
+     *
+     * @param questRepository         the quest repository; must not be null
+     * @param itemRewardService       grants a quest's optional item reward, or {@code null} to disable
+     *                                item rewards
+     * @param reputationRewardService applies a quest's optional reputation reward, or {@code null} to
+     *                                disable reputation rewards
+     */
+    public QuestDeliveryService(QuestRepository questRepository, QuestItemRewardService itemRewardService,
+            QuestReputationRewardService reputationRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
         this.itemRewardService = itemRewardService;
+        this.reputationRewardService = reputationRewardService;
     }
 
     /**
@@ -149,6 +167,12 @@ public class QuestDeliveryService {
         messages.add(QuestItemRewardService.receiveLine(
             template.goldReward(), template.xpReward(), itemGrant.description()));
         messages.addAll(itemGrant.messages());
+
+        ReputationRewardGrant reputationGrant = reputationRewardService != null
+            ? reputationRewardService.grant(updated, template)
+            : ReputationRewardGrant.none(updated);
+        updated = reputationGrant.player();
+        reputationGrant.messageText().ifPresent(messages::add);
 
         String titleReward = template.titleReward();
         if (titleReward != null && !updated.titles().has(titleReward)) {

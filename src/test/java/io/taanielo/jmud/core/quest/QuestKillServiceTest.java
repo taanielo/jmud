@@ -21,6 +21,11 @@ import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
+import io.taanielo.jmud.core.faction.Faction;
+import io.taanielo.jmud.core.faction.FactionId;
+import io.taanielo.jmud.core.faction.FactionRepository;
+import io.taanielo.jmud.core.faction.FactionRepositoryException;
+import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.prompt.PromptSettings;
@@ -216,7 +221,54 @@ class QuestKillServiceTest {
             .anyMatch(m -> m.equals("You receive 30 gold and 75 experience.")));
     }
 
+    // ── Reputation reward on completion ────────────────────────────────────
+
+    @Test
+    void grantCompletionRewardDocksReputation() throws FactionRepositoryException {
+        QuestTemplate quest = RAT_CATCHER.withReputationReward("bandits", -25);
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(quest)), null, reputationRewardService());
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, quest);
+
+        assertEquals(-25, result.player().reputation().standing(FactionId.of("bandits")));
+        assertTrue(result.messages().stream()
+                .anyMatch(m -> m.equals("Your standing with the Bandit Brotherhood has fallen.")),
+            "Receipt should mention the reputation change: " + result.messages());
+    }
+
+    @Test
+    void grantCompletionRewardWithoutReputationRewardLeavesStandingUnchanged()
+            throws FactionRepositoryException {
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(RAT_CATCHER)), null, reputationRewardService());
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, RAT_CATCHER);
+
+        assertTrue(result.player().reputation().isEmpty());
+        assertFalse(result.messages().stream().anyMatch(m -> m.contains("Your standing with")));
+    }
+
     // ── fakes ──────────────────────────────────────────────────────────────
+
+    private static QuestReputationRewardService reputationRewardService() throws FactionRepositoryException {
+        Faction bandits = new Faction(
+            FactionId.of("bandits"), "the Bandit Brotherhood", "Cutthroats.", -10, 0, 0.02);
+        FactionRepository repo = new FactionRepository() {
+            @Override
+            public List<Faction> findAll() {
+                return List.of(bandits);
+            }
+
+            @Override
+            public Optional<Faction> findById(FactionId factionId) {
+                return factionId.equals(bandits.id()) ? Optional.of(bandits) : Optional.empty();
+            }
+        };
+        return new QuestReputationRewardService(new ReputationService(repo));
+    }
 
     private static Item item(String id, String name) {
         return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())

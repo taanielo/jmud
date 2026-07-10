@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -38,6 +39,8 @@ public class SocketCommandRegistry {
      * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
      * @param roomService             service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
      * @param messageBroadcaster      scoped delivery service used to fan out {@code SHOUT} to nearby rooms
+     * @param reputationService       faction reputation service used by the read-only {@code REPUTATION}
+     *                                command to resolve faction names and standing labels
      * @param weatherEngine           weather source used to show a visibility line in {@code WHO}/{@code SCORE};
      *                                {@code null} disables the weather line
      * @param tickMetricsService      tick-loop metrics service queried by the wizard {@code STATS} command
@@ -58,6 +61,7 @@ public class SocketCommandRegistry {
         PlayerRepository playerRepository,
         RoomService roomService,
         MessageBroadcaster messageBroadcaster,
+        ReputationService reputationService,
         @Nullable WeatherEngine weatherEngine,
         TickMetricsService tickMetricsService,
         WizardPolicy wizardPolicy,
@@ -73,6 +77,7 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(playerRepository, "Player repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(messageBroadcaster, "Message broadcaster is required");
+        Objects.requireNonNull(reputationService, "Reputation service is required");
         Objects.requireNonNull(tickMetricsService, "Tick metrics service is required");
         Objects.requireNonNull(wizardPolicy, "Wizard policy is required");
         Objects.requireNonNull(playerLocationService, "Player location service is required");
@@ -107,6 +112,7 @@ public class SocketCommandRegistry {
         new GossipCommand(registry);
         new WhoCommand(registry, roomService, weatherEngine);
         new RankCommand(registry, playerRepository);
+        new ReputationCommand(registry, reputationService);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
             roomService, weatherEngine);
         new AchievementsCommand(registry);

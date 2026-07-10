@@ -109,7 +109,9 @@ public class JsonQuestRepository implements QuestRepository {
                 dto.requiredRoomIds(),
                 null,
                 dto.itemReward(),
-                itemRewardQuantity
+                itemRewardQuantity,
+                dto.reputationRewardFactionId(),
+                dto.reputationRewardDelta()
             );
         } catch (IllegalArgumentException e) {
             throw new QuestRepositoryException("Invalid quest data in " + source + ": " + e.getMessage(), e);
