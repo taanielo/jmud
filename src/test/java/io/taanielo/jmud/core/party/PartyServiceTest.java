@@ -1,5 +1,9 @@
 package io.taanielo.jmud.core.party;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -9,10 +13,6 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.party.PartyService.PartyResult;
 import io.taanielo.jmud.core.world.RoomId;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PartyServiceTest {
 
