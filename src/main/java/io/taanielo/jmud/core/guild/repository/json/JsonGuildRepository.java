@@ -159,7 +159,8 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 GuildId.of(Objects.requireNonNull(dto.id(), "Guild id is required")),
                 Objects.requireNonNull(dto.name(), "Guild name is required"),
                 Username.of(Objects.requireNonNull(dto.leaderId(), "Guild leaderId is required")),
-                members);
+                members,
+                Math.max(0, dto.treasuryGold()));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new GuildRepositoryException("Invalid guild data in " + path + ": " + e.getMessage(), e);
         }
@@ -225,7 +226,8 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                     m.username().getValue(), m.rank().name(), m.joinOrder()))
                 .toList();
             GuildDto dto = new GuildDto(
-                SCHEMA_VERSION, guild.id().value(), guild.name(), guild.leaderId().getValue(), memberDtos);
+                SCHEMA_VERSION, guild.id().value(), guild.name(), guild.leaderId().getValue(),
+                memberDtos, guild.treasuryGold());
             objectMapper.writeValue(tmp.toFile(), dto);
             Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {

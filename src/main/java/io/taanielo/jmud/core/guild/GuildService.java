@@ -257,6 +257,69 @@ public class GuildService {
         return GuildResult.success(guild.name() + " has been disbanded.", guild);
     }
 
+    // ── Treasury operations ───────────────────────────────────────────
+
+    /**
+     * Deposits {@code amount} gold from a member into their guild's shared treasury. Validates that
+     * the caller is in a guild and that the amount is positive, then persists the updated guild.
+     *
+     * <p>This service only mutates the treasury; the caller is responsible for debiting the same
+     * amount from the acting player's personal balance in the same command so the two never drift.
+     *
+     * @param member the depositing player
+     * @param amount the amount of gold to move into the treasury (must be positive)
+     * @return the result; on success carries the updated guild snapshot
+     */
+    public synchronized GuildResult deposit(Username member, int amount) {
+        Objects.requireNonNull(member, "member is required");
+        @Nullable Guild guild = guildOf(member).orElse(null);
+        if (guild == null) {
+            return GuildResult.failure("You are not in a guild.");
+        }
+        if (amount <= 0) {
+            return GuildResult.failure("Deposit a positive amount of gold.");
+        }
+        Guild updated = guild.depositTreasury(amount);
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+        return GuildResult.success(
+            "You deposit " + amount + " gold into the " + guild.name() + " treasury.", updated);
+    }
+
+    /**
+     * Withdraws {@code amount} gold from the guild treasury into the leader's hands. Only the guild
+     * leader may withdraw; the amount must be positive and no greater than the current balance.
+     *
+     * <p>This service only mutates the treasury; the caller is responsible for crediting the same
+     * amount to the acting player's personal balance in the same command so the two never drift.
+     *
+     * @param member the player attempting to withdraw (must be the guild leader)
+     * @param amount the amount of gold to move out of the treasury (must be positive)
+     * @return the result; on success carries the updated guild snapshot
+     */
+    public synchronized GuildResult withdraw(Username member, int amount) {
+        Objects.requireNonNull(member, "member is required");
+        @Nullable Guild guild = guildOf(member).orElse(null);
+        if (guild == null) {
+            return GuildResult.failure("You are not in a guild.");
+        }
+        if (!guild.isLeader(member)) {
+            return GuildResult.failure("Only the guild leader can withdraw from the treasury.");
+        }
+        if (amount <= 0) {
+            return GuildResult.failure("Withdraw a positive amount of gold.");
+        }
+        if (amount > guild.treasuryGold()) {
+            return GuildResult.failure(
+                "The " + guild.name() + " treasury only holds " + guild.treasuryGold() + " gold.");
+        }
+        Guild updated = guild.withdrawTreasury(amount);
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+        return GuildResult.success(
+            "You withdraw " + amount + " gold from the " + guild.name() + " treasury.", updated);
+    }
+
     // ── Queries ───────────────────────────────────────────────────────
 
     /**

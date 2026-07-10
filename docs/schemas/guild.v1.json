@@ -59,6 +59,12 @@
           }
         }
       }
+    },
+    "treasury_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Shared guild treasury balance. Optional and additive: files written before this field existed load with a treasury of 0. Members deposit via GUILD DEPOSIT; only the leader withdraws via GUILD WITHDRAW."
     }
   }
 }

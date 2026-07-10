@@ -2469,6 +2469,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "KICK" -> handleGuildKick(guildService, subArgs);
             case "DISBAND" -> handleGuildDisband(guildService, subArgs);
             case "WHO" -> handleGuildWho(guildService);
+            case "BANK" -> handleGuildBank(guildService);
+            case "DEPOSIT" -> handleGuildDeposit(guildService, subArgs);
+            case "WITHDRAW" -> handleGuildWithdraw(guildService, subArgs);
             case "" -> handleGuildStatus(guildService);
             default -> guildChat(args);
         }
@@ -2661,7 +2664,100 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 String rankTag = member.rank() == GuildRank.LEADER ? " (leader)" : "";
                 connection.writeLine("  " + member.username().getValue() + rankTag + " - " + status);
             });
+        connection.writeLine("Treasury: " + guild.treasuryGold() + " gold.");
         sendPrompt();
+    }
+
+    private void handleGuildBank(GuildService guildService) {
+        Player player = session.getPlayer();
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        writeLineWithPrompt(guild.name() + " treasury: " + guild.treasuryGold() + " gold.");
+    }
+
+    private void handleGuildDeposit(GuildService guildService, String args) {
+        Player player = session.getPlayer();
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        Integer amount = parseGuildAmount(args, "deposit");
+        if (amount == null) {
+            return;
+        }
+        if (player.getGold() < amount) {
+            writeLineWithPrompt("You only have " + player.getGold() + " gold to deposit.");
+            return;
+        }
+        GuildResult result = guildService.deposit(player.getUsername(), amount);
+        if (result.success() && result.guild() != null) {
+            Player updated = player.addGold(-amount);
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            broadcastToGuild(result.guild(), player.getUsername(),
+                player.getUsername().getValue() + " deposited " + amount + " gold to the guild bank.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildWithdraw(GuildService guildService, String args) {
+        Player player = session.getPlayer();
+        Integer amount = parseGuildAmount(args, "withdraw");
+        if (amount == null) {
+            return;
+        }
+        GuildResult result = guildService.withdraw(player.getUsername(), amount);
+        if (result.success() && result.guild() != null) {
+            Player updated = player.addGold(amount);
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            broadcastToGuild(result.guild(), player.getUsername(),
+                player.getUsername().getValue() + " withdrew " + amount + " gold from the guild bank.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    /**
+     * Parses a positive gold amount for a guild treasury operation, writing a usage or validation
+     * message to the player and returning {@code null} when the input is missing or invalid.
+     */
+    @Nullable
+    private Integer parseGuildAmount(String args, String verb) {
+        if (args == null || args.isBlank()) {
+            writeLineWithPrompt(capitalize(verb) + " how much gold? Usage: GUILD "
+                + verb.toUpperCase(Locale.ROOT) + " <amount>");
+            return null;
+        }
+        int amount;
+        try {
+            amount = Integer.parseInt(args.trim());
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("'" + args.trim() + "' is not a valid amount.");
+            return null;
+        }
+        if (amount <= 0) {
+            writeLineWithPrompt("You must " + verb + " a positive amount of gold.");
+            return null;
+        }
+        return amount;
+    }
+
+    private static String capitalize(String word) {
+        return word.isEmpty() ? word : Character.toUpperCase(word.charAt(0)) + word.substring(1);
+    }
+
+    /** Sends a line to every online guild member except {@code except}. */
+    private void broadcastToGuild(Guild guild, Username except, String line) {
+        List<Username> online = onlinePlayerNames();
+        for (GuildMember member : guild.members()) {
+            if (!member.username().equals(except) && online.contains(member.username())) {
+                sendToUsername(member.username(), line);
+            }
+        }
     }
 
     private void handleGuildStatus(GuildService guildService) {

@@ -191,6 +191,70 @@ class GuildServiceTest {
         assertEquals("Ironclad", reloaded.guildTag(BOB).orElseThrow());
     }
 
+    @Test
+    void depositIncreasesTreasuryAndPersists() {
+        service.create(ALICE, "Ironclad");
+
+        GuildResult result = service.deposit(ALICE, 50);
+
+        assertTrue(result.success());
+        assertEquals(50, result.guild().treasuryGold());
+        assertEquals(50, service.guildOf(ALICE).orElseThrow().treasuryGold());
+        assertEquals(50, repository.saved.get(result.guild().id()).treasuryGold());
+    }
+
+    @Test
+    void memberCanDepositAndLeaderCanWithdraw() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+
+        assertTrue(service.deposit(BOB, 80).success());
+
+        GuildResult withdraw = service.withdraw(ALICE, 30);
+        assertTrue(withdraw.success());
+        assertEquals(50, withdraw.guild().treasuryGold());
+    }
+
+    @Test
+    void nonLeaderCannotWithdraw() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.deposit(BOB, 80);
+
+        GuildResult result = service.withdraw(BOB, 10);
+
+        assertFalse(result.success());
+        assertEquals(80, service.guildOf(ALICE).orElseThrow().treasuryGold());
+    }
+
+    @Test
+    void withdrawMoreThanTreasuryFails() {
+        service.create(ALICE, "Ironclad");
+        service.deposit(ALICE, 40);
+
+        GuildResult result = service.withdraw(ALICE, 41);
+
+        assertFalse(result.success());
+        assertEquals(40, service.guildOf(ALICE).orElseThrow().treasuryGold());
+    }
+
+    @Test
+    void depositRejectsNonPositiveAmount() {
+        service.create(ALICE, "Ironclad");
+
+        assertFalse(service.deposit(ALICE, 0).success());
+        assertFalse(service.deposit(ALICE, -5).success());
+        assertEquals(0, service.guildOf(ALICE).orElseThrow().treasuryGold());
+    }
+
+    @Test
+    void guildlessPlayerCannotDepositOrWithdraw() {
+        assertFalse(service.deposit(ALICE, 10).success());
+        assertFalse(service.withdraw(ALICE, 10).success());
+    }
+
     /** In-memory {@link GuildRepository} that mirrors the write-behind repository synchronously. */
     private static final class FakeGuildRepository implements GuildRepository {
         private final Map<GuildId, Guild> saved = new ConcurrentHashMap<>();

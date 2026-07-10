@@ -12,7 +12,8 @@ record GuildDto(
     @Nullable String id,
     @Nullable String name,
     @Nullable String leaderId,
-    @Nullable List<GuildMemberDto> members
+    @Nullable List<GuildMemberDto> members,
+    int treasuryGold
 ) {
 
     /** JSON transfer object for one roster entry. */

@@ -26,6 +26,7 @@ Each JSON file includes a `schema_version` field. Versioned JSON schemas live un
 - Races: `docs/schemas/race.v1.json`
 - Classes: `docs/schemas/class.v1.json`
 - Auction listings: `docs/schemas/auction.v1.json` (`data/auctions/listings.json`; the static Auction House definition lives in `data/auctions/auction-house.*.json`, following the `data/banks/bank.*.json` shape)
+- Guilds: `docs/schemas/guild.v1.json` (`data/guilds/<guild-id>.json`; one file per guild). Includes an optional, additive `treasury_gold` integer (default `0`) holding the guild's shared bank balance — members deposit with `GUILD DEPOSIT` and the leader withdraws with `GUILD WITHDRAW`. Guild files written before this field existed load with a treasury of `0`.
 
 ## Examples
 

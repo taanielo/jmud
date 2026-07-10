@@ -27,7 +27,9 @@ class JsonGuildRepositoryTest {
         Path file = dataRoot.resolve("guilds").resolve("g-1.json");
         JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
         try {
-            Guild guild = Guild.found(GuildId.of("g-1"), "Ironclad", ALICE).withMember(BOB);
+            Guild guild = Guild.found(GuildId.of("g-1"), "Ironclad", ALICE)
+                .withMember(BOB)
+                .depositTreasury(250);
             repository.save(guild);
             waitForFile(file, true);
         } finally {
@@ -45,6 +47,7 @@ class JsonGuildRepositoryTest {
             assertEquals(GuildRank.LEADER, g.member(ALICE).orElseThrow().rank());
             assertEquals(GuildRank.MEMBER, g.member(BOB).orElseThrow().rank());
             assertEquals(1, g.member(BOB).orElseThrow().joinOrder());
+            assertEquals(250, g.treasuryGold());
         } finally {
             reopened.close();
         }
