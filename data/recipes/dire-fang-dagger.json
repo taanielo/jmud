@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "dire-fang-dagger",
+  "name": "Dire Fang Dagger",
+  "output_item": "dire-fang-dagger",
+  "gold_cost": 30,
+  "materials": [
+    { "item": "dire-wolf-fang", "quantity": 2 }
+  ]
+}

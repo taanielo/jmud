@@ -46,6 +46,10 @@ import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
+import io.taanielo.jmud.core.craft.CraftingService;
+import io.taanielo.jmud.core.craft.Recipe;
+import io.taanielo.jmud.core.craft.RecipeRepositoryException;
+import io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.dialogue.DialogueRepositoryException;
 import io.taanielo.jmud.core.dialogue.DialogueService;
@@ -177,6 +181,7 @@ public record GameContext(
     WeatherEngine weatherEngine,
     ItemDurabilityService itemDurabilityService,
     ItemAffixService itemAffixService,
+    CraftingService craftingService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
     AchievementService achievementService,
@@ -310,6 +315,8 @@ public record GameContext(
         AffixRepository affixRepository = new JsonAffixRepository();
         ItemAffixService itemAffixService = new ItemAffixService(affixRepository);
 
+        CraftingService craftingService = createCraftingService(itemRepository);
+
         ReputationService reputationService = createReputationService();
         AchievementService achievementService = createAchievementService();
 
@@ -433,6 +440,7 @@ public record GameContext(
             weatherEngine,
             itemDurabilityService,
             itemAffixService,
+            craftingService,
             dialogueService,
             itemRepository,
             achievementService,
@@ -558,6 +566,15 @@ public record GameContext(
             return new JsonClassRepository();
         } catch (ClassRepositoryException e) {
             throw new IllegalStateException("Failed to initialize class repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createCraftingService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes = new JsonRecipeRepository().findAll();
+            return new CraftingService(recipes, itemRepository);
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize crafting service: " + e.getMessage(), e);
         }
     }
 

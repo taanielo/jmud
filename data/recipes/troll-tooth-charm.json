@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "troll-tooth-charm",
+  "name": "Troll Tooth Charm",
+  "output_item": "troll-tooth-charm",
+  "gold_cost": 25,
+  "materials": [
+    { "item": "troll-tooth", "quantity": 1 },
+    { "item": "bone-fragment", "quantity": 1 }
+  ]
+}

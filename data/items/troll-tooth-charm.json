@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "troll-tooth-charm",
+  "name": "Troll Tooth Charm",
+  "description": "A troll's tooth bound to a shard of bone with sinew. Warriors swear it lends a troll's stubborn strength.",
+  "attributes": {
+    "stats": {
+      "strength": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "offhand",
+  "weight": 1,
+  "value": 60,
+  "attack_ref": null
+}

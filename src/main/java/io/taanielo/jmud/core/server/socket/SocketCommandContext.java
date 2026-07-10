@@ -413,6 +413,17 @@ public interface SocketCommandContext extends Client {
     default void repairItem(String args) {}
 
     /**
+     * Executes the {@code CRAFT} command. With blank arguments it lists the recipes a blacksmith can
+     * make, with live {@code have/need} material counts; with an item name it attempts to craft it,
+     * consuming the required materials and gold. Requires a blacksmith in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output item name to craft, or blank to list recipes
+     */
+    default void craft(String args) {}
+
+    /**
      * Executes a QUEST sub-command (LIST, ACCEPT, STATUS, COMPLETE, ABANDON).
      *
      * <p>The default implementation is a no-op so that existing test stubs
