@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "glowcap-mushroom",
+  "name": "Glowcap Mushroom",
+  "description": "A faintly luminescent mushroom prized by alchemists, its cap glowing a soft blue in the dark. Its potent spores are a key reagent in the stronger brews.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 7
+}

@@ -40,9 +40,23 @@ public class JsonRecipeRepository implements RecipeRepository {
     }
 
     public JsonRecipeRepository(Path dataRoot) throws RecipeRepositoryException {
+        this(dataRoot, RECIPES_DIR);
+    }
+
+    /**
+     * Creates a repository loading recipes from a specific subdirectory under the data root. This lets
+     * distinct professions keep separate recipe sets (e.g. {@code recipes} for the blacksmith,
+     * {@code recipes/alchemy} for the alchemist). Listing is non-recursive, so top-level blacksmith
+     * recipes never pick up files nested in a profession subdirectory.
+     *
+     * @param dataRoot     the data root directory
+     * @param recipesSubdir the subdirectory (relative to {@code dataRoot}) holding the recipe files
+     */
+    public JsonRecipeRepository(Path dataRoot, String recipesSubdir) throws RecipeRepositoryException {
         this.objectMapper = JsonDataMapper.create();
         this.recipeMapper = new RecipeMapper();
-        this.recipesDirPath = Objects.requireNonNull(dataRoot, "Data root is required").resolve(RECIPES_DIR);
+        this.recipesDirPath = Objects.requireNonNull(dataRoot, "Data root is required")
+            .resolve(Objects.requireNonNull(recipesSubdir, "Recipes subdirectory is required"));
         ensureDirectory(recipesDirPath);
     }
 

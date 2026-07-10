@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "elixir-of-vigor",
+  "name": "Elixir of Vigor",
+  "description": "A swirling green draught that flushes the body with restorative warmth, mending flesh and clearing the mind at once.",
+  "attributes": {
+    "stats": {
+      "hp": 30,
+      "mana": 15
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You quaff {item}."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 40
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "alchemy-cure-potion",
+  "name": "Cure Potion",
+  "output_item": "cure-potion",
+  "gold_cost": 12,
+  "materials": [
+    { "item": "wild-herbs", "quantity": 2 },
+    { "item": "glowcap-mushroom", "quantity": 1 }
+  ]
+}

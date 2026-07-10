@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "yara-alchemist-welcome",
+  "npc_id": "alchemist",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Well met, traveller. Bring me herbs and I'll brew you something useful.",
+      "responses": [
+        { "text": "What can you brew?", "target": "brew" },
+        { "text": "Where do I find herbs?", "target": "herbs" },
+        { "text": "I'll come back later.", "target": "end" }
+      ]
+    },
+    "brew": {
+      "text": "Gather wild herbs and glowcap mushrooms, then type BREW here and I'll turn them into potions.",
+      "responses": [
+        { "text": "Where do I find herbs?", "target": "herbs" },
+        { "text": "Done talking.", "target": "end" }
+      ]
+    },
+    "herbs": {
+      "text": "Wild herbs grow along this very trail, and glowcaps sprout north among the tangled undergrowth. GATHER what you can.",
+      "responses": [
+        { "text": "What can you brew?", "target": "brew" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "May your vials never run dry.",
+      "responses": []
+    }
+  }
+}
