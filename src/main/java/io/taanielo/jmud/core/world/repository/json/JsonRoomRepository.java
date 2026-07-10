@@ -10,9 +10,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.taanielo.jmud.core.reload.ItemLookup;
+import io.taanielo.jmud.core.reload.PreparedReload;
+import io.taanielo.jmud.core.reload.RoomContentReloader;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
@@ -24,7 +28,7 @@ import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
-public class JsonRoomRepository implements RoomRepository {
+public class JsonRoomRepository implements RoomRepository, RoomContentReloader {
 
     private static final String ROOMS_DIR = "rooms";
 
@@ -32,7 +36,7 @@ public class JsonRoomRepository implements RoomRepository {
     private final RoomMapper roomMapper;
     private final ItemRepository itemRepository;
     private final Path roomsDirPath;
-    private final Map<RoomId, Room> cache;
+    private volatile Map<RoomId, Room> cache;
 
     public JsonRoomRepository(ItemRepository itemRepository) throws RepositoryException {
         this(itemRepository, Path.of("data"));
@@ -69,7 +73,7 @@ public class JsonRoomRepository implements RoomRepository {
         }
         RoomDto dto = readRoomDto(roomFilePath);
         validateSchema(dto, roomFilePath);
-        List<Item> items = resolveItems(dto, roomFilePath);
+        List<Item> items = resolveItems(dto, roomFilePath, itemRepository::findById);
         Room room;
         try {
             room = roomMapper.toDomain(dto, items);
@@ -78,6 +82,42 @@ public class JsonRoomRepository implements RoomRepository {
         }
         cache.put(room.getId(), room);
         return Optional.of(room);
+    }
+
+    /**
+     * Reads and validates every room JSON file into an in-memory snapshot without mutating the live
+     * cache (issue #349). Item references are resolved through {@code itemLookup} so a room may
+     * reference an item added in the same reload. The returned {@link PreparedReload#commit()}
+     * atomically swaps the cache and must be called on the tick thread (AGENTS.md §5).
+     */
+    @Override
+    public PreparedReload prepareRooms(ItemLookup itemLookup) throws RepositoryException {
+        Objects.requireNonNull(itemLookup, "Item lookup is required");
+        Map<RoomId, Room> loaded = readAllRooms(itemLookup);
+        // The commit lambda swaps the cache field from within this repository's own method so the
+        // arch rule guarding Json*Repository access stays satisfied (AGENTS.md §3.3).
+        return PreparedReload.of("rooms", loaded.size(), () -> cache = new ConcurrentHashMap<>(loaded));
+    }
+
+    private Map<RoomId, Room> readAllRooms(ItemLookup itemLookup) throws RepositoryException {
+        Map<RoomId, Room> loaded = new ConcurrentHashMap<>();
+        try (Stream<Path> files = Files.list(roomsDirPath)) {
+            for (Path path : files.filter(p -> p.toString().endsWith(".json")).toList()) {
+                RoomDto dto = readRoomDto(path);
+                validateSchema(dto, path);
+                List<Item> items = resolveItems(dto, path, itemLookup);
+                Room room;
+                try {
+                    room = roomMapper.toDomain(dto, items);
+                } catch (IllegalArgumentException e) {
+                    throw new RepositoryException("Invalid room data in " + path + ": " + e.getMessage(), e);
+                }
+                loaded.put(room.getId(), room);
+            }
+        } catch (IOException e) {
+            throw new RepositoryException("Failed to list room data files: " + e.getMessage(), e);
+        }
+        return loaded;
     }
 
     private void ensureDirectory(Path path) throws RepositoryException {
@@ -131,7 +171,7 @@ public class JsonRoomRepository implements RoomRepository {
         }
     }
 
-    private List<Item> resolveItems(RoomDto dto, Path path) throws RepositoryException {
+    private List<Item> resolveItems(RoomDto dto, Path path, ItemLookup itemLookup) throws RepositoryException {
         if (dto.itemIds() == null) {
             throw new RepositoryException("Room data in " + path + " is missing item_ids");
         }
@@ -142,7 +182,7 @@ public class JsonRoomRepository implements RoomRepository {
             }
             ItemId itemId = ItemId.of(itemIdValue);
             try {
-                Optional<Item> item = itemRepository.findById(itemId);
+                Optional<Item> item = itemLookup.find(itemId);
                 if (item.isEmpty()) {
                     throw new RepositoryException("Room data in " + path + " references missing item id " + itemIdValue);
                 }

@@ -50,6 +50,8 @@ import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.quest.QuestKillService;
+import io.taanielo.jmud.core.reload.MobContentReloader;
+import io.taanielo.jmud.core.reload.PreparedReload;
 import io.taanielo.jmud.core.tick.Tickable;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.EquipmentSlot;
@@ -70,7 +72,7 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
  * delivered via {@link PlayerEventBus} so no transport code lives here.
  */
 @Slf4j
-public class MobRegistry implements Tickable, NpcStealPort {
+public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
 
     private final MobTemplateRepository templateRepository;
     private final ItemRepository itemRepository;
@@ -229,6 +231,30 @@ public class MobRegistry implements Tickable, NpcStealPort {
         }
         log.info("Spawned {} mob instance(s) from {} template(s); cached {} pet template(s)",
             instances.size(), templates.size(), petTemplates.size());
+    }
+
+    /**
+     * Reads and validates every mob-template JSON file off the tick thread for a hot reload
+     * (issue #349). Committing the returned {@link PreparedReload} replaces the registry's cached
+     * templates ({@code templatesById} and the pet-template list) so subsequent spawns and
+     * tamed-pet respawns use the updated definitions; mobs already living in the world are left
+     * untouched. The commit runs on the tick thread (AGENTS.md §5).
+     */
+    @Override
+    public PreparedReload prepareMobs() throws RepositoryException {
+        List<MobTemplate> templates = templateRepository.findAll();
+        return PreparedReload.of("mobs", templates.size(), () -> applyTemplates(templates));
+    }
+
+    private void applyTemplates(List<MobTemplate> templates) {
+        templatesById.clear();
+        petTemplates.clear();
+        for (MobTemplate template : templates) {
+            templatesById.put(template.id().getValue(), template);
+            if (template.isPetTemplate()) {
+                petTemplates.add(template);
+            }
+        }
     }
 
     @Override
