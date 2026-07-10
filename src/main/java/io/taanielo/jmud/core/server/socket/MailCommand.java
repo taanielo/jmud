@@ -5,7 +5,7 @@ import java.util.Optional;
 /**
  * Handles the {@code MAIL} command, giving every player a persistent, offline mailbox.
  *
- * <p>Five forms are supported:
+ * <p>Six forms are supported:
  * <ul>
  *   <li>{@code MAIL}                          — lists mail waiting for the player.</li>
  *   <li>{@code MAIL READ <n>}                 — shows the full text of message {@code n}.</li>
@@ -15,6 +15,9 @@ import java.util.Optional;
  *   <li>{@code MAIL GOLD <playername> <amount> <message>} — leaves a message with a gold
  *       attachment; the gold is deducted from the sender immediately and credited to the
  *       recipient when they read or delete the message.</li>
+ *   <li>{@code MAIL ITEM <playername> <itemname> <message>} — leaves a message with a single item
+ *       attachment; the item leaves the sender's inventory immediately (unequipping it first if
+ *       worn) and is credited to the recipient when they read or delete the message.</li>
  * </ul>
  *
  * <p>Unlike {@link TellCommand}, the target does not need to be connected: delivery is
@@ -47,12 +50,15 @@ public class MailCommand extends RegistrableCommand {
     @Override
     public String longDescription() {
         return "Usage: MAIL  |  MAIL READ <n>  |  MAIL DELETE <n>  |  MAIL <playername> <message>"
-             + "  |  MAIL GOLD <playername> <amount> <message>\n"
+             + "  |  MAIL GOLD <playername> <amount> <message>"
+             + "  |  MAIL ITEM <playername> <itemname> <message>\n"
              + "  MAIL                        — list mail waiting for you.\n"
              + "  MAIL READ <n>                — show the full text of message n.\n"
              + "  MAIL DELETE <n>              — delete message n.\n"
              + "  MAIL <playername> <message>  — leave a message for a player (need not be online).\n"
-             + "  MAIL GOLD <playername> <amount> <message> — attach gold to a message.";
+             + "  MAIL GOLD <playername> <amount> <message> — attach gold to a message.\n"
+             + "  MAIL ITEM <playername> <itemname> <message> — attach an item from your inventory "
+             + "to a message.";
     }
 
     @Override

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.tick.TickSettings;
+import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.Item;
 
 /**
  * Domain service implementing the {@code MAIL} command's business rules: leaving an offline
@@ -86,6 +88,51 @@ public class PlayerMailService {
     }
 
     /**
+     * Leaves a message for the given recipient with an item attachment. The item is removed from
+     * the sender's inventory immediately (unequipping it first if worn, mirroring {@code GIVE}) and
+     * credited to the recipient only when they read or delete the message. Exactly one item may be
+     * attached per message.
+     *
+     * @param sender      the player sending the item; the item leaves their inventory on success
+     * @param recipient   the player to receive the mail and item; must not be null
+     * @param currentTick the game tick at which the message is being sent
+     * @param body        the message text; must not be blank
+     * @param item        the item to attach, already resolved from the sender's inventory
+     * @return the result; on success {@link MailResult#updatedPlayer()} is the recipient with the
+     *         new message and {@link MailResult#updatedSender()} is the sender with the item
+     *         removed. On failure (blank body or full mailbox) no player is returned and the item
+     *         does not move.
+     */
+    public MailResult sendItem(Player sender, Player recipient, long currentTick, String body, Item item) {
+        Objects.requireNonNull(sender, "sender is required");
+        Objects.requireNonNull(recipient, "recipient is required");
+        Objects.requireNonNull(item, "item is required");
+        String trimmedBody = body == null ? "" : body.trim();
+        if (trimmedBody.isEmpty()) {
+            return MailResult.failure("Mail what message?");
+        }
+        if (recipient.mailbox().isFull()) {
+            return MailResult.failure(recipient.getUsername().getValue() + "'s mailbox is full.");
+        }
+        String senderName = sender.getUsername().getValue();
+        Player updatedRecipient = recipient.withMailbox(recipient.mailbox().add(
+            PlayerMailMessage.withAttachments(senderName, currentTick, trimmedBody, false, 0, item)));
+        PlayerEquipment equipment = sender.getEquipment();
+        if (equipment.isEquipped(item.getId())) {
+            EquipmentSlot slot = equipment.equippedSlot(item.getId());
+            if (slot != null) {
+                equipment = equipment.unequip(slot);
+            }
+        }
+        Player updatedSender = sender.removeItem(item).withEquipment(equipment);
+        return MailResult.sentWithItem(
+            "You leave a message for " + recipient.getUsername().getValue()
+                + " with " + item.getName() + " attached.",
+            updatedRecipient,
+            updatedSender);
+    }
+
+    /**
      * Lists the given player's mail, oldest first, with sender, relative age, and a preview
      * of each message. Viewing the list marks every message read, clearing the unread count
      * shown at login.
@@ -105,8 +152,10 @@ public class PlayerMailService {
             PlayerMailMessage message = messages.get(i);
             String preview = preview(message.body());
             String goldMarker = message.hasAttachment() ? " [" + message.attachedGold() + " gold]" : "";
+            Item attachedItem = message.resolveAttachedItem();
+            String itemMarker = attachedItem != null ? " [item: " + attachedItem.getName() + "]" : "";
             lines.add("  " + (i + 1) + ". " + message.sender() + " (" + relativeAge(currentTick, message.sentAtTick())
-                + ")" + goldMarker + " - " + preview);
+                + ")" + goldMarker + itemMarker + " - " + preview);
         }
         Player updated = player.withMailbox(player.mailbox().markAllRead());
         return MailResult.listing(lines, updated);
@@ -115,14 +164,22 @@ public class PlayerMailService {
     /**
      * Shows the full text of the message at the given one-based index, and marks it read. If the
      * message carries a gold attachment, the gold is credited to the reader and the attachment is
-     * cleared so it cannot be claimed again on a subsequent read.
+     * cleared so it cannot be claimed again on a subsequent read. If the message carries an item
+     * attachment, the item is added to the reader's inventory and the attachment cleared, unless
+     * claiming it would leave the reader
+     * {@linkplain EncumbranceService#isOverburdened(Player) overburdened} — in which case the item
+     * stays attached (never destroyed) for a later retry and a warning is shown. Gold is always
+     * credited regardless of the item claim outcome.
      *
-     * @param player the player whose mailbox to read from
-     * @param index  one-based index as shown by {@link #list}
+     * @param player             the player whose mailbox to read from
+     * @param index              one-based index as shown by {@link #list}
+     * @param encumbranceService used to check whether claiming an attached item would overburden
+     *                           the reader
      * @return the result; failure when the index is out of range
      */
-    public MailResult read(Player player, int index) {
+    public MailResult read(Player player, int index, EncumbranceService encumbranceService) {
         Objects.requireNonNull(player, "player is required");
+        Objects.requireNonNull(encumbranceService, "encumbrance service is required");
         List<PlayerMailMessage> messages = player.mailbox().messages();
         int zeroBased = index - 1;
         if (zeroBased < 0 || zeroBased >= messages.size()) {
@@ -139,6 +196,17 @@ public class PlayerMailService {
             mailbox = mailbox.clearAttachment(zeroBased);
             lines.add("You collect " + message.attachedGold() + " gold attached to this message.");
         }
+        Item attachedItem = message.resolveAttachedItem();
+        if (attachedItem != null) {
+            Player withItem = updated.addItem(attachedItem);
+            if (encumbranceService.isOverburdened(withItem)) {
+                lines.add("You are carrying too much to claim the attached item.");
+            } else {
+                updated = withItem;
+                mailbox = mailbox.clearItemAttachment(zeroBased);
+                lines.add("You collect " + attachedItem.getName() + " attached to this message.");
+            }
+        }
         updated = updated.withMailbox(mailbox);
         return MailResult.listing(lines, updated);
     }
@@ -146,14 +214,22 @@ public class PlayerMailService {
     /**
      * Removes the message at the given one-based index from the player's mailbox. If the message
      * still carries an unclaimed gold attachment, the gold is credited to the player first so it
-     * is never silently lost.
+     * is never silently lost. If it carries an unclaimed item attachment, the item is added to the
+     * player's inventory first; but when claiming the item would leave the player
+     * {@linkplain EncumbranceService#isOverburdened(Player) overburdened}, the delete fails with no
+     * state change (the message and its attachments stay intact) so the item is never destroyed and
+     * can be claimed after freeing up space.
      *
-     * @param player the player whose mailbox to delete from
-     * @param index  one-based index as shown by {@link #list}
-     * @return the result; failure when the index is out of range
+     * @param player             the player whose mailbox to delete from
+     * @param index              one-based index as shown by {@link #list}
+     * @param encumbranceService used to check whether claiming an attached item would overburden
+     *                           the player
+     * @return the result; failure when the index is out of range or claiming an attached item would
+     *         overburden the player
      */
-    public MailResult delete(Player player, int index) {
+    public MailResult delete(Player player, int index, EncumbranceService encumbranceService) {
         Objects.requireNonNull(player, "player is required");
+        Objects.requireNonNull(encumbranceService, "encumbrance service is required");
         List<PlayerMailMessage> messages = player.mailbox().messages();
         int zeroBased = index - 1;
         if (zeroBased < 0 || zeroBased >= messages.size()) {
@@ -161,13 +237,23 @@ public class PlayerMailService {
         }
         PlayerMailMessage message = messages.get(zeroBased);
         Player updated = player;
+        String itemNotice = "";
+        Item attachedItem = message.resolveAttachedItem();
+        if (attachedItem != null) {
+            Player withItem = updated.addItem(attachedItem);
+            if (encumbranceService.isOverburdened(withItem)) {
+                return MailResult.failure("You are carrying too much to claim the attached item.");
+            }
+            updated = withItem;
+            itemNotice = " " + attachedItem.getName() + " was added to your inventory.";
+        }
         String creditNotice = "";
         if (message.hasAttachment()) {
             updated = updated.addGold(message.attachedGold());
             creditNotice = " " + message.attachedGold() + " gold was credited to you.";
         }
         updated = updated.withMailbox(updated.mailbox().remove(zeroBased));
-        return MailResult.success("Message " + index + " deleted." + creditNotice, updated);
+        return MailResult.success("Message " + index + " deleted." + creditNotice + itemNotice, updated);
     }
 
     private static String preview(String body) {

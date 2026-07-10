@@ -3493,14 +3493,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 return;
             }
             MailResult result = "READ".equals(firstToken)
-                ? playerMailService.read(player, index)
-                : playerMailService.delete(player, index);
+                ? playerMailService.read(player, index, encumbranceService)
+                : playerMailService.delete(player, index, encumbranceService);
             applyOwnMailResult(result, null);
             return;
         }
 
         if ("GOLD".equals(firstToken)) {
             handleSendGoldMail(player, parts.length < 2 ? "" : parts[1], currentTick);
+            return;
+        }
+
+        if ("ITEM".equals(firstToken)) {
+            handleSendItemMail(player, parts.length < 2 ? "" : parts[1], currentTick);
             return;
         }
 
@@ -3531,6 +3536,44 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         MailResult result = playerMailService.sendGold(sender, recipient, currentTick, message, amount);
+        if (result.success()) {
+            if (result.updatedPlayer() != null) {
+                updateTarget(result.updatedPlayer());
+            }
+            if (result.updatedSender() != null) {
+                session.replacePlayer(result.updatedSender());
+                saveOrWarn(result.updatedSender());
+            }
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleSendItemMail(Player sender, String rest, long currentTick) {
+        String[] itemParts = rest.trim().split("\\s+", 3);
+        if (itemParts.length < 3 || itemParts[0].isBlank() || itemParts[1].isBlank() || itemParts[2].isBlank()) {
+            writeLineWithPrompt("Usage: MAIL ITEM <playername> <itemname> <message>");
+            return;
+        }
+        String targetName = itemParts[0];
+        String itemName = itemParts[1];
+        String message = itemParts[2].trim();
+        Username targetUsername = Username.of(targetName);
+        if (targetUsername.equals(sender.getUsername())) {
+            writeLineWithPrompt("You cannot mail yourself.");
+            return;
+        }
+        Item item = matchItemByName(sender.getInventory(), itemName);
+        if (item == null) {
+            writeLineWithPrompt("You aren't carrying that.");
+            return;
+        }
+        Player recipient = resolvePlayerByUsername(targetUsername);
+        if (recipient == null) {
+            writeLineWithPrompt("No such player: " + targetName);
+            return;
+        }
+        cancelRestIfActive();
+        MailResult result = playerMailService.sendItem(sender, recipient, currentTick, message, item);
         if (result.success()) {
             if (result.updatedPlayer() != null) {
                 updateTarget(result.updatedPlayer());

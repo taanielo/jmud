@@ -40,6 +40,14 @@ public record MailResult(
     }
 
     /**
+     * Constructs a successful {@code MAIL ITEM} result, carrying both the recipient (with the
+     * new mail and attached item) and the sender (with the item removed from their inventory).
+     */
+    public static MailResult sentWithItem(String message, Player updatedRecipient, Player updatedSender) {
+        return new MailResult(true, message, updatedRecipient, List.of(), updatedSender);
+    }
+
+    /**
      * Constructs a successful multi-line listing result, optionally with an updated player
      * (e.g. when viewing the list marks messages read).
      */
