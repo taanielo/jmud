@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "id": "cove-fence-shop",
+  "name": "a shifty-eyed fence",
+  "room_id": "shrouded-isle-cove",
+  "faction_id": "bandits",
+  "stock": [
+    {"item_id": "torch"},
+    {"item_id": "lantern"},
+    {"item_id": "water"},
+    {"item_id": "ale"},
+    {"item_id": "bread"},
+    {"item_id": "throwing-knife"},
+    {"item_id": "dagger"},
+    {"item_id": "health-potion", "min_reputation": -20},
+    {"item_id": "scroll-of-recall", "min_reputation": -20},
+    {"item_id": "smugglers-tonic", "min_reputation": 0}
+  ],
+  "sell_ratio": 0.5
+}
