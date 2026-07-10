@@ -58,6 +58,7 @@ import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.Rarity;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.TimeOfDay;
@@ -98,6 +99,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private ReputationService reputationService;
     /** Optional achievement service that unlocks milestone achievements on kill/level-up; may be null. */
     private AchievementService achievementService;
+    /** Optional world-boss announcer that broadcasts boss spawn/death server-wide; may be null. */
+    private WorldBossAnnouncer worldBossAnnouncer;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -201,6 +204,16 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         this.achievementService = achievementService;
     }
 
+    /**
+     * Registers the world-boss announcer that broadcasts the server-wide spawn and death
+     * announcements when a mob flagged {@link MobTemplate#worldBoss()} awakens or is slain.
+     *
+     * @param worldBossAnnouncer the announcer; may be null to disable world-boss announcements
+     */
+    public void setWorldBossAnnouncer(WorldBossAnnouncer worldBossAnnouncer) {
+        this.worldBossAnnouncer = worldBossAnnouncer;
+    }
+
     private TimeOfDay currentTimeOfDay() {
         return worldClock != null ? worldClock.timeOfDay() : TimeOfDay.DAY;
     }
@@ -227,6 +240,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             for (int i = 0; i < template.maxCount(); i++) {
                 MobInstance mob = new MobInstance(template);
                 instances.put(mob.instanceId(), mob);
+                announceWorldBossSpawn(mob);
             }
         }
         log.info("Spawned {} mob instance(s) from {} template(s); cached {} pet template(s)",
@@ -272,6 +286,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 if (mob.tickRespawn()) {
                     mob.respawn();
                     log.debug("Mob {} respawned in {}", mob.template().name(), mob.roomId());
+                    announceWorldBossSpawn(mob);
                 }
                 continue;
             }
@@ -497,10 +512,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private Player applyMobKillRewards(
         MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
         messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-        for (Item dropped : dropLoot(mob)) {
+        List<Item> drops = dropLoot(mob);
+        for (Item dropped : drops) {
             messages.add(GameMessage.toSource(
                 "A " + dropped.getName() + " drops to the ground."));
         }
+        handleWorldBossKill(mob, attacker.getUsername(), drops, messages);
         mob.scheduleRespawn(currentTimeOfDay());
         endCombatForMob(mob);
 
@@ -1473,10 +1490,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
 
             if (!mob.isAlive()) {
                 messages.add(GameMessage.toSource("You slay the " + mob.template().name() + "!"));
-                for (Item dropped : dropLoot(mob)) {
+                List<Item> drops = dropLoot(mob);
+                for (Item dropped : drops) {
                     messages.add(GameMessage.toSource(
                         "A " + dropped.getName() + " drops to the ground."));
                 }
+                handleWorldBossKill(mob, username, drops, messages);
                 mob.scheduleRespawn(currentTimeOfDay());
                 endCombatForMob(mob);
 
@@ -1589,6 +1608,83 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             }
         }
         return dropped;
+    }
+
+    /**
+     * Broadcasts the server-wide "it's up!" announcement for a freshly spawned or respawned
+     * world-boss instance (see {@link MobTemplate#worldBoss()}). A no-op for ordinary mobs and when
+     * no {@link WorldBossAnnouncer} is configured. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the mob instance that has just entered the world
+     */
+    private void announceWorldBossSpawn(MobInstance mob) {
+        if (worldBossAnnouncer != null && mob.template().worldBoss()) {
+            worldBossAnnouncer.announceSpawn(mob.template().name(), mob.roomId());
+        }
+    }
+
+    /**
+     * Applies the world-boss-only consequences of a kill: a guaranteed rare-or-higher loot drop on
+     * top of the normal loot rolls, and the server-wide death announcement naming the killer and
+     * their guild/party. A no-op for ordinary mobs. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob         the slain mob
+     * @param killer      the player who landed the killing blow
+     * @param normalDrops the items already dropped by the normal loot roll this kill
+     * @param messages    the mutable attacker-facing message list to append the bonus-drop notice to
+     */
+    private void handleWorldBossKill(
+        MobInstance mob, Username killer, List<Item> normalDrops, List<GameMessage> messages) {
+        if (!mob.template().worldBoss()) {
+            return;
+        }
+        boolean alreadyRare = normalDrops.stream().anyMatch(item -> isRareOrHigher(item.getRarity()));
+        if (!alreadyRare) {
+            Item bonus = dropGuaranteedRareLoot(mob);
+            if (bonus != null) {
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + " yields " + bonus.getName()
+                        + ", still glittering with power!"));
+            }
+        }
+        if (worldBossAnnouncer != null) {
+            worldBossAnnouncer.announceDeath(mob.template().name(), killer);
+        }
+    }
+
+    /**
+     * Force-drops one rare-or-higher item from the world boss's loot table into its room, bypassing
+     * the per-entry drop-chance roll, so a world-boss kill always yields at least one rare-or-higher
+     * reward (reusing the existing item rarity/affix system). When several qualify, one is chosen at
+     * random; when none do (a misconfigured boss), a warning is logged and nothing drops.
+     *
+     * @param mob the slain world boss
+     * @return the guaranteed item placed in the room, or {@code null} when the loot table defines no
+     *         rare-or-higher item
+     */
+    private Item dropGuaranteedRareLoot(MobInstance mob) {
+        List<Item> candidates = new ArrayList<>();
+        for (LootEntry entry : mob.template().lootTable()) {
+            try {
+                itemRepository.findById(entry.itemId())
+                    .filter(item -> isRareOrHigher(item.getRarity()))
+                    .ifPresent(candidates::add);
+            } catch (RepositoryException e) {
+                log.warn("Failed to resolve world-boss loot item {}: {}", entry.itemId(), e.getMessage());
+            }
+        }
+        if (candidates.isEmpty()) {
+            log.warn("World boss {} has no rare-or-higher loot entry; no guaranteed drop",
+                mob.template().id().getValue());
+            return null;
+        }
+        Item chosen = candidates.get(random.roll(0, candidates.size() - 1));
+        roomService.addItem(mob.roomId(), chosen);
+        return chosen;
+    }
+
+    private static boolean isRareOrHigher(Rarity rarity) {
+        return rarity.ordinal() >= Rarity.RARE.ordinal();
     }
 
     /**

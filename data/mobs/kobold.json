@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "kobold",
   "name": "Kobold",
   "max_hp": 12,

@@ -78,6 +78,7 @@ import io.taanielo.jmud.core.messaging.GossipHistory;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.mob.MobRegistry;
+import io.taanielo.jmud.core.mob.WorldBossAnnouncer;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.notes.NotesRepository;
 import io.taanielo.jmud.core.notes.NotesService;
@@ -331,6 +332,12 @@ public record GameContext(
         ReputationService reputationService = createReputationService();
         AchievementService achievementService = createAchievementService();
 
+        // Party and guild services are created before the mob registry initialises so the world-boss
+        // announcer can resolve a killer's affiliation, and so the initial world-load spawn
+        // announcement fires through a fully-wired registry (AGENTS.md §5 — all on the tick thread).
+        PartyService partyService = new PartyService();
+        GuildService guildService = createGuildService();
+
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository, worldRandom);
@@ -340,6 +347,9 @@ public record GameContext(
             mobRegistry.setItemDurabilityService(itemDurabilityService);
             mobRegistry.setReputationService(reputationService);
             mobRegistry.setAchievementService(achievementService);
+            mobRegistry.setPartyService(partyService);
+            mobRegistry.setWorldBossAnnouncer(
+                new WorldBossAnnouncer(messageBroadcaster, roomService, guildService, partyService));
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
         }
@@ -377,13 +387,6 @@ public record GameContext(
         }
         tickRegistry.register(
             new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
-
-        PartyService partyService = new PartyService();
-        if (mobRegistry != null) {
-            mobRegistry.setPartyService(partyService);
-        }
-
-        GuildService guildService = createGuildService();
 
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);

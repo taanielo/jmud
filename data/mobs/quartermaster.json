@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "quartermaster",
   "name": "Quartermaster Hale",
   "max_hp": 9999,

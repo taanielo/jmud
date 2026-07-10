@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "rat",
   "name": "Giant Rat",
   "max_hp": 8,

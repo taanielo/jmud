@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "forest-troll",
   "name": "Forest Troll",
   "max_hp": 90,

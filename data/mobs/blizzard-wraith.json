@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "blizzard-wraith",
   "name": "Blizzard Wraith",
   "max_hp": 160,

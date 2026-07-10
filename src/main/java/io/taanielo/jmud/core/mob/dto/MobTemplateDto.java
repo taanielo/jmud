@@ -22,6 +22,7 @@ public record MobTemplateDto(
     Integer summonDurationTicks,
     Boolean charmable,
     String dialogueId,
-    String factionId
+    String factionId,
+    Boolean worldBoss
 ) {
 }
