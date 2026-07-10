@@ -76,6 +76,32 @@ class JsonQuestRepositoryTest {
     }
 
     @Test
+    void loadsReputationReward(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
+        Path questsDir = Files.createDirectories(dataRoot.resolve("quests"));
+        Files.writeString(questsDir.resolve("quest.bandit-hunter.json"), """
+            {
+              "schema_version": 1,
+              "id": "bandit-hunter",
+              "name": "Bandit Hunter",
+              "description": "Cut down bandits.",
+              "target_mob_id": "bandit",
+              "required_kills": 6,
+              "gold_reward": 90,
+              "xp_reward": 220,
+              "reputation_reward_faction_id": "bandits",
+              "reputation_reward_delta": -25
+            }
+            """);
+
+        JsonQuestRepository repository = new JsonQuestRepository(dataRoot);
+        QuestTemplate template = repository.findById(QuestId.of("bandit-hunter")).orElseThrow();
+
+        assertTrue(template.hasReputationReward());
+        assertEquals("bandits", template.reputationRewardFactionId());
+        assertEquals(-25, template.reputationRewardDelta());
+    }
+
+    @Test
     void loadsItemRewardWithExplicitQuantity(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
         Path questsDir = Files.createDirectories(dataRoot.resolve("quests"));
         Files.writeString(questsDir.resolve("quest.stock-up.json"), """

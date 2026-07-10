@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "bandit-hunter",
+  "name": "Bandit Hunter",
+  "description": "The Bandit Brotherhood has grown bold on the roads. Cut down six of their number and send a message.",
+  "target_mob_id": "bandit",
+  "required_kills": 6,
+  "gold_reward": 90,
+  "xp_reward": 220,
+  "reputation_reward_faction_id": "bandits",
+  "reputation_reward_delta": -25
+}

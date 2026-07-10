@@ -114,6 +114,7 @@ import io.taanielo.jmud.core.quest.QuestItemRewardService;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.QuestReputationRewardService;
 import io.taanielo.jmud.core.quest.repository.json.JsonDailyQuestPoolRepository;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
 import io.taanielo.jmud.core.reload.ContentReloadService;
@@ -200,6 +201,7 @@ public record GameContext(
     QuestRepository questRepository,
     DailyQuestService dailyQuestService,
     QuestItemRewardService questItemRewardService,
+    QuestReputationRewardService questReputationRewardService,
     PartyService partyService,
     TradeService tradeService,
     BankService bankService,
@@ -403,7 +405,7 @@ public record GameContext(
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            playerRepository, roomService, messageBroadcaster, weatherEngine,
+            playerRepository, roomService, messageBroadcaster, reputationService, weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);
 
@@ -413,7 +415,10 @@ public record GameContext(
         QuestRepository baseQuestRepository = createQuestRepository();
         QuestItemRewardService questItemRewardService =
             new QuestItemRewardService(itemRepository, encumbranceService);
-        DailyQuestService dailyQuestService = createDailyQuestService(questItemRewardService);
+        QuestReputationRewardService questReputationRewardService =
+            new QuestReputationRewardService(reputationService);
+        DailyQuestService dailyQuestService =
+            createDailyQuestService(questItemRewardService, questReputationRewardService);
         // Daily quests reuse the single active-quest slot and the normal kill-progress path, so
         // expose them through a composite that resolves accepted daily variants by id while keeping
         // them out of the Guild Clerk's QUEST LIST (AGENTS.md §3.3 — reuse the canonical quest flow).
@@ -502,6 +507,7 @@ public record GameContext(
             questRepository,
             dailyQuestService,
             questItemRewardService,
+            questReputationRewardService,
             partyService,
             tradeService,
             bankService,
@@ -824,10 +830,12 @@ public record GameContext(
         }
     }
 
-    private static DailyQuestService createDailyQuestService(QuestItemRewardService itemRewardService) {
+    private static DailyQuestService createDailyQuestService(
+            QuestItemRewardService itemRewardService,
+            QuestReputationRewardService reputationRewardService) {
         try {
             List<DailyQuestPool> pools = new JsonDailyQuestPoolRepository().findAll();
-            return new DailyQuestService(pools, itemRewardService);
+            return new DailyQuestService(pools, itemRewardService, reputationRewardService);
         } catch (QuestRepositoryException e) {
             throw new IllegalStateException("Failed to initialize daily quest service: " + e.getMessage(), e);
         }

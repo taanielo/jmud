@@ -92,6 +92,28 @@ public final class ReputationService implements ReputationPriceResolver {
         return reputation.standing(factionId) < faction.hostileThreshold();
     }
 
+    /**
+     * Returns a simple derived standing label for the given reputation and faction, computed from the
+     * faction's {@link Faction#hostileThreshold()}:
+     * <ul>
+     *   <li><b>Hostile</b> — standing is strictly below the hostile threshold.</li>
+     *   <li><b>Friendly</b> — standing is positive (and not hostile).</li>
+     *   <li><b>Neutral</b> — otherwise (including any unknown faction).</li>
+     * </ul>
+     *
+     * @param reputation the player's reputation
+     * @param factionId  the faction to label standing with
+     * @return one of {@code "Hostile"}, {@code "Neutral"} or {@code "Friendly"}
+     */
+    public String standingLabel(PlayerReputation reputation, FactionId factionId) {
+        Objects.requireNonNull(reputation, "Reputation is required");
+        Objects.requireNonNull(factionId, "Faction id is required");
+        if (isHostile(reputation, factionId)) {
+            return "Hostile";
+        }
+        return reputation.standing(factionId) > 0 ? "Friendly" : "Neutral";
+    }
+
     @Override
     public int buyPrice(int basePrice, Player player, @Nullable FactionId factionId) {
         return adjust(basePrice, player, factionId, true);

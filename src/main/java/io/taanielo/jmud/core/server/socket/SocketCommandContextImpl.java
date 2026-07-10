@@ -93,6 +93,7 @@ import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.quest.QuestNpcDeliveryService;
 import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
+import io.taanielo.jmud.core.quest.QuestReputationRewardService;
 import io.taanielo.jmud.core.quest.QuestTemplate;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
@@ -974,8 +975,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (questRepo == null || player == null || player.getActiveQuest() == null) {
             return;
         }
-        ExplorationQuestService explorationSvc =
-            new ExplorationQuestService(questRepo, context.questItemRewardService());
+        ExplorationQuestService explorationSvc = new ExplorationQuestService(
+            questRepo, context.questItemRewardService(), context.questReputationRewardService());
         explorationSvc.recordRoomVisit(player, destination.getId()).ifPresent(result -> {
             session.replacePlayer(result.player());
             dropQuestRewardOverflow(result.player(), result.droppedItems());
@@ -4435,6 +4436,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 reward += " / " + itemReward;
             }
         }
+        QuestReputationRewardService reputationRewardService = context.questReputationRewardService();
+        if (reputationRewardService != null) {
+            String reputationReward = reputationRewardService.describeReward(template).orElse(null);
+            if (reputationReward != null) {
+                reward += " / " + reputationReward;
+            }
+        }
         return reward;
     }
 
@@ -4654,7 +4662,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             session.replacePlayer(player.withActiveQuest(null));
             return;
         }
-        QuestKillService questKillSvc = new QuestKillService(questRepo, context.questItemRewardService());
+        QuestKillService questKillSvc = new QuestKillService(
+            questRepo, context.questItemRewardService(), context.questReputationRewardService());
         QuestKillService.CompletionResult result = questKillSvc.grantCompletionReward(player, template);
         Player rewarded = result.player();
         session.replacePlayer(rewarded);
@@ -4698,8 +4707,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("The Guild Clerk is not here. Find them in the Courtyard.");
             return;
         }
-        QuestDeliveryService deliverySvc =
-            new QuestDeliveryService(questRepo, context.questItemRewardService());
+        QuestDeliveryService deliverySvc = new QuestDeliveryService(
+            questRepo, context.questItemRewardService(), context.questReputationRewardService());
         QuestDeliveryService.DeliverResult result = deliverySvc.deliver(player);
         if (result.success()) {
             session.replacePlayer(result.player());
@@ -4716,8 +4725,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             && context.mobRegistry().getMobsInRoom(roomId).stream()
                 .anyMatch(m -> m.isAlive()
                     && m.template().id().getValue().equalsIgnoreCase(template.receiverNpcId()));
-        QuestNpcDeliveryService npcDeliverySvc =
-            new QuestNpcDeliveryService(questRepo, context.questItemRewardService());
+        QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(
+            questRepo, context.questItemRewardService(), context.questReputationRewardService());
         DeliveryQuestResult result = npcDeliverySvc.deliver(player, roomId, receiverPresent);
         if (result.success()) {
             session.replacePlayer(result.player());

@@ -41,6 +41,12 @@ import java.util.Objects;
  *                          {@code null} when the quest awards no item. Applicable to any quest type.
  * @param itemRewardQuantity number of copies of {@code itemReward} to grant; must be positive when
  *                          {@code itemReward} is set and exactly zero when it is {@code null}
+ * @param reputationRewardFactionId id of the faction whose standing changes on completion, or
+ *                          {@code null} when the quest grants no reputation reward. Applicable to any
+ *                          quest type.
+ * @param reputationRewardDelta signed change applied to the player's standing with
+ *                          {@code reputationRewardFactionId} on completion; must be non-zero when a
+ *                          faction id is set and exactly zero when it is {@code null}
  */
 public record QuestTemplate(
     QuestId id,
@@ -60,7 +66,9 @@ public record QuestTemplate(
     List<String> requiredRoomIds,
     String dailyPoolId,
     String itemReward,
-    int itemRewardQuantity
+    int itemRewardQuantity,
+    String reputationRewardFactionId,
+    int reputationRewardDelta
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
@@ -95,6 +103,14 @@ public record QuestTemplate(
             throw new IllegalArgumentException(
                 "itemRewardQuantity must be zero when itemReward is not set");
         }
+        if (reputationRewardFactionId != null && reputationRewardDelta == 0) {
+            throw new IllegalArgumentException(
+                "reputationRewardDelta must be non-zero when reputationRewardFactionId is set");
+        }
+        if (reputationRewardFactionId == null && reputationRewardDelta != 0) {
+            throw new IllegalArgumentException(
+                "reputationRewardDelta must be zero when reputationRewardFactionId is not set");
+        }
     }
 
     /**
@@ -118,7 +134,7 @@ public record QuestTemplate(
         int xpReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), null, null, 0);
+            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0);
     }
 
     /**
@@ -148,7 +164,7 @@ public record QuestTemplate(
         String titleReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0);
+            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0, null, 0);
     }
 
     /**
@@ -187,7 +203,7 @@ public record QuestTemplate(
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId,
-            receiverRoomId, packageItemId, List.of(), null, null, 0);
+            receiverRoomId, packageItemId, List.of(), null, null, 0, null, 0);
     }
 
     /**
@@ -211,7 +227,7 @@ public record QuestTemplate(
         List<String> requiredRoomIds
     ) {
         this(id, name, description, null, 0, goldReward, xpReward,
-            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0);
+            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0, null, 0);
     }
 
     /**
@@ -237,7 +253,7 @@ public record QuestTemplate(
         String dailyPoolId
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0);
+            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0, null, 0);
     }
 
     /**
@@ -251,7 +267,24 @@ public record QuestTemplate(
     public QuestTemplate withItemReward(String itemReward, int itemRewardQuantity) {
         return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
-            packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity);
+            packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity,
+            reputationRewardFactionId, reputationRewardDelta);
+    }
+
+    /**
+     * Returns a copy of this quest with the given reputation reward attached.
+     *
+     * @param reputationRewardFactionId id of the faction whose standing changes on completion;
+     *                                  {@code null} clears any reputation reward
+     * @param reputationRewardDelta     signed change to apply; must be non-zero when a faction id is
+     *                                  set and zero otherwise
+     * @return a new {@link QuestTemplate} carrying the reputation reward
+     */
+    public QuestTemplate withReputationReward(String reputationRewardFactionId, int reputationRewardDelta) {
+        return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
+            dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
+            packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity,
+            reputationRewardFactionId, reputationRewardDelta);
     }
 
     /**
@@ -259,6 +292,13 @@ public record QuestTemplate(
      */
     public boolean hasItemReward() {
         return itemReward != null;
+    }
+
+    /**
+     * Returns {@code true} when this quest changes the player's standing with a faction on completion.
+     */
+    public boolean hasReputationReward() {
+        return reputationRewardFactionId != null;
     }
 
     /**

@@ -94,6 +94,14 @@ class ReputationServiceTest {
     }
 
     @Test
+    void standingLabel_reflectsThreshold() throws FactionRepositoryException {
+        ReputationService service = service();
+        assertEquals("Hostile", service.standingLabel(PlayerReputation.empty().adjust(BANDITS, -5), BANDITS));
+        assertEquals("Neutral", service.standingLabel(PlayerReputation.empty(), BANDITS));
+        assertEquals("Friendly", service.standingLabel(PlayerReputation.empty().adjust(BANDITS, 5), BANDITS));
+    }
+
+    @Test
     void findFaction_returnsDefinitionOrEmpty() throws FactionRepositoryException {
         ReputationService service = service();
         assertEquals(Optional.of(BANDIT_FACTION), service.findFaction(BANDITS));
