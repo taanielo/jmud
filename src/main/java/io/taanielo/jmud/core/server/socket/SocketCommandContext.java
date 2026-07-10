@@ -546,6 +546,20 @@ public interface SocketCommandContext extends Client {
     default void executeParty(String args) {}
 
     /**
+     * Executes a FOLLOW sub-command: reports the current leader when {@code args} is blank, stops
+     * following on {@code OFF}, or starts auto-following the named online party member.
+     *
+     * <p>While following, the caller is moved one step behind the leader whenever the leader walks to
+     * an adjacent room; the relationship is cancelled with a notice on combat, overburden, a blocked
+     * exit, a party-membership change, or disconnect.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the target player name, {@code OFF}, or blank to report status
+     */
+    default void executeFollow(String args) {}
+
+    /**
      * Locks the door in the given direction from the player's current room.
      *
      * <p>Requires the player to carry the correct key item. Prints a failure message

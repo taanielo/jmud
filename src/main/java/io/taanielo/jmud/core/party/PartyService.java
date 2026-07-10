@@ -35,6 +35,8 @@ public class PartyService {
     private final Map<Username, UUID> memberToParty = new ConcurrentHashMap<>();
     /** invitee username → inviter username (pending invitations). */
     private final Map<Username, Username> pendingInvites = new ConcurrentHashMap<>();
+    /** follower username → leader username (auto-follow relationships). */
+    private final Map<Username, Username> followerToLeader = new ConcurrentHashMap<>();
 
     // ── Party lifecycle ───────────────────────────────────────────────
 
@@ -151,6 +153,7 @@ public class PartyService {
         if (partyId == null) {
             return new PartyResult(false, "You are not in a party.");
         }
+        clearFollowsInvolving(member);
         Party old = parties.get(partyId);
         if (old == null) {
             return new PartyResult(true, "You have left the party.");
@@ -193,6 +196,7 @@ public class PartyService {
         parties.remove(partyId);
         for (Username m : party.memberIds()) {
             memberToParty.remove(m);
+            clearFollowsInvolving(m);
         }
         return new PartyResult(true, "Party disbanded.");
     }
@@ -280,6 +284,106 @@ public class PartyService {
             }
         }
         return Optional.empty();
+    }
+
+    // ── Auto-follow ────────────────────────────────────────────────────
+
+    /**
+     * Starts {@code follower} auto-following {@code leader}, so the follower is moved along whenever
+     * the leader successfully walks to an adjacent room (see the socket movement path).
+     *
+     * <p>Both players must currently belong to the same party and the leader must be online; a player
+     * may follow at most one leader at a time (a new call replaces any prior relationship).
+     *
+     * @param follower     the player who wants to auto-follow
+     * @param leader       the player to follow
+     * @param leaderOnline whether the leader is currently connected
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult follow(Username follower, Username leader, boolean leaderOnline) {
+        Objects.requireNonNull(follower, "follower is required");
+        Objects.requireNonNull(leader, "leader is required");
+        if (follower.equals(leader)) {
+            return new PartyResult(false, "You cannot follow yourself.");
+        }
+        if (!leaderOnline) {
+            return new PartyResult(false, leader.getValue() + " is not online.");
+        }
+        UUID followerParty = memberToParty.get(follower);
+        UUID leaderParty = memberToParty.get(leader);
+        if (followerParty == null || leaderParty == null || !followerParty.equals(leaderParty)) {
+            return new PartyResult(false, leader.getValue() + " is not in your party.");
+        }
+        followerToLeader.put(follower, leader);
+        return new PartyResult(true, "You start following " + leader.getValue() + ".");
+    }
+
+    /**
+     * Stops {@code follower} auto-following whoever they were following.
+     *
+     * @param follower the player who wants to stop following
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult unfollow(Username follower) {
+        Objects.requireNonNull(follower, "follower is required");
+        Username leader = followerToLeader.remove(follower);
+        if (leader == null) {
+            return new PartyResult(false, "You are not following anyone.");
+        }
+        return new PartyResult(true, "You stop following " + leader.getValue() + ".");
+    }
+
+    /**
+     * Returns the leader that {@code follower} is currently auto-following, if any.
+     *
+     * @param follower the player to look up
+     * @return the followed leader, or empty
+     */
+    public Optional<Username> leaderOf(Username follower) {
+        Objects.requireNonNull(follower, "follower is required");
+        return Optional.ofNullable(followerToLeader.get(follower));
+    }
+
+    /**
+     * Returns the usernames of every player currently auto-following {@code leader}.
+     *
+     * @param leader the followed player
+     * @return the followers, in no particular order (possibly empty)
+     */
+    public List<Username> followersOf(Username leader) {
+        Objects.requireNonNull(leader, "leader is required");
+        return followerToLeader.entrySet().stream()
+            .filter(e -> e.getValue().equals(leader))
+            .map(Map.Entry::getKey)
+            .toList();
+    }
+
+    /**
+     * Returns {@code true} when both players are currently members of the same party.
+     *
+     * @param first  the first player
+     * @param second the second player
+     * @return whether both share a party
+     */
+    public boolean inSameParty(Username first, Username second) {
+        Objects.requireNonNull(first, "first is required");
+        Objects.requireNonNull(second, "second is required");
+        UUID firstParty = memberToParty.get(first);
+        UUID secondParty = memberToParty.get(second);
+        return firstParty != null && firstParty.equals(secondParty);
+    }
+
+    /**
+     * Removes any auto-follow relationship in which {@code username} participates, whether as the
+     * follower or as the followed leader. Called when a player leaves/disbands their party or
+     * disconnects so no dangling relationship can leave a follower stuck.
+     *
+     * @param username the player whose follow relationships to clear
+     */
+    public synchronized void clearFollowsInvolving(Username username) {
+        Objects.requireNonNull(username, "username is required");
+        followerToLeader.remove(username);
+        followerToLeader.entrySet().removeIf(e -> e.getValue().equals(username));
     }
 
     // ── Queries ───────────────────────────────────────────────────────
