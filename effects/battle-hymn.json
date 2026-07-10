@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "battle-hymn",
+  "name": "Battle Hymn",
+  "duration_ticks": 80,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 2
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A rousing battle hymn fills you with martial fervour."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is emboldened by a rousing battle hymn."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The battle hymn fades from your ears."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The battle hymn's fervour fades from {name}."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is emboldened by a battle hymn."
+    }
+  ]
+}
