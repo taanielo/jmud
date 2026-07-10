@@ -16,6 +16,9 @@ import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 
 /**
@@ -181,11 +184,119 @@ class BankServiceTest {
         assertEquals(totalBefore, totalAfter, "no gold should be created or destroyed on withdraw");
     }
 
+    // ── storeItem ─────────────────────────────────────────────────────
+
+    @Test
+    void storeItem_success_movesItemFromInventoryToVault() {
+        Item sword = item("sword", "a sword", 5);
+        Player player = playerCarrying(sword);
+
+        BankTransactionResult result = bankService.storeItem(player, "a sword");
+
+        assertTrue(result.success());
+        Player updated = result.updatedPlayer();
+        assertTrue(updated.getInventory().isEmpty(), "item should leave inventory");
+        assertEquals(1, updated.getBankedItems().size(), "item should be in the vault");
+        assertEquals("a sword", updated.getBankedItems().get(0).getName());
+    }
+
+    @Test
+    void storeItem_failure_itemNotFound() {
+        Player player = playerCarrying(item("sword", "a sword", 5));
+
+        BankTransactionResult result = bankService.storeItem(player, "a shield");
+
+        assertFalse(result.success());
+        assertNull(result.updatedPlayer());
+    }
+
+    @Test
+    void storeItem_failure_vaultFull() {
+        BankService smallVault = new BankService(new StubBankRepository(BANK), 1);
+        Player player = playerCarrying(item("sword", "a sword", 5), item("shield", "a shield", 8));
+        // Fill the single vault slot.
+        Player afterFirst = smallVault.storeItem(player, "a sword").updatedPlayer();
+
+        BankTransactionResult result = smallVault.storeItem(afterFirst, "a shield");
+
+        assertFalse(result.success());
+        assertNull(result.updatedPlayer());
+        assertTrue(result.message().contains("full"), "message should mention the vault is full");
+    }
+
+    // ── claimItem ─────────────────────────────────────────────────────
+
+    @Test
+    void claimItem_success_movesItemFromVaultToInventory() {
+        Item sword = item("sword", "a sword", 5);
+        Player player = Player.of(user(), "{hp}hp>").addBankedItem(sword);
+
+        BankTransactionResult result = bankService.claimItem(player, "a sword", 100);
+
+        assertTrue(result.success());
+        Player updated = result.updatedPlayer();
+        assertTrue(updated.getBankedItems().isEmpty(), "item should leave the vault");
+        assertEquals(1, updated.getInventory().size(), "item should return to inventory");
+    }
+
+    @Test
+    void claimItem_failure_notInVault() {
+        Player player = Player.of(user(), "{hp}hp>").addBankedItem(item("sword", "a sword", 5));
+
+        BankTransactionResult result = bankService.claimItem(player, "a shield", 100);
+
+        assertFalse(result.success());
+        assertNull(result.updatedPlayer());
+    }
+
+    @Test
+    void claimItem_failure_wouldExceedCarryWeight() {
+        Item heavy = item("anvil", "an anvil", 40);
+        Player player = playerCarrying(item("sword", "a sword", 5)).addBankedItem(heavy);
+
+        BankTransactionResult result = bankService.claimItem(player, "an anvil", 20);
+
+        assertFalse(result.success());
+        assertNull(result.updatedPlayer());
+        assertTrue(result.message().toLowerCase().contains("lighten"),
+            "message should tell the player to lighten their load");
+    }
+
+    // ── death survival ────────────────────────────────────────────────
+
+    @Test
+    void vaultedItems_surviveDeath() {
+        Item trophy = item("trophy", "a dragon trophy", 3);
+        Player player = playerCarrying(item("junk", "some junk", 1));
+        Player stored = bankService.storeItem(player, "some junk").updatedPlayer();
+        // Also stash a trophy directly.
+        stored = stored.addBankedItem(trophy);
+
+        Player dead = stored.die();
+
+        assertEquals(2, dead.getBankedItems().size(), "vault contents should survive death");
+        assertTrue(dead.getBankedItems().stream().anyMatch(i -> i.getName().equals("a dragon trophy")));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────
 
     private static Player playerWithGold(int carried, int banked) {
         User user = User.of(Username.of("testplayer"), Password.hash("pass", 1));
         return Player.of(user, "{hp}hp>").withGold(carried).withBankedGold(banked);
+    }
+
+    private static User user() {
+        return User.of(Username.of("testplayer"), Password.hash("pass", 1));
+    }
+
+    private static Player playerCarrying(Item... items) {
+        return Player.of(user(), "{hp}hp>").withInventory(List.of(items));
+    }
+
+    private static Item item(String id, String name, int weight) {
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())
+            .weight(weight)
+            .build();
     }
 
     // ── stub repository ───────────────────────────────────────────────

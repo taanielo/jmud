@@ -47,6 +47,15 @@ AUCTION_BACKUP="$OUT_DIR/auctions.listings.bak"
 AUCTION_EXISTED=0
 if [ -f "$AUCTION_FILE" ]; then cp "$AUCTION_FILE" "$AUCTION_BACKUP"; AUCTION_EXISTED=1; fi
 
+# The AUCTION phase also picks up the iron sword from the training-yard floor,
+# which JsonRoomRepository.save() persists straight back to
+# data/rooms/training-yard.json (room item state is live, not a static
+# template) — so the committed file loses "iron-sword" once this test runs.
+# Snapshot it up front so cleanup can restore the committed state.
+TRAINING_YARD_ROOM_FILE="data/rooms/training-yard.json"
+TRAINING_YARD_ROOM_BACKUP="$OUT_DIR/training-yard.room.bak"
+if [ -f "$TRAINING_YARD_ROOM_FILE" ]; then cp "$TRAINING_YARD_ROOM_FILE" "$TRAINING_YARD_ROOM_BACKUP"; fi
+
 log()  { printf '%s\n' "$*"; }
 pass() { CHECKS=$((CHECKS + 1)); log "  PASS: $*"; }
 fail() { CHECKS=$((CHECKS + 1)); FAILURES=$((FAILURES + 1)); log "  FAIL: $*"; }
@@ -96,6 +105,10 @@ cleanup() {
         cp "$AUCTION_BACKUP" "$AUCTION_FILE"
     else
         rm -f "$AUCTION_FILE"
+    fi
+    # Restore the committed training-yard room state (iron sword picked up above).
+    if [ -f "$TRAINING_YARD_ROOM_BACKUP" ]; then
+        cp "$TRAINING_YARD_ROOM_BACKUP" "$TRAINING_YARD_ROOM_FILE"
     fi
 }
 trap cleanup EXIT

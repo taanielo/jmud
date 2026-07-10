@@ -3,7 +3,7 @@
   "id" : "training-yard",
   "name" : "Training Yard",
   "description" : "A dusty yard with practice dummies and scattered weapons.",
-  "item_ids" : [ "health-potion", "poisonous-potion", "treasure-chest-locked" ],
+  "item_ids" : [ "iron-sword", "health-potion", "poisonous-potion", "treasure-chest-locked" ],
   "exits" : {
     "east" : "courtyard",
     "south" : "sparring-pit",
