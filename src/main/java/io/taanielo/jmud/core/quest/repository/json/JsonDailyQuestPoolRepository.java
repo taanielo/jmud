@@ -104,7 +104,9 @@ public class JsonDailyQuestPoolRepository implements DailyQuestPoolRepository {
                     variant.itemReward(),
                     itemRewardQuantity,
                     variant.reputationRewardFactionId(),
-                    variant.reputationRewardDelta()
+                    variant.reputationRewardDelta(),
+                    true,
+                    null
                 ));
             }
             return new DailyQuestPool(dto.poolId(), dto.name(), variants);

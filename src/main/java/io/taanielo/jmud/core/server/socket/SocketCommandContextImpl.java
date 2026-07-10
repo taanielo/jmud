@@ -2462,13 +2462,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
         switch (sub) {
             case "LIST" -> handleQuestList(questRepo);
+            case "LOG" -> handleQuestLog(questRepo);
             case "ACCEPT" -> handleQuestAccept(questRepo, subArgs);
             case "STATUS" -> handleQuestStatus(questRepo);
             case "COMPLETE" -> handleQuestComplete(questRepo);
             case "DELIVER" -> handleQuestDeliver(questRepo);
             case "ABANDON" -> handleQuestAbandon();
             default -> writeLineWithPrompt(
-                "Usage: QUEST [LIST|ACCEPT <id>|STATUS|COMPLETE|DELIVER|ABANDON]");
+                "Usage: QUEST [LIST|LOG|ACCEPT <id>|STATUS|COMPLETE|DELIVER|ABANDON]");
         }
     }
 
@@ -4405,12 +4406,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("There are no contracts available.");
             return;
         }
+        Player player = session.getPlayer();
         connection.writeLine("Guild Clerk — Available Contracts:");
         connection.writeLine(String.format("  %-20s %-36s %s", "ID", "Description", "Reward"));
         connection.writeLine("  " + "-".repeat(72));
         for (QuestTemplate t : templates) {
             // NPC-delivery errands are handed out in conversation, not by the Guild Clerk.
             if (t.isNpcDeliveryQuest()) {
+                continue;
+            }
+            // Hide quests whose prerequisite the player has not yet completed.
+            if (t.hasPrerequisite()
+                    && !player.completedQuests().hasCompleted(QuestId.of(t.prerequisiteQuestId()))) {
                 continue;
             }
             String desc = t.description().length() > 35
@@ -4477,6 +4484,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt(
                 "That errand is not handled by the Guild Clerk. Speak with "
                 + template.giverNpcId() + " to receive the package.");
+            return;
+        }
+        if (!template.isRepeatable() && player.completedQuests().hasCompleted(template.id())) {
+            writeLineWithPrompt("You have already completed this contract.");
+            return;
+        }
+        if (template.hasPrerequisite()
+                && !player.completedQuests().hasCompleted(QuestId.of(template.prerequisiteQuestId()))) {
+            String prerequisiteName = questPrerequisiteName(questRepo, template.prerequisiteQuestId());
+            writeLineWithPrompt(
+                "You must first complete " + prerequisiteName + " before taking this contract.");
             return;
         }
         if (template.isExplorationQuest() && !explorationRoomsExist(template)) {
@@ -4746,6 +4764,50 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         session.replacePlayer(player.withActiveQuest(null));
         writeLineWithPrompt("Contract abandoned. No reward will be granted.");
+    }
+
+    /**
+     * Lists the player's completed one-time contracts by display name, sorted for stable output.
+     * Shows a friendly empty-state message when the player has completed none yet.
+     */
+    private void handleQuestLog(QuestRepository questRepo) {
+        Player player = session.getPlayer();
+        var completed = player.completedQuests().completed();
+        if (completed.isEmpty()) {
+            writeLineWithPrompt("You have not completed any one-time contracts yet.");
+            return;
+        }
+        List<String> names = new ArrayList<>();
+        for (QuestId id : completed) {
+            names.add(questDisplayName(questRepo, id));
+        }
+        names.sort(String::compareToIgnoreCase);
+        connection.writeLine("Completed Contracts:");
+        for (String name : names) {
+            connection.writeLine("  " + name);
+        }
+        sendPrompt();
+    }
+
+    /**
+     * Resolves a quest's display name from the repository, falling back to its raw id when the quest
+     * cannot be loaded (e.g. a since-removed contract).
+     */
+    private String questDisplayName(QuestRepository questRepo, QuestId id) {
+        try {
+            return questRepo.findById(id).map(QuestTemplate::name).orElse(id.getValue());
+        } catch (QuestRepositoryException e) {
+            log.warn("Failed to load quest {} for display name: {}", id.getValue(), e.getMessage());
+            return id.getValue();
+        }
+    }
+
+    /**
+     * Resolves the display name of a prerequisite quest id for rejection messaging, falling back to
+     * the raw id when the quest cannot be loaded.
+     */
+    private String questPrerequisiteName(QuestRepository questRepo, String prerequisiteQuestId) {
+        return questDisplayName(questRepo, QuestId.of(prerequisiteQuestId));
     }
 
     /**

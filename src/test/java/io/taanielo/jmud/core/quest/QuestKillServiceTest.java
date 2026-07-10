@@ -160,6 +160,39 @@ class QuestKillServiceTest {
     }
 
     @Test
+    void grantCompletionRewardRecordsOneTimeQuestAsCompleted() {
+        QuestTemplate oneTime = new QuestTemplate(
+            QuestId.of("bandit-captain-fall"),
+            "The Captain's Fall",
+            "Finish the captain.",
+            "bandit-captain",
+            1,
+            200,
+            500).withReputationReward("bandits", -40);
+        QuestTemplate nonRepeatable = new QuestTemplate(
+            oneTime.id(), oneTime.name(), oneTime.description(), oneTime.targetMobId(),
+            oneTime.requiredKills(), oneTime.goldReward(), oneTime.xpReward(),
+            null, 0, null, null, null, null, null, List.of(), null, null, 0,
+            "bandits", -40, false, "bandit-hunter");
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(nonRepeatable.id(), 0));
+
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, nonRepeatable);
+
+        assertTrue(result.player().completedQuests().hasCompleted(nonRepeatable.id()));
+        assertEquals(1, result.player().completedQuests().count());
+    }
+
+    @Test
+    void grantCompletionRewardDoesNotRecordRepeatableQuest() {
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, RAT_CATCHER);
+
+        assertFalse(result.player().completedQuests().hasCompleted(RAT_CATCHER_ID));
+        assertEquals(0, result.player().completedQuests().count());
+    }
+
+    @Test
     void grantCompletionRewardDoesNotGrantDuplicateTitle() {
         Player withTitleAlready = basePlayer.grantTitle("Goblin Crusher")
             .withActiveQuest(new ActiveQuest(GOBLIN_THRASHER_ID, 0));

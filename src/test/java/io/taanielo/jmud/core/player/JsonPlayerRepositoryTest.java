@@ -207,6 +207,36 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsCompletedQuests() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("quester"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withCompletedQuest(io.taanielo.jmud.core.quest.QuestId.of("bandit-captain-fall"));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent(), "Player should reload after reconnection");
+        assertTrue(loaded.get().completedQuests()
+                .hasCompleted(io.taanielo.jmud.core.quest.QuestId.of("bandit-captain-fall")),
+            "Completed one-time quest should survive the save/load round-trip");
+    }
+
+    @Test
+    void loadingOldSaveFileWithoutCompletedQuestsDefaultsToEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("legacy"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ");
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(0, loaded.get().completedQuests().count(),
+            "Player with no completedQuests field should load with an empty set");
+    }
+
+    @Test
     void savesAndLoadsGoldField() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("goldie"), Password.hash("pw", 1));

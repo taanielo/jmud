@@ -47,6 +47,11 @@ import java.util.Objects;
  * @param reputationRewardDelta signed change applied to the player's standing with
  *                          {@code reputationRewardFactionId} on completion; must be non-zero when a
  *                          faction id is set and exactly zero when it is {@code null}
+ * @param repeatable        {@code true} when the quest may be accepted and completed repeatedly (the
+ *                          default, preserving legacy behaviour); {@code false} for one-time-only
+ *                          contracts that a player may complete just once
+ * @param prerequisiteQuestId id of a quest the player must have completed before this contract can be
+ *                          accepted, or {@code null} when the quest has no prerequisite
  */
 public record QuestTemplate(
     QuestId id,
@@ -68,7 +73,9 @@ public record QuestTemplate(
     String itemReward,
     int itemRewardQuantity,
     String reputationRewardFactionId,
-    int reputationRewardDelta
+    int reputationRewardDelta,
+    boolean repeatable,
+    String prerequisiteQuestId
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
@@ -134,7 +141,7 @@ public record QuestTemplate(
         int xpReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0);
+            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0, true, null);
     }
 
     /**
@@ -164,7 +171,7 @@ public record QuestTemplate(
         String titleReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0, null, 0);
+            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0, null, 0, true, null);
     }
 
     /**
@@ -203,7 +210,7 @@ public record QuestTemplate(
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId,
-            receiverRoomId, packageItemId, List.of(), null, null, 0, null, 0);
+            receiverRoomId, packageItemId, List.of(), null, null, 0, null, 0, true, null);
     }
 
     /**
@@ -227,7 +234,7 @@ public record QuestTemplate(
         List<String> requiredRoomIds
     ) {
         this(id, name, description, null, 0, goldReward, xpReward,
-            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0, null, 0);
+            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0, null, 0, true, null);
     }
 
     /**
@@ -253,7 +260,7 @@ public record QuestTemplate(
         String dailyPoolId
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0, null, 0);
+            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0, null, 0, true, null);
     }
 
     /**
@@ -268,7 +275,7 @@ public record QuestTemplate(
         return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
             packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity,
-            reputationRewardFactionId, reputationRewardDelta);
+            reputationRewardFactionId, reputationRewardDelta, repeatable, prerequisiteQuestId);
     }
 
     /**
@@ -284,7 +291,7 @@ public record QuestTemplate(
         return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
             packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity,
-            reputationRewardFactionId, reputationRewardDelta);
+            reputationRewardFactionId, reputationRewardDelta, repeatable, prerequisiteQuestId);
     }
 
     /**
@@ -299,6 +306,21 @@ public record QuestTemplate(
      */
     public boolean hasReputationReward() {
         return reputationRewardFactionId != null;
+    }
+
+    /**
+     * Returns {@code true} when this quest may be accepted and completed repeatedly (the default);
+     * {@code false} for one-time-only contracts a player may complete just once.
+     */
+    public boolean isRepeatable() {
+        return repeatable;
+    }
+
+    /**
+     * Returns {@code true} when this quest requires the player to have completed another quest first.
+     */
+    public boolean hasPrerequisite() {
+        return prerequisiteQuestId != null;
     }
 
     /**

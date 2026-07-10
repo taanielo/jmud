@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "bandit-captain-fall",
+  "name": "The Captain's Fall",
+  "description": "With the Brotherhood's ranks thinned, track their leader to his den and end his reign for good.",
+  "target_mob_id": "bandit-captain",
+  "required_kills": 1,
+  "gold_reward": 200,
+  "xp_reward": 500,
+  "title_reward": "Bandit's Bane",
+  "reputation_reward_faction_id": "bandits",
+  "reputation_reward_delta": -40,
+  "repeatable": false,
+  "prerequisite_quest_id": "bandit-hunter"
+}

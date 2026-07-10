@@ -164,6 +164,10 @@ public class QuestKillService {
             messages.add("You have earned the title: " + titleReward + "!");
         }
 
+        if (!template.isRepeatable()) {
+            rewarded = rewarded.withCompletedQuest(template.id());
+        }
+
         return new CompletionResult(
             rewarded, lvResult.leveledUp(), List.copyOf(messages), itemGrant.droppedItems());
     }

@@ -26,6 +26,12 @@ import java.util.List;
  * <p>{@code reputationRewardFactionId}/{@code reputationRewardDelta} are optional and apply to any
  * quest type: when {@code reputationRewardFactionId} names a faction id, the player's standing with
  * that faction changes by {@code reputationRewardDelta} (a signed, non-zero integer) on completion.
+ *
+ * <p>{@code repeatable} is optional and defaults to {@code true} when absent, preserving legacy
+ * behaviour: existing quests may be accepted and completed repeatedly. When set to {@code false} the
+ * quest becomes a one-time-only contract a player may complete just once. {@code prerequisiteQuestId}
+ * is optional: when set, the quest can only be accepted after the player has completed the named
+ * prerequisite quest.
  */
 record QuestDto(
     int schemaVersion,
@@ -48,6 +54,8 @@ record QuestDto(
     String itemReward,
     int itemRewardQuantity,
     String reputationRewardFactionId,
-    int reputationRewardDelta
+    int reputationRewardDelta,
+    Boolean repeatable,
+    String prerequisiteQuestId
 ) {
 }
