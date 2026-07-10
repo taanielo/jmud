@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "cooking-honeyed-loaf",
+  "name": "Honeyed Loaf",
+  "output_item": "honeyed-loaf",
+  "gold_cost": 5,
+  "materials": [
+    { "item": "bread", "quantity": 1 },
+    { "item": "fruit", "quantity": 2 }
+  ]
+}

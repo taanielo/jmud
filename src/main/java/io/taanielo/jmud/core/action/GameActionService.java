@@ -1480,12 +1480,15 @@ public class GameActionService {
      *
      * <p>The item's {@code hunger} attribute stat determines how many hunger points are
      * restored (capped at {@link io.taanielo.jmud.core.player.PlayerSustenance#MAX}). Items
-     * without a positive {@code hunger} stat are rejected as inedible. Any {@code eat}-phase
-     * messages defined on the item are emitted; otherwise a default eat message is produced.
+     * without a positive {@code hunger} stat are rejected as inedible. Any timed
+     * {@code effects} declared on the item are then applied (or, for a {@link
+     * ItemEffectOperation#REMOVE} effect, cured), mirroring {@link #quaffItem}, so that cooked
+     * buff meals take hold on eating. Any {@code eat}-phase messages defined on the item are
+     * emitted; otherwise a default eat message is produced, followed by any effect messages.
      *
      * @param source the player eating the item
      * @param itemInput the item name or id to eat
-     * @return result with the updated source (hunger restored, item removed)
+     * @return result with the updated source (hunger restored, effects applied, item removed)
      */
     public GameActionResult eatItem(Player source, String itemInput) {
         String normalized = itemInput == null ? "" : itemInput.trim();
@@ -1500,8 +1503,26 @@ public class GameActionService {
         if (hungerRestore <= 0) {
             return GameActionResult.error("You can't eat that.");
         }
-        Player updated = source.withSustenance(source.getSustenance().feed(hungerRestore)).removeItem(item);
-        List<GameMessage> messages = consumptionMessages(source, item, MessagePhase.EAT, "eat", "eats");
+        Player working = source.withSustenance(source.getSustenance().feed(hungerRestore));
+        CollectingEffectMessageSink effectSink = new CollectingEffectMessageSink(
+            source.getUsername(),
+            source.getUsername()
+        );
+        try {
+            for (ItemEffect effect : item.getEffects()) {
+                if (effect.operation() == ItemEffectOperation.REMOVE) {
+                    abilityEffectEngine.remove(working, effect.id(), effectSink);
+                } else {
+                    abilityEffectEngine.apply(working, effect.id(), effectSink);
+                }
+            }
+        } catch (EffectRepositoryException e) {
+            return GameActionResult.error("You cannot eat that right now.");
+        }
+        Player updated = working.removeItem(item);
+        List<GameMessage> messages = new ArrayList<>(
+            consumptionMessages(source, item, MessagePhase.EAT, "eat", "eats"));
+        messages.addAll(effectSink.collected());
         return new GameActionResult(updated, null, messages);
     }
 

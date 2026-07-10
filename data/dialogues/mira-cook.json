@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "mira-cook-welcome",
+  "npc_id": "cook",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Hungry, are you? Bring me good ingredients and I'll cook you a proper meal.",
+      "responses": [
+        { "text": "What can you cook?", "target": "cook" },
+        { "text": "Why should I bother cooking?", "target": "why" },
+        { "text": "Maybe later.", "target": "end" }
+      ]
+    },
+    "cook": {
+      "text": "Bread, meat, fruit, wild herbs, glowcap mushrooms — bring them here and type COOK, and I'll turn them into hearty fare.",
+      "responses": [
+        { "text": "Why should I bother cooking?", "target": "why" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "why": {
+      "text": "A hearty stew before a hard fight steadies the hands and stiffens the guard. Cook a meal before you go, and you'll thank me.",
+      "responses": [
+        { "text": "What can you cook?", "target": "cook" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Off you go, then. Come back when you're peckish.",
+      "responses": []
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 4,
+  "id": "honeyed-loaf",
+  "name": "Honeyed Loaf",
+  "description": "A sweet loaf baked with slices of ripe apple, sticky with honey.",
+  "attributes": {
+    "stats": {
+      "hunger": 55
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You tear into {item}, the sweetness lifting your spirits."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} eats a slice of {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 22
+}

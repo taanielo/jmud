@@ -1,0 +1,31 @@
+{
+  "schema_version": 4,
+  "id": "hearty-stew",
+  "name": "Hearty Stew",
+  "description": "A thick, steaming stew of meat and wild herbs. A bowl of this before a fight puts fire in the belly.",
+  "attributes": {
+    "stats": {
+      "hunger": 60
+    }
+  },
+  "effects": [
+    {
+      "effect_id": "well-fed",
+      "duration_ticks": 60
+    }
+  ],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You spoon down {item}, its warmth spreading through your limbs."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} tucks into a bowl of {item}."
+    }
+  ],
+  "weight": 2,
+  "value": 30
+}
