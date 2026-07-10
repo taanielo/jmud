@@ -111,7 +111,10 @@ public class JsonQuestRepository implements QuestRepository {
                 dto.itemReward(),
                 itemRewardQuantity,
                 dto.reputationRewardFactionId(),
-                dto.reputationRewardDelta()
+                dto.reputationRewardDelta(),
+                // repeatable defaults to true when the field is absent, preserving legacy behaviour.
+                dto.repeatable() == null || dto.repeatable(),
+                dto.prerequisiteQuestId()
             );
         } catch (IllegalArgumentException e) {
             throw new QuestRepositoryException("Invalid quest data in " + source + ": " + e.getMessage(), e);

@@ -180,6 +180,10 @@ public class QuestDeliveryService {
             messages.add("You have earned the title: " + titleReward + "!");
         }
 
+        if (!template.isRepeatable()) {
+            updated = updated.withCompletedQuest(template.id());
+        }
+
         return DeliverResult.success(updated, messages, itemGrant.droppedItems());
     }
 

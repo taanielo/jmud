@@ -208,6 +208,151 @@ class QuestCommandTest {
         assertEquals(0, ctx.savedPlayer.getGold(), "No gold should be awarded on abandon");
     }
 
+    // ── One-time quests & prerequisites ─────────────────────────────────
+
+    private static final QuestId BANDIT_HUNTER_ID = QuestId.of("bandit-hunter");
+    private static final QuestTemplate BANDIT_HUNTER = new QuestTemplate(
+        BANDIT_HUNTER_ID, "Bandit Hunter", "Kill 6 bandits.", "bandit", 6, 90, 220);
+
+    private static QuestTemplate oneTimeCaptainQuest() {
+        return new QuestTemplate(
+            QuestId.of("bandit-captain-fall"),
+            "The Captain's Fall",
+            "Finish the captain.",
+            "bandit-captain",
+            1,
+            200,
+            500,
+            null,
+            0,
+            "Bandit's Bane",
+            null,
+            null,
+            null,
+            null,
+            List.of(),
+            null,
+            null,
+            0,
+            "bandits",
+            -40,
+            false,
+            "bandit-hunter");
+    }
+
+    @Test
+    void acceptRejectsWhenPrerequisiteNotYetCompleted() {
+        QuestTemplate captain = oneTimeCaptainQuest();
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat());
+        QuestContextStub ctx = new QuestContextStub(player, List.of(BANDIT_HUNTER, captain));
+
+        command.match("QUEST ACCEPT bandit-captain-fall").orElseThrow().execute(ctx);
+
+        assertNull(ctx.savedPlayer, "Player should NOT be saved when prerequisite is unmet");
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.contains("You must first complete Bandit Hunter")),
+            "Expected prerequisite rejection: " + ctx.messages);
+    }
+
+    @Test
+    void acceptSucceedsOncePrerequisiteCompleted() {
+        QuestTemplate captain = oneTimeCaptainQuest();
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat())
+            .withCompletedQuest(BANDIT_HUNTER_ID);
+        QuestContextStub ctx = new QuestContextStub(player, List.of(BANDIT_HUNTER, captain));
+
+        command.match("QUEST ACCEPT bandit-captain-fall").orElseThrow().execute(ctx);
+
+        assertNotNull(ctx.savedPlayer, "Player should be saved once prerequisite is met");
+        assertEquals(captain.id(), ctx.savedPlayer.getActiveQuest().templateId());
+    }
+
+    @Test
+    void acceptRejectsRepeatingCompletedOneTimeQuest() {
+        QuestTemplate captain = oneTimeCaptainQuest();
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat())
+            .withCompletedQuest(BANDIT_HUNTER_ID)
+            .withCompletedQuest(captain.id());
+        QuestContextStub ctx = new QuestContextStub(player, List.of(BANDIT_HUNTER, captain));
+
+        command.match("QUEST ACCEPT bandit-captain-fall").orElseThrow().execute(ctx);
+
+        assertNull(ctx.savedPlayer, "Player should NOT be saved re-accepting a completed one-time quest");
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.contains("already completed this contract")),
+            "Expected already-completed rejection: " + ctx.messages);
+    }
+
+    @Test
+    void repeatableQuestIsAlwaysFarmableEvenAfterPriorCompletion() {
+        // A repeatable quest is never recorded as completed, so it can always be re-accepted.
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat());
+        QuestContextStub ctx = new QuestContextStub(player, List.of(RAT_CATCHER));
+
+        command.match("QUEST ACCEPT rat-catcher").orElseThrow().execute(ctx);
+
+        assertNotNull(ctx.savedPlayer);
+        assertFalse(ctx.savedPlayer.completedQuests().hasCompleted(RAT_CATCHER_ID),
+            "Repeatable quests should never be recorded as completed");
+    }
+
+    @Test
+    void listOmitsQuestsWithUnmetPrerequisite() {
+        QuestTemplate captain = oneTimeCaptainQuest();
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat());
+        QuestContextStub ctx = new QuestContextStub(player, List.of(BANDIT_HUNTER, captain));
+
+        command.match("QUEST LIST").orElseThrow().execute(ctx);
+
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.contains("bandit-hunter")));
+        assertFalse(ctx.messages.stream().anyMatch(m -> m.contains("bandit-captain-fall")),
+            "Quest with unmet prerequisite should be hidden from LIST: " + ctx.messages);
+    }
+
+    @Test
+    void listShowsQuestOncePrerequisiteCompleted() {
+        QuestTemplate captain = oneTimeCaptainQuest();
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat())
+            .withCompletedQuest(BANDIT_HUNTER_ID);
+        QuestContextStub ctx = new QuestContextStub(player, List.of(BANDIT_HUNTER, captain));
+
+        command.match("QUEST LIST").orElseThrow().execute(ctx);
+
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.contains("bandit-captain-fall")),
+            "Quest should appear in LIST once prerequisite is met: " + ctx.messages);
+    }
+
+    @Test
+    void logShowsEmptyStateWhenNoOneTimeQuestsCompleted() {
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat());
+        QuestContextStub ctx = new QuestContextStub(player, List.of(RAT_CATCHER));
+
+        command.match("QUEST LOG").orElseThrow().execute(ctx);
+
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase().contains("not completed any")),
+            "Expected empty-state message: " + ctx.messages);
+    }
+
+    @Test
+    void logListsCompletedOneTimeQuestsByName() {
+        QuestTemplate captain = oneTimeCaptainQuest();
+        User user = new User(Username.of("hero"), Password.of("pw"));
+        Player player = Player.of(user, PromptSettings.defaultFormat())
+            .withCompletedQuest(captain.id());
+        QuestContextStub ctx = new QuestContextStub(player, List.of(BANDIT_HUNTER, captain));
+
+        command.match("QUEST LOG").orElseThrow().execute(ctx);
+
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.contains("Completed Contracts:")));
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.contains("The Captain's Fall")),
+            "Expected completed quest name: " + ctx.messages);
+    }
+
     @Test
     void killDecrementsThenCompleteGrantsReward() {
         // End-to-end kill count decrement test via QuestKillService
@@ -272,10 +417,35 @@ class QuestCommandTest {
                 case "LIST" -> {
                     try {
                         for (QuestTemplate t : repo.findAll()) {
+                            // Mirror the real handler: hide quests whose prerequisite is unmet.
+                            if (t.hasPrerequisite()
+                                    && !player.completedQuests().hasCompleted(QuestId.of(t.prerequisiteQuestId()))) {
+                                continue;
+                            }
                             messages.add(t.id().getValue() + " — " + t.description());
                         }
                     } catch (QuestRepositoryException e) {
                         messages.add("error");
+                    }
+                }
+                case "LOG" -> {
+                    var completed = player.completedQuests().completed();
+                    if (completed.isEmpty()) {
+                        messages.add("You have not completed any one-time contracts yet.");
+                        return;
+                    }
+                    List<String> names = new ArrayList<>();
+                    for (QuestId id : completed) {
+                        try {
+                            names.add(repo.findById(id).map(QuestTemplate::name).orElse(id.getValue()));
+                        } catch (QuestRepositoryException e) {
+                            names.add(id.getValue());
+                        }
+                    }
+                    names.sort(String::compareToIgnoreCase);
+                    messages.add("Completed Contracts:");
+                    for (String name : names) {
+                        messages.add("  " + name);
                     }
                 }
                 case "ACCEPT" -> {
@@ -290,6 +460,17 @@ class QuestCommandTest {
                             .findFirst().orElse(null);
                         if (template == null) {
                             messages.add("Unknown contract.");
+                            return;
+                        }
+                        if (!template.isRepeatable() && player.completedQuests().hasCompleted(template.id())) {
+                            messages.add("You have already completed this contract.");
+                            return;
+                        }
+                        if (template.hasPrerequisite()
+                                && !player.completedQuests().hasCompleted(QuestId.of(template.prerequisiteQuestId()))) {
+                            String prereqName = repo.findById(QuestId.of(template.prerequisiteQuestId()))
+                                .map(QuestTemplate::name).orElse(template.prerequisiteQuestId());
+                            messages.add("You must first complete " + prereqName + " before taking this contract.");
                             return;
                         }
                         player = player.withActiveQuest(new ActiveQuest(template.id(), template.requiredKills()));

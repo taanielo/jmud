@@ -179,6 +179,9 @@ public class QuestNpcDeliveryService {
             updated = updated.grantTitle(titleReward);
             messages.add("You have earned the title: " + titleReward + "!");
         }
+        if (!template.isRepeatable()) {
+            updated = updated.withCompletedQuest(template.id());
+        }
         return DeliveryQuestResult.success(updated, messages, itemGrant.droppedItems());
     }
 

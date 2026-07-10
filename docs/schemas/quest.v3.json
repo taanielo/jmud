@@ -91,6 +91,15 @@
     "reputation_reward_delta": {
       "type": "integer",
       "description": "Signed, non-zero change applied to the player's standing with reputation_reward_faction_id on completion (positive raises standing, negative lowers it). Must be omitted (or 0) when reputation_reward_faction_id is absent, and non-zero when it is present."
+    },
+    "repeatable": {
+      "type": "boolean",
+      "description": "Optional; defaults to true when omitted, preserving legacy behaviour (the quest may be accepted and completed repeatedly). Set to false to make this a one-time-only contract: once a player completes it, QUEST ACCEPT refuses it, and it appears under QUEST LOG. Applies to any quest type."
+    },
+    "prerequisite_quest_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Optional id of a quest the player must have completed before this contract can be accepted. Until the prerequisite is completed, QUEST ACCEPT rejects this quest and QUEST LIST omits it. Applies to any quest type."
     }
   }
 }

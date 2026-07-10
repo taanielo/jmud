@@ -9,6 +9,7 @@ import java.util.Optional;
  * <p>Sub-commands:
  * <ul>
  *   <li>{@code QUEST LIST}           — shows available contracts</li>
+ *   <li>{@code QUEST LOG}            — lists the player's completed one-time contracts</li>
  *   <li>{@code QUEST ACCEPT <name>}  — accepts the named contract</li>
  *   <li>{@code QUEST STATUS}         — prints current quest progress (including explored rooms)</li>
  *   <li>{@code QUEST COMPLETE}       — claims kill-quest reward (must be in Courtyard)</li>
@@ -36,6 +37,7 @@ public class QuestCommand extends RegistrableCommand {
     public String longDescription() {
         return "Usage: QUEST <sub-command> [args]\n"
              + "  QUEST LIST             — show available contracts\n"
+             + "  QUEST LOG              — list your completed one-time contracts\n"
              + "  QUEST ACCEPT <id>      — accept a contract (e.g. QUEST ACCEPT rat-catcher)\n"
              + "  QUEST STATUS           — show current quest progress\n"
              + "  QUEST COMPLETE         — claim kill-quest reward (must be in the Courtyard)\n"

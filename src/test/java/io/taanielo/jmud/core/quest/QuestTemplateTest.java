@@ -62,4 +62,47 @@ class QuestTemplateTest {
     void rejectsNonZeroDeltaWithoutFactionId() {
         assertThrows(IllegalArgumentException.class, () -> KILL_QUEST.withReputationReward(null, -25));
     }
+
+    @Test
+    void isRepeatableByDefault() {
+        assertTrue(KILL_QUEST.isRepeatable());
+        assertTrue(KILL_QUEST.repeatable());
+    }
+
+    @Test
+    void hasNoPrerequisiteByDefault() {
+        assertFalse(KILL_QUEST.hasPrerequisite());
+        assertEquals(null, KILL_QUEST.prerequisiteQuestId());
+    }
+
+    @Test
+    void oneTimeQuestWithPrerequisiteExposesBothFields() {
+        QuestTemplate quest = new QuestTemplate(
+            QuestId.of("bandit-captain-fall"),
+            "The Captain's Fall",
+            "Finish the captain.",
+            "bandit-captain",
+            1,
+            200,
+            500,
+            null,
+            0,
+            "Bandit's Bane",
+            null,
+            null,
+            null,
+            null,
+            java.util.List.of(),
+            null,
+            null,
+            0,
+            "bandits",
+            -40,
+            false,
+            "bandit-hunter");
+
+        assertFalse(quest.isRepeatable());
+        assertTrue(quest.hasPrerequisite());
+        assertEquals("bandit-hunter", quest.prerequisiteQuestId());
+    }
 }
