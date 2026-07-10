@@ -1,0 +1,28 @@
+{
+  "schema_version": 10,
+  "id": "smugglers-tonic",
+  "name": "Smuggler's Tonic",
+  "description": "A squat black-glass flask sealed with wax and no honest label. Whatever the fence distils in the cove restores both body and mind at once — for those the Brotherhood still trusts.",
+  "attributes": {
+    "stats": {
+      "hp": 25,
+      "mana": 25
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You knock back {item}. It burns going down, then the ache fades."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} knocks back {item} with a practiced grimace."
+    }
+  ],
+  "weight": 1,
+  "value": 40,
+  "rarity": "uncommon"
+}

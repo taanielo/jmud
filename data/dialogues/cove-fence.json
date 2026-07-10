@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "id": "cove-fence-welcome",
+  "npc_id": "cove-fence",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Keep your voice down. If you've coin and you're no friend of the law, we can do business. LIST to see what I've got.",
+      "responses": [
+        { "text": "Who do you answer to?", "target": "brotherhood" },
+        { "text": "Why is some of your stock locked?", "target": "trust" },
+        { "text": "Just browsing.", "target": "end" }
+      ]
+    },
+    "brotherhood": {
+      "text": "The Brotherhood, same as everyone who works this coast. Cross them and you'll find my better goods are suddenly none of your concern.",
+      "responses": [
+        { "text": "About that locked stock...", "target": "trust" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "trust": {
+      "text": "The good stuff's only for those the Brotherhood still trusts. Keep hunting our people and I'll sell you rope and torches, nothing more.",
+      "responses": [
+        { "text": "Fair enough.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Mind the tide on your way out.",
+      "responses": []
+    }
+  }
+}

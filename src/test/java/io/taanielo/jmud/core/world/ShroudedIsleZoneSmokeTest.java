@@ -91,8 +91,8 @@ class ShroudedIsleZoneSmokeTest {
         }
 
         // shore (tide-crab + keeper), driftwood (fog-wraith), shipwreck (drowned-sailor),
-        // summit (drowned-captain) — five templates in all.
-        assertEquals(5, islandMobs.size(), "Expected five mob templates on the Shrouded Isle");
+        // summit (drowned-captain), and the non-combat cove fence (shopkeeper) — six templates.
+        assertEquals(6, islandMobs.size(), "Expected six mob templates on the Shrouded Isle");
 
         for (MobTemplate mob : islandMobs) {
             if (mob.attackId() != null) {

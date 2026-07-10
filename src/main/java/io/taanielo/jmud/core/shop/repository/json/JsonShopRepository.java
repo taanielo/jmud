@@ -29,7 +29,7 @@ import io.taanielo.jmud.core.world.RoomId;
 @Slf4j
 public class JsonShopRepository implements ShopRepository {
 
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
     private static final double DEFAULT_SELL_RATIO = 0.5;
     private static final String SHOPS_DIR = "shops";
 
@@ -86,7 +86,7 @@ public class JsonShopRepository implements ShopRepository {
     private Shop toDomain(ShopDto dto, Path source) throws ShopRepositoryException {
         try {
             List<StockEntry> stock = dto.stock() == null ? List.of() : dto.stock().stream()
-                .map(e -> new StockEntry(ItemId.of(e.itemId()), e.price()))
+                .map(e -> new StockEntry(ItemId.of(e.itemId()), e.price(), e.minReputation()))
                 .toList();
             double sellRatio = dto.sellRatio() != null ? dto.sellRatio() : DEFAULT_SELL_RATIO;
             FactionId factionId = dto.factionId() != null ? FactionId.of(dto.factionId()) : null;

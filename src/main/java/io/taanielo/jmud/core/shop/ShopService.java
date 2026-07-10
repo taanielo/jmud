@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.faction.ReputationPriceResolver;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.Item;
@@ -84,6 +85,26 @@ public class ShopService {
     }
 
     /**
+     * Returns whether the given stock entry is locked for the player by a reputation gate: it carries
+     * a {@code minReputation} threshold and the player's standing with the shop's faction is strictly
+     * below it. Entries with no gate, or shops with no faction, are never locked, so ungated stock and
+     * faction-neutral shops behave exactly as before.
+     *
+     * @param entry  the stock entry to test
+     * @param player the viewing/buying player
+     * @param shop   the shop being visited
+     * @return {@code true} when the player cannot yet access this entry
+     */
+    private boolean isLocked(StockEntry entry, Player player, Shop shop) {
+        Integer minReputation = entry.minReputation();
+        FactionId factionId = shop.factionId();
+        if (minReputation == null || factionId == null) {
+            return false;
+        }
+        return player.reputation().standing(factionId) < minReputation;
+    }
+
+    /**
      * Returns the shop located in the given room, if any.
      */
     public Optional<Shop> findShopInRoom(RoomId roomId) {
@@ -128,15 +149,21 @@ public class ShopService {
                     continue;
                 }
                 Item item = itemOpt.get();
+                String desc = item.getDescription();
+                if (desc.length() > 29) {
+                    desc = desc.substring(0, 26) + "...";
+                }
+                if (player != null && isLocked(entry, player, shop)) {
+                    lines.add(String.format("  %-24s %-30s %s",
+                        item.getName(), desc,
+                        "[locked — requires better standing with " + shop.factionId().getValue() + "]"));
+                    continue;
+                }
                 int price = entry.price() != null ? entry.price() : item.getValue();
                 int sellValue = (int) Math.floor(item.getValue() * shop.sellRatio());
                 if (player != null) {
                     price = adjustedBuyPrice(price, player, shop);
                     sellValue = adjustedSellValue(sellValue, player, shop);
-                }
-                String desc = item.getDescription();
-                if (desc.length() > 29) {
-                    desc = desc.substring(0, 26) + "...";
                 }
                 lines.add(String.format("  %-24s %-30s %-10s %d gold",
                     item.getName(), desc, price + " gold", sellValue));
@@ -187,6 +214,12 @@ public class ShopService {
         if (entry == null || item == null) {
             return ShopTransactionResult.failure(
                 "The shop does not carry '" + itemInput.trim() + "'.");
+        }
+
+        if (isLocked(entry, player, shop)) {
+            return ShopTransactionResult.failure(
+                "The " + item.getName() + " is not for sale to you. It requires better standing with "
+                    + shop.factionId().getValue() + " (at least " + entry.minReputation() + ").");
         }
 
         int price = adjustedBuyPrice(entry.price() != null ? entry.price() : item.getValue(), player, shop);

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:shop:v2",
+  "title": "Shop definition (v2)",
+  "description": "A shopkeeper NPC's wares, bound to a single room. v2 adds an optional per-stock-entry `min_reputation` gate: an entry is only purchasable by a player whose standing with the shop's `faction_id` is at least this value. Omitting it preserves the v1 always-purchasable behaviour, so faction-neutral shops and ungated entries need no changes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "room_id",
+    "stock"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "room_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the room this shop is available in."
+    },
+    "faction_id": {
+      "type": ["string", "null"],
+      "description": "Optional faction this shop is aligned with. When set, buy/sell prices shift with the player's reputation, and `min_reputation` gates are evaluated against the player's standing with this faction."
+    },
+    "sell_ratio": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Fraction of an item's base value the shop pays when a player sells to it. Defaults to 0.5 when omitted."
+    },
+    "stock": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id"],
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "price": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Explicit buy price. When omitted the item's own `value` is used."
+          },
+          "min_reputation": {
+            "type": ["integer", "null"],
+            "description": "Optional reputation gate. When set, the entry is only purchasable by a player whose standing with the shop's `faction_id` is at least this value; below it the entry lists as locked and cannot be bought. Requires `faction_id` to have any effect. Omit for an always-available entry."
+          }
+        }
+      }
+    }
+  }
+}

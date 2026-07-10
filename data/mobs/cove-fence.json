@@ -1,0 +1,14 @@
+{
+  "schema_version": 4,
+  "id": "cove-fence",
+  "name": "a shifty-eyed fence",
+  "max_hp": 9999,
+  "attack_id": null,
+  "aggressive": false,
+  "tags": ["npc", "shopkeeper", "fence"],
+  "spawn_room_id": "shrouded-isle-cove",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "loot": [],
+  "dialogue_id": "cove-fence-welcome"
+}
