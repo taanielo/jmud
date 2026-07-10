@@ -816,4 +816,30 @@ public interface SocketCommandContext extends Client {
         return "";
     }
 
+    /**
+     * Returns the active-title suffix (e.g. {@code " the Centurion"}) for the given online player,
+     * or an empty string when they have not selected a title. Used by {@code WHO} to annotate each
+     * name after the guild tag.
+     *
+     * <p>The default implementation returns an empty string so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player whose active title to resolve
+     * @return the title suffix with a leading {@code " the "}, or {@code ""}
+     */
+    default String activeTitle(Username username) {
+        return "";
+    }
+
+    /**
+     * Handles the {@code TITLE} command family: listing earned titles, selecting an earned title as
+     * active, or clearing the active title.
+     *
+     * <p>The default implementation is a no-op so existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument string following {@code TITLE} (may be blank, a title name,
+     *             {@code NONE}, or {@code CLEAR})
+     */
+    default void manageTitle(String args) {}
+
 }

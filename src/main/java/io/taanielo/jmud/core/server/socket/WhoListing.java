@@ -48,14 +48,38 @@ public final class WhoListing {
      * @return the lines to render, never empty
      */
     public static List<String> format(List<Username> onlineNames, Function<Username, String> tagResolver) {
+        return format(onlineNames, tagResolver, name -> "");
+    }
+
+    /**
+     * Formats the given online player names into display lines, appending each player's guild tag
+     * and active title suffix.
+     *
+     * <p>Behaves like {@link #format(List, Function)} but, after the guild tag, also appends the
+     * result of {@code titleResolver} (e.g. {@code " the Centurion"}). Both resolvers must return an
+     * empty string when there is nothing to show for a player, never {@code null}. The rendered order
+     * is {@code name + guildTag + title}, so a fully-decorated line reads {@code "Sparky [Ironclad]
+     * the Centurion"}.
+     *
+     * @param onlineNames   the authenticated, connected player names to list
+     * @param tagResolver   resolves the guild-tag suffix for each name
+     * @param titleResolver resolves the active-title suffix for each name
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(
+            List<Username> onlineNames,
+            Function<Username, String> tagResolver,
+            Function<Username, String> titleResolver) {
         Objects.requireNonNull(onlineNames, "Online names are required");
         Objects.requireNonNull(tagResolver, "Tag resolver is required");
+        Objects.requireNonNull(titleResolver, "Title resolver is required");
         List<String> lines = new ArrayList<>(onlineNames.size() + 2);
         lines.add(HEADER);
         for (Username name : onlineNames) {
             Username resolved = Objects.requireNonNull(name, "Online name is required");
             String tag = Objects.requireNonNullElse(tagResolver.apply(resolved), "");
-            lines.add("  " + resolved.getValue() + tag);
+            String title = Objects.requireNonNullElse(titleResolver.apply(resolved), "");
+            lines.add("  " + resolved.getValue() + tag + title);
         }
         lines.add(footer(onlineNames.size()));
         return List.copyOf(lines);

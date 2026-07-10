@@ -176,7 +176,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -209,7 +209,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("explored_rooms") List<String> exploredRooms,
         @JsonProperty("ignoredPlayers") List<String> ignoredPlayers,
         @JsonProperty("guildId") String guildId,
-        @JsonProperty("bankedItems") List<Item> bankedItems
+        @JsonProperty("bankedItems") List<Item> bankedItems,
+        @JsonProperty("activeTitle") String activeTitle
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId),
@@ -224,7 +225,7 @@ public class Player implements EffectTarget, Combatant {
             totalKills == null ? 0L : totalKills,
             practicePoints == null ? 0 : Math.max(0, practicePoints),
             bankedGold == null ? 0 : Math.max(0, bankedGold),
-            new PlayerTitles(titles),
+            new PlayerTitles(titles, activeTitle),
             new PlayerAliases(aliases),
             new PlayerMailbox(mailbox),
             sustenance == null ? PlayerSustenance.defaults() : sustenance,
@@ -434,6 +435,15 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("titles")
     public List<String> getTitles() {
         return titles.earned();
+    }
+
+    /**
+     * Returns the player's currently active (displayed) title for JSON serialisation, or
+     * {@code null} when none is selected (in which case the field is omitted from save files).
+     */
+    @JsonProperty("activeTitle")
+    public String getActiveTitle() {
+        return titles.active();
     }
 
     @JsonProperty("aliases")
@@ -793,6 +803,29 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns a copy of this player with the given earned title selected as the active
+     * (displayed) title.
+     *
+     * @param title the title to activate; must be an earned title (matched case-insensitively)
+     * @throws IllegalArgumentException when the title has not been earned
+     */
+    public Player withActiveTitle(String title) {
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withActive(title), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, guildMembership, vault);
+    }
+
+    /**
+     * Returns a copy of this player with no active (displayed) title, or this instance
+     * unchanged when none was active.
+     */
+    public Player clearActiveTitle() {
+        PlayerTitles cleared = titles.clearActive();
+        if (cleared == titles) {
+            return this;
+        }
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, cleared, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, guildMembership, vault);
+    }
+
+    /**
      * Returns a copy of this player with the given alias defined or overwritten.
      *
      * @param name      the alias name; case-insensitive, must not be blank
@@ -982,7 +1015,8 @@ public class Player implements EffectTarget, Combatant {
             exploration.toIdList(),
             getIgnoredPlayers(),
             getGuildId(),
-            vault.items()
+            vault.items(),
+            titles.active()
         );
     }
 }

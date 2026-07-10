@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.server.socket;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 
@@ -129,7 +130,11 @@ public class ScoreCommand extends RegistrableCommand {
                 lightingService.carriedLightRadius(player))));
         List<String> titles = player.titles().earned();
         if (!titles.isEmpty()) {
-            context.writeLineSafe("Titles: " + String.join(", ", titles));
+            String active = player.titles().active();
+            String rendered = titles.stream()
+                .map(title -> title.equals(active) ? "*" + title + "* (active)" : title)
+                .collect(Collectors.joining(", "));
+            context.writeLineSafe("Titles: " + rendered);
         }
         if (roomService != null) {
             WeatherVisibilityLine.forPlayer(weatherEngine, roomService, player)
