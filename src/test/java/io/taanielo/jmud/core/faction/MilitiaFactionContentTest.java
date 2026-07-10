@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.prompt.PromptSettings;
 import io.taanielo.jmud.core.quest.QuestId;
