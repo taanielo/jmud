@@ -1,0 +1,31 @@
+{
+  "schema_version": 10,
+  "id": "grilled-trout",
+  "name": "Grilled Trout",
+  "description": "A whole silver trout grilled crisp over the coals, its skin blistered and golden. A satisfying meal for a hungry angler.",
+  "attributes": {
+    "stats": {
+      "hunger": 55
+    }
+  },
+  "effects": [
+    {
+      "effect_id": "well-fed",
+      "duration_ticks": 60
+    }
+  ],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You peel the crisp skin from {item} and eat the tender flesh beneath."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} eats a {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 22
+}

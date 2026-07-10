@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "north-dock-trout-shoal",
+  "room_id": "north-dock",
+  "yield_item": "silver-trout",
+  "respawn_ticks": 18,
+  "name": "shoal of silver trout",
+  "look_description": "A shoal of silver trout circles lazily in the cold water below the dock planks (GATHER)."
+}

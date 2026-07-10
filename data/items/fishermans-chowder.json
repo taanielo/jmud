@@ -1,0 +1,31 @@
+{
+  "schema_version": 10,
+  "id": "fishermans-chowder",
+  "name": "Fisherman's Chowder",
+  "description": "A thick, creamy chowder of reef eel simmered with wild herbs. A bowl of this before a fight puts iron in the belly.",
+  "attributes": {
+    "stats": {
+      "hunger": 65
+    }
+  },
+  "effects": [
+    {
+      "effect_id": "well-fed",
+      "duration_ticks": 75
+    }
+  ],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You spoon down {item}, its warmth spreading through your limbs."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} tucks into a bowl of {item}."
+    }
+  ],
+  "weight": 2,
+  "value": 32
+}

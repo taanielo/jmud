@@ -1,0 +1,13 @@
+{
+  "schema_version": 10,
+  "id": "pearl-perch",
+  "name": "Pearl Perch",
+  "description": "A small, iridescent perch that gleams like mother-of-pearl in the still water of the cove. A delicacy on any cook's board.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 9
+}

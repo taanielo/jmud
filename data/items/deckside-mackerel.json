@@ -1,0 +1,13 @@
+{
+  "schema_version": 10,
+  "id": "deckside-mackerel",
+  "name": "Deckside Mackerel",
+  "description": "A sleek, blue-green mackerel caught over the ferry's rail as it rocks at anchor. Firm and fresh, it makes fine eating.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 6
+}

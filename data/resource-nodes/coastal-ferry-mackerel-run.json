@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "coastal-ferry-mackerel-run",
+  "room_id": "coastal-ferry-deck",
+  "yield_item": "deckside-mackerel",
+  "respawn_ticks": 18,
+  "name": "mackerel run",
+  "look_description": "A run of mackerel flashes silver in the ferry's wake, easily reached over the rail (GATHER)."
+}

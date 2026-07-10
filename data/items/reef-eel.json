@@ -1,0 +1,13 @@
+{
+  "schema_version": 10,
+  "id": "reef-eel",
+  "name": "Reef Eel",
+  "description": "A muscular, dark-banded eel hauled up from the rocks below the south dock. Its rich, oily flesh is prized in seaside kitchens.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 7
+}

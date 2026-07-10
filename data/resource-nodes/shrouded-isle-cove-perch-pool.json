@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "shrouded-isle-cove-perch-pool",
+  "room_id": "shrouded-isle-cove",
+  "yield_item": "pearl-perch",
+  "respawn_ticks": 22,
+  "name": "still perch pool",
+  "look_description": "Pearl perch drift through a still, clear pool at the edge of the cove, glinting like coins (GATHER)."
+}
