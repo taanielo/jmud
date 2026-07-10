@@ -8,5 +8,7 @@
   "gold_reward": 100,
   "xp_reward": 350,
   "item_reward": "troll-tooth-charm",
-  "item_reward_quantity": 1
+  "item_reward_quantity": 1,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 12
 }

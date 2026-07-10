@@ -7,5 +7,7 @@
   "required_kills": 5,
   "gold_reward": 30,
   "xp_reward": 75,
-  "title_reward": "Rat Slayer"
+  "title_reward": "Rat Slayer",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 3
 }

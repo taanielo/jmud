@@ -6,5 +6,7 @@
   "target_mob_id": "wolf",
   "required_kills": 5,
   "gold_reward": 30,
-  "xp_reward": 120
+  "xp_reward": 120,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 5
 }
