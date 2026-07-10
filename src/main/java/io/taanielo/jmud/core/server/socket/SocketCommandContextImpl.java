@@ -3421,7 +3421,48 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
 
+        if ("GOLD".equals(firstToken)) {
+            handleSendGoldMail(player, parts.length < 2 ? "" : parts[1], currentTick);
+            return;
+        }
+
         handleSendMail(player, parts, currentTick);
+    }
+
+    private void handleSendGoldMail(Player sender, String rest, long currentTick) {
+        String[] goldParts = rest.trim().split("\\s+", 3);
+        if (goldParts.length < 3 || goldParts[0].isBlank() || goldParts[2].isBlank()) {
+            writeLineWithPrompt("Usage: MAIL GOLD <playername> <amount> <message>");
+            return;
+        }
+        String targetName = goldParts[0];
+        Integer amount = parseMailIndex(goldParts[1]);
+        if (amount == null) {
+            writeLineWithPrompt("'" + goldParts[1] + "' is not a valid amount of gold.");
+            return;
+        }
+        String message = goldParts[2].trim();
+        Username targetUsername = Username.of(targetName);
+        if (targetUsername.equals(sender.getUsername())) {
+            writeLineWithPrompt("You cannot mail yourself.");
+            return;
+        }
+        Player recipient = resolvePlayerByUsername(targetUsername);
+        if (recipient == null) {
+            writeLineWithPrompt("No such player: " + targetName);
+            return;
+        }
+        MailResult result = playerMailService.sendGold(sender, recipient, currentTick, message, amount);
+        if (result.success()) {
+            if (result.updatedPlayer() != null) {
+                updateTarget(result.updatedPlayer());
+            }
+            if (result.updatedSender() != null) {
+                session.replacePlayer(result.updatedSender());
+                saveOrWarn(result.updatedSender());
+            }
+        }
+        writeLineWithPrompt(result.message());
     }
 
     private void handleSendMail(Player sender, String[] parts, long currentTick) {
