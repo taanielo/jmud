@@ -57,6 +57,9 @@ import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
 import io.taanielo.jmud.core.faction.FactionRepositoryException;
 import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository;
+import io.taanielo.jmud.core.guild.GuildRepositoryException;
+import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
 import io.taanielo.jmud.core.messaging.GossipHistory;
@@ -167,6 +170,7 @@ public record GameContext(
     DailyQuestService dailyQuestService,
     PartyService partyService,
     BankService bankService,
+    GuildService guildService,
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
     WorldClock worldClock,
@@ -361,6 +365,8 @@ public record GameContext(
             mobRegistry.setPartyService(partyService);
         }
 
+        GuildService guildService = createGuildService();
+
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);
 
@@ -420,6 +426,7 @@ public record GameContext(
             dailyQuestService,
             partyService,
             bankService,
+            guildService,
             messageBroadcaster,
             gossipHistory,
             worldClock,
@@ -585,6 +592,14 @@ public record GameContext(
             return new BankService(bankRepository);
         } catch (BankRepositoryException e) {
             throw new IllegalStateException("Failed to initialize bank service: " + e.getMessage(), e);
+        }
+    }
+
+    private static GuildService createGuildService() {
+        try {
+            return new GuildService(new JsonGuildRepository());
+        } catch (GuildRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize guild service: " + e.getMessage(), e);
         }
     }
 

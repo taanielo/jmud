@@ -98,7 +98,8 @@ class ArchitectureTest {
                             "..core.quest",
                             "..core.shop",
                             "..core.bank",
-                            "..core.party")
+                            "..core.party",
+                            "..core.guild")
                     .should()
                     .dependOnClassesThat()
                     .resideInAnyPackage("java.net..", "..core.server..")
