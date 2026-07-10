@@ -118,4 +118,135 @@ class PlayerMailServiceTest {
         MailResult result = service.delete(recipient, 5);
         assertFalse(result.success());
     }
+
+    @Test
+    void sendGoldDeductsFromSenderAndAttachesToRecipient() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+
+        MailResult result = service.sendGold(sender, recipient, 100, "Here, take this.", 50);
+
+        assertTrue(result.success());
+        assertTrue(result.message().contains("50 gold"));
+        assertEquals(50, result.updatedSender().getGold());
+        PlayerMailMessage message = result.updatedPlayer().mailbox().messages().get(0);
+        assertEquals("alice", message.sender());
+        assertEquals(50, message.attachedGold());
+        assertTrue(message.hasAttachment());
+    }
+
+    @Test
+    void sendGoldRejectsNonPositiveAmount() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+
+        MailResult result = service.sendGold(sender, recipient, 100, "nope", 0);
+
+        assertFalse(result.success());
+    }
+
+    @Test
+    void sendGoldFailsWhenSenderCannotAfford() {
+        Player sender = player("alice").addGold(10);
+        Player recipient = player("bob");
+
+        MailResult result = service.sendGold(sender, recipient, 100, "too much", 50);
+
+        assertFalse(result.success());
+        assertTrue(result.message().toLowerCase().contains("gold"));
+        assertEquals(null, result.updatedSender());
+        assertEquals(null, result.updatedPlayer());
+    }
+
+    @Test
+    void sendGoldFailsWhenMailboxFullWithoutDeducting() {
+        List<PlayerMailMessage> full = new ArrayList<>();
+        for (int i = 0; i < PlayerMailbox.CAPACITY; i++) {
+            full.add(new PlayerMailMessage("someone", i, "msg " + i, false));
+        }
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob").withMailbox(new PlayerMailbox(full));
+
+        MailResult result = service.sendGold(sender, recipient, 100, "one more", 50);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("full"));
+        assertEquals(null, result.updatedSender());
+    }
+
+    @Test
+    void sendGoldRejectsBlankBody() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+
+        MailResult result = service.sendGold(sender, recipient, 100, "  ", 50);
+
+        assertFalse(result.success());
+    }
+
+    @Test
+    void readCreditsAttachedGoldAndClearsAttachment() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+        Player withMail = service.sendGold(sender, recipient, 0, "a gift", 50).updatedPlayer();
+
+        MailResult result = service.read(withMail, 1);
+
+        assertTrue(result.success());
+        assertEquals(50, result.updatedPlayer().getGold());
+        assertFalse(result.updatedPlayer().mailbox().messages().get(0).hasAttachment());
+        assertTrue(result.lines().stream().anyMatch(l -> l.contains("50 gold")));
+    }
+
+    @Test
+    void readIsIdempotentForGoldCredit() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+        Player withMail = service.sendGold(sender, recipient, 0, "a gift", 50).updatedPlayer();
+
+        Player afterFirstRead = service.read(withMail, 1).updatedPlayer();
+        MailResult secondRead = service.read(afterFirstRead, 1);
+
+        assertTrue(secondRead.success());
+        assertEquals(50, secondRead.updatedPlayer().getGold());
+    }
+
+    @Test
+    void deleteCreditsUnclaimedGoldBeforeRemoving() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+        Player withMail = service.sendGold(sender, recipient, 0, "a gift", 50).updatedPlayer();
+
+        MailResult result = service.delete(withMail, 1);
+
+        assertTrue(result.success());
+        assertTrue(result.updatedPlayer().mailbox().isEmpty());
+        assertEquals(50, result.updatedPlayer().getGold());
+        assertTrue(result.message().contains("50 gold"));
+    }
+
+    @Test
+    void deleteAfterReadDoesNotDoubleCreditGold() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+        Player withMail = service.sendGold(sender, recipient, 0, "a gift", 50).updatedPlayer();
+
+        Player afterRead = service.read(withMail, 1).updatedPlayer();
+        MailResult result = service.delete(afterRead, 1);
+
+        assertTrue(result.success());
+        assertEquals(50, result.updatedPlayer().getGold());
+    }
+
+    @Test
+    void listMarksEntriesWithGoldAttachment() {
+        Player sender = player("alice").addGold(100);
+        Player recipient = player("bob");
+        Player withMail = service.sendGold(sender, recipient, 0, "a gift", 50).updatedPlayer();
+
+        MailResult result = service.list(withMail, 0);
+
+        assertTrue(result.success());
+        assertTrue(result.lines().get(0).contains("[50 gold]"));
+    }
 }
