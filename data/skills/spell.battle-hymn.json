@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.battle-hymn",
+  "name": "battle hymn",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["hymn"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "battle-hymn"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You strike up a rousing battle hymn, emboldening all around you with {ability}."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} strikes up a rousing battle hymn, emboldening the whole room."
+    }
+  ]
+}
