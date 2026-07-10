@@ -38,6 +38,7 @@ import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bank.BankTransactionResult;
 import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.craft.CraftOutcome;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.dialogue.DialogueId;
@@ -2144,6 +2145,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
             context.itemDurabilityService().repair(player, args);
         if (outcome.success()) {
             session.replacePlayer(outcome.updatedPlayer());
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
+    public void craft(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to craft items.");
+            return;
+        }
+        if (context.craftingService() == null) {
+            writeLineWithPrompt("There is no blacksmith here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isBlacksmithPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no blacksmith here to craft with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.craftingService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.craftingService().craft(player, args);
+        Player crafted = outcome.updatedPlayer();
+        if (outcome.success() && crafted != null) {
+            session.replacePlayer(crafted);
         }
         writeLineWithPrompt(outcome.message());
     }

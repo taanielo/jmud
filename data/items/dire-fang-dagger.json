@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "dire-fang-dagger",
+  "name": "Dire Fang Dagger",
+  "description": "A wicked dagger with a pair of dire wolf fangs lashed along the blade, ripping deeper wounds.",
+  "attributes": {
+    "stats": {
+      "dexterity": 2
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 2,
+  "value": 60,
+  "attack_ref": "attack.dagger"
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:recipe:v1",
+  "title": "Crafting recipe definition (v1)",
+  "description": "A single crafting recipe file under data/recipes/. A blacksmith turns the listed materials plus gold into one copy of the output item via the CRAFT command.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "output_item",
+    "materials"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique recipe identifier."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable recipe name, typically the output item's name."
+    },
+    "output_item": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the item (data/items/<id>.json) produced on a successful craft."
+    },
+    "gold_cost": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Gold consumed by the craft. Defaults to 0 when omitted."
+    },
+    "materials": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Material items consumed by the craft. Every entry must be present in the crafter's inventory in the given quantity.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item"
+        ],
+        "properties": {
+          "item": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Id of the required material item (data/items/<id>.json)."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "How many copies of the material the craft consumes. Defaults to 1 when omitted."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "wolf-pelt-cloak",
+  "name": "Wolf Pelt Cloak",
+  "description": "A warm cloak stitched together from cured wolf pelts. Rough, but it turns aside a blow or two.",
+  "attributes": {
+    "stats": {
+      "ac": 3
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 3,
+  "value": 40,
+  "attack_ref": null
+}
