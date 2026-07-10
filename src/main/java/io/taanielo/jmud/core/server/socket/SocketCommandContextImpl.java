@@ -55,7 +55,6 @@ import io.taanielo.jmud.core.enchant.EnchantOutcome;
 import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildMember;
-import io.taanielo.jmud.core.guild.GuildRank;
 import io.taanielo.jmud.core.guild.GuildResult;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.messaging.Message;
@@ -2670,6 +2669,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "DECLINE" -> handleGuildDecline(guildService);
             case "LEAVE" -> handleGuildLeave(guildService);
             case "KICK" -> handleGuildKick(guildService, subArgs);
+            case "PROMOTE" -> handleGuildPromote(guildService, subArgs);
+            case "DEMOTE" -> handleGuildDemote(guildService, subArgs);
             case "DISBAND" -> handleGuildDisband(guildService, subArgs);
             case "WHO" -> handleGuildWho(guildService);
             case "BANK" -> handleGuildBank(guildService);
@@ -2833,6 +2834,34 @@ class SocketCommandContextImpl implements SocketCommandContext {
         writeLineWithPrompt(result.message());
     }
 
+    private void handleGuildPromote(GuildService guildService, String targetName) {
+        Player player = session.getPlayer();
+        if (targetName == null || targetName.isBlank()) {
+            writeLineWithPrompt("Promote whom? Usage: GUILD PROMOTE <player>");
+            return;
+        }
+        Username target = Username.of(targetName.trim());
+        GuildResult result = guildService.promote(player.getUsername(), target);
+        if (result.success()) {
+            sendToUsername(target, "You have been promoted to officer.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildDemote(GuildService guildService, String targetName) {
+        Player player = session.getPlayer();
+        if (targetName == null || targetName.isBlank()) {
+            writeLineWithPrompt("Demote whom? Usage: GUILD DEMOTE <player>");
+            return;
+        }
+        Username target = Username.of(targetName.trim());
+        GuildResult result = guildService.demote(player.getUsername(), target);
+        if (result.success()) {
+            sendToUsername(target, "You have been demoted to member.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
     private void handleGuildDisband(GuildService guildService, String subArgs) {
         Player player = session.getPlayer();
         if (!"CONFIRM".equals(subArgs == null ? "" : subArgs.trim().toUpperCase(Locale.ROOT))) {
@@ -2877,7 +2906,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             .sorted((a, b) -> Integer.compare(a.joinOrder(), b.joinOrder()))
             .forEach(member -> {
                 String status = online.contains(member.username()) ? "online" : "offline";
-                String rankTag = member.rank() == GuildRank.LEADER ? " (leader)" : "";
+                String rankTag = " [" + member.rank().displayName() + "]";
                 connection.writeLine("  " + member.username().getValue() + rankTag + " - " + status);
             });
         connection.writeLine("Treasury: " + guild.treasuryGold() + " gold.");

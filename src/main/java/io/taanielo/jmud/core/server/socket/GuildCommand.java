@@ -10,11 +10,13 @@ import java.util.Optional;
  * <ul>
  *   <li>{@code GUILD}                — show your guild's roster (or usage when guildless)</li>
  *   <li>{@code GUILD CREATE <name>}  — found a new guild (costs gold; you become the leader)</li>
- *   <li>{@code GUILD INVITE <player>}— invite an online, guildless player (leader only)</li>
+ *   <li>{@code GUILD INVITE <player>}— invite an online, guildless player (leader or officer)</li>
  *   <li>{@code GUILD ACCEPT}         — accept a pending guild invitation</li>
  *   <li>{@code GUILD DECLINE}        — decline a pending guild invitation</li>
  *   <li>{@code GUILD LEAVE}          — leave your guild (leadership transfers if you were leader)</li>
- *   <li>{@code GUILD KICK <player>}  — remove a member (leader only)</li>
+ *   <li>{@code GUILD KICK <player>}  — remove a member (leader or officer)</li>
+ *   <li>{@code GUILD PROMOTE <player>}— promote a member to officer (leader only)</li>
+ *   <li>{@code GUILD DEMOTE <player>}— demote an officer back to member (leader only)</li>
  *   <li>{@code GUILD DISBAND}        — permanently disband your guild (leader only, needs confirm)</li>
  *   <li>{@code GUILD WHO}            — list members with online/offline status</li>
  *   <li>{@code GUILD BANK}           — show the guild's shared treasury balance</li>
@@ -50,11 +52,13 @@ public class GuildCommand extends RegistrableCommand {
              + "  GUILD                  — show your guild's roster\n"
              + "  GUILD CREATE <name>    — found a new guild (costs "
                  + io.taanielo.jmud.core.guild.GuildService.CREATION_COST_GOLD + " gold)\n"
-             + "  GUILD INVITE <player>  — invite an online player (leader only)\n"
+             + "  GUILD INVITE <player>  — invite an online player (leader or officer)\n"
              + "  GUILD ACCEPT           — accept a pending guild invitation\n"
              + "  GUILD DECLINE          — decline a pending guild invitation\n"
              + "  GUILD LEAVE            — leave your guild\n"
-             + "  GUILD KICK <player>    — remove a member (leader only)\n"
+             + "  GUILD KICK <player>    — remove a member (leader or officer)\n"
+             + "  GUILD PROMOTE <player> — promote a member to officer (leader only)\n"
+             + "  GUILD DEMOTE <player>  — demote an officer to member (leader only)\n"
              + "  GUILD DISBAND          — disband your guild (leader only; GUILD DISBAND CONFIRM)\n"
              + "  GUILD WHO              — list members with online/offline status\n"
              + "  GUILD BANK             — show the guild treasury balance\n"

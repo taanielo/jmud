@@ -53,6 +53,19 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         return members.stream().anyMatch(m -> m.username().equals(username));
     }
 
+    /** Returns {@code true} when the given player is an officer of this guild. */
+    public boolean isOfficer(Username username) {
+        return member(username).map(m -> m.rank() == GuildRank.OFFICER).orElse(false);
+    }
+
+    /**
+     * Returns {@code true} when the given player may moderate the guild (invite and kick members),
+     * i.e. they are either the leader or an officer.
+     */
+    public boolean canModerate(Username username) {
+        return isLeader(username) || isOfficer(username);
+    }
+
     /** Returns the membership record for the given player, if present. */
     public Optional<GuildMember> member(Username username) {
         return members.stream().filter(m -> m.username().equals(username)).findFirst();
@@ -112,6 +125,27 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
                 .toList();
         }
         return new Guild(id, name, newLeader, remaining, treasuryGold);
+    }
+
+    /**
+     * Returns a copy of this guild in which {@code username}'s rank has been set to {@code newRank}.
+     * Returns this instance unchanged when the player is not a member or already holds that rank.
+     *
+     * @param username the member whose rank changes
+     * @param newRank  the rank to assign
+     * @return the updated guild
+     */
+    public Guild withMemberRank(Username username, GuildRank newRank) {
+        Objects.requireNonNull(username, "username is required");
+        Objects.requireNonNull(newRank, "newRank is required");
+        Optional<GuildMember> current = member(username);
+        if (current.isEmpty() || current.get().rank() == newRank) {
+            return this;
+        }
+        List<GuildMember> next = members.stream()
+            .map(m -> m.username().equals(username) ? m.withRank(newRank) : m)
+            .toList();
+        return new Guild(id, name, leaderId, next, treasuryGold);
     }
 
     /**
