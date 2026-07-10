@@ -43,4 +43,4 @@ Previous completed backlog archived at `docs/archive/TODO-2026-07-07.md`.
 - [x] Add tick health metrics: measure per-tick duration and per-Tickable cost, log overruns, expose a wizard-only STATS command
 - [x] Add admin/wizard command set (GOTO, SPAWN, PURGE, SHUTDOWN) gated by a role flag on the user record
 - [x] Add hot-reload of JSON game data: wizard RELOAD command re-reads rooms/items/mobs safely on the tick thread
-- [ ] Add a bot-based load test script that connects N telnet clients running scripted commands and asserts tick stability
+- [x] Add a bot-based load test script that connects N telnet clients running scripted commands and asserts tick stability

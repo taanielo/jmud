@@ -127,6 +127,32 @@ java -Dlog4j2.configurationFile=log4j2-json.xml -jar jmud.jar
 
 Each line is a JSON object with the fields `timestamp`, `level`, `thread`, `logger`, `message`, `correlationId`, and `thrown` (when an exception is present). The `correlationId` field is absent for log lines emitted outside a command scope.
 
+## Testing
+
+### End-to-end smoke test
+
+`scripts/smoke-test.sh` starts the server on dedicated test ports, drives a scripted telnet session (character creation, login, and a sweep of player commands), asserts on the output and the server log, cleans up after itself, and exits `0` (PASS) / `1` (FAIL). Run it after any player-visible change:
+
+```sh
+scripts/smoke-test.sh
+# override the ports if 4491/4492 are busy:
+SMOKE_TELNET_PORT=5555 scripts/smoke-test.sh
+```
+
+Full transcripts and the server log are kept under `build/smoke-test/`.
+
+### Concurrent load / tick-stability test
+
+`scripts/load-test.sh` is an optional stress test (not part of normal CI). Where the smoke test checks correctness with a single sequential session, this harness spawns N concurrent telnet clients under sustained load, samples the wizard-only `STATS` tick-health metrics every few seconds, and asserts the tick loop stays stable — the tick count keeps climbing (no stalls), ticks never overrun their budget, and per-tick duration stays under 1.5× the nominal 1000 ms budget. Run it after a green smoke test:
+
+```sh
+scripts/load-test.sh                                  # 10 clients, 60s
+scripts/load-test.sh --clients 20 --duration-secs 120
+LOAD_TELNET_PORT=5555 scripts/load-test.sh --clients 5 --duration-secs 30
+```
+
+It grants a temporary wizard user (restored on exit) so it can read `STATS`, prints a `LOAD TEST PASSED: ...` / `FAILED` summary with the measured tick metrics, and exits `0` / `1`. Transcripts, the parsed metrics (`metrics.tsv`) and the server log are kept under `build/load-test/`.
+
 ## Basics of Java Telnet Socket Connection
 
 In this game, telnet is used as a simple protocol to handle text-based user interactions. The `ServerSocket` class in Java is used to create a server socket that listens on a specified port. When a client connects, a new `Socket` instance is created to handle the connection.
