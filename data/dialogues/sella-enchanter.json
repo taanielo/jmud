@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "sella-enchanter-welcome",
+  "npc_id": "enchanter",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Bring me your gear and a little arcane dust, and I'll bind a rune of power into it that will never fade.",
+      "responses": [
+        { "text": "What can you enchant?", "target": "enchant" },
+        { "text": "Where do I find arcane dust?", "target": "dust" },
+        { "text": "Maybe later.", "target": "end" }
+      ]
+    },
+    "enchant": {
+      "text": "Hold a weapon or piece of armour and type ENCHANT here, then name the item and the rune. Each piece can bear a single rune, so choose it well.",
+      "responses": [
+        { "text": "Where do I find arcane dust?", "target": "dust" },
+        { "text": "Done talking.", "target": "end" }
+      ]
+    },
+    "dust": {
+      "text": "Arcane dust clings to the bones of the restless dead. Put the skeletons in the ossuary to rest and gather what settles.",
+      "responses": [
+        { "text": "What can you enchant?", "target": "enchant" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "May your blade never dull.",
+      "responses": []
+    }
+  }
+}

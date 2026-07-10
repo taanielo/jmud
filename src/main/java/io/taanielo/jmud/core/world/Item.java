@@ -542,6 +542,37 @@ public class Item {
     }
 
     /**
+     * Returns a copy of this item with {@code affixId} appended to its {@link #affixes}, permanently
+     * imbuing the specific instance with an additional stat affix (as produced by the ENCHANT
+     * command). All other state — durability, container contents, rarity, identification — is
+     * preserved. The base {@link #attributes} are never folded in; the new affix contributes its
+     * bonus through {@link io.taanielo.jmud.core.world.ItemAffixService} exactly like loot-rolled
+     * affixes.
+     *
+     * @param affixId the id of the affix to attach
+     * @return a new item instance carrying the additional affix
+     */
+    public Item withAddedAffix(AffixId affixId) {
+        Objects.requireNonNull(affixId, "Affix id is required");
+        List<AffixId> nextAffixes = new ArrayList<>(affixes);
+        nextAffixes.add(affixId);
+        return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
+            attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
+            rarity, nextAffixes, identified, locked);
+    }
+
+    /**
+     * Returns whether this item can be equipped into an {@link EquipmentSlot} (i.e. it is weapon or
+     * armor rather than a consumable, quest item or plain trophy). Only equippable items may be
+     * enchanted.
+     *
+     * @return {@code true} when the item has an equipment slot
+     */
+    public boolean isEquippable() {
+        return equipSlot != null;
+    }
+
+    /**
      * Returns the name to display for this item to a holder, hiding its true identity while it is
      * unidentified. Identified items return their full {@link #durabilityDisplayName()} (composing
      * container fill and {@code (damaged)} annotations); unidentified items return a generic

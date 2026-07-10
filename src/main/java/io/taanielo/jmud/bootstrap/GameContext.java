@@ -68,6 +68,10 @@ import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.effects.repository.json.JsonEffectRepository;
+import io.taanielo.jmud.core.enchant.EnchantRecipe;
+import io.taanielo.jmud.core.enchant.EnchantRecipeRepositoryException;
+import io.taanielo.jmud.core.enchant.EnchantingService;
+import io.taanielo.jmud.core.enchant.repository.json.JsonEnchantRecipeRepository;
 import io.taanielo.jmud.core.faction.FactionRepositoryException;
 import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository;
@@ -202,6 +206,7 @@ public record GameContext(
     CraftingService craftingService,
     CraftingService alchemyService,
     CraftingService cookingService,
+    EnchantingService enchantingService,
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
@@ -339,6 +344,8 @@ public record GameContext(
         CraftingService craftingService = createCraftingService(itemRepository);
         CraftingService alchemyService = createAlchemyService(itemRepository);
         CraftingService cookingService = createCookingService(itemRepository);
+        EnchantingService enchantingService =
+            createEnchantingService(itemRepository, affixRepository, itemAffixService);
 
         // Resource gathering: node definitions load once at startup and their depletion/respawn
         // state is tracked in memory on the tick thread (AGENTS.md §5), the same transient tradeoff
@@ -487,6 +494,7 @@ public record GameContext(
             craftingService,
             alchemyService,
             cookingService,
+            enchantingService,
             resourceGatheringService,
             dialogueService,
             itemRepository,
@@ -640,6 +648,19 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository, CrafterProfile.cook());
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize cooking service: " + e.getMessage(), e);
+        }
+    }
+
+    private static EnchantingService createEnchantingService(
+        ItemRepository itemRepository,
+        AffixRepository affixRepository,
+        ItemAffixService itemAffixService
+    ) {
+        try {
+            List<EnchantRecipe> recipes = new JsonEnchantRecipeRepository().findAll();
+            return new EnchantingService(recipes, itemRepository, affixRepository, itemAffixService);
+        } catch (EnchantRecipeRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize enchanting service: " + e.getMessage(), e);
         }
     }
 

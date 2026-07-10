@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "arcane-dust",
+  "name": "Arcane Dust",
+  "description": "A pinch of faintly glowing residue sifted from the bones of the restless dead. Enchanters grind it into runes to bind lasting power into weapons and armour.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 12
+}
