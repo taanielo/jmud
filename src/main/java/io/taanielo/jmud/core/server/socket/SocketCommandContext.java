@@ -723,4 +723,39 @@ public interface SocketCommandContext extends Client {
      */
     default void acceptDuel() {}
 
+    /**
+     * Executes a GUILD sub-command (CREATE, INVITE, ACCEPT, DECLINE, LEAVE, KICK, DISBAND, WHO), or,
+     * when the first token is not a recognised sub-command, treats the whole argument string as a
+     * guild-chat message to the caller's guild.
+     *
+     * <p>Manages persistent player guilds: founding, membership, leadership transfer, disbanding, and
+     * the guild-only chat channel. The default implementation is a no-op so existing test stubs do not
+     * need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "CREATE Ironclad"} or a chat line)
+     */
+    default void executeGuild(String args) {}
+
+    /**
+     * Sends a guild-chat message to every currently-online member of the caller's guild (the {@code GC}
+     * alias). The default implementation is a no-op so existing test stubs do not need to be updated.
+     *
+     * @param message the message to broadcast to the guild
+     */
+    default void guildChat(String message) {}
+
+    /**
+     * Returns the guild tag suffix (e.g. {@code " [Ironclad]"}) for the given online player, or an
+     * empty string when they belong to no guild. Used by {@code WHO} to annotate each name.
+     *
+     * <p>The default implementation returns an empty string so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player whose guild tag to resolve
+     * @return the bracketed tag with a leading space, or {@code ""}
+     */
+    default String guildTag(Username username) {
+        return "";
+    }
+
 }

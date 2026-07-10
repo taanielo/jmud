@@ -1,0 +1,86 @@
+package io.taanielo.jmud.core.guild;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+import io.taanielo.jmud.core.authentication.Username;
+
+class GuildTest {
+
+    private static final Username ALICE = Username.of("Alice");
+    private static final Username BOB = Username.of("Bob");
+    private static final Username CAROL = Username.of("Carol");
+
+    @Test
+    void foundedGuildHasLeaderAsSoleMember() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertTrue(guild.isLeader(ALICE));
+        assertTrue(guild.isMember(ALICE));
+        assertEquals(1, guild.memberCount());
+        assertEquals(GuildRank.LEADER, guild.member(ALICE).orElseThrow().rank());
+    }
+
+    @Test
+    void withMemberAppendsWithIncreasingJoinOrder() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .withMember(BOB)
+            .withMember(CAROL);
+
+        assertEquals(3, guild.memberCount());
+        assertEquals(1, guild.member(BOB).orElseThrow().joinOrder());
+        assertEquals(2, guild.member(CAROL).orElseThrow().joinOrder());
+        assertEquals(GuildRank.MEMBER, guild.member(BOB).orElseThrow().rank());
+    }
+
+    @Test
+    void withMemberIsIdempotentForExistingMember() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).withMember(BOB);
+
+        assertSame(guild, guild.withMember(BOB));
+    }
+
+    @Test
+    void leaderLeavingTransfersToLongestTenuredMember() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .withMember(BOB)
+            .withMember(CAROL);
+
+        Guild after = guild.withoutMember(ALICE);
+
+        assertFalse(after.isMember(ALICE));
+        assertEquals(BOB, after.leaderId());
+        assertEquals(GuildRank.LEADER, after.member(BOB).orElseThrow().rank());
+        assertEquals(2, after.memberCount());
+    }
+
+    @Test
+    void lastMemberLeavingEmptiesGuild() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        Guild after = guild.withoutMember(ALICE);
+
+        assertEquals(0, after.memberCount());
+    }
+
+    @Test
+    void nonLeaderLeavingKeepsLeader() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).withMember(BOB);
+
+        Guild after = guild.withoutMember(BOB);
+
+        assertEquals(ALICE, after.leaderId());
+        assertFalse(after.isMember(BOB));
+    }
+
+    @Test
+    void removingNonMemberReturnsSameInstance() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertSame(guild, guild.withoutMember(BOB));
+    }
+}

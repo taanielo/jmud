@@ -1,0 +1,73 @@
+package io.taanielo.jmud.core.server.socket;
+
+import java.util.Optional;
+
+/**
+ * Handles the {@code GUILD} command family, letting players found and manage a persistent guild and
+ * chat privately with guildmates.
+ *
+ * <p>Sub-commands:
+ * <ul>
+ *   <li>{@code GUILD}                — show your guild's roster (or usage when guildless)</li>
+ *   <li>{@code GUILD CREATE <name>}  — found a new guild (costs gold; you become the leader)</li>
+ *   <li>{@code GUILD INVITE <player>}— invite an online, guildless player (leader only)</li>
+ *   <li>{@code GUILD ACCEPT}         — accept a pending guild invitation</li>
+ *   <li>{@code GUILD DECLINE}        — decline a pending guild invitation</li>
+ *   <li>{@code GUILD LEAVE}          — leave your guild (leadership transfers if you were leader)</li>
+ *   <li>{@code GUILD KICK <player>}  — remove a member (leader only)</li>
+ *   <li>{@code GUILD DISBAND}        — permanently disband your guild (leader only, needs confirm)</li>
+ *   <li>{@code GUILD WHO}            — list members with online/offline status</li>
+ *   <li>{@code GUILD <message>}      — send a message to online guildmates (also {@code GC})</li>
+ * </ul>
+ */
+public class GuildCommand extends RegistrableCommand {
+
+    /**
+     * Creates a {@code GuildCommand} and registers it with the given registry.
+     *
+     * @param registry the registry this command is part of
+     */
+    public GuildCommand(SocketCommandRegistry registry) {
+        super(registry);
+    }
+
+    @Override
+    public String name() {
+        return "guild";
+    }
+
+    @Override
+    public String shortDescription() {
+        return "Found and manage a persistent guild. Use GUILD CREATE <name> to begin. Alias: GC (chat).";
+    }
+
+    @Override
+    public String longDescription() {
+        return "Usage: GUILD [sub-command] [args]\n"
+             + "  GUILD                  — show your guild's roster\n"
+             + "  GUILD CREATE <name>    — found a new guild (costs "
+                 + io.taanielo.jmud.core.guild.GuildService.CREATION_COST_GOLD + " gold)\n"
+             + "  GUILD INVITE <player>  — invite an online player (leader only)\n"
+             + "  GUILD ACCEPT           — accept a pending guild invitation\n"
+             + "  GUILD DECLINE          — decline a pending guild invitation\n"
+             + "  GUILD LEAVE            — leave your guild\n"
+             + "  GUILD KICK <player>    — remove a member (leader only)\n"
+             + "  GUILD DISBAND          — disband your guild (leader only; GUILD DISBAND CONFIRM)\n"
+             + "  GUILD WHO              — list members with online/offline status\n"
+             + "  GUILD <message>        — chat to online guildmates (or use GC <message>)";
+    }
+
+    @Override
+    public Optional<SocketCommandMatch> match(String input) {
+        String[] parts = SocketCommandParsing.splitInput(input);
+        String token = parts[0];
+        String args = parts[1];
+        if ("GC".equals(token)) {
+            return Optional.of(new SocketCommandMatch(this, context -> context.guildChat(args)));
+        }
+        if ("GUILD".equals(token)) {
+            return Optional.of(new SocketCommandMatch(this, context -> context.executeGuild(args)));
+        }
+        return Optional.empty();
+    }
+}

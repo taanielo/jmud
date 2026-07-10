@@ -65,4 +65,18 @@ class WhoListingTest {
         assertEquals("1 player online.", WhoListing.footer(1));
         assertEquals("5 players online.", WhoListing.footer(5));
     }
+
+    @Test
+    void appendsGuildTagWhenPresent() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Alice"), Username.of("Bob")),
+            name -> name.getValue().equals("Alice") ? " [Ironclad]" : "");
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Alice [Ironclad]",
+            "  Bob",
+            "2 players online."
+        ), lines);
+    }
 }

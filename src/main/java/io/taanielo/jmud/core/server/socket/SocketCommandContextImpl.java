@@ -46,6 +46,11 @@ import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.guild.Guild;
+import io.taanielo.jmud.core.guild.GuildMember;
+import io.taanielo.jmud.core.guild.GuildRank;
+import io.taanielo.jmud.core.guild.GuildResult;
+import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.notes.NoteDeletionResult;
@@ -61,6 +66,7 @@ import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerGuildMembership;
 import io.taanielo.jmud.core.player.PlayerIgnoreList;
 import io.taanielo.jmud.core.player.PlayerMailService;
 import io.taanielo.jmud.core.player.RestSettings;
@@ -2395,6 +2401,269 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "" -> handlePartyStatus(player, partyService);
             default -> writeLineWithPrompt(
                 "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND]");
+        }
+    }
+
+    @Override
+    public void executeGuild(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use guild commands.");
+            return;
+        }
+        GuildService guildService = context.guildService();
+        if (guildService == null) {
+            writeLineWithPrompt("The guild system is not available.");
+            return;
+        }
+        reconcileGuildMembership(player, guildService);
+        String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+        String sub = parts[0];
+        String subArgs = parts[1];
+        switch (sub) {
+            case "CREATE" -> handleGuildCreate(guildService, subArgs);
+            case "INVITE" -> handleGuildInvite(guildService, subArgs);
+            case "ACCEPT" -> handleGuildAccept(guildService);
+            case "DECLINE" -> handleGuildDecline(guildService);
+            case "LEAVE" -> handleGuildLeave(guildService);
+            case "KICK" -> handleGuildKick(guildService, subArgs);
+            case "DISBAND" -> handleGuildDisband(guildService, subArgs);
+            case "WHO" -> handleGuildWho(guildService);
+            case "" -> handleGuildStatus(guildService);
+            default -> guildChat(args);
+        }
+    }
+
+    @Override
+    public void guildChat(String message) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use guild chat.");
+            return;
+        }
+        GuildService guildService = context.guildService();
+        if (guildService == null) {
+            writeLineWithPrompt("The guild system is not available.");
+            return;
+        }
+        reconcileGuildMembership(player, guildService);
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        if (message == null || message.isBlank()) {
+            writeLineWithPrompt("Say what to your guild?");
+            return;
+        }
+        String trimmed = message.trim();
+        Username sender = player.getUsername();
+        List<Username> online = onlinePlayerNames();
+        String line = "[Guild] " + sender.getValue() + ": " + trimmed;
+        for (GuildMember member : guild.members()) {
+            if (!member.username().equals(sender) && online.contains(member.username())) {
+                sendToUsername(member.username(), line);
+            }
+        }
+        connection.writeLine("[Guild] You: " + trimmed);
+        sendPrompt();
+    }
+
+    @Override
+    public String guildTag(Username username) {
+        GuildService guildService = context.guildService();
+        if (guildService == null || username == null) {
+            return "";
+        }
+        return guildService.guildTag(username).map(name -> " [" + name + "]").orElse("");
+    }
+
+    private void handleGuildCreate(GuildService guildService, String name) {
+        Player player = session.getPlayer();
+        if (name == null || name.isBlank()) {
+            writeLineWithPrompt("Found a guild named what? Usage: GUILD CREATE <name>");
+            return;
+        }
+        if (player.getGold() < GuildService.CREATION_COST_GOLD) {
+            writeLineWithPrompt("Founding a guild costs " + GuildService.CREATION_COST_GOLD
+                + " gold. You only have " + player.getGold() + ".");
+            return;
+        }
+        GuildResult result = guildService.create(player.getUsername(), name);
+        if (result.success() && result.guild() != null) {
+            Player updated = player
+                .addGold(-GuildService.CREATION_COST_GOLD)
+                .withGuildMembership(PlayerGuildMembership.of(result.guild().id()));
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            writeLineWithPrompt(result.message() + " (" + GuildService.CREATION_COST_GOLD + " gold spent.)");
+        } else {
+            writeLineWithPrompt(result.message());
+        }
+    }
+
+    private void handleGuildInvite(GuildService guildService, String targetName) {
+        Player player = session.getPlayer();
+        if (targetName == null || targetName.isBlank()) {
+            writeLineWithPrompt("Invite whom? Usage: GUILD INVITE <player>");
+            return;
+        }
+        Username invitee = Username.of(targetName.trim());
+        boolean inviteeOnline = onlinePlayerNames().contains(invitee);
+        GuildResult result = guildService.invite(player.getUsername(), invitee, inviteeOnline);
+        writeLineWithPrompt(result.message());
+        if (result.success() && result.guild() != null) {
+            sendToUsername(invitee, player.getUsername().getValue()
+                + " invites you to join " + result.guild().name()
+                + ". Type GUILD ACCEPT or GUILD DECLINE.");
+        }
+    }
+
+    private void handleGuildAccept(GuildService guildService) {
+        Player player = session.getPlayer();
+        GuildResult result = guildService.accept(player.getUsername());
+        if (result.success() && result.guild() != null) {
+            setGuildMembership(player.getUsername(), PlayerGuildMembership.of(result.guild().id()));
+            Username joiner = player.getUsername();
+            List<Username> online = onlinePlayerNames();
+            for (GuildMember member : result.guild().members()) {
+                if (!member.username().equals(joiner) && online.contains(member.username())) {
+                    sendToUsername(member.username(), joiner.getValue() + " has joined the guild.");
+                }
+            }
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildDecline(GuildService guildService) {
+        Player player = session.getPlayer();
+        GuildResult result = guildService.decline(player.getUsername());
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildLeave(GuildService guildService) {
+        Player player = session.getPlayer();
+        Username leaver = player.getUsername();
+        GuildResult result = guildService.leave(leaver);
+        if (result.success()) {
+            setGuildMembership(leaver, PlayerGuildMembership.none());
+            if (result.guild() != null) {
+                List<Username> online = onlinePlayerNames();
+                for (GuildMember member : result.guild().members()) {
+                    if (online.contains(member.username())) {
+                        sendToUsername(member.username(), leaver.getValue() + " has left the guild.");
+                    }
+                }
+            }
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildKick(GuildService guildService, String targetName) {
+        Player player = session.getPlayer();
+        if (targetName == null || targetName.isBlank()) {
+            writeLineWithPrompt("Kick whom? Usage: GUILD KICK <player>");
+            return;
+        }
+        Username target = Username.of(targetName.trim());
+        GuildResult result = guildService.kick(player.getUsername(), target);
+        if (result.success()) {
+            setGuildMembership(target, PlayerGuildMembership.none());
+            sendToUsername(target, "You have been removed from the guild.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildDisband(GuildService guildService, String subArgs) {
+        Player player = session.getPlayer();
+        if (!"CONFIRM".equals(subArgs == null ? "" : subArgs.trim().toUpperCase(Locale.ROOT))) {
+            Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+            if (guild == null) {
+                writeLineWithPrompt("You are not in a guild.");
+                return;
+            }
+            if (!guild.isLeader(player.getUsername())) {
+                writeLineWithPrompt("Only the guild leader can disband the guild.");
+                return;
+            }
+            writeLineWithPrompt("This permanently disbands " + guild.name()
+                + ". Type GUILD DISBAND CONFIRM to proceed.");
+            return;
+        }
+        GuildResult result = guildService.disband(player.getUsername());
+        if (result.success() && result.guild() != null) {
+            List<Username> online = onlinePlayerNames();
+            for (GuildMember member : result.guild().members()) {
+                setGuildMembership(member.username(), PlayerGuildMembership.none());
+                if (!member.username().equals(player.getUsername()) && online.contains(member.username())) {
+                    sendToUsername(member.username(),
+                        result.guild().name() + " has been disbanded by its leader.");
+                }
+            }
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildWho(GuildService guildService) {
+        Player player = session.getPlayer();
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        List<Username> online = onlinePlayerNames();
+        connection.writeLine(guild.name() + " (" + guild.memberCount() + " member"
+            + (guild.memberCount() == 1 ? "" : "s") + "):");
+        guild.members().stream()
+            .sorted((a, b) -> Integer.compare(a.joinOrder(), b.joinOrder()))
+            .forEach(member -> {
+                String status = online.contains(member.username()) ? "online" : "offline";
+                String rankTag = member.rank() == GuildRank.LEADER ? " (leader)" : "";
+                connection.writeLine("  " + member.username().getValue() + rankTag + " - " + status);
+            });
+        sendPrompt();
+    }
+
+    private void handleGuildStatus(GuildService guildService) {
+        Player player = session.getPlayer();
+        if (guildService.guildOf(player.getUsername()).isEmpty()) {
+            writeLineWithPrompt("You are not in a guild. Use GUILD CREATE <name> to found one.");
+            return;
+        }
+        handleGuildWho(guildService);
+    }
+
+    /**
+     * Updates the persisted guild-membership component for the given user, whether they are the
+     * command's caller or another online player. Offline players need no update here: guild
+     * membership is resolved from the authoritative {@link GuildService} roster, so their stale
+     * persisted pointer is never trusted and self-heals via {@link #reconcileGuildMembership}.
+     */
+    private void setGuildMembership(Username username, PlayerGuildMembership membership) {
+        Player self = session.getPlayer();
+        if (self != null && self.getUsername().equals(username)) {
+            Player updated = self.withGuildMembership(membership);
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            return;
+        }
+        Player online = findOnlinePlayer(username);
+        if (online != null) {
+            updateTarget(online.withGuildMembership(membership));
+        }
+    }
+
+    /**
+     * Reconciles the caller's persisted guild pointer against the authoritative roster: if the
+     * player still records a guild that no longer contains them (e.g. it was disbanded or they were
+     * kicked while offline), clears the stale pointer so their save file reflects reality.
+     */
+    private void reconcileGuildMembership(Player player, GuildService guildService) {
+        if (player.guildMembership().hasGuild()
+            && guildService.guildOf(player.getUsername()).isEmpty()) {
+            Player updated = player.withGuildMembership(PlayerGuildMembership.none());
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
         }
     }
 

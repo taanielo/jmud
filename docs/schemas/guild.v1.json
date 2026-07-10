@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:guild:v1",
+  "title": "Guild (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "leader_id",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque, stable guild id (a UUID). Independent of the display name and used as the file name."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "description": "Unique (case-insensitive) display name shown as the WHO tag."
+    },
+    "leader_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Username of the current guild leader; must also appear in members with rank LEADER."
+    },
+    "members": {
+      "type": "array",
+      "description": "The guild roster, in no particular order; ordering for display is derived from join_order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "rank",
+          "join_order"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rank": {
+            "type": "string",
+            "enum": ["LEADER", "MEMBER"]
+          },
+          "join_order": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonically increasing sequence number; lower means longer-tenured. Used to pick a successor leader when the leader departs."
+          }
+        }
+      }
+    }
+  }
+}
