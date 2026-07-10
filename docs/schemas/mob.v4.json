@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:mob:v4",
+  "title": "Mob template (v4)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "max_hp",
+    "spawn_room_id",
+    "max_count",
+    "respawn_ticks"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 4
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "max_hp": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "attack_id": {
+      "type": ["string", "null"]
+    },
+    "special_attack_id": {
+      "type": ["string", "null"],
+      "description": "Optional rarer/harder-hitting attack usable at most once per combat encounter."
+    },
+    "aggressive": {
+      "type": "boolean",
+      "default": true
+    },
+    "world_boss": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true this mob is a world boss: its spawn/respawn and death are announced to every online player, and its loot resolution guarantees at least one rare-or-higher item drop (drawn from this loot table) on top of the normal rolls. Omit or set false for ordinary mobs, which produce no server-wide announcements. A world boss should include at least one rare-or-higher item in its loot table to back the guaranteed drop."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "loot": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id", "drop_chance"],
+        "properties": {
+          "item_id": { "type": "string" },
+          "drop_chance": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "spawn_room_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "max_count": {
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "respawn_ticks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "night_respawn_ticks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional respawn delay (in ticks) used instead of 'respawn_ticks' while the world clock is at night. Omit for no change at night."
+    },
+    "xp_reward": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "gold_drop": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "wanders": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true the mob may randomly wander between linked rooms each tick. NPCs (tag 'npc') never wander."
+    },
+    "summon_duration_ticks": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "Marks this template as a summonable pet: its lifetime (in ticks) once summoned. Pet templates are never spawned into the world at start-up and never respawn — an instance exists only while a player's SUMMON is active. Omit for ordinary world mobs."
+    },
+    "charmable": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true the mob may be permanently captured as a companion via the TAME command. Omit or set false for mobs that cannot be tamed."
+    },
+    "dialogue_id": {
+      "type": ["string", "null"],
+      "description": "Optional id of a dialogue tree (data/dialogues/) this NPC offers via the TALK command. Omit for mobs with no conversation."
+    },
+    "faction_id": {
+      "type": ["string", "null"],
+      "description": "Optional id of a faction (data/factions/) this mob belongs to. Slaying the mob shifts the killer's reputation with the faction, and the faction's hostility rules govern whether it engages a given player. Omit for faction-neutral mobs."
+    }
+  }
+}

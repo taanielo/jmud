@@ -73,7 +73,14 @@ public record MobTemplate(
      * faction mob shifts the killer's reputation with the faction, and the faction's hostility rules
      * govern whether the mob engages a given player (see the reputation system).
      */
-    @Nullable FactionId factionId
+    @Nullable FactionId factionId,
+    /**
+     * When {@code true} this mob is a <em>world boss</em>: a rare, powerful encounter whose spawn and
+     * death are announced to every online player, and whose loot resolution guarantees at least one
+     * rare-or-higher item drop on top of the normal loot table. Defaults to {@code false} for
+     * ordinary mobs, which produce no such server-wide announcements.
+     */
+    boolean worldBoss
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -120,7 +127,7 @@ public record MobTemplate(
         boolean wanders
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null, null, false);
     }
 
     /**
@@ -145,7 +152,7 @@ public record MobTemplate(
         @Nullable Integer nightRespawnTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null, null, false);
     }
 
     /**
@@ -172,7 +179,8 @@ public record MobTemplate(
         @Nullable Integer summonDurationTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false, null, null);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false, null,
+            null, false);
     }
 
     /**
@@ -200,7 +208,38 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, null, null);
+            charmable, null, null, false);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a dialogue tree and faction but are not world
+     * bosses; defaults {@link #worldBoss()} to {@code false} (an ordinary mob with no server-wide
+     * spawn/death announcements).
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, false);
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */
