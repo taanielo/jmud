@@ -78,7 +78,7 @@ class SalvageServiceTest {
     }
 
     private static Item potion() {
-        return Item.builder(POTION, "a healing potion", "Restores health.", ItemAttributes.empty())
+        return Item.builder(POTION, "healing potion", "Restores health.", ItemAttributes.empty())
             .weight(1)
             .value(10)
             .build();
@@ -94,7 +94,7 @@ class SalvageServiceTest {
 
     @Test
     void salvageCommonYieldsBasicMaterial() {
-        Player player = player().addItem(gear(COMMON_SWORD, "a common sword", Rarity.COMMON));
+        Player player = player().addItem(gear(COMMON_SWORD, "common sword", Rarity.COMMON));
 
         SalvageOutcome outcome = service.salvage(player, "common sword");
 
@@ -107,7 +107,7 @@ class SalvageServiceTest {
 
     @Test
     void salvageUncommonYieldsMoreMaterials() {
-        Player player = player().addItem(gear(UNCOMMON_SWORD, "an uncommon sword", Rarity.UNCOMMON));
+        Player player = player().addItem(gear(UNCOMMON_SWORD, "uncommon sword", Rarity.UNCOMMON));
 
         SalvageOutcome outcome = service.salvage(player, "uncommon sword");
 
@@ -119,7 +119,7 @@ class SalvageServiceTest {
 
     @Test
     void salvageRareYieldsBestMaterials() {
-        Player player = player().addItem(gear(RARE_SWORD, "a rare sword", Rarity.RARE));
+        Player player = player().addItem(gear(RARE_SWORD, "rare sword", Rarity.RARE));
 
         SalvageOutcome outcome = service.salvage(player, "rare sword");
 
@@ -140,7 +140,7 @@ class SalvageServiceTest {
 
     @Test
     void salvageFailsForEquippedItem() {
-        Item sword = gear(COMMON_SWORD, "a common sword", Rarity.COMMON);
+        Item sword = gear(COMMON_SWORD, "common sword", Rarity.COMMON);
         Player player = player().addItem(sword);
         player = player.withEquipment(player.getEquipment().equip(EquipmentSlot.WEAPON, sword.getId()));
 
@@ -173,13 +173,13 @@ class SalvageServiceTest {
     @Test
     void previewListsSalvageableCarriedItemsWithYield() {
         Player player = player()
-            .addItem(gear(RARE_SWORD, "a rare sword", Rarity.RARE))
+            .addItem(gear(RARE_SWORD, "rare sword", Rarity.RARE))
             .addItem(potion());
 
         List<String> lines = service.preview(player);
 
         String body = String.join("\n", lines);
-        assertTrue(body.contains("a rare sword"), body);
+        assertTrue(body.contains("rare sword"), body);
         assertTrue(body.contains("Iron Ore"), body);
         assertTrue(body.contains("Arcane Dust"), body);
         assertFalse(body.contains("healing potion"), "non-gear excluded from preview: " + body);
@@ -187,7 +187,7 @@ class SalvageServiceTest {
 
     @Test
     void previewExcludesEquippedItemsAndReportsWhenNoneSalvageable() {
-        Item sword = gear(COMMON_SWORD, "a common sword", Rarity.COMMON);
+        Item sword = gear(COMMON_SWORD, "common sword", Rarity.COMMON);
         Player player = player().addItem(sword);
         player = player.withEquipment(player.getEquipment().equip(EquipmentSlot.WEAPON, sword.getId()));
 
