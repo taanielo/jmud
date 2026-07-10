@@ -12,7 +12,9 @@ import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.reload.ContentReloadService;
 import io.taanielo.jmud.core.tick.TickMetricsService;
+import io.taanielo.jmud.core.tick.TickThreadDispatcher;
 import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomService;
@@ -44,6 +46,10 @@ public class SocketCommandRegistry {
      * @param mobRegistry             live mob registry used by the wizard {@code SPAWN}/{@code PURGE}
      *                                commands; {@code null} when the mob subsystem failed to load
      * @param shutdownHandle          late-bound handle used by the wizard {@code SHUTDOWN} command
+     * @param contentReloadService    service used by the wizard {@code RELOAD} command to hot-reload
+     *                                rooms/items/mobs from JSON
+     * @param tickThreadDispatcher    bridge used by the wizard {@code RELOAD} command to apply the
+     *                                reload atomically on the tick thread
      */
     public static SocketCommandRegistry createDefault(
         EquipmentArmorResolver equipmentArmorResolver,
@@ -57,7 +63,9 @@ public class SocketCommandRegistry {
         WizardPolicy wizardPolicy,
         PlayerLocationService playerLocationService,
         @Nullable MobRegistry mobRegistry,
-        ShutdownHandle shutdownHandle
+        ShutdownHandle shutdownHandle,
+        ContentReloadService contentReloadService,
+        TickThreadDispatcher tickThreadDispatcher
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
@@ -69,6 +77,8 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(wizardPolicy, "Wizard policy is required");
         Objects.requireNonNull(playerLocationService, "Player location service is required");
         Objects.requireNonNull(shutdownHandle, "Shutdown handle is required");
+        Objects.requireNonNull(contentReloadService, "Content reload service is required");
+        Objects.requireNonNull(tickThreadDispatcher, "Tick thread dispatcher is required");
         SocketCommandRegistry registry = new SocketCommandRegistry();
         new LookCommand(registry);
         new ExamineCommand(registry);
@@ -149,6 +159,7 @@ public class SocketCommandRegistry {
         new SpawnCommand(registry, wizardPolicy, mobRegistry, roomService, messageBroadcaster);
         new PurgeCommand(registry, wizardPolicy, mobRegistry, roomService, playerRepository, messageBroadcaster);
         new ShutdownCommand(registry, wizardPolicy, shutdownHandle, messageBroadcaster);
+        new ReloadCommand(registry, wizardPolicy, contentReloadService, messageBroadcaster, tickThreadDispatcher);
         return registry;
     }
 

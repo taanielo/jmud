@@ -8,9 +8,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.taanielo.jmud.core.reload.ItemContentReloader;
+import io.taanielo.jmud.core.reload.PreparedItemReload;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.dto.ItemDto;
@@ -19,14 +22,14 @@ import io.taanielo.jmud.core.world.dto.SchemaVersions;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
-public class JsonItemRepository implements ItemRepository {
+public class JsonItemRepository implements ItemRepository, ItemContentReloader {
 
     private static final String ITEMS_DIR = "items";
 
     private final ObjectMapper objectMapper;
     private final ItemMapper itemMapper;
     private final Path itemsDirPath;
-    private final Map<ItemId, Item> cache;
+    private volatile Map<ItemId, Item> cache;
 
     public JsonItemRepository() throws RepositoryException {
         this(Path.of("data"));
@@ -70,6 +73,42 @@ public class JsonItemRepository implements ItemRepository {
         }
         cache.put(item.getId(), item);
         return Optional.of(item);
+    }
+
+    /**
+     * Reads and validates every item JSON file into an in-memory snapshot without mutating the live
+     * cache (issue #349). The returned {@link PreparedItemReload#commit()} atomically swaps the
+     * cache and must be called on the tick thread (AGENTS.md §5).
+     */
+    @Override
+    public PreparedItemReload prepareItems() throws RepositoryException {
+        Map<ItemId, Item> loaded = readAllItems();
+        // The commit lambda swaps the cache field from within this repository's own method so the
+        // arch rule guarding Json*Repository access stays satisfied (AGENTS.md §3.3).
+        return PreparedItemReload.of(
+            loaded.size(),
+            id -> Optional.ofNullable(loaded.get(id)),
+            () -> cache = new ConcurrentHashMap<>(loaded));
+    }
+
+    private Map<ItemId, Item> readAllItems() throws RepositoryException {
+        Map<ItemId, Item> loaded = new ConcurrentHashMap<>();
+        try (Stream<Path> files = Files.list(itemsDirPath)) {
+            for (Path path : files.filter(p -> p.toString().endsWith(".json")).toList()) {
+                ItemDto dto = readItemDto(path);
+                validateSchema(dto, path);
+                Item item;
+                try {
+                    item = itemMapper.toDomain(dto);
+                } catch (IllegalArgumentException e) {
+                    throw new RepositoryException("Invalid item data in " + path + ": " + e.getMessage(), e);
+                }
+                loaded.put(item.getId(), item);
+            }
+        } catch (IOException e) {
+            throw new RepositoryException("Failed to list item data files: " + e.getMessage(), e);
+        }
+        return loaded;
     }
 
     private void ensureDirectory(Path path) throws RepositoryException {

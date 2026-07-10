@@ -85,6 +85,9 @@ import io.taanielo.jmud.core.quest.QuestRepository;
 import io.taanielo.jmud.core.quest.QuestRepositoryException;
 import io.taanielo.jmud.core.quest.repository.json.JsonDailyQuestPoolRepository;
 import io.taanielo.jmud.core.quest.repository.json.JsonQuestRepository;
+import io.taanielo.jmud.core.reload.ContentReloadService;
+import io.taanielo.jmud.core.reload.ItemContentReloader;
+import io.taanielo.jmud.core.reload.RoomContentReloader;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.socket.LinkdeadTimeoutTicker;
 import io.taanielo.jmud.core.server.socket.PlayerSessionRegistry;
@@ -100,6 +103,7 @@ import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickMetricsService;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.TickSettings;
+import io.taanielo.jmud.core.tick.TickThreadDispatcher;
 import io.taanielo.jmud.core.transport.BoatEngine;
 import io.taanielo.jmud.core.transport.FerryRepository;
 import io.taanielo.jmud.core.transport.repository.json.JsonFerryRepository;
@@ -318,11 +322,23 @@ public record GameContext(
             tickRegistry.register(mobRegistry);
         }
 
+        // Hot-reload of JSON content (issue #349): the JSON item/room repositories and the mob
+        // registry read+validate their files off the tick thread; the dispatcher applies the atomic
+        // cache swap back on the tick thread (AGENTS.md §5). Room item references resolve against the
+        // freshly prepared items first, falling back to the live item repository.
+        ContentReloadService contentReloadService = new ContentReloadService(
+            (ItemContentReloader) itemRepository,
+            (RoomContentReloader) roomRepository,
+            mobRegistry,
+            itemRepository::findById);
+        TickThreadDispatcher tickThreadDispatcher = new TickThreadDispatcher(tickRegistry);
+
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
             playerRepository, roomService, messageBroadcaster, weatherEngine,
-            tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle);
+            tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
+            contentReloadService, tickThreadDispatcher);
 
         CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
         ShopService shopService = createShopService(itemRepository, reputationService);
