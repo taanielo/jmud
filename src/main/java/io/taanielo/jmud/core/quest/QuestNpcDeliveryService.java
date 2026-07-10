@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.RoomId;
 
@@ -25,10 +26,23 @@ public class QuestNpcDeliveryService {
 
     private final QuestRepository questRepository;
     private final LevelUpService levelUpService;
+    private final QuestItemRewardService itemRewardService;
 
     public QuestNpcDeliveryService(QuestRepository questRepository) {
+        this(questRepository, null);
+    }
+
+    /**
+     * Creates an NPC-delivery service that additionally grants configured item rewards on delivery.
+     *
+     * @param questRepository   the quest repository; must not be null
+     * @param itemRewardService grants a quest's optional item reward, or {@code null} to disable item
+     *                          rewards
+     */
+    public QuestNpcDeliveryService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
         this.levelUpService = new LevelUpService();
+        this.itemRewardService = itemRewardService;
     }
 
     /**
@@ -66,7 +80,7 @@ public class QuestNpcDeliveryService {
         messages.add("You accept the errand: " + template.name() + ".");
         messages.add("You receive " + packageItem.getName()
             + ". Deliver it to " + template.receiverNpcId() + ".");
-        return DeliveryQuestResult.success(updated, messages);
+        return DeliveryQuestResult.success(updated, messages, List.of());
     }
 
     /**
@@ -122,10 +136,16 @@ public class QuestNpcDeliveryService {
         LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(updated, template.xpReward());
         updated = lvResult.player();
 
+        ItemRewardGrant itemGrant = itemRewardService != null
+            ? itemRewardService.grant(updated, template)
+            : ItemRewardGrant.none(updated);
+        updated = itemGrant.player();
+
         List<String> messages = new ArrayList<>();
         messages.add("You hand over the package. Errand complete: " + template.name() + ".");
-        messages.add("You receive " + template.goldReward() + " gold and "
-            + template.xpReward() + " experience.");
+        messages.add(QuestItemRewardService.receiveLine(
+            template.goldReward(), template.xpReward(), itemGrant.description()));
+        messages.addAll(itemGrant.messages());
         if (lvResult.leveledUp()) {
             messages.add("You have advanced to level " + updated.getLevel() + "!");
         }
@@ -134,7 +154,7 @@ public class QuestNpcDeliveryService {
             updated = updated.grantTitle(titleReward);
             messages.add("You have earned the title: " + titleReward + "!");
         }
-        return DeliveryQuestResult.success(updated, messages);
+        return DeliveryQuestResult.success(updated, messages, itemGrant.droppedItems());
     }
 
     // ── private helpers ────────────────────────────────────────────────

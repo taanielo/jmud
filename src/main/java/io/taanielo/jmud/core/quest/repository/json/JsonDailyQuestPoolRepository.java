@@ -81,6 +81,9 @@ public class JsonDailyQuestPoolRepository implements DailyQuestPoolRepository {
         try {
             List<QuestTemplate> variants = new ArrayList<>(dto.quests().size());
             for (DailyQuestPoolDto.DailyQuestVariantDto variant : dto.quests()) {
+                int itemRewardQuantity = variant.itemReward() != null && variant.itemRewardQuantity() <= 0
+                    ? 1
+                    : variant.itemRewardQuantity();
                 variants.add(new QuestTemplate(
                     QuestId.of(variant.id()),
                     variant.name(),
@@ -97,7 +100,9 @@ public class JsonDailyQuestPoolRepository implements DailyQuestPoolRepository {
                     null,
                     null,
                     List.of(),
-                    dto.poolId()
+                    dto.poolId(),
+                    variant.itemReward(),
+                    itemRewardQuantity
                 ));
             }
             return new DailyQuestPool(dto.poolId(), dto.name(), variants);

@@ -17,6 +17,11 @@ import java.util.List;
  * <p>{@code type} is an optional human-readable discriminator ("kill", "delivery-item",
  * "delivery-npc", "exploration") kept for schema documentation; the effective type is derived from
  * which type-specific fields are populated. {@code titleReward} is optional for any quest type.
+ *
+ * <p>{@code itemReward}/{@code itemRewardQuantity} are optional and apply to any quest type: when
+ * {@code itemReward} names an item id, that many copies are granted directly to the player's
+ * inventory on completion. {@code itemRewardQuantity} defaults to {@code 1} when an item reward is
+ * present but no quantity is specified.
  */
 record QuestDto(
     int schemaVersion,
@@ -35,6 +40,8 @@ record QuestDto(
     String receiverNpcId,
     String receiverRoomId,
     String packageItemId,
-    List<String> requiredRoomIds
+    List<String> requiredRoomIds,
+    String itemReward,
+    int itemRewardQuantity
 ) {
 }

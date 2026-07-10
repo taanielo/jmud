@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
 
 /**
  * Domain service governing the daily quest rotation.
@@ -33,6 +34,7 @@ public class DailyQuestService {
     private final Map<QuestId, QuestTemplate> questsById = new LinkedHashMap<>();
     private final AtomicLong rotationCounter = new AtomicLong();
     private final LevelUpService levelUpService = new LevelUpService();
+    private final QuestItemRewardService itemRewardService;
 
     /**
      * Creates a daily quest service over the given pools, starting at rotation index zero.
@@ -40,6 +42,18 @@ public class DailyQuestService {
      * @param pools the daily quest pools; must not be null and must have unique pool ids
      */
     public DailyQuestService(List<DailyQuestPool> pools) {
+        this(pools, null);
+    }
+
+    /**
+     * Creates a daily quest service that additionally grants configured item rewards on completion.
+     *
+     * @param pools             the daily quest pools; must not be null and must have unique pool ids
+     * @param itemRewardService grants a quest's optional item reward, or {@code null} to disable item
+     *                          rewards
+     */
+    public DailyQuestService(List<DailyQuestPool> pools, QuestItemRewardService itemRewardService) {
+        this.itemRewardService = itemRewardService;
         Objects.requireNonNull(pools, "pools is required");
         for (DailyQuestPool pool : pools) {
             if (poolsById.putIfAbsent(pool.poolId(), pool) != null) {
@@ -151,10 +165,15 @@ public class DailyQuestService {
         LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(rewarded, template.xpReward());
         rewarded = lvResult.player();
 
+        ItemRewardGrant itemGrant = itemRewardService != null
+            ? itemRewardService.grant(rewarded, template)
+            : ItemRewardGrant.none(rewarded);
+        rewarded = itemGrant.player();
+
         List<String> messages = new ArrayList<>();
         messages.add("Daily quest complete: " + template.name() + "!");
-        messages.add("You receive a daily bonus of " + template.goldReward()
-            + " gold and " + template.xpReward() + " experience.");
+        messages.add(dailyBonusLine(template.goldReward(), template.xpReward(), itemGrant.description()));
+        messages.addAll(itemGrant.messages());
 
         String titleReward = template.titleReward();
         if (titleReward != null && !rewarded.titles().has(titleReward)) {
@@ -162,6 +181,15 @@ public class DailyQuestService {
             messages.add("You have earned the title: " + titleReward + "!");
         }
 
-        return DailyQuestCompletionResult.success(rewarded, lvResult.leveledUp(), List.copyOf(messages));
+        return DailyQuestCompletionResult.success(
+            rewarded, lvResult.leveledUp(), List.copyOf(messages), itemGrant.droppedItems());
+    }
+
+    private static String dailyBonusLine(int gold, int xp, String itemDescription) {
+        if (itemDescription == null) {
+            return "You receive a daily bonus of " + gold + " gold and " + xp + " experience.";
+        }
+        return "You receive a daily bonus of " + gold + " gold, " + xp
+            + " experience, and " + itemDescription + ".";
     }
 }

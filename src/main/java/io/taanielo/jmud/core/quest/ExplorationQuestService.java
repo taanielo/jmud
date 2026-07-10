@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
 import io.taanielo.jmud.core.world.RoomId;
 
 /**
@@ -27,10 +28,23 @@ public class ExplorationQuestService {
 
     private final QuestRepository questRepository;
     private final LevelUpService levelUpService;
+    private final QuestItemRewardService itemRewardService;
 
     public ExplorationQuestService(QuestRepository questRepository) {
+        this(questRepository, null);
+    }
+
+    /**
+     * Creates an exploration service that additionally grants configured item rewards on completion.
+     *
+     * @param questRepository   the quest repository; must not be null
+     * @param itemRewardService grants a quest's optional item reward, or {@code null} to disable item
+     *                          rewards
+     */
+    public ExplorationQuestService(QuestRepository questRepository, QuestItemRewardService itemRewardService) {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
         this.levelUpService = new LevelUpService();
+        this.itemRewardService = itemRewardService;
     }
 
     /**
@@ -92,10 +106,16 @@ public class ExplorationQuestService {
         LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(rewarded, template.xpReward());
         rewarded = lvResult.player();
 
+        ItemRewardGrant itemGrant = itemRewardService != null
+            ? itemRewardService.grant(rewarded, template)
+            : ItemRewardGrant.none(rewarded);
+        rewarded = itemGrant.player();
+
         List<String> messages = new ArrayList<>();
         messages.add("You have explored every corner of your charge. Quest complete: " + template.name() + ".");
-        messages.add("You receive " + template.goldReward() + " gold and "
-            + template.xpReward() + " experience.");
+        messages.add(QuestItemRewardService.receiveLine(
+            template.goldReward(), template.xpReward(), itemGrant.description()));
+        messages.addAll(itemGrant.messages());
         if (lvResult.leveledUp()) {
             messages.add("You have advanced to level " + rewarded.getLevel() + "!");
         }
@@ -104,6 +124,6 @@ public class ExplorationQuestService {
             rewarded = rewarded.grantTitle(titleReward);
             messages.add("You have earned the title: " + titleReward + "!");
         }
-        return ExplorationQuestResult.completed(rewarded, lvResult.leveledUp(), messages);
+        return ExplorationQuestResult.completed(rewarded, lvResult.leveledUp(), messages, itemGrant.droppedItems());
     }
 }
