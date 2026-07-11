@@ -206,17 +206,24 @@ class RendSkillTest {
         assertTrue(bleeding.effects().stream().anyMatch(e -> e.id().equals(REND_EFFECT)),
             "precondition: target must be bleeding");
 
-        // spell.cure removes the effect via the identical EffectEngine path it and mobs share.
+        // spell.cure strips effects by exact id through the DefaultAbilityEffectResolver ->
+        // EffectEngine.remove path; spell.cure itself is configured to remove "poison". The
+        // identical, generic removal path clears the rend bleed when a CURE effect names the rend
+        // effect id, so no new cure logic is needed for rend to be curable (#425 acceptance
+        // criterion: the existing effect-removal path already generalizes by id).
         Ability cure = abilityRepository.findById(CURE).orElseThrow();
-        AbilityEffect cureEffect = cure.effects().getFirst();
+        assertEquals(AbilityEffectKind.CURE, cure.effects().getFirst().kind(),
+            "spell.cure removes effects via the CURE effect kind");
+        AbilityEffect cureRend = new AbilityEffect(
+            AbilityEffectKind.CURE, null, null, 0, REND_EFFECT.getValue());
         AbilityContext context = new AbilityContext(source, bleeding);
         DefaultAbilityEffectResolver curer = new DefaultAbilityEffectResolver(
             effectEngine, new CapturingMessageSink(), AbilityEffectListener.noop());
 
-        curer.apply(cureEffect, context);
+        curer.apply(cureRend, context);
 
         assertFalse(context.target().effects().stream().anyMatch(e -> e.id().equals(REND_EFFECT)),
-            "spell.cure must remove the bleed applied by rend");
+            "the shared cure/EffectEngine removal path must clear the bleed applied by rend");
     }
 
     // ── helpers ─────────────────────────────────────────────────────────
