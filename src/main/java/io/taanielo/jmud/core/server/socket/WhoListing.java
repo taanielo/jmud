@@ -94,10 +94,35 @@ public final class WhoListing {
             Function<Username, String> tagResolver,
             Function<Username, String> titleResolver,
             Predicate<Username> isFriend) {
+        return format(onlineNames, tagResolver, titleResolver, isFriend, name -> false);
+    }
+
+    /**
+     * Formats the given online player names into display lines, appending each player's guild tag
+     * and active title suffix, marking friends, and tagging away players with {@code [AFK]}.
+     *
+     * <p>Behaves like {@link #format(List, Function, Function, Predicate)} but appends {@code " [AFK]"}
+     * after the title for any name for which {@code isAway} returns {@code true}. A fully-decorated
+     * away friend line reads {@code "* Sparky [Ironclad] the Centurion [AFK]"}.
+     *
+     * @param onlineNames   the authenticated, connected player names to list
+     * @param tagResolver   resolves the guild-tag suffix for each name
+     * @param titleResolver resolves the active-title suffix for each name
+     * @param isFriend      tests whether each name is on the viewer's friends list
+     * @param isAway        tests whether each name is currently away from keyboard
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(
+            List<Username> onlineNames,
+            Function<Username, String> tagResolver,
+            Function<Username, String> titleResolver,
+            Predicate<Username> isFriend,
+            Predicate<Username> isAway) {
         Objects.requireNonNull(onlineNames, "Online names are required");
         Objects.requireNonNull(tagResolver, "Tag resolver is required");
         Objects.requireNonNull(titleResolver, "Title resolver is required");
         Objects.requireNonNull(isFriend, "Friend predicate is required");
+        Objects.requireNonNull(isAway, "Away predicate is required");
         List<String> lines = new ArrayList<>(onlineNames.size() + 2);
         lines.add(HEADER);
         for (Username name : onlineNames) {
@@ -105,7 +130,8 @@ public final class WhoListing {
             String tag = Objects.requireNonNullElse(tagResolver.apply(resolved), "");
             String title = Objects.requireNonNullElse(titleResolver.apply(resolved), "");
             String prefix = isFriend.test(resolved) ? "* " : "  ";
-            lines.add(prefix + resolved.getValue() + tag + title);
+            String afk = isAway.test(resolved) ? " [AFK]" : "";
+            lines.add(prefix + resolved.getValue() + tag + title + afk);
         }
         lines.add(footer(onlineNames.size()));
         return List.copyOf(lines);

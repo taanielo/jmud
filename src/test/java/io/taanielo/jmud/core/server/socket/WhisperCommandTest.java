@@ -151,6 +151,27 @@ class WhisperCommandTest {
         assertTrue(context.promptMessage.contains("logged in"));
     }
 
+    // --- AFK notice (issue #464) ---
+
+    @Test
+    void whisperToAwayPlayerAppendsAfkNoticeToSender() {
+        RoomService roomService = twoRoomService();
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient");
+        context.markAway("Recipient", "Recipient is AFK: grabbing coffee");
+        roomService.ensurePlayerLocation(Username.of("Sender"));
+        roomService.ensurePlayerLocation(Username.of("Recipient"));
+
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
+        cmd.match("WHISPER Recipient hello there").get().execute(context);
+
+        assertEquals("Sender whispers to you: hello there",
+                context.sentToUsername.get("recipient"),
+                "Message should still be delivered to the away recipient");
+        assertTrue(context.lines.contains("Recipient is AFK: grabbing coffee"),
+                "Sender should see the AFK notice");
+    }
+
     // --- helpers ---
 
     /** Two adjacent rooms (ROOM_ONE --north--> ROOM_TWO), starting room is ROOM_ONE. */
@@ -191,6 +212,7 @@ class WhisperCommandTest {
         String promptMessage = "";
         final Map<String, String> sentToUsername = new HashMap<>();
         private final List<Username> onlinePlayers = new ArrayList<>();
+        private final Map<Username, String> awayNotices = new HashMap<>();
         private final Player player;
 
         CapturingContext(String senderName) {
@@ -199,6 +221,10 @@ class WhisperCommandTest {
 
         void addOnlinePlayer(String name) {
             onlinePlayers.add(Username.of(name));
+        }
+
+        void markAway(String name, String notice) {
+            awayNotices.put(Username.of(name), notice);
         }
 
         @Override public boolean isAuthenticated() { return player != null; }
@@ -214,6 +240,7 @@ class WhisperCommandTest {
         @Override public void writeLineSafe(String m) { lines.add(m); }
         @Override public void sendPrompt() {}
         @Override public void sendToUsername(Username u, String m) { sentToUsername.put(u.getValue().toLowerCase(Locale.ROOT), m); }
+        @Override public Optional<String> awayNotice(Username u) { return Optional.ofNullable(awayNotices.get(u)); }
         @Override public void sendToRoom(Player s, Player t, String m) {}
         @Override public void sendToRoom(Player s, String m) {}
         @Override public Optional<Player> resolveTarget(Player s, String i) { return Optional.empty(); }

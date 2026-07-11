@@ -164,6 +164,49 @@ class TellCommandTest {
                 "Tell should be delivered when recipient does not ignore the sender");
     }
 
+    // --- AFK notice (issue #464) ---
+
+    @Test
+    void tellToAwayPlayerAppendsAfkNoticeToSender() {
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient");
+        context.markAway("Recipient", "Recipient is AFK: grabbing coffee");
+
+        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
+        cmd.match("TELL Recipient hello there").get().execute(context);
+
+        assertEquals("Sender tells you: hello there",
+                context.sentToUsername.get("recipient"),
+                "Message should still be delivered to the away recipient");
+        assertTrue(context.lines.contains("Recipient is AFK: grabbing coffee"),
+                "Sender should see the AFK notice");
+    }
+
+    @Test
+    void tellToAwayPlayerWithoutMessageShowsDefaultNotice() {
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient");
+        context.markAway("Recipient", "Recipient is AFK.");
+
+        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
+        cmd.match("TELL Recipient hi").get().execute(context);
+
+        assertTrue(context.lines.contains("Recipient is AFK."),
+                "Sender should see the default AFK notice text");
+    }
+
+    @Test
+    void tellToPresentPlayerHasNoAfkNotice() {
+        CapturingContext context = new CapturingContext("Sender");
+        context.addOnlinePlayer("Recipient");
+
+        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
+        cmd.match("TELL Recipient hi").get().execute(context);
+
+        assertFalse(context.lines.stream().anyMatch(l -> l.contains("AFK")),
+                "A present recipient should produce no AFK notice");
+    }
+
     // --- helpers ---
 
     private static Player stubPlayer(String name) {
@@ -181,6 +224,7 @@ class TellCommandTest {
         final Map<String, String> sentToUsername = new HashMap<>();
         private final List<Username> onlinePlayers = new ArrayList<>();
         private final Map<Username, Player> onlinePlayerObjects = new HashMap<>();
+        private final Map<Username, String> awayNotices = new HashMap<>();
         private final Player player;
 
         CapturingContext(String senderName) {
@@ -190,6 +234,10 @@ class TellCommandTest {
         void addOnlinePlayer(String name) {
             onlinePlayers.add(Username.of(name));
             onlinePlayerObjects.put(Username.of(name), stubPlayer(name));
+        }
+
+        void markAway(String name, String notice) {
+            awayNotices.put(Username.of(name), notice);
         }
 
         void addOnlinePlayer(String name, String... ignored) {
@@ -210,6 +258,7 @@ class TellCommandTest {
         @Override public void writeLineSafe(String m) { lines.add(m); }
         @Override public void sendPrompt() {}
         @Override public Player getOnlinePlayer(Username u) { return onlinePlayerObjects.get(u); }
+        @Override public Optional<String> awayNotice(Username u) { return Optional.ofNullable(awayNotices.get(u)); }
         @Override public void sendToUsername(Username u, String m) { sentToUsername.put(u.getValue().toLowerCase(Locale.ROOT), m); }
         @Override public void sendToRoom(Player s, Player t, String m) {}
         @Override public void sendToRoom(Player s, String m) {}

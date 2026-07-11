@@ -106,6 +106,8 @@ public class TellCommand extends RegistrableCommand {
             tellService.recordReceivedTell(targetUsername, sender.getUsername());
         }
         context.writeLineSafe("You tell " + targetUsername.getValue() + ": " + message);
+        // If the recipient is AFK, let the sender know their message reached an away player.
+        context.awayNotice(targetUsername).ifPresent(context::writeLineSafe);
         context.sendPrompt();
     }
 }

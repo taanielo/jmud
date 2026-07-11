@@ -112,6 +112,8 @@ public class WhisperCommand extends RegistrableCommand {
         // The recipient just received a private message; make the sender their REPLY target.
         tellService.recordReceivedTell(targetUsername, sender.getUsername());
         context.writeLineSafe("You whisper to " + targetUsername.getValue() + ": " + message);
+        // If the recipient is AFK, let the sender know their message reached an away player.
+        context.awayNotice(targetUsername).ifPresent(context::writeLineSafe);
         context.sendPrompt();
     }
 }

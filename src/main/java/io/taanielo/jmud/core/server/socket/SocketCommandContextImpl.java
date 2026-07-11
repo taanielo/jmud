@@ -420,6 +420,56 @@ class SocketCommandContextImpl implements SocketCommandContext {
         writeLineWithPrompt("ANSI is now " + (enabled ? "ON" : "OFF"));
     }
 
+    // ── AFK / away status (issue #464) ──────────────────────────────────
+
+    @Override
+    public void toggleAfk(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to go AFK.");
+            return;
+        }
+        AfkStatus.ToggleResult result = AfkStatus.toggle(session.isAway(), args);
+        if (result.away()) {
+            session.setAway(result.message());
+        } else {
+            session.clearAway();
+        }
+        writeLineWithPrompt(result.confirmation());
+    }
+
+    @Override
+    public void clearAwayIfActive() {
+        if (session.isAway()) {
+            session.clearAway();
+            connection.writeLine("Welcome back. You are no longer AFK.");
+        }
+    }
+
+    @Override
+    public boolean isPlayerAway(Username username) {
+        PlayerSession target = findSession(username);
+        return target != null && target.isAway();
+    }
+
+    @Override
+    public Optional<String> awayNotice(Username username) {
+        PlayerSession target = findSession(username);
+        if (target == null || !target.isAway()) {
+            return Optional.empty();
+        }
+        return Optional.of(AfkStatus.recipientNotice(username, target.awayMessage()));
+    }
+
+    /**
+     * Resolves the live {@link PlayerSession} for the given online username, or {@code null} when no
+     * such client is currently connected. Used to inspect another player's transient AFK state.
+     */
+    private @Nullable PlayerSession findSession(Username username) {
+        SocketClient socketClient = findSocketClient(username);
+        return socketClient == null ? null : socketClient.session();
+    }
+
     // ── I/O helpers ────────────────────────────────────────────────────
 
     /**

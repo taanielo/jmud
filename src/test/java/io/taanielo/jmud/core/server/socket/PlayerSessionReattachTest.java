@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.server.socket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -138,6 +139,54 @@ class PlayerSessionReattachTest {
         session.unsubscribeTicks();
 
         assertEquals(0, tickRegistry.snapshot().size());
+    }
+
+    // --- AFK / away status (issue #464) ---
+
+    @Test
+    void newSessionIsNotAway() {
+        PlayerSession session = newSession();
+        assertFalse(session.isAway());
+        assertNull(session.awayMessage());
+    }
+
+    @Test
+    void setAwayWithoutMessageMarksAwayWithNoReason() {
+        PlayerSession session = newSession();
+        session.setAway(null);
+        assertTrue(session.isAway());
+        assertNull(session.awayMessage());
+    }
+
+    @Test
+    void setAwayStoresTrimmedCustomMessage() {
+        PlayerSession session = newSession();
+        session.setAway("  grabbing coffee  ");
+        assertTrue(session.isAway());
+        assertEquals("grabbing coffee", session.awayMessage());
+    }
+
+    @Test
+    void clearAwayResetsBothFlagAndMessage() {
+        PlayerSession session = newSession();
+        session.setAway("lunch");
+        session.clearAway();
+        assertFalse(session.isAway());
+        assertNull(session.awayMessage());
+    }
+
+    @Test
+    void reattachClearsAwayStatus() {
+        PlayerSession session = newSession();
+        session.setPlayer(newPlayer("alice"));
+        session.startTicks();
+        session.setAway("brb");
+        session.startLinkdead(30);
+
+        session.reattach();
+
+        assertFalse(session.isAway(), "Away status must not survive a reconnect");
+        assertNull(session.awayMessage());
     }
 
     private PlayerSession newSession() {

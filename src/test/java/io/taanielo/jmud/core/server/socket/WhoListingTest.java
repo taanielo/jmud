@@ -139,4 +139,53 @@ class WhoListingTest {
             "1 player online."
         ), lines);
     }
+
+    @Test
+    void tagsAwayPlayersWithAfkMarker() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Alice"), Username.of("Bob")),
+            name -> "",
+            name -> "",
+            name -> false,
+            name -> name.getValue().equals("Alice"));
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Alice [AFK]",
+            "  Bob",
+            "2 players online."
+        ), lines);
+    }
+
+    @Test
+    void afkMarkerCombinesWithFriendPrefixGuildTagAndTitle() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Sparky")),
+            name -> " [Ironclad]",
+            name -> " the Centurion",
+            name -> true,
+            name -> true);
+
+        assertEquals(List.of(
+            "Players online:",
+            "* Sparky [Ironclad] the Centurion [AFK]",
+            "1 player online."
+        ), lines);
+    }
+
+    @Test
+    void nonAwayPlayersAreUnaffectedByAfkPredicate() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Alice")),
+            name -> "",
+            name -> "",
+            name -> false,
+            name -> false);
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Alice",
+            "1 player online."
+        ), lines);
+    }
 }

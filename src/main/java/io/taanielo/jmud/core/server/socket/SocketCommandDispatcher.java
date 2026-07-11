@@ -116,6 +116,11 @@ public class SocketCommandDispatcher {
             return;
         }
         SocketCommandMatch match = matches.getFirst();
+        // Any command other than AFK itself clears an active away status and prints a short
+        // welcome-back line before the command's own output (issue #464).
+        if (!"afk".equalsIgnoreCase(match.command().name())) {
+            context.clearAwayIfActive();
+        }
         if (context.getPlayer() != null && context.getPlayer().isDead()) {
             if (!"quit".equalsIgnoreCase(match.command().name())) {
                 auditService.emit(new AuditEvent(
