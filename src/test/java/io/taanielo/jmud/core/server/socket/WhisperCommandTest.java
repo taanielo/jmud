@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
@@ -37,14 +38,14 @@ class WhisperCommandTest {
 
     @Test
     void matchesWhisperToken() {
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), twoRoomService());
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), twoRoomService(), new TellService());
         assertTrue(cmd.match("WHISPER taaniel hello").isPresent());
         assertTrue(cmd.match("whisper taaniel hello").isPresent());
     }
 
     @Test
     void doesNotMatchOtherTokens() {
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), twoRoomService());
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), twoRoomService(), new TellService());
         assertFalse(cmd.match("TELL hello").isPresent());
         assertFalse(cmd.match("WHO").isPresent());
         assertFalse(cmd.match("").isPresent());
@@ -60,7 +61,7 @@ class WhisperCommandTest {
         roomService.ensurePlayerLocation(Username.of("Sender"));
         roomService.ensurePlayerLocation(Username.of("Recipient"));
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER Recipient hello there").get().execute(context);
 
         assertEquals("Sender whispers to you: hello there",
@@ -76,7 +77,7 @@ class WhisperCommandTest {
         roomService.ensurePlayerLocation(Username.of("Sender"));
         roomService.ensurePlayerLocation(Username.of("Recipient"));
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER Recipient hello there").get().execute(context);
 
         assertTrue(context.lines.stream().anyMatch(l -> l.equals("You whisper to Recipient: hello there")),
@@ -90,7 +91,7 @@ class WhisperCommandTest {
         roomService.ensurePlayerLocation(Username.of("Sender"));
         // No players added — target is offline.
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER Ghost hello").get().execute(context);
 
         assertTrue(context.promptMessage.contains("Ghost") && context.promptMessage.contains("not here"),
@@ -106,7 +107,7 @@ class WhisperCommandTest {
         roomService.ensurePlayerLocation(Username.of("Recipient"));
         roomService.move(Username.of("Recipient"), Direction.NORTH);
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER Recipient hello").get().execute(context);
 
         assertTrue(context.promptMessage.contains("Recipient") && context.promptMessage.contains("not here"),
@@ -120,7 +121,7 @@ class WhisperCommandTest {
         CapturingContext context = new CapturingContext("Sender");
         context.addOnlinePlayer("Recipient");
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER Recipient").get().execute(context);
 
         assertFalse(context.promptMessage.isBlank(), "Usage error should be written via writeLineWithPrompt");
@@ -132,7 +133,7 @@ class WhisperCommandTest {
         RoomService roomService = twoRoomService();
         CapturingContext context = new CapturingContext("Sender");
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER").get().execute(context);
 
         assertFalse(context.promptMessage.isBlank(), "Usage error should be written via writeLineWithPrompt");
@@ -144,7 +145,7 @@ class WhisperCommandTest {
         RoomService roomService = twoRoomService();
         CapturingContext context = new CapturingContext(null);
 
-        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService);
+        WhisperCommand cmd = new WhisperCommand(new SocketCommandRegistry(), roomService, new TellService());
         cmd.match("WHISPER Recipient hello").get().execute(context);
 
         assertTrue(context.promptMessage.contains("logged in"));

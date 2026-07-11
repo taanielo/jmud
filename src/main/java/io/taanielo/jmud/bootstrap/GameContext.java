@@ -90,6 +90,7 @@ import io.taanielo.jmud.core.messaging.GossipHistory;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
+import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.WorldBossAnnouncer;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
@@ -379,6 +380,8 @@ public record GameContext(
         // announcement fires through a fully-wired registry (AGENTS.md §5 — all on the tick thread).
         PartyService partyService = new PartyService();
         GuildService guildService = createGuildService();
+        // Ephemeral tracker of the last private-message sender per player, backing REPLY (issue #462).
+        TellService tellService = new TellService();
 
         PlayerEventBus playerEventBus = new PlayerEventBus();
         MobRegistry mobRegistry = createMobRegistry(
@@ -411,7 +414,7 @@ public record GameContext(
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            playerRepository, roomService, messageBroadcaster, reputationService, weatherEngine,
+            playerRepository, roomService, tellService, messageBroadcaster, reputationService, weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);
 

@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
@@ -24,16 +25,19 @@ import io.taanielo.jmud.core.world.RoomService;
 public class WhisperCommand extends RegistrableCommand {
 
     private final RoomService roomService;
+    private final TellService tellService;
 
     /**
      * Creates a {@code WhisperCommand} and registers it with the given registry.
      *
      * @param registry    the registry to register this command with
      * @param roomService service used to verify the sender and target share a room
+     * @param tellService service that records the last private-message sender for {@code REPLY}
      */
-    public WhisperCommand(SocketCommandRegistry registry, RoomService roomService) {
+    public WhisperCommand(SocketCommandRegistry registry, RoomService roomService, TellService tellService) {
         super(registry);
         this.roomService = Objects.requireNonNull(roomService, "Room service is required");
+        this.tellService = Objects.requireNonNull(tellService, "Tell service is required");
     }
 
     @Override
@@ -105,6 +109,8 @@ public class WhisperCommand extends RegistrableCommand {
         }
 
         context.sendToUsername(targetUsername, senderName + " whispers to you: " + message);
+        // The recipient just received a private message; make the sender their REPLY target.
+        tellService.recordReceivedTell(targetUsername, sender.getUsername());
         context.writeLineSafe("You whisper to " + targetUsername.getValue() + ": " + message);
         context.sendPrompt();
     }
