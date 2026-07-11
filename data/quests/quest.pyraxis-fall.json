@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "pyraxis-fall",
+  "name": "Pyraxis's Fall",
+  "description": "The embercrawlers were only the spillover. Their source coils in the molten heart of the Emberdeep: Pyraxis, the Ember Wyrm, whose furnace-breath keeps the fissure boiling and the militia's scouts driven back. Warden Kessa can hold the mouth no longer alone. Descend to the forge-heart, face the wyrm in its lair, and end it — only then will the Emberdeep cool.",
+  "target_mob_id": "ember-wyrm",
+  "required_kills": 1,
+  "gold_reward": 500,
+  "xp_reward": 1200,
+  "title_reward": "Pyraxis's Bane",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 25,
+  "repeatable": false,
+  "prerequisite_quest_id": "ember-culler"
+}
