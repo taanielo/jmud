@@ -39,6 +39,7 @@ players/
 .gradle/
 logs/
 data/ssh/
+data/auctions/listings.json
 
 ### Claude Code agent runtime state ###
 .orchestrator/
