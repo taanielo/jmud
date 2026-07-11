@@ -1,0 +1,58 @@
+{
+  "schema_version": 3,
+  "id": "attack.parrying-dagger",
+  "name": "parrying dagger",
+  "weapon_type": "PIERCING",
+  "min_damage": 1,
+  "max_damage": 4,
+  "hit_bonus": 6,
+  "crit_bonus": 4,
+  "damage_bonus": 0,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You jab {target} with your parrying dagger for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} jabs you with a parrying dagger for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} jabs {target} with a parrying dagger."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You flick your parrying dagger at {target} but miss."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} flicks a parrying dagger at you but misses."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} flicks a parrying dagger at {target} but misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You slip your parrying dagger past {target}'s guard for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} slips a parrying dagger past your guard for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} slips a parrying dagger past {target}'s guard!"
+    }
+  ]
+}

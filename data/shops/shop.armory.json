@@ -12,6 +12,7 @@
     {"item_id": "shortbow"},
     {"item_id": "throwing-knife"},
     {"item_id": "training-shield"},
+    {"item_id": "parrying-dagger"},
     {"item_id": "leather-cap"},
     {"item_id": "leather-chest", "min_reputation": 15},
     {"item_id": "leather-legs"},

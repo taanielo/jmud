@@ -50,12 +50,14 @@ import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
+import io.taanielo.jmud.core.combat.OffhandAttackResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
+import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
 import io.taanielo.jmud.core.craft.CrafterProfile;
@@ -227,6 +229,7 @@ public record GameContext(
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
+    AttackRepository attackRepository,
     AchievementService achievementService,
     DuelService duelService,
     NotesService notesService,
@@ -538,6 +541,7 @@ public record GameContext(
             resourceGatheringService,
             dialogueService,
             itemRepository,
+            attackRepository,
             achievementService,
             duelService,
             notesService,
@@ -652,19 +656,20 @@ public record GameContext(
         long worldSeed
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
+        OffhandAttackResolver offhandAttackResolver = new OffhandAttackResolver();
         if (!seeded) {
             CombatRandom threadLocalRandom = new ThreadLocalCombatRandom();
             return new CombatEngine(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, shieldBlockResolver, (tick, actorId) -> threadLocalRandom, () -> 0L,
-                effectEngine);
+                equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver,
+                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-            equipmentArmorResolver, shieldBlockResolver, provider, tickSupplier, effectEngine);
+            equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, provider, tickSupplier, effectEngine);
     }
 
     private static ItemRepository createItemRepository() {

@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "parrying-dagger",
+  "name": "Parrying Dagger",
+  "description": "A slender off-hand blade balanced for a quick second strike rather than a killing blow.",
+  "attributes": {
+    "stats": {
+      "dexterity": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "offhand",
+  "weight": 2,
+  "value": 18,
+  "attack_ref": "attack.parrying-dagger"
+}

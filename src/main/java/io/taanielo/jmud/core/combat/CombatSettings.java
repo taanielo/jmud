@@ -8,6 +8,8 @@ public final class CombatSettings {
     public static final int DEFAULT_DAMAGE_VARIANCE_PERCENT = 0;
     public static final int DEFAULT_CRIT_MULTIPLIER = 2;
     public static final int DEFAULT_BLOCK_REDUCTION_PERCENT = 50;
+    public static final int DEFAULT_OFFHAND_HIT_PENALTY_PERCENT = 25;
+    public static final int DEFAULT_OFFHAND_DAMAGE_PERCENT = 50;
     public static final String DEFAULT_ATTACK_ID = "attack.unarmed";
     public static final int DEFAULT_ATTACK_CADENCE_TICKS = 1;
 
@@ -54,6 +56,38 @@ public final class CombatSettings {
             throw new IllegalArgumentException("Default block reduction percent must be in [0, 100]");
         }
         return reduction;
+    }
+
+    /**
+     * The hit-chance percentage subtracted from a dual-wield off-hand attack, making the second
+     * (off-hand) swing land less reliably than the main-hand attack. Clamped to {@code [0, 100]};
+     * a value of {@code 0} means the off-hand attack is as accurate as the main hand.
+     *
+     * @return the off-hand hit-chance penalty in percentage points, in {@code [0, 100]}
+     */
+    public static int offhandHitPenaltyPercent() {
+        int penalty = CONFIG.getInt(
+            "jmud.combat.offhand_hit_penalty_percent", DEFAULT_OFFHAND_HIT_PENALTY_PERCENT);
+        if (penalty < 0 || penalty > 100) {
+            throw new IllegalArgumentException("Offhand hit penalty percent must be in [0, 100]");
+        }
+        return penalty;
+    }
+
+    /**
+     * The percentage of a normal attack's damage that a dual-wield off-hand swing deals, making the
+     * second (off-hand) hit weaker than the main-hand attack. Clamped to {@code [0, 100]}; a value of
+     * {@code 100} means the off-hand hits for full damage while {@code 50} halves it.
+     *
+     * @return the off-hand damage multiplier as a percentage, in {@code [0, 100]}
+     */
+    public static int offhandDamagePercent() {
+        int percent = CONFIG.getInt(
+            "jmud.combat.offhand_damage_percent", DEFAULT_OFFHAND_DAMAGE_PERCENT);
+        if (percent < 0 || percent > 100) {
+            throw new IllegalArgumentException("Offhand damage percent must be in [0, 100]");
+        }
+        return percent;
     }
 
     public static AttackId defaultAttackId() {
