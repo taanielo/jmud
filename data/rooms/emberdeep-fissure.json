@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "emberdeep-fissure",
+  "name": "The Emberdeep Fissure",
+  "description": "A jagged crevasse has split the summit's floor, and warm air wells up from the dark below in defiance of the glacial cold above. Sheets of ancient ice sweat and drip along the walls where they meet a widening throat of black stone, and far down the shaft a sullen orange glow pulses like a slow-beating heart. The ice-world ends here; something older and hotter begins.",
+  "item_ids": [],
+  "exits": {
+    "up": "frozen-peaks-summit",
+    "down": "emberdeep-obsidian-passage"
+  },
+  "min_level": 20,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A gout of warm, sulphurous air sighs up from the fissure, and the ice overhead weeps a curtain of meltwater.",
+    "Deep below, something shifts, and the orange glow at the bottom of the shaft flares and dims.",
+    "A shard of loosened ice breaks free of the ceiling and shatters on the black stone with a brittle crack."
+  ]
+}

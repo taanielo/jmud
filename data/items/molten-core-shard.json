@@ -1,0 +1,14 @@
+{
+  "schema_version": 10,
+  "id": "molten-core-shard",
+  "name": "a molten core shard",
+  "description": "A fist-sized shard of stone that never cools, its heart glowing a sullen orange no matter how long it is held. Prised from the bodies of the Emberdeep's creatures, such shards are prized by smiths and enchanters for the trapped fire within.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 45,
+  "rarity": "uncommon"
+}

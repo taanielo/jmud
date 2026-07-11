@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "emberdeep-ember-nest",
+  "name": "The Ember Nest",
+  "description": "A vast cavern where the ceiling bristles with cooling vents that rain a constant soft fall of glowing embers, heaping the floor in drifts of warm ash. Great charred bones lie half-buried in the cinders, and the walls are scored with deep, molten claw-marks. This is a den of something that has fed here a long time, and the heat has a watchful, patient quality.",
+  "item_ids": [],
+  "exits": {
+    "up": "emberdeep-magma-flow",
+    "down": "emberdeep-forge-heart"
+  },
+  "min_level": 23,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "Embers drift down from the vents above and settle hissing into the ash at your feet.",
+    "Something massive shifts in the drifts of cinders, then goes still.",
+    "A charred bone cracks somewhere in the dark under a slow, deliberate weight."
+  ]
+}

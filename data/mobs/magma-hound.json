@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "magma-hound",
+  "name": "Magma Hound",
+  "max_hp": 170,
+  "attack_id": "attack.magma-hound",
+  "aggressive": true,
+  "tags": ["fire", "beast", "emberdeep"],
+  "spawn_room_id": "emberdeep-magma-flow",
+  "max_count": 3,
+  "respawn_ticks": 45,
+  "xp_reward": 185,
+  "loot": [
+    {
+      "item_id": "molten-core-shard",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 30,
+    "max": 55
+  }
+}

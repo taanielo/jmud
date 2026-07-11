@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.ember-wyrm",
+  "name": "searing fangs",
+  "min_damage": 24,
+  "max_damage": 38,
+  "hit_bonus": 5,
+  "crit_bonus": 3,
+  "damage_bonus": 7,
+  "weapon_type": "PIERCING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Pyraxis closes its searing fangs on you, and the heat of them burns for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Pyraxis's jaws crash shut in a wash of flame a hand's breadth from you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Pyraxis seizes you in its molten jaws and shakes you like a rag doll for {damage}!"
+    }
+  ]
+}

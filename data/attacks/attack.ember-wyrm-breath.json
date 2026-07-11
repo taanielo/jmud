@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.ember-wyrm-breath",
+  "name": "Cinder Breath",
+  "min_damage": 36,
+  "max_damage": 55,
+  "hit_bonus": 4,
+  "crit_bonus": 4,
+  "damage_bonus": 9,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 65
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Pyraxis rears back and looses a roaring gout of cinder breath that engulfs you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Pyraxis's cinder breath roars past as you hurl yourself clear of the firestorm."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Pyraxis's cinder breath swallows you whole in a blast of white flame for {damage}!"
+    }
+  ]
+}

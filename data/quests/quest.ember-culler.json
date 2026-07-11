@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "ember-culler",
+  "name": "Ember Culler",
+  "description": "Warden Kessa keeps a lonely watch at the mouth of the Emberdeep, and the embercrawlers boiling up from the depths threaten to overrun the fissure. Cull eight of the molten vermin and return to her.",
+  "target_mob_id": "embercrawler",
+  "required_kills": 8,
+  "gold_reward": 175,
+  "xp_reward": 450
+}

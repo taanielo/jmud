@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "emberdeep-forge-heart",
+  "name": "The Forge-Heart",
+  "description": "At the very bottom of the Emberdeep lies a cathedral of fire, a domed chamber ringed by falls of liquid rock that pour endlessly into a central well of blinding molten light. The heat is a physical wall, and the roar of the flames swallows all other sound. This is the furnace at the root of the mountain, and it is not empty: something vast and burning has made its throne upon the forge-heart itself.",
+  "item_ids": [],
+  "exits": {
+    "up": "emberdeep-ember-nest"
+  },
+  "min_level": 24,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The molten falls surge and thunder, and the whole chamber pulses a deeper, angrier red.",
+    "A wave of heat rolls out from the central well, fierce enough to steal the breath from your lungs.",
+    "Deep in the fire something enormous draws a long, rasping breath, and the flames lean toward it."
+  ]
+}

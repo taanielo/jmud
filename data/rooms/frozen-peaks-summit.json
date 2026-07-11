@@ -5,7 +5,8 @@
   "description": "The world falls away on every side from this broad, ice-shattered summit, the highest point of the Frozen Peaks. Great fangs of blue ice ring the plateau like the walls of a ruined hall, and the ground is strewn with frost-rimed bones. This is a lair, and the cold here is a living, hungry thing that gnaws at the marrow.",
   "item_ids": [],
   "exits": {
-    "south": "frozen-peaks-ridge"
+    "south": "frozen-peaks-ridge",
+    "down": "emberdeep-fissure"
   },
   "min_level": 18,
   "is_outdoor": true,
