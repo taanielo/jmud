@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.player;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.extern.slf4j.Slf4j;
+
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
@@ -10,8 +12,6 @@ import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.world.Item;
-
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Resolves carry weight limits and encumbrance for a player.

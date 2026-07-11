@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.extern.slf4j.Slf4j;
+
 import io.taanielo.jmud.core.reload.ItemContentReloader;
 import io.taanielo.jmud.core.reload.PreparedItemReload;
 import io.taanielo.jmud.core.world.Item;
@@ -21,8 +23,6 @@ import io.taanielo.jmud.core.world.dto.ItemMapper;
 import io.taanielo.jmud.core.world.dto.SchemaVersions;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
-
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class JsonItemRepository implements ItemRepository, ItemContentReloader {
