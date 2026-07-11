@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "regrowth",
+  "name": "Regrowth",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "heal_per_tick",
+      "op": "add",
+      "amount": 3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Verdant energy knits your wounds, and you begin to regrow."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A soft green glow envelops {name}."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "Living warmth flows through you as your flesh mends."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The regrowth fades and your body settles."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The green glow around {name} fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wreathed in a gentle green glow."
+    }
+  ]
+}

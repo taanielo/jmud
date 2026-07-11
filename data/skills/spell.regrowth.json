@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.regrowth",
+  "name": "regrowth",
+  "type": "SPELL",
+  "level": 2,
+  "cost": {
+    "mana": 6
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["regen"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "regrowth"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call on the wild's renewal, casting {ability} on {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} casts {ability} on you, and life blooms across your wounds."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} casts {ability} on {target}."
+    }
+  ]
+}
