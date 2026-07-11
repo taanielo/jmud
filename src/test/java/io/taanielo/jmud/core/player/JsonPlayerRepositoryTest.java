@@ -237,6 +237,36 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsDuelRecord() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("duelist"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ").withDuelWins(7).withDuelLosses(3);
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(7, loaded.get().getDuelWins(), "Duel wins should round-trip through JSON");
+        assertEquals(3, loaded.get().getDuelLosses(), "Duel losses should round-trip through JSON");
+    }
+
+    @Test
+    void loadingOldSaveFileWithoutDuelRecordDefaultsToZero() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("oldtimer"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> "); // duel counters default to 0
+        repository.savePlayer(player);
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(0, loaded.get().getDuelWins(),
+            "Player with no duelWins field should load with 0 wins");
+        assertEquals(0, loaded.get().getDuelLosses(),
+            "Player with no duelLosses field should load with 0 losses");
+    }
+
+    @Test
     void savesAndLoadsGoldField() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("goldie"), Password.hash("pw", 1));

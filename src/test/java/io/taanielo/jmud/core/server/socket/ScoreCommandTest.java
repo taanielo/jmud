@@ -71,6 +71,36 @@ class ScoreCommandTest {
     }
 
     @Test
+    void displaysDuelRecordForFreshCharacter() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty());
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Duels : 0W / 0L")),
+            "Expected 'Duels : 0W / 0L' in output, got: " + context.lines);
+    }
+
+    @Test
+    void displaysExistingDuelRecord() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty()).withDuelWins(7).withDuelLosses(3);
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Duels : 7W / 3L")),
+            "Expected 'Duels : 7W / 3L' in output, got: " + context.lines);
+    }
+
+    @Test
     void displaysRacialBonusOnlyWhenNoArmourEquipped() {
         // No armour equipped, race resolver returns 3 → AC = 3
         EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();

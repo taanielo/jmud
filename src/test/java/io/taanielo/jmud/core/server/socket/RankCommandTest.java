@@ -54,6 +54,24 @@ class RankCommandTest {
     }
 
     @Test
+    void rankDuelsListsPlayersByDuelWins() {
+        Player alice = duelist("alice", 4, 1);
+        Player bob = duelist("bob", 9, 2);
+        Player pacifist = player("pacifist", 5);
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice, bob, pacifist)));
+        CapturingContext context = new CapturingContext(alice, true);
+
+        cmd.match("RANK DUELS").orElseThrow().execute(context);
+
+        assertTrue(context.lines.get(0).equals("Duel ranking:"));
+        assertTrue(context.lines.stream().anyMatch(l -> l.contains("bob")));
+        assertTrue(context.lines.stream().anyMatch(l -> l.contains("alice")));
+        // A player with no recorded duels is omitted from the duel ranking.
+        assertFalse(context.lines.stream().anyMatch(l -> l.contains("pacifist")));
+    }
+
+    @Test
     void unauthenticatedPlayerGetsErrorMessage() {
         RankCommand cmd = new RankCommand(new SocketCommandRegistry(), new StubPlayerRepository(List.of()));
         CapturingContext context = new CapturingContext(null, false);
@@ -67,6 +85,11 @@ class RankCommandTest {
     private static Player player(String username, long totalKills) {
         User user = User.of(Username.of(username), Password.hash("pw", 1));
         return Player.of(user, "%hp> ").withTotalKills(totalKills);
+    }
+
+    private static Player duelist(String username, int wins, int losses) {
+        User user = User.of(Username.of(username), Password.hash("pw", 1));
+        return Player.of(user, "%hp> ").withDuelWins(wins).withDuelLosses(losses);
     }
 
     private static class StubPlayerRepository implements PlayerRepository {
