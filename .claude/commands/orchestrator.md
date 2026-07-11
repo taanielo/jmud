@@ -21,6 +21,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 ```json
 { "current_issue": null, "todo_line": null, "stage": "FIND_ISSUE", "build_retries": 0,
   "cycles_since_last_optimization": 0,
+  "cycles_since_last_review": 0, "last_reviewed_commit": null,
   "blocked_issues": [], "parked_pr": null, "waiting_for_session_reset": false,
   "last_updated": null }
 ```
@@ -49,7 +50,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
   - FAIL and `build_retries >= 2` → `gh issue create --title "blocked: <title>" --body "<scrubbed error summary from build-error.txt>" --label bug`; append the number to `blocked_issues`; notify (PushNotification if available); `build_retries = 0`, `current_issue = null`, `stage = FIND_ISSUE`.
 - **CREATE_PR** — run `scripts/agent/pr-create.sh <N> "<type>(<scope>): <summary>"` — you compose the Conventional Commit title from the issue (`feat`/`fix`/`refactor`/`docs`/`test`/`chore`, imperative, ≤ 70 chars). OK → `stage = MERGE_PR`.
 - **MERGE_PR** — run `scripts/agent/merge.sh <N>`. It gates on GitHub CI status (`gh pr checks --watch`) before squash-merging — local `check` success alone is not sufficient.
-  - OK → (`merge.sh` has already appended this cycle's line to `cycle-log.jsonl` with the real merge timestamp — never append or edit that file yourself); `cycles_since_last_optimization += 1`; `current_issue = null`; `todo_line = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0. **Do not commit `TODO.md` after the merge** — the code-writer marks the TODO line inside the feature PR; a separate post-merge `docs(todo)` commit to `main` is always wrong. If the merged PR missed the TODO line, mention it as a WARN in the cycle summary instead of committing to `main` yourself.
+  - OK → (`merge.sh` has already appended this cycle's line to `cycle-log.jsonl` with the real merge timestamp — never append or edit that file yourself); `cycles_since_last_optimization += 1`; `current_issue = null`; `todo_line = null`; `stage = FIND_ISSUE`. If `cycles_since_last_optimization >= 5` → spawn **workflow-optimizer**, then reset it to 0. Also `cycles_since_last_review += 1`; if `cycles_since_last_review >= 10` → spawn **code-reviewer** (pass `last_reviewed_commit` from state), then set `cycles_since_last_review = 0` and `last_reviewed_commit` to the `head` sha from its `last-result.json` (the reviewer is the loop's quality backstop — CI green is the only gate each individual merge passed). **Do not commit `TODO.md` after the merge** — the code-writer marks the TODO line inside the feature PR; a separate post-merge `docs(todo)` commit to `main` is always wrong. If the merged PR missed the TODO line, mention it as a WARN in the cycle summary instead of committing to `main` yourself.
   - `FAIL reason=conflicts` → set `parked_pr`, notify, `current_issue = null`, `stage = FIND_ISSUE` (a human resolves the conflict).
   - `FAIL reason=ci` or `reason=ci-timeout` → treat like a local build failure: copy the failing-check detail from `.orchestrator/merge.log` into `.orchestrator/build-error.txt` and apply the VERIFY_BUILD retry/blocked logic above (`stage = WRITE_CODE` or block).
 
@@ -59,7 +60,7 @@ Run this command on a self-paced `/loop` (no fixed interval) so the next cycle s
 - Print a one-line summary of what this cycle did.
 
 ## Rules
-- The only subagents you spawn (Task tool, `subagent_type` = the worker's name) are **code-writer**, **game-designer**, **issue-creator**, and **workflow-optimizer**. Every other stage is a `scripts/agent/*.sh` call — spawning an agent for one wastes a full agent cold-start on a deterministic step. Pass only what a worker needs; read its result from `last-result.json`.
+- The only subagents you spawn (Task tool, `subagent_type` = the worker's name) are **code-writer**, **game-designer**, **issue-creator**, **workflow-optimizer**, and **code-reviewer**. Every other stage is a `scripts/agent/*.sh` call — spawning an agent for one wastes a full agent cold-start on a deterministic step. Pass only what a worker needs; read its result from `last-result.json`.
 - **Spawn every worker synchronously** (`run_in_background: false` on the Task/Agent call) and continue the cycle in the same turn when it returns. Never background a worker and end your turn to "wait for the notification": this session is a headless cron run — ending the turn ends the session, the harness kills the still-running worker at its background-wait ceiling, and the held LOCK then blocks the next cycles until it goes stale.
 - Never skip the GUARD. Never advance two different issues at once.
 - On any unexpected error: write state, **release the LOCK**, notify, STOP — never leave a held LOCK behind.

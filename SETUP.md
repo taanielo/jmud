@@ -175,7 +175,8 @@ Notes:
 
 **Model/effort policy:** the orchestrator session runs on **Sonnet** (it only dispatches scripts
 and composes commit titles); each subagent pins its own model in its frontmatter — **code-writer
-on Opus** (the one real engineering task per cycle), game-designer/workflow-optimizer on Sonnet,
+on Opus** (the one real engineering task per cycle), **code-reviewer on Opus** (deep review of
+the last ~10 merged cycles, runs every 10 merges), game-designer/workflow-optimizer on Sonnet,
 issue-creator on Haiku. Effort `high` is inherited by subagents and is the recommended default for
 Opus coding work — don't raise it to `xhigh`/`max` loop-wide, and don't run the loop session on a
 Fable/max configuration; the quality gates (local `check`, CI, retries), not model ceiling, are
