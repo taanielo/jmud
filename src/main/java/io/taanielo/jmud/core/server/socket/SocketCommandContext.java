@@ -292,6 +292,20 @@ public interface SocketCommandContext extends Client {
     default void examineItem(String args) {}
 
     /**
+     * Compares an item (matched the same way {@link #examineItem(String)} matches: inventory first,
+     * then the current room floor, with partial name matching) against whatever the player currently
+     * has equipped in that item's slot, printing a per-stat delta plus weight, value, and durability.
+     *
+     * <p>Explains why it cannot compare when the matched item is unidentified or not equippable, and
+     * notes an empty target slot rather than diffing against nothing.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the item name to compare (partial match supported)
+     */
+    default void compareItem(String args) {}
+
+    /**
      * Sends the player's known abilities as a formatted table.
      *
      * <p>Each line shows the ability name, its type (SKILL/SPELL), resource cost,

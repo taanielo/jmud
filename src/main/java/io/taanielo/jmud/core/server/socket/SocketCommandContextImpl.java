@@ -105,6 +105,7 @@ import io.taanielo.jmud.core.trade.TradeService;
 import io.taanielo.jmud.core.trade.TradeSession;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.DoorActionResult;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAffix;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
@@ -2185,6 +2186,74 @@ class SocketCommandContextImpl implements SocketCommandContext {
         } catch (RepositoryException e) {
             // Affix data unavailable; base stats already shown, so skip the enchantment lines.
         }
+    }
+
+    @Override
+    public void compareItem(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to compare items.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            writeLineWithPrompt("Compare what?");
+            return;
+        }
+        // Search inventory first, then room items — mirrors examineItem's resolution order.
+        Item candidate = matchItemByName(player.getInventory(), args);
+        if (candidate == null) {
+            RoomService.LookResult look = roomService.look(player.getUsername(), session.getTextStyler());
+            if (look.room() != null) {
+                candidate = matchItemByName(look.room().getItems(), args);
+            }
+        }
+        if (candidate == null) {
+            writeLineWithPrompt("You don't see '" + args.trim() + "' here.");
+            return;
+        }
+        if (!candidate.isIdentified()) {
+            connection.writeLine(session.getTextStyler().rarity(
+                candidate.presentationName(), candidate.presentationRarity()));
+            connection.writeLine("You cannot make out its true nature. Identify it to reveal its properties.");
+            sendPrompt();
+            return;
+        }
+        EquipmentSlot slot = candidate.getEquipSlot();
+        if (slot == null) {
+            writeLineWithPrompt(candidate.getName() + " cannot be equipped, so there is nothing to compare.");
+            return;
+        }
+        ItemId equippedId = player.getEquipment().equipped(slot);
+        Optional<Item> equipped = equippedId == null
+            ? Optional.empty()
+            : player.getInventory().stream()
+                .filter(i -> i.getId().equals(equippedId))
+                .findFirst();
+        for (String line : ItemComparison.format(
+                candidate, equipped, this::resolveEffectiveStats, session.getTextStyler())) {
+            connection.writeLine(line);
+        }
+        sendPrompt();
+    }
+
+    /**
+     * Resolves an item's effective stats (base attributes plus affix bonuses) through
+     * {@link io.taanielo.jmud.core.world.ItemAffixService}, falling back to the item's plain base
+     * attributes when no affix service is configured or the affix data cannot be read. Never throws,
+     * so the pure {@link ItemComparison} formatter stays free of checked-exception handling.
+     *
+     * @param item the item whose effective stats to resolve
+     * @return the effective stats keyed by stat name, never null
+     */
+    private Map<String, Integer> resolveEffectiveStats(Item item) {
+        if (context.itemAffixService() != null) {
+            try {
+                return context.itemAffixService().effectiveStats(item);
+            } catch (RepositoryException e) {
+                // Affix data unavailable; fall back to base attributes below.
+            }
+        }
+        return item.getAttributes().getStats();
     }
 
     @Override
