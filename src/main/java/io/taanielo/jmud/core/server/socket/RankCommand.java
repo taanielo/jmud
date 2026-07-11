@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.server.socket;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -8,8 +9,11 @@ import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 
 /**
- * Handles the {@code RANK} command, listing every persisted player's total
- * kill count ranked highest-to-lowest, server-wide.
+ * Handles the {@code RANK} command, listing every persisted player server-wide.
+ *
+ * <p>With no argument it ranks players by total kill count (PvE) highest-to-lowest.
+ * The {@code RANK DUELS} subcommand instead ranks players by their persistent duel
+ * record (PvP), listing only those with at least one recorded duel.
  *
  * <p>Unlike {@code WHO}, which only lists players currently online, this
  * command reads every persisted player via {@link PlayerRepository#findAll()}
@@ -45,27 +49,34 @@ public class RankCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: RANK\n"
-             + "  Displays every saved player's total kill count, ranked highest to lowest,\n"
-             + "  including players who are not currently online.";
+        return "Usage: RANK [DUELS]\n"
+             + "  RANK        Displays every saved player's total kill count, ranked highest to\n"
+             + "              lowest, including players who are not currently online.\n"
+             + "  RANK DUELS  Displays every saved player's duel record (wins/losses/win rate),\n"
+             + "              ranked by wins; only players with at least one duel are listed.";
     }
 
     @Override
     public Optional<SocketCommandMatch> match(String input) {
-        String token = SocketCommandParsing.firstToken(input);
-        if (!"RANK".equals(token)) {
+        String[] parts = SocketCommandParsing.splitInput(input);
+        if (!"RANK".equals(parts[0])) {
             return Optional.empty();
         }
-        return Optional.of(new SocketCommandMatch(this, this::handleRank));
+        String argument = parts[1];
+        return Optional.of(new SocketCommandMatch(this, context -> handleRank(context, argument)));
     }
 
-    private void handleRank(SocketCommandContext context) {
+    private void handleRank(SocketCommandContext context, String argument) {
         if (!context.isAuthenticated() || context.getPlayer() == null) {
-            context.writeLineWithPrompt("You must be logged in to view the kill ranking.");
+            context.writeLineWithPrompt("You must be logged in to view the ranking.");
             return;
         }
         List<Player> players = playerRepository.findAll();
-        for (String line : KillRankingListing.format(players)) {
+        boolean duels = "DUELS".equals(argument.toUpperCase(Locale.ROOT));
+        List<String> lines = duels
+            ? DuelRankingListing.format(players)
+            : KillRankingListing.format(players);
+        for (String line : lines) {
             context.writeLineSafe(line);
         }
         context.sendPrompt();

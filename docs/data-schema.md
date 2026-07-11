@@ -140,3 +140,23 @@ Class example (`data/classes/class.mage.json`):
   }
 }
 ```
+
+## Player save files
+
+Player state lives in `players/<username>.json` at the project root (runtime state, not
+committed game content). Unlike the content schemas above, player saves have **no
+`schema_version` field**: `Player` is serialised directly by Jackson
+(`JsonPlayerRepository`), and every persisted field is optional on load. New fields are
+added additively — a missing property maps to a sensible default via the
+`@JsonCreator` constructor — so old save files always load without loss.
+
+Duel-record fields (added for the persistent PvP `RANK DUELS`/`SCORE` records):
+
+- `duelWins` (integer, default `0`) — duels won by combat resolution. Incremented only
+  when a duel actually resolves (a participant is reduced to 0 HP); forfeits and timeouts
+  never change it.
+- `duelLosses` (integer, default `0`) — duels lost by combat resolution, with the same
+  forfeit/timeout exclusion.
+
+Both counters are clamped to be non-negative. A save file written before these fields
+existed loads with `duelWins`/`duelLosses` of `0` and all other fields intact.

@@ -516,19 +516,28 @@ public class GameActionService {
      * XP or reputation is awarded, and the loser is left alive at 1 HP (near death) in the same room
      * rather than being sent to respawn. Both participants are disengaged and told the duel is over.
      *
+     * <p>A resolved duel is also the only outcome that updates the participants' persistent duel
+     * records: the survivor's {@code duelWins} is incremented and the loser's {@code duelLosses} is
+     * incremented. Forfeits and timeouts (handled via {@code DuelService.clearFor}) never reach this
+     * method, so they correctly leave both records unchanged.
+     *
      * @param survivor the winning participant
      * @param loser    the participant reduced to zero HP
-     * @return a result carrying the near-death loser and the duel-end messages
+     * @return a result carrying the survivor with an incremented win count as
+     *         {@link GameActionResult#updatedSource()} and the near-death loser with an incremented
+     *         loss count as {@link GameActionResult#updatedTarget()}, plus the duel-end messages
      */
     public GameActionResult endPlayerDuel(Player survivor, Player loser) {
         Objects.requireNonNull(survivor, "Survivor is required");
         Objects.requireNonNull(loser, "Loser is required");
         duelService.endDuel(survivor.getUsername(), loser.getUsername());
+        Player updatedSurvivor = survivor.withDuelWins(survivor.getDuelWins() + 1);
         PlayerVitals nearDeathVitals =
             loser.getVitals().hp() <= 0 ? loser.getVitals().heal(1) : loser.getVitals();
         // Leave the loser alive at near-death rather than slain: clear the death flag combat set
         // when their HP hit zero, so no respawn/corpse cascade is triggered.
-        Player nearDeathLoser = loser.withVitals(nearDeathVitals).withDead(false);
+        Player nearDeathLoser = loser.withVitals(nearDeathVitals).withDead(false)
+            .withDuelLosses(loser.getDuelLosses() + 1);
         List<GameMessage> messages = new ArrayList<>();
         messages.add(GameMessage.toSource(
             "You have defeated " + loser.getUsername().getValue() + " in the duel!"));
@@ -537,7 +546,7 @@ public class GameActionService {
             loser.getUsername(),
             "You have been defeated by " + survivor.getUsername().getValue() + "."));
         messages.add(GameMessage.toPlayer(loser.getUsername(), "Duel ended."));
-        return new GameActionResult(null, nearDeathLoser, messages);
+        return new GameActionResult(updatedSurvivor, nearDeathLoser, messages);
     }
 
     /**
@@ -665,11 +674,14 @@ public class GameActionService {
             }
             Player combatTarget = result.target();
             Player updatedTarget;
+            // Survivor state carried over from a resolved duel (with an incremented win count), or null.
+            Player duelSurvivor = null;
             if (combatTarget.getVitals().hp() <= 0
                 && duelService.areDueling(source.getUsername(), target.getUsername())) {
                 // Duel loss: end the duel with no corpse, no gold/item drop, no XP or reputation.
                 GameActionResult duelEnd = endPlayerDuel(source, combatTarget);
                 updatedTarget = duelEnd.updatedTarget();
+                duelSurvivor = duelEnd.updatedSource();
                 messages.addAll(duelEnd.messages());
             } else {
                 GameActionResult deathResult = resolveDeathIfNeeded(combatTarget, source);
@@ -677,9 +689,10 @@ public class GameActionService {
                 messages.addAll(deathResult.messages());
             }
             // Attacking always breaks stealth (AGENTS.md §5 — same tick as the action).
-            Player updatedSource = null;
+            Player updatedSource = duelSurvivor;
             if (source.isStealthActive()) {
-                updatedSource = source.withStealth(false);
+                Player stealthBase = updatedSource != null ? updatedSource : source;
+                updatedSource = stealthBase.withStealth(false);
                 messages.add(GameMessage.toSource("You emerge from the shadows."));
                 messages.add(GameMessage.toRoom(
                     source.getUsername(), target.getUsername(),
@@ -749,6 +762,9 @@ public class GameActionService {
             // Duel loss via an ability: end the duel with no corpse, gold, XP, or reputation.
             GameActionResult duelEnd = endPlayerDuel(updatedSource, updatedTarget);
             updatedTarget = duelEnd.updatedTarget();
+            if (duelEnd.updatedSource() != null) {
+                updatedSource = duelEnd.updatedSource();
+            }
             messages.addAll(duelEnd.messages());
         } else {
             GameActionResult deathResult = resolveDeathIfNeeded(updatedTarget, updatedSource);

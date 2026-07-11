@@ -123,6 +123,7 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Thirst: %d / %d", player.getSustenance().thirst(), PlayerSustenance.MAX));
         context.writeLineSafe(String.format("Gold  : %d", player.getGold()));
         context.writeLineSafe(String.format("Kills : %d", player.getTotalKills()));
+        context.writeLineSafe(String.format("Duels : %dW / %dL", player.getDuelWins(), player.getDuelLosses()));
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
         lightingService.brightestLightSource(player).ifPresent(light ->

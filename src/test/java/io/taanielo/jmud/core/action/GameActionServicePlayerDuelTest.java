@@ -230,6 +230,47 @@ class GameActionServicePlayerDuelTest {
     }
 
     @Test
+    void duelResolutionRecordsWinForVictorAndLossForLoser() {
+        Player lowHpTarget = playerWithHp("target", 2);
+        duelService.activate(attacker.getUsername(), lowHpTarget.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(lowHpTarget), _ -> false);
+
+        GameActionResult result = service.attack(attacker, "target");
+
+        assertEquals(1, result.updatedSource().getDuelWins(), "victor gains a duel win");
+        assertEquals(0, result.updatedSource().getDuelLosses(), "victor gains no loss");
+        assertEquals(1, result.updatedTarget().getDuelLosses(), "loser gains a duel loss");
+        assertEquals(0, result.updatedTarget().getDuelWins(), "loser gains no win");
+    }
+
+    @Test
+    void endPlayerDuelIncrementsExistingRecordsOnBothSides() {
+        Player survivor = attacker.withDuelWins(2).withDuelLosses(1);
+        Player loser = playerWithHp("target", 0).withDuelWins(0).withDuelLosses(4);
+        duelService.activate(survivor.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(survivor, loser);
+
+        assertEquals(3, result.updatedSource().getDuelWins());
+        assertEquals(1, result.updatedSource().getDuelLosses());
+        assertEquals(0, result.updatedTarget().getDuelWins());
+        assertEquals(5, result.updatedTarget().getDuelLosses());
+    }
+
+    @Test
+    void forfeitViaClearForDoesNotAffectDuelRecords() {
+        duelService.activate(attacker.getUsername(), target.getUsername());
+
+        duelService.clearFor(attacker.getUsername());
+
+        assertEquals(0, attacker.getDuelWins());
+        assertEquals(0, attacker.getDuelLosses());
+        assertEquals(0, target.getDuelWins());
+        assertEquals(0, target.getDuelLosses());
+    }
+
+    @Test
     void nonDuelPvpDeathStillSpawnsCorpseAndClearsLocation() {
         Player lowHpTarget = playerWithHp("target", 2);
         GameActionService service = service(defaultCombat(), resolver(lowHpTarget), _ -> false);
