@@ -47,7 +47,10 @@ public class SustenanceTicker implements Tickable {
         this.decayPerTick = decayPerTick;
     }
 
+    // Identity comparison is intentional (see the after == before check below): decay returns the same
+    // instance when nothing changed, so reference identity is the no-op sentinel that skips the update.
     @Override
+    @SuppressWarnings("ReferenceEquality")
     public void tick() {
         Player player = playerSupplier.get();
         if (player == null || player.isDead() || decayPerTick == 0) {

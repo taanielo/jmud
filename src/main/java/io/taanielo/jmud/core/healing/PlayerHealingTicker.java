@@ -43,7 +43,11 @@ public class PlayerHealingTicker implements Tickable {
         this.effectSink = Objects.requireNonNull(effectSink, "Effect sink is required");
     }
 
+    // Identity comparison is intentional (see the updated != player check below): engine.apply returns
+    // the same Player instance when nothing healed, so reference identity is the no-op sentinel that
+    // avoids a redundant player update this tick.
     @Override
+    @SuppressWarnings("ReferenceEquality")
     public void tick() {
         Player player = playerSupplier.get();
         if (player == null) {

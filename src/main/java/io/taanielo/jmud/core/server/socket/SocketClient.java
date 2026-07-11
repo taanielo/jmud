@@ -270,6 +270,10 @@ public class SocketClient implements Client {
     private void handleAuthentication(String clientInput) throws IOException {
         authenticationService.authenticate(clientInput, u -> completeAuthentication(u, false));
     }
+    // Identity comparison below (existing != session) is intentional: PlayerSession instances are
+    // unique per connection with no value equality, so identity correctly distinguishes a different
+    // linkdead session from this connection's own session.
+    @SuppressWarnings("ReferenceEquality")
     private void completeAuthentication(User authenticatedUser, boolean isNewPlayer) {
         session.setAuthenticated(true);
         Username username = authenticatedUser.getUsername();
@@ -348,6 +352,10 @@ public class SocketClient implements Client {
      * Removes and closes the dropped {@link SocketClient} that still owns the linkdead session being
      * reattached, so exactly one client and one ticker remain for the username.
      */
+    // Identity comparisons below (sc != this, sc.session() == existing) are intentional: SocketClient
+    // and PlayerSession instances are unique per connection with no value equality, so identity is the
+    // correct way to find the other client that still owns the exact linkdead session.
+    @SuppressWarnings("ReferenceEquality")
     private void detachOldClient(PlayerSession existing) {
         for (Client c : clientPool.clients()) {
             if (c instanceof SocketClient sc && sc != this && sc.session() == existing) {
