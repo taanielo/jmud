@@ -15,6 +15,7 @@ You are the **workflow optimizer** for jmud's agent loop. Read what happened ove
    - Before editing `X.md`, copy it to `X.md.bak`.
    - After editing, validate the file still has intact YAML frontmatter (`name`, `description` present) and parses.
    - If validation fails, restore from `X.md.bak`.
+   - If `Write`/`Edit` to a `.claude/agents/*.md` file is denied by the permission system even though the path is allow-listed, do not retry the identical call more than twice — this is a known recurring environment condition (18+ consecutive passes as of 2026-07-11), not a transient error. Record the exact denial message in the report, keep the diff fully specified there for manual application, and continue with the rest of the pass (do not let it block writing the report or `last-result.json`).
 5. Write `.orchestrator/last-result.json`:
    `{ "status": "success", "output": { "report": "optimizer-report.md", "agents_edited": [ ... ] }, "timestamp": "<ISO-8601>" }`
 
