@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.combat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.LongSupplier;
 
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
@@ -34,6 +35,7 @@ public class CombatEngine {
     private final ClassArmorBonusResolver classArmorBonusResolver;
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final ShieldBlockResolver shieldBlockResolver;
+    private final OffhandAttackResolver offhandAttackResolver;
     private final CombatRandomProvider randomProvider;
     private final LongSupplier tickSupplier;
     private final EffectEngine effectEngine;
@@ -212,6 +214,7 @@ public class CombatEngine {
             ClassArmorBonusResolver.noOp(),
             equipmentArmorResolver,
             ShieldBlockResolver.noOp(),
+            OffhandAttackResolver.disabled(),
             randomProvider,
             tickSupplier,
             effectEngine
@@ -219,9 +222,8 @@ public class CombatEngine {
     }
 
     /**
-     * Creates a combat engine that additionally resolves a class-based armour bonus for the
-     * target, derived from the target's class. This is the fully-wired constructor used by the
-     * composition root.
+     * Creates a combat engine that resolves a class-based armour bonus and shield block but no
+     * dual-wield off-hand attack (defaults to {@link OffhandAttackResolver#disabled()}).
      *
      * @param attackRepository        source of attack definitions
      * @param modifierResolver        resolves combat modifier chains from player effects
@@ -247,6 +249,51 @@ public class CombatEngine {
         LongSupplier tickSupplier,
         EffectEngine effectEngine
     ) {
+        this(
+            attackRepository,
+            modifierResolver,
+            armorBonusResolver,
+            attackBonusResolver,
+            classArmorBonusResolver,
+            equipmentArmorResolver,
+            shieldBlockResolver,
+            OffhandAttackResolver.disabled(),
+            randomProvider,
+            tickSupplier,
+            effectEngine
+        );
+    }
+
+    /**
+     * Creates a combat engine that additionally resolves a dual-wield off-hand attack for the
+     * attacker. This is the fully-wired constructor used by the composition root.
+     *
+     * @param attackRepository        source of attack definitions
+     * @param modifierResolver        resolves combat modifier chains from player effects
+     * @param armorBonusResolver      resolves race-based AC bonuses on the target
+     * @param attackBonusResolver     resolves race-based attack (hit-chance) bonuses on the attacker
+     * @param classArmorBonusResolver resolves class-based AC bonuses on the target
+     * @param equipmentArmorResolver  resolves equipment-based AC bonuses on the target
+     * @param shieldBlockResolver     resolves the target's off-hand shield block chance/reduction
+     * @param offhandAttackResolver   resolves the attacker's off-hand dual-wield weapon, if any
+     * @param randomProvider          produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier            supplies the current world tick number
+     * @param effectEngine            applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                                {@code null} disables on-hit effect application
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        ShieldBlockResolver shieldBlockResolver,
+        OffhandAttackResolver offhandAttackResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
@@ -255,6 +302,8 @@ public class CombatEngine {
             Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         this.shieldBlockResolver = Objects.requireNonNull(shieldBlockResolver, "Shield block resolver is required");
+        this.offhandAttackResolver =
+            Objects.requireNonNull(offhandAttackResolver, "Offhand attack resolver is required");
         this.randomProvider = Objects.requireNonNull(randomProvider, "Combat random provider is required");
         this.tickSupplier = Objects.requireNonNull(tickSupplier, "Tick supplier is required");
         this.effectEngine = effectEngine;
@@ -300,6 +349,58 @@ public class CombatEngine {
             + equipmentArmorResolver.totalAc(target);
         int attackerRaceAttackBonus = attackBonusResolver.attackBonus(attacker);
 
+        // Main-hand attack: resolves exactly as before. The off-hand roll (below) only runs when the
+        // attacker dual-wields a weapon, so equipment without an off-hand weapon leaves the RNG
+        // stream — and therefore every existing result — unchanged.
+        AttackOutcome main = resolveSingleAttack(
+            attacker, target, attack, random, attackerMods, targetMods,
+            targetArmorBonus, attackerRaceAttackBonus, action, null);
+
+        Player currentTarget = main.updatedTarget();
+
+        CombatResult.OffhandResult offhandResult = null;
+        Optional<OffhandAttackResolver.OffhandWeapon> offhandWeapon = offhandAttackResolver.resolve(attacker);
+        if (offhandWeapon.isPresent()) {
+            AttackDefinition offhandAttack =
+                attackRepository.findById(offhandWeapon.get().attackId()).orElse(null);
+            if (offhandAttack != null) {
+                AttackOutcome off = resolveSingleAttack(
+                    attacker, currentTarget, offhandAttack, random, attackerMods, targetMods,
+                    targetArmorBonus, attackerRaceAttackBonus, action,
+                    offhandWeapon.get().weaponName());
+                currentTarget = off.updatedTarget();
+                offhandResult = new CombatResult.OffhandResult(
+                    off.hit(), off.crit(), off.blocked(), off.damage(),
+                    off.sourceMessage(), off.targetMessage(), off.roomMessage(),
+                    off.effectTargetMessages(), off.effectRoomMessages());
+            }
+        }
+
+        return new CombatResult(attacker, currentTarget, main.hit(), main.crit(), main.blocked(),
+            main.damage(), main.sourceMessage(), main.targetMessage(), main.roomMessage(), rngSeed,
+            main.effectTargetMessages(), main.effectRoomMessages(), offhandResult);
+    }
+
+    /**
+     * Resolves one attack (hit/damage/block/crit/effects/messages) against a target. When
+     * {@code offhandWeaponName} is non-null the attack is a dual-wield off-hand swing: it lands at a
+     * reduced hit chance ({@link CombatSettings#offhandHitPenaltyPercent()}), deals reduced damage
+     * ({@link CombatSettings#offhandDamagePercent()}), and produces off-hand-specific messages that
+     * name the weapon so both round hits are distinguishable.
+     */
+    private AttackOutcome resolveSingleAttack(
+        Player attacker,
+        Player target,
+        AttackDefinition attack,
+        CombatRandom random,
+        CombatModifiers attackerMods,
+        CombatModifiers targetMods,
+        int targetArmorBonus,
+        int attackerRaceAttackBonus,
+        CombatAction action,
+        String offhandWeaponName
+    ) throws EffectRepositoryException {
+        boolean offhand = offhandWeaponName != null;
         int hitChanceBase = CombatSettings.baseHitChance()
             + attack.hitBonus()
             + attackerMods.attack().apply(0)
@@ -310,6 +411,9 @@ public class CombatEngine {
         hitChance += action.environmentHitModifier();
         if (attack.isRanged()) {
             hitChance += action.environmentRangedHitModifier();
+        }
+        if (offhand) {
+            hitChance -= CombatSettings.offhandHitPenaltyPercent();
         }
         hitChance = clamp(hitChance, 0, 100);
         int hitRoll = random.roll(1, 100);
@@ -348,6 +452,9 @@ public class CombatEngine {
                     adjusted *= CombatSettings.critMultiplier();
                 }
             }
+            if (offhand) {
+                adjusted = (int) Math.round(adjusted * (CombatSettings.offhandDamagePercent() / 100.0));
+            }
             damage = Math.max(0, adjusted);
         }
 
@@ -379,72 +486,134 @@ public class CombatEngine {
             }
         }
 
-        String sourceMessage = null;
-        String targetMessage = null;
-        String roomMessage = null;
+        String sourceMessage;
+        String targetMessage;
+        String roomMessage;
         String targetName = target.getUsername().getValue();
         String attackerName = attacker.getUsername().getValue();
-        List<MessageSpec> specs = attack.messages();
-        if (!specs.isEmpty()) {
-            MessagePhase phase;
-            if (!hit) {
-                phase = MessagePhase.ATTACK_MISS;
-            } else if (blocked) {
-                phase = MessagePhase.ATTACK_BLOCK;
-            } else if (crit) {
-                phase = MessagePhase.ATTACK_CRIT;
-            } else {
-                phase = MessagePhase.ATTACK_HIT;
-            }
-            MessageContext context = new MessageContext(
-                attacker.getUsername(),
-                target.getUsername(),
-                attackerName,
-                targetName,
-                null,
-                null,
-                attack.name(),
-                damage
-            );
-            for (MessageSpec spec : specs) {
-                if (spec.phase() != phase) {
-                    continue;
-                }
-                String rendered = renderer.render(spec, context);
-                if (rendered == null || rendered.isBlank()) {
-                    continue;
-                }
-                if (spec.channel() == MessageChannel.SELF) {
-                    sourceMessage = rendered;
-                } else if (spec.channel() == MessageChannel.TARGET) {
-                    targetMessage = rendered;
-                } else if (spec.channel() == MessageChannel.ROOM) {
-                    roomMessage = rendered;
-                }
-            }
-        } else if (!hit) {
-            sourceMessage = "You miss " + targetName + ".";
-            targetMessage = attackerName + " misses you.";
-            roomMessage = attackerName + " misses " + targetName + ".";
-        } else if (blocked) {
-            sourceMessage = targetName + " blocks your attack.";
-            targetMessage = "You block " + attackerName + "'s attack with your shield.";
-            roomMessage = targetName + " blocks " + attackerName + "'s attack.";
-        } else if (crit) {
-            sourceMessage = "You critically hit " + targetName + " for " + damage + ".";
-            targetMessage = attackerName + " critically hits you for " + damage + ".";
-            roomMessage = attackerName + " critically hits " + targetName + ".";
+        if (offhand) {
+            // Off-hand swings always use dedicated, weapon-named messages so a player can tell the
+            // second hit of the round apart from their main-hand attack.
+            OffhandMessages offhandMessages =
+                offhandMessages(offhandWeaponName, attackerName, targetName, hit, blocked, crit, damage);
+            sourceMessage = offhandMessages.source();
+            targetMessage = offhandMessages.target();
+            roomMessage = offhandMessages.room();
         } else {
-            sourceMessage = "You hit " + targetName + " for " + damage + ".";
-            targetMessage = attackerName + " hits you for " + damage + ".";
-            roomMessage = attackerName + " hits " + targetName + ".";
+            sourceMessage = null;
+            targetMessage = null;
+            roomMessage = null;
+            List<MessageSpec> specs = attack.messages();
+            if (!specs.isEmpty()) {
+                MessagePhase phase;
+                if (!hit) {
+                    phase = MessagePhase.ATTACK_MISS;
+                } else if (blocked) {
+                    phase = MessagePhase.ATTACK_BLOCK;
+                } else if (crit) {
+                    phase = MessagePhase.ATTACK_CRIT;
+                } else {
+                    phase = MessagePhase.ATTACK_HIT;
+                }
+                MessageContext context = new MessageContext(
+                    attacker.getUsername(),
+                    target.getUsername(),
+                    attackerName,
+                    targetName,
+                    null,
+                    null,
+                    attack.name(),
+                    damage
+                );
+                for (MessageSpec spec : specs) {
+                    if (spec.phase() != phase) {
+                        continue;
+                    }
+                    String rendered = renderer.render(spec, context);
+                    if (rendered == null || rendered.isBlank()) {
+                        continue;
+                    }
+                    if (spec.channel() == MessageChannel.SELF) {
+                        sourceMessage = rendered;
+                    } else if (spec.channel() == MessageChannel.TARGET) {
+                        targetMessage = rendered;
+                    } else if (spec.channel() == MessageChannel.ROOM) {
+                        roomMessage = rendered;
+                    }
+                }
+            } else if (!hit) {
+                sourceMessage = "You miss " + targetName + ".";
+                targetMessage = attackerName + " misses you.";
+                roomMessage = attackerName + " misses " + targetName + ".";
+            } else if (blocked) {
+                sourceMessage = targetName + " blocks your attack.";
+                targetMessage = "You block " + attackerName + "'s attack with your shield.";
+                roomMessage = targetName + " blocks " + attackerName + "'s attack.";
+            } else if (crit) {
+                sourceMessage = "You critically hit " + targetName + " for " + damage + ".";
+                targetMessage = attackerName + " critically hits you for " + damage + ".";
+                roomMessage = attackerName + " critically hits " + targetName + ".";
+            } else {
+                sourceMessage = "You hit " + targetName + " for " + damage + ".";
+                targetMessage = attackerName + " hits you for " + damage + ".";
+                roomMessage = attackerName + " hits " + targetName + ".";
+            }
         }
 
-        return new CombatResult(attacker, updatedTarget, hit, crit, blocked, damage,
-            sourceMessage, targetMessage, roomMessage, rngSeed, effectTargetMessages, effectRoomMessages);
+        return new AttackOutcome(updatedTarget, hit, crit, blocked, damage,
+            sourceMessage, targetMessage, roomMessage, effectTargetMessages, effectRoomMessages);
+    }
+
+    private OffhandMessages offhandMessages(
+        String weaponName, String attackerName, String targetName,
+        boolean hit, boolean blocked, boolean crit, int damage) {
+        String weapon = "off-hand " + weaponName;
+        if (!hit) {
+            return new OffhandMessages(
+                "Your " + weapon + " misses " + targetName + ".",
+                attackerName + "'s " + weapon + " misses you.",
+                attackerName + "'s " + weapon + " misses " + targetName + ".");
+        }
+        if (blocked) {
+            return new OffhandMessages(
+                targetName + " blocks your " + weapon + ".",
+                "You block " + attackerName + "'s " + weapon + " with your shield.",
+                targetName + " blocks " + attackerName + "'s " + weapon + ".");
+        }
+        if (crit) {
+            return new OffhandMessages(
+                "Your " + weapon + " critically hits " + targetName + " for " + damage + ".",
+                attackerName + "'s " + weapon + " critically hits you for " + damage + ".",
+                attackerName + "'s " + weapon + " critically hits " + targetName + ".");
+        }
+        return new OffhandMessages(
+            "Your " + weapon + " hits " + targetName + " for " + damage + ".",
+            attackerName + "'s " + weapon + " hits you for " + damage + ".",
+            attackerName + "'s " + weapon + " hits " + targetName + ".");
     }
 
     private int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    /**
+     * The outcome of resolving a single attack (main-hand or off-hand): the updated target plus the
+     * hit/crit/block/damage flags and the three rendered messages and any on-hit effect messages.
+     */
+    private record AttackOutcome(
+        Player updatedTarget,
+        boolean hit,
+        boolean crit,
+        boolean blocked,
+        int damage,
+        String sourceMessage,
+        String targetMessage,
+        String roomMessage,
+        List<String> effectTargetMessages,
+        List<String> effectRoomMessages
+    ) {
+    }
+
+    private record OffhandMessages(String source, String target, String room) {
     }
 }

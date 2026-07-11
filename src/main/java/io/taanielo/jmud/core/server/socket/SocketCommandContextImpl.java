@@ -2180,6 +2180,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 .forEach(e -> sb.append(" ").append(e.getKey()).append(" +").append(e.getValue()));
             connection.writeLine(sb.toString());
         }
+        String damageRange = weaponDamageRange(found);
+        if (damageRange != null) {
+            connection.writeLine("Damage: " + damageRange);
+        }
         writeAffixLines(found);
         sendPrompt();
     }
@@ -2260,7 +2264,38 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 candidate, equipped, this::resolveEffectiveStats, session.getTextStyler())) {
             connection.writeLine(line);
         }
+        // Weapon damage lives on the item's attack definition, not its stat map, so surface it
+        // explicitly for weapons — including dual-wield off-hand daggers — so players can judge a swap.
+        String candidateDamage = weaponDamageRange(candidate);
+        if (candidateDamage != null) {
+            String equippedDamage = equipped.map(this::weaponDamageRange).orElse(null);
+            connection.writeLine(equippedDamage != null
+                ? "Damage: " + equippedDamage + " -> " + candidateDamage
+                : "Damage: " + candidateDamage);
+        }
         sendPrompt();
+    }
+
+    /**
+     * Resolves the {@code min-max} base damage of a weapon item's attack, or {@code null} when the
+     * item is not a weapon (no {@code attackRef}) or its attack definition cannot be loaded. Used by
+     * EXAMINE and COMPARE so players can evaluate weapons — including dual-wield off-hand weapons —
+     * before equipping them.
+     *
+     * @param item the item whose weapon damage to resolve
+     * @return the {@code "min-max"} damage string, or {@code null} when the item is not a weapon
+     */
+    private String weaponDamageRange(Item item) {
+        if (item == null || item.getAttackRef() == null) {
+            return null;
+        }
+        try {
+            return context.attackRepository().findById(item.getAttackRef())
+                .map(attack -> attack.minDamage() + "-" + attack.maxDamage())
+                .orElse(null);
+        } catch (RepositoryException e) {
+            return null;
+        }
     }
 
     /**

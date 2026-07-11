@@ -810,6 +810,26 @@ public class GameActionService {
             for (String effectRoomMessage : result.effectRoomMessages()) {
                 messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), effectRoomMessage));
             }
+            // Dual-wield: an off-hand weapon adds a second, independent attack this round, reported
+            // with its own messages so both hits are distinguishable (AGENTS.md §5 — same tick).
+            CombatResult.OffhandResult offhand = result.offhand();
+            if (offhand != null) {
+                if (offhand.sourceMessage() != null && !offhand.sourceMessage().isBlank()) {
+                    messages.add(GameMessage.toSource(offhand.sourceMessage()));
+                }
+                if (offhand.targetMessage() != null && !offhand.targetMessage().isBlank()) {
+                    messages.add(GameMessage.toPlayer(target.getUsername(), offhand.targetMessage()));
+                }
+                if (offhand.roomMessage() != null && !offhand.roomMessage().isBlank()) {
+                    messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), offhand.roomMessage()));
+                }
+                for (String effectTargetMessage : offhand.effectTargetMessages()) {
+                    messages.add(GameMessage.toPlayer(target.getUsername(), effectTargetMessage));
+                }
+                for (String effectRoomMessage : offhand.effectRoomMessages()) {
+                    messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), effectRoomMessage));
+                }
+            }
             Player combatTarget = result.target();
             Player updatedTarget;
             // Survivor state carried over from a resolved duel (with an incremented win count), or null.

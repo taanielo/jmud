@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.combat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -619,6 +621,119 @@ class CombatEngineTest {
         assertEquals(r1.blocked(), r2.blocked());
         assertEquals(r1.damage(), r2.damage());
         assertEquals(r1.rngSeed(), r2.rngSeed());
+    }
+
+    @Test
+    void dualWieldAddsSecondOffhandAttack() throws Exception {
+        AttackId mainId = AttackId.of("attack.main");
+        AttackId offId = AttackId.of("attack.parry");
+        AttackDefinition mainAttack = new AttackDefinition(mainId, "sword", 4, 4, 0, 0, 0, List.of());
+        AttackDefinition offAttack = new AttackDefinition(offId, "parry", 2, 2, 0, 0, 0, List.of());
+        // Rolls: main hit=10, main dmg=4, main crit=100(no); off hit=10, off dmg=2, off crit=100(no).
+        FixedCombatRandom random = new FixedCombatRandom(10, 4, 100, 10, 2, 100);
+        CombatEngine engine = dualWieldEngine(Map.of(mainId, mainAttack, offId, offAttack), random);
+        Player attacker = dualWielder("attacker", offhandWeapon(ItemId.of("parry"), "Parrying Dagger", offId));
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, mainId);
+
+        assertTrue(result.hit());
+        assertEquals(4, result.damage());
+        assertNotNull(result.offhand());
+        assertTrue(result.offhand().hit());
+        // Off-hand deals 50% damage: round(2 * 0.5) = 1.
+        assertEquals(1, result.offhand().damage());
+        // Both hits land on the same target this round: 20 - 4 - 1 = 15.
+        assertEquals(15, result.target().getVitals().hp());
+    }
+
+    @Test
+    void offhandAttackUsesDistinctWeaponNamedMessages() throws Exception {
+        AttackId mainId = AttackId.of("attack.main2");
+        AttackId offId = AttackId.of("attack.parry2");
+        AttackDefinition mainAttack = new AttackDefinition(mainId, "sword", 4, 4, 0, 0, 0, List.of());
+        AttackDefinition offAttack = new AttackDefinition(offId, "parry", 2, 2, 0, 0, 0, List.of());
+        FixedCombatRandom random = new FixedCombatRandom(10, 4, 100, 10, 2, 100);
+        CombatEngine engine = dualWieldEngine(Map.of(mainId, mainAttack, offId, offAttack), random);
+        Player attacker = dualWielder("attacker", offhandWeapon(ItemId.of("parry"), "Parrying Dagger", offId));
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, mainId);
+
+        assertEquals("You hit target for 4.", result.sourceMessage());
+        assertEquals("Your off-hand Parrying Dagger hits target for 1.", result.offhand().sourceMessage());
+        assertEquals("attacker's off-hand Parrying Dagger hits you for 1.", result.offhand().targetMessage());
+        assertEquals("attacker's off-hand Parrying Dagger hits target.", result.offhand().roomMessage());
+    }
+
+    @Test
+    void offhandAttackCanMissIndependently() throws Exception {
+        AttackId mainId = AttackId.of("attack.main3");
+        AttackId offId = AttackId.of("attack.parry3");
+        AttackDefinition mainAttack = new AttackDefinition(mainId, "sword", 4, 4, 0, 0, 0, List.of());
+        AttackDefinition offAttack = new AttackDefinition(offId, "parry", 2, 2, 0, 0, 0, List.of());
+        // Main hits (10), off-hand misses (60 > offhand hit chance of 50).
+        FixedCombatRandom random = new FixedCombatRandom(10, 4, 100, 60);
+        CombatEngine engine = dualWieldEngine(Map.of(mainId, mainAttack, offId, offAttack), random);
+        Player attacker = dualWielder("attacker", offhandWeapon(ItemId.of("parry"), "Parrying Dagger", offId));
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, mainId);
+
+        assertTrue(result.hit());
+        assertNotNull(result.offhand());
+        assertFalse(result.offhand().hit());
+        assertEquals(0, result.offhand().damage());
+        // Only the main-hand hit lands: 20 - 4 = 16.
+        assertEquals(16, result.target().getVitals().hp());
+        assertEquals("Your off-hand Parrying Dagger misses target.", result.offhand().sourceMessage());
+    }
+
+    @Test
+    void withoutOffhandWeaponRoundIsSingleAttack() throws Exception {
+        // The dual-wield resolver is enabled, but an empty off-hand slot must leave combat identical
+        // to a single-attack round — no extra rolls consumed, no off-hand result.
+        AttackId mainId = AttackId.of("attack.solo");
+        AttackDefinition mainAttack = new AttackDefinition(mainId, "sword", 4, 4, 0, 0, 0, List.of());
+        FixedCombatRandom random = new FixedCombatRandom(10, 4, 100);
+        CombatEngine engine = dualWieldEngine(Map.of(mainId, mainAttack), random);
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, mainId);
+
+        assertTrue(result.hit());
+        assertEquals(4, result.damage());
+        assertNull(result.offhand());
+        assertEquals(16, result.target().getVitals().hp());
+    }
+
+    private CombatEngine dualWieldEngine(
+        Map<AttackId, AttackDefinition> attacks, FixedCombatRandom random) {
+        return new CombatEngine(
+            new StubAttackRepository(attacks),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            RaceAttackBonusResolver.noOp(),
+            ClassArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            ShieldBlockResolver.noOp(),
+            new OffhandAttackResolver(),
+            (tick, actorId) -> random,
+            () -> 0L,
+            null
+        );
+    }
+
+    private Item offhandWeapon(ItemId id, String name, AttackId attackRef) {
+        return Item.builder(id, name, "A test off-hand weapon.", new ItemAttributes(Map.of()))
+            .equipSlot(EquipmentSlot.OFFHAND).weight(1).value(0).attackRef(attackRef).build();
+    }
+
+    private Player dualWielder(String username, Item offhand) {
+        return player(username, List.of())
+            .withInventory(List.of(offhand))
+            .withEquipment(PlayerEquipment.empty().equip(EquipmentSlot.OFFHAND, offhand.getId()));
     }
 
     private CombatEngine seededShieldEngine(
