@@ -128,6 +128,9 @@ public class TradeExecutionService {
      * @param offered the offered item references
      * @return {@code true} when every offered item was found and removed
      */
+    // Identity comparison is intentional (documented above): each offered reference removes exactly
+    // one matching working-list entry, so value-equal duplicates are consumed one instance at a time.
+    @SuppressWarnings("ReferenceEquality")
     private boolean removeByIdentity(List<Item> working, List<Item> offered) {
         for (Item item : offered) {
             boolean removed = false;

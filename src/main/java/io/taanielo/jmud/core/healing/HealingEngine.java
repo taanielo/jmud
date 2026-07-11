@@ -19,6 +19,10 @@ public class HealingEngine {
         this.repository = Objects.requireNonNull(repository, "Effect repository is required");
     }
 
+    // Identity comparison is intentional (see the updatedVitals check below): updatedVitals starts as
+    // the original vitals reference and is only reassigned when a branch produces a new value, so
+    // reference identity detects whether this tick changed anything at all.
+    @SuppressWarnings("ReferenceEquality")
     public Player apply(Player player, int baseHealPerTick) throws EffectRepositoryException {
         Objects.requireNonNull(player, "Player is required");
         PlayerVitals vitals = player.getVitals();

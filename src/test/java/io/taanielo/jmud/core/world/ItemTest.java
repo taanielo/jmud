@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.world;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -275,7 +276,9 @@ class ItemTest {
     @Test
     void withIdentifiedReturnsSameInstanceWhenUnchanged() {
         Item blade = unidentifiedRare("blade", "a runed longsword");
-        assertTrue(blade == blade.withIdentified(false));
+        // Identity assertion is intentional: withIdentified returns the same instance when the flag is
+        // unchanged, so assertSame verifies that copy-on-write no-op contract by reference.
+        assertSame(blade, blade.withIdentified(false));
     }
 
     @Test

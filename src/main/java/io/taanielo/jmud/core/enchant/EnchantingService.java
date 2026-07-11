@@ -279,6 +279,10 @@ public class EnchantingService {
         }
     }
 
+    // Identity comparison is intentional: the first pass matches the exact staged instance so a
+    // specific item among stacked value-equal duplicates is enchanted; the second pass falls back
+    // to value equality only when no identical reference is present.
+    @SuppressWarnings("ReferenceEquality")
     private static int indexOf(List<Item> inventory, Item target) {
         for (int i = 0; i < inventory.size(); i++) {
             if (inventory.get(i) == target) {

@@ -87,6 +87,12 @@ tasks.withType(JavaCompile).configureEach {
         // call site must pass an explicit limit to reveal its intent. Hard error in both sources.
         check('StringSplitter', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
 
+        // Comparing object references with ==/!= silently tests identity, not value equality. For
+        // logically-equal domain values (usernames, ids, items) this is a latent bug. Every call
+        // site must use value equality or document an intentional identity check with a targeted
+        // @SuppressWarnings("ReferenceEquality"). Hard error in both main and test sources.
+        check('ReferenceEquality', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at

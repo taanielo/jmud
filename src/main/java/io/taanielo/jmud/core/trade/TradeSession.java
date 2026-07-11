@@ -139,6 +139,9 @@ public final class TradeSession {
      * @param item   the exact staged item reference to remove
      * @return {@code true} when the item was present and removed
      */
+    // Identity comparison is intentional (documented above): the exact staged instance is removed so
+    // that among value-equal duplicates only the specific offered reference is withdrawn.
+    @SuppressWarnings("ReferenceEquality")
     public boolean removeItem(Username player, Item item) {
         List<Item> side = sideItems(player);
         for (int i = 0; i < side.size(); i++) {

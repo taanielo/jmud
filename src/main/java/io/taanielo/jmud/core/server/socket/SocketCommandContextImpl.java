@@ -1099,6 +1099,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
      *
      * @param roomId the room the player has entered
      */
+    // Identity comparison is intentional: exploreRoom returns the same Player instance (this) when the
+    // room was already explored, so reference identity is the no-op sentinel that skips the resave.
+    @SuppressWarnings("ReferenceEquality")
     private void markRoomExplored(RoomId roomId) {
         Player player = session.getPlayer();
         if (player == null) {

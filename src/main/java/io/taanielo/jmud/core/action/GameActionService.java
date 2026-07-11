@@ -1110,6 +1110,10 @@ public class GameActionService {
      * @param containerInput the container name or id to place the item into
      * @return result with the updated source inventory, or an error with no state change
      */
+    // Identity comparisons below (inv == item, inv == container) are intentional: item and container
+    // are the exact instances resolved from this inventory, so identity removes/replaces precisely
+    // those references without disturbing value-equal duplicates elsewhere in the inventory.
+    @SuppressWarnings("ReferenceEquality")
     public GameActionResult putItem(Player source, String itemInput, String containerInput) {
         String itemNorm = itemInput == null ? "" : itemInput.trim();
         String containerNorm = containerInput == null ? "" : containerInput.trim();
@@ -1184,6 +1188,10 @@ public class GameActionService {
      * @param containerInput the container name or id to retrieve the item from
      * @return result with the updated source inventory, or an error with no state change
      */
+    // Identity comparison below (inv == container) is intentional: container is the exact instance
+    // resolved from this inventory, so identity replaces precisely that reference without disturbing
+    // value-equal duplicates elsewhere in the inventory.
+    @SuppressWarnings("ReferenceEquality")
     public GameActionResult getFromContainer(Player source, String itemInput, String containerInput) {
         String itemNorm = itemInput == null ? "" : itemInput.trim();
         String containerNorm = containerInput == null ? "" : containerInput.trim();

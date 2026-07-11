@@ -663,6 +663,9 @@ public class Player implements EffectTarget, Combatant {
      *
      * @param questId the completed one-time quest; must not be null
      */
+    // Identity comparison is intentional: withCompleted returns the same instance (this) when the
+    // quest was already recorded, so reference identity is the no-op sentinel we test for here.
+    @SuppressWarnings("ReferenceEquality")
     public Player withCompletedQuest(QuestId questId) {
         PlayerCompletedQuests updated = completedQuests.withCompleted(questId);
         if (updated == completedQuests) {
@@ -732,6 +735,9 @@ public class Player implements EffectTarget, Combatant {
      *
      * @param roomId the room the player has entered; must not be null
      */
+    // Identity comparison is intentional: visit returns the same instance (this) when the room was
+    // already explored, so reference identity is the no-op sentinel we test for here.
+    @SuppressWarnings("ReferenceEquality")
     public Player exploreRoom(RoomId roomId) {
         PlayerExploration updated = exploration.visit(roomId);
         if (updated == exploration) {
@@ -897,6 +903,9 @@ public class Player implements EffectTarget, Combatant {
      * Returns a copy of this player with no active (displayed) title, or this instance
      * unchanged when none was active.
      */
+    // Identity comparison is intentional: clearActive returns the same instance (this) when no title
+    // was active, so reference identity is the no-op sentinel we test for here.
+    @SuppressWarnings("ReferenceEquality")
     public Player clearActiveTitle() {
         PlayerTitles cleared = titles.clearActive();
         if (cleared == titles) {
