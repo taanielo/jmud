@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.player;
 import java.util.List;
 import java.util.Objects;
 
+import lombok.extern.slf4j.Slf4j;
+
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
@@ -14,6 +16,7 @@ import io.taanielo.jmud.core.world.Item;
 /**
  * Resolves carry weight limits and encumbrance for a player.
  */
+@Slf4j
 public class EncumbranceService {
     private final RaceRepository raceRepository;
     private final ClassRepository classRepository;
@@ -39,7 +42,11 @@ public class EncumbranceService {
                 if (race != null) {
                     base = race.carryBase();
                 }
-            } catch (RaceRepositoryException ignored) {
+            } catch (RaceRepositoryException e) {
+                // A lookup failure must not break the carry-weight calculation for the player;
+                // degrade gracefully to a zero race base, but surface the fault in the log so a
+                // broken race repository is not silent (AGENTS.md §7).
+                log.warn("Failed to resolve race {} for carry weight; using base 0", player.getRace(), e);
             }
         }
         if (player.getClassId() != null) {
@@ -48,7 +55,10 @@ public class EncumbranceService {
                 if (classDefinition != null) {
                     bonus = classDefinition.carryBonus();
                 }
-            } catch (ClassRepositoryException ignored) {
+            } catch (ClassRepositoryException e) {
+                // Degrade gracefully to a zero class bonus on a lookup failure, but log so a
+                // broken class repository is not silent (AGENTS.md §7).
+                log.warn("Failed to resolve class {} for carry weight; using bonus 0", player.getClassId(), e);
             }
         }
         return Math.max(0, base + bonus);
