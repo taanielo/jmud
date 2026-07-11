@@ -84,6 +84,15 @@ public interface SocketCommandContext extends Client {
     void updateAnsi(String args);
 
     /**
+     * Handles the {@code AUTOLOOT} command: shows the current setting with no arguments or
+     * {@code STATUS}, and toggles it with {@code ON}, {@code OFF}, or {@code TOGGLE}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void updateAutoLoot(String args) {}
+
+    /**
      * Handles the {@code PROMPT} command: shows the current prompt format with no arguments,
      * updates and persists it with {@code SET <format>}, or toggles prompt colorization with
      * {@code COLOR [on|off|toggle|status]}.
