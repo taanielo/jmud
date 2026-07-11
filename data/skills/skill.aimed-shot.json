@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.aimed-shot",
+  "name": "aimed-shot",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {
+    "move": 5
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 6
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "exposed"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You draw a slow breath and loose a called shot into {target}!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} lands a precise called shot that leaves you reeling!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} looses a precise called shot into {target}!"
+    }
+  ]
+}
