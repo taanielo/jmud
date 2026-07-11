@@ -78,6 +78,51 @@ class SocketCommandDispatcherTest {
         assertTrue(executed.get());
     }
 
+    @Test
+    void clearsAwayStatusForNonAfkCommand() {
+        AtomicBoolean executed = new AtomicBoolean(false);
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        registry.register(new TestCommand("look", executed));
+        AuditService auditService = new AuditService(new NoOpAuditSink(), Clock.systemUTC(), () -> 0L, () -> "test");
+        SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
+
+        TestContext context = new TestContext(livePlayer());
+        dispatcher.dispatch(context, "look", "corr-3");
+
+        assertTrue(context.clearAwayCalled, "Non-AFK commands should auto-clear away status");
+        assertTrue(executed.get(), "The command should still run after clearing away status");
+    }
+
+    @Test
+    void doesNotClearAwayStatusForAfkCommandItself() {
+        AtomicBoolean executed = new AtomicBoolean(false);
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        registry.register(new TestCommand("afk", executed));
+        AuditService auditService = new AuditService(new NoOpAuditSink(), Clock.systemUTC(), () -> 0L, () -> "test");
+        SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
+
+        TestContext context = new TestContext(livePlayer());
+        dispatcher.dispatch(context, "afk", "corr-4");
+
+        assertFalse(context.clearAwayCalled, "The AFK command must not auto-clear its own away status");
+        assertTrue(executed.get());
+    }
+
+    private static Player livePlayer() {
+        return new Player(
+            User.of(Username.of("sparky"), Password.hash("pw", 1000)),
+            1,
+            0,
+            new PlayerVitals(20, 20, 20, 20, 20, 20),
+            List.of(),
+            "prompt",
+            false,
+            List.of(),
+            null,
+            null
+        );
+    }
+
     private static class TestCommand implements SocketCommandHandler {
         private final String name;
         private final AtomicBoolean executed;
@@ -104,9 +149,15 @@ class SocketCommandDispatcherTest {
     private static class TestContext implements SocketCommandContext {
         private final Player player;
         private String lastMessage;
+        private boolean clearAwayCalled;
 
         private TestContext(Player player) {
             this.player = player;
+        }
+
+        @Override
+        public void clearAwayIfActive() {
+            clearAwayCalled = true;
         }
 
         @Override

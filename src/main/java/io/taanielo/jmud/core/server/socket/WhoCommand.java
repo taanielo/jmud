@@ -79,7 +79,8 @@ public class WhoCommand extends RegistrableCommand {
             return;
         }
         List<Username> onlineNames = context.onlinePlayerNames();
-        for (String line : WhoListing.format(onlineNames, context::guildTag, context::activeTitle, context::isFriend)) {
+        for (String line : WhoListing.format(
+                onlineNames, context::guildTag, context::activeTitle, context::isFriend, context::isPlayerAway)) {
             context.writeLineSafe(line);
         }
         Player player = context.getPlayer();

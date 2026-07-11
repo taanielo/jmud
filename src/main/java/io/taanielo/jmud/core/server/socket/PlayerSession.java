@@ -109,6 +109,18 @@ public class PlayerSession {
     private @Nullable ActiveDialogue activeDialogue;
 
     /**
+     * Transient "away from keyboard" state (issue #464). Turned on by the {@code AFK} command and
+     * cleared automatically by the player's next command; a non-null {@code awayMessage} holds an
+     * optional custom reason. This state is per-session only — it is never written to the persisted
+     * {@link Player} record, so there is no save-schema change, and it is dropped on logout and on
+     * reconnect. Both fields are read and written on the tick thread (AFK command execution, the
+     * next-command auto-clear, and WHO/TELL rendering all run there), so they need no synchronization
+     * (AGENTS.md §5).
+     */
+    private boolean away;
+    private @Nullable String awayMessage;
+
+    /**
      * A player's current position within an NPC dialogue tree.
      *
      * @param tree     the dialogue tree being traversed
@@ -278,6 +290,46 @@ public class PlayerSession {
      */
     public void clearDialogue() {
         this.activeDialogue = null;
+    }
+
+    // ── AFK / away status (issue #464) ──────────────────────────────────
+
+    /**
+     * Marks this session away from keyboard, optionally with a custom reason. A blank or {@code null}
+     * message clears any previous custom reason, leaving the session away with the default message.
+     *
+     * @param message the custom away reason, or {@code null}/blank for the default
+     */
+    public void setAway(@Nullable String message) {
+        this.away = true;
+        this.awayMessage = (message == null || message.isBlank()) ? null : message.trim();
+    }
+
+    /**
+     * Clears any away status, so the player is no longer marked AFK.
+     */
+    public void clearAway() {
+        this.away = false;
+        this.awayMessage = null;
+    }
+
+    /**
+     * Returns whether this session is currently marked away from keyboard.
+     *
+     * @return {@code true} while the player is AFK
+     */
+    public boolean isAway() {
+        return away;
+    }
+
+    /**
+     * Returns the custom away reason, or {@code null} when the player is not away or set no custom
+     * message.
+     *
+     * @return the away message, or {@code null}
+     */
+    public @Nullable String awayMessage() {
+        return awayMessage;
     }
 
     public AbilityCooldownTracker getCooldownTracker() {
@@ -539,6 +591,7 @@ public class PlayerSession {
         this.linkdead = false;
         this.linkdeadTicksRemaining = 0;
         clearDialogue();
+        clearAway();
     }
 
     /**

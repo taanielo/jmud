@@ -957,4 +957,55 @@ public interface SocketCommandContext extends Client {
      */
     default void manageTitle(String args) {}
 
+    /**
+     * Handles the {@code AFK} command: with no argument it toggles the caller's away status on (with
+     * a default message) or off; with an argument it turns away status on with that custom reason.
+     *
+     * <p>The status is transient session state (issue #464), never persisted, and is cleared
+     * automatically by the player's next command via {@link #clearAwayIfActive()}.
+     *
+     * <p>The default implementation is a no-op so existing test stubs do not need to be updated.
+     *
+     * @param args the optional custom away message, or blank to toggle
+     */
+    default void toggleAfk(String args) {}
+
+    /**
+     * Clears the caller's away status if currently AFK, printing a short "welcome back" confirmation.
+     * Invoked by {@link SocketCommandDispatcher} for every command other than {@code AFK} itself, so
+     * a player never has to remember to clear their own AFK marker.
+     *
+     * <p>The default implementation is a no-op so existing test stubs do not need to be updated.
+     */
+    default void clearAwayIfActive() {}
+
+    /**
+     * Returns whether the given online player is currently marked away from keyboard. Used by
+     * {@code WHO} to render an {@code [AFK]} tag next to away players.
+     *
+     * <p>The default implementation returns {@code false} so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player to test
+     * @return {@code true} when that player's session is currently AFK
+     */
+    default boolean isPlayerAway(Username username) {
+        return false;
+    }
+
+    /**
+     * Returns the AFK notice line to show a message sender when the given recipient is away, or empty
+     * when the recipient is not away. The notice reads {@code "<Name> is AFK: <reason>"} when a custom
+     * reason was set, or {@code "<Name> is AFK."} otherwise. Used by {@code TELL}/{@code WHISPER}/
+     * {@code REPLY} to notify the sender (only) that their message reached an away player.
+     *
+     * <p>The default implementation returns empty so existing test stubs do not need to be updated.
+     *
+     * @param username the message recipient to check
+     * @return the sender-facing AFK notice, or empty when the recipient is not away
+     */
+    default java.util.Optional<String> awayNotice(Username username) {
+        return java.util.Optional.empty();
+    }
+
 }
