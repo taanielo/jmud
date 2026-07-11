@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 11,
   "id": "long-bow",
   "name": "Long Bow",
   "description": "A tall bow of yew, its draw weight suited to a practised archer.",
@@ -15,5 +15,6 @@
   "value": 40,
   "attack_ref": "attack.long-bow",
   "max_durability": 40,
-  "durability": 40
+  "durability": 40,
+  "two_handed": true
 }

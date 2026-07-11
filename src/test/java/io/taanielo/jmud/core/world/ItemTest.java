@@ -193,6 +193,24 @@ class ItemTest {
     }
 
     @Test
+    void plainItemIsNotTwoHanded() {
+        assertFalse(plain("rock", "a rock").isTwoHanded());
+    }
+
+    @Test
+    void twoHandedWeaponAnnotatesDisplayName() {
+        Item greataxe = Item.builder(ItemId.of("greataxe"), "a greataxe", "A massive axe.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(6)
+            .value(100)
+            .twoHanded(true)
+            .build();
+        assertTrue(greataxe.isTwoHanded());
+        assertEquals("a greataxe (two-handed)", greataxe.durabilityDisplayName());
+        assertEquals("a greataxe (two-handed)", greataxe.presentationName());
+    }
+
+    @Test
     void withDurabilityOnUnbreakableItemIsRejected() {
         assertThrows(IllegalStateException.class, () -> plain("rock", "a rock").withDurability(1));
     }

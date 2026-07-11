@@ -2020,9 +2020,65 @@ public class GameActionService {
             return GameActionResult.error("You cannot equip that.");
         }
         PlayerEquipment equipment = source.getEquipment();
+        // A two-handed weapon occupies the off hand: block equipping an off-hand item while one is worn.
+        if (slot == EquipmentSlot.OFFHAND) {
+            Item twoHander = equippedTwoHandedWeapon(source);
+            if (twoHander != null) {
+                return GameActionResult.error(
+                    "You are wielding " + twoHander.getName()
+                        + " with both hands. Unequip it before using your off hand.");
+            }
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        // Equipping a two-handed weapon frees the off hand: auto-unequip any off-hand item.
+        if (slot == EquipmentSlot.WEAPON && item.isTwoHanded()) {
+            ItemId offhandId = equipment.equipped(EquipmentSlot.OFFHAND);
+            if (offhandId != null) {
+                Item offhandItem = findEquippedItem(source, offhandId);
+                String offhandName = offhandItem != null ? offhandItem.getName() : "your off-hand item";
+                equipment = equipment.unequip(EquipmentSlot.OFFHAND);
+                messages.add(GameMessage.toSource(
+                    "You need both hands for " + item.getName() + ", so you return "
+                        + offhandName + " to your pack."));
+            }
+        }
         Player updated = source.withEquipment(equipment.equip(slot, item.getId()));
-        String message = "You equip " + item.getName() + " (" + slot.id() + ").";
-        return new GameActionResult(updated, null, List.of(GameMessage.toSource(message)));
+        messages.add(GameMessage.toSource("You equip " + item.getName() + " (" + slot.id() + ")."));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Returns the two-handed weapon currently worn in the player's {@link EquipmentSlot#WEAPON}
+     * slot, or {@code null} when the main hand is empty or holds a one-handed weapon. Equipped items
+     * remain in the player's inventory, so the weapon is resolved by matching the equipped id there.
+     *
+     * @param player the player whose main hand to inspect
+     * @return the equipped two-handed weapon, or {@code null} if none is worn
+     */
+    private Item equippedTwoHandedWeapon(Player player) {
+        ItemId weaponId = player.getEquipment().equipped(EquipmentSlot.WEAPON);
+        if (weaponId == null) {
+            return null;
+        }
+        Item weapon = findEquippedItem(player, weaponId);
+        return weapon != null && weapon.isTwoHanded() ? weapon : null;
+    }
+
+    /**
+     * Finds the inventory item backing an equipped slot by its id. Equipped items are never removed
+     * from the inventory, so the id always resolves for a currently-worn item.
+     *
+     * @param player the player whose inventory to search
+     * @param itemId the id of the equipped item to resolve
+     * @return the matching item, or {@code null} when not found
+     */
+    private Item findEquippedItem(Player player, ItemId itemId) {
+        for (Item item : player.getInventory()) {
+            if (item.getId().equals(itemId)) {
+                return item;
+            }
+        }
+        return null;
     }
 
     /**

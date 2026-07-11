@@ -2173,6 +2173,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (found.getEquipSlot() != null) {
             connection.writeLine("Slot: " + found.getEquipSlot().id());
         }
+        if (found.isTwoHanded()) {
+            connection.writeLine("Two-handed: requires both hands; cannot be used with an off-hand item.");
+        }
         if (found.getAttributes() != null && !found.getAttributes().getStats().isEmpty()) {
             StringBuilder sb = new StringBuilder("Stats:");
             found.getAttributes().getStats().entrySet().stream()

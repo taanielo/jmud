@@ -98,6 +98,29 @@ class JsonItemRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsTwoHandedWeapon() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository repository = new JsonItemRepository(dataRoot);
+
+        Item greataxe = Item.builder(
+            ItemId.of("greataxe"), "a greataxe", "A massive two-handed axe.", ItemAttributes.empty())
+            .equipSlot(io.taanielo.jmud.core.world.EquipmentSlot.WEAPON)
+            .weight(6)
+            .value(100)
+            .twoHanded(true)
+            .build();
+        repository.save(greataxe);
+
+        // Fresh repository (no cache) so the flag comes back off disk.
+        Optional<Item> loaded = new JsonItemRepository(dataRoot).findById(ItemId.of("greataxe"));
+
+        assertTrue(loaded.isPresent());
+        Item reloaded = loaded.get();
+        assertTrue(reloaded.isTwoHanded());
+        assertEquals(greataxe, reloaded);
+    }
+
+    @Test
     void savesAndLoadsRareItemWithAffixes() throws Exception {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);

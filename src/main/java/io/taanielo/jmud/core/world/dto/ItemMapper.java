@@ -37,8 +37,11 @@ public class ItemMapper {
         boolean hasAffixes = !item.getAffixes().isEmpty();
         boolean unidentified = !item.isIdentified();
         boolean locked = item.isLocked();
+        boolean twoHanded = item.isTwoHanded();
         int version;
-        if (locked) {
+        if (twoHanded) {
+            version = SchemaVersions.V11;
+        } else if (locked) {
             version = SchemaVersions.V10;
         } else if (unidentified) {
             version = SchemaVersions.V9;
@@ -75,7 +78,8 @@ public class ItemMapper {
             hasRarity ? item.getRarity().id() : null,
             affixIds,
             unidentified ? Boolean.FALSE : null,
-            locked ? Boolean.TRUE : null
+            locked ? Boolean.TRUE : null,
+            twoHanded ? Boolean.TRUE : null
         );
     }
 
@@ -107,6 +111,7 @@ public class ItemMapper {
         // locked or hold contents), preserving the pre-refactor loading behaviour.
         ContainerState container = new ContainerState(dto.containerCapacity(), contents, locked);
         boolean identified = dto.identified() == null || dto.identified();
+        boolean twoHanded = dto.twoHanded() != null && dto.twoHanded();
         return Item.builder(ItemId.of(dto.id()), dto.name(), dto.description(), attributes)
             .effects(effects)
             .messages(messages)
@@ -120,6 +125,7 @@ public class ItemMapper {
             .durability(new Durability(dto.maxDurability(), dto.durability()))
             .rarity(new RarityProfile(rarity, affixes))
             .identification(Identification.of(identified))
+            .twoHanded(twoHanded)
             .build();
     }
 }

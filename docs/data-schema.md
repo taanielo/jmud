@@ -19,7 +19,7 @@ Each JSON file includes a `schema_version` field. Versioned JSON schemas live un
 
 ## Schemas
 
-- Items: `docs/schemas/item.v1.json`
+- Items: `docs/schemas/item.v1.json` (latest: `docs/schemas/item.v11.json`; `data/items/*.json`, one file per item). The loader accepts any of `schema_version` 3–11, so older item files load unchanged. Each newer version adds one optional, additive, backward-compatible field: v6 `light_radius`, v7 `max_durability`/`durability`, v8 `rarity`/`affixes`, v9 `identified`, v10 `locked`, v11 `two_handed`. v11's `two_handed` is an optional boolean (default `false`) marking a weapon as needing both hands: equipping a two-handed weapon into the `weapon` slot auto-unequips any `offhand` item back into the pack, and while a two-handed weapon is worn, equipping an `offhand` item (shield or second weapon) is refused — so the dual-wield off-hand attack and shield block never apply. Two-handed weapons are flagged `(two-handed)` in EQUIPMENT and EXAMINE. One-handed weapons and item files lacking the field behave exactly as before.
 - Rooms: `docs/schemas/room.v1.json`
 - Abilities (skills/spells): `docs/schemas/ability.v1.json`
 - Attacks: `docs/schemas/attack.v1.json`

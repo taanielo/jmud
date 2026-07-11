@@ -164,7 +164,8 @@ public class JsonItemRepository implements ItemRepository, ItemContentReloader {
             && dto.schemaVersion() != SchemaVersions.V7
             && dto.schemaVersion() != SchemaVersions.V8
             && dto.schemaVersion() != SchemaVersions.V9
-            && dto.schemaVersion() != SchemaVersions.V10) {
+            && dto.schemaVersion() != SchemaVersions.V10
+            && dto.schemaVersion() != SchemaVersions.V11) {
             throw new RepositoryException("Unsupported item schema version " + dto.schemaVersion() + " in " + path);
         }
     }
