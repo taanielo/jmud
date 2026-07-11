@@ -339,7 +339,7 @@ public record GameContext(
 
         // Wizard privileges are config-driven for now (jmud.wizards = comma-separated usernames)
         // until the full role system lands (issue #44).
-        Set<Username> wizardUsernames = Arrays.stream(config.getString("jmud.wizards", "").split(","))
+        Set<Username> wizardUsernames = Arrays.stream(config.getString("jmud.wizards", "").split(",", -1))
             .map(String::trim)
             .filter(name -> !name.isEmpty())
             .map(Username::of)
