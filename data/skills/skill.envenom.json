@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.envenom",
+  "name": "envenom",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {
+    "move": 5
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 6
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "poison"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You coat your blade in venom and slash {target}!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} slashes you with an envenomed blade!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} slashes {target} with an envenomed blade!"
+    }
+  ]
+}
