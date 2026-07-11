@@ -13,29 +13,35 @@ import java.util.Objects;
  * @param verb        the lower-case action verb (e.g. {@code "craft"}, {@code "brew"})
  * @param craftAction the success phrase describing what the crafter does with the materials
  *                    (e.g. {@code "works your materials into"}, {@code "brews your herbs into"})
+ * @param profession  the profession whose proficiency this crafter trains (e.g. {@code blacksmithing})
  */
-public record CrafterProfile(String crafter, String command, String verb, String craftAction) {
+public record CrafterProfile(
+    String crafter, String command, String verb, String craftAction, ProfessionId profession) {
 
     public CrafterProfile {
         Objects.requireNonNull(crafter, "Crafter is required");
         Objects.requireNonNull(command, "Command is required");
         Objects.requireNonNull(verb, "Verb is required");
         Objects.requireNonNull(craftAction, "Craft action is required");
+        Objects.requireNonNull(profession, "Profession is required");
     }
 
     /** Returns the default blacksmith profile used by the {@code CRAFT} command. */
     public static CrafterProfile blacksmith() {
-        return new CrafterProfile("blacksmith", "CRAFT", "craft", "works your materials into");
+        return new CrafterProfile("blacksmith", "CRAFT", "craft", "works your materials into",
+            ProfessionId.BLACKSMITHING);
     }
 
     /** Returns the alchemist profile used by the {@code BREW} command. */
     public static CrafterProfile alchemist() {
-        return new CrafterProfile("alchemist", "BREW", "brew", "brews your herbs into");
+        return new CrafterProfile("alchemist", "BREW", "brew", "brews your herbs into",
+            ProfessionId.ALCHEMY);
     }
 
     /** Returns the cook profile used by the {@code COOK} command. */
     public static CrafterProfile cook() {
-        return new CrafterProfile("cook", "COOK", "cook", "cooks your ingredients into");
+        return new CrafterProfile("cook", "COOK", "cook", "cooks your ingredients into",
+            ProfessionId.COOKING);
     }
 
     /** Returns the action verb with its first letter capitalized (e.g. {@code "Craft"}, {@code "Brew"}). */

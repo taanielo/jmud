@@ -4,6 +4,7 @@
   "name": "Elixir of Vigor",
   "output_item": "elixir-of-vigor",
   "gold_cost": 25,
+  "min_skill": 2,
   "materials": [
     { "item": "wild-herbs", "quantity": 2 },
     { "item": "glowcap-mushroom", "quantity": 3 }

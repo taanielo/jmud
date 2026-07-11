@@ -38,6 +38,18 @@
       "default": 0,
       "description": "Gold consumed by the craft. Defaults to 0 when omitted."
     },
+    "min_skill": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Minimum profession level (blacksmithing/alchemy/cooking, depending on which crafter offers the recipe) required to attempt the craft. Defaults to 0 (craftable by anyone) when omitted, preserving backward compatibility with recipes that predate proficiency levels."
+    },
+    "proficiency_gain": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 25,
+      "description": "Proficiency points granted in the relevant profession on a successful craft. Crossing a multiple of 100 points raises the profession level. Defaults to 25 when omitted."
+    },
     "materials": {
       "type": "array",
       "minItems": 1,

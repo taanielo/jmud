@@ -4,6 +4,7 @@
   "name": "Fisherman's Chowder",
   "output_item": "fishermans-chowder",
   "gold_cost": 10,
+  "min_skill": 2,
   "materials": [
     { "item": "reef-eel", "quantity": 1 },
     { "item": "wild-herbs", "quantity": 1 }

@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.Player;
@@ -128,6 +129,10 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Duels : %dW / %dL", player.getDuelWins(), player.getDuelLosses()));
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
+        context.writeLineSafe(String.format("Profs : blacksmithing %d, alchemy %d, cooking %d",
+            player.proficiencies().level(ProfessionId.BLACKSMITHING),
+            player.proficiencies().level(ProfessionId.ALCHEMY),
+            player.proficiencies().level(ProfessionId.COOKING)));
         lightingService.brightestLightSource(player).ifPresent(light ->
             context.writeLineSafe(String.format("Light : %s (radius %d)", light.getName(),
                 lightingService.carriedLightRadius(player))));
