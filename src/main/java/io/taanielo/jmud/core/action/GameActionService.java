@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -1505,6 +1506,50 @@ public class GameActionService {
     }
 
     /**
+     * Points a player toward the target of their active kill quest, mirroring the ranger TRACK
+     * skill but available to every class and race as read-only quest guidance.
+     *
+     * <p>Unlike {@link #track(Player, String)}, this variant matches on the mob's template id (the
+     * quest's {@code targetMobId}) rather than its display name, so it finds the right quarry even
+     * when the mob's display name differs from its id (e.g. id {@code "rat"} → name
+     * {@code "Giant Rat"}). It reuses the same bounded breadth-first walk of the room graph as the
+     * ranger skill via {@link #findNearest(RoomId, Function)}. The method only reads game state
+     * (AGENTS.md §5) and never mutates the player or the world; it consumes no moves, mana, or
+     * cooldown.
+     *
+     * @param source      the player consulting their quest; must not be null
+     * @param targetMobId the template id of the quest's target mob, or {@code null} when the active
+     *                    quest has no mob to hunt (delivery or exploration quests)
+     * @return a directional hint on success; an error when the quest has no mob target, the player
+     *         is lost or dead, or no matching mob can be found anywhere reachable
+     */
+    public GameActionResult trackQuestTarget(Player source, @Nullable String targetMobId) {
+        Objects.requireNonNull(source, "Source is required");
+        if (targetMobId == null || targetMobId.isBlank()) {
+            return GameActionResult.error(
+                "Your current contract has no quarry to hunt down. Use QUEST STATUS for details.");
+        }
+        if (source.isDead()) {
+            return GameActionResult.error("You cannot do that right now.");
+        }
+        Optional<RoomId> start = roomService.findPlayerLocation(source.getUsername());
+        if (start.isEmpty()) {
+            return GameActionResult.error("You are lost and cannot get your bearings.");
+        }
+        String targetId = targetMobId.trim().toLowerCase(Locale.ROOT);
+        Optional<TrackHit> hit = findNearest(start.get(), roomId -> firstMobNameByTemplateId(roomId, targetId));
+        if (hit.isEmpty()) {
+            return GameActionResult.error(
+                "You search for signs of your quarry but find no trace anywhere.");
+        }
+        TrackHit found = hit.get();
+        String message = found.direction() == null
+            ? "You sense " + article(found.mobName()) + found.mobName() + " in this room."
+            : "The " + found.mobName() + " lies somewhere to the " + found.direction().label() + ".";
+        return new GameActionResult(null, null, List.of(GameMessage.toSource(message)));
+    }
+
+    /**
      * Breadth-first searches the room graph from {@code start} for the nearest room containing a
      * live mob whose name matches {@code query} (case-insensitive substring). Distance is measured
      * in rooms; the returned hit carries the display name and the first-step direction of the
@@ -1512,6 +1557,17 @@ public class GameActionService {
      * by {@link #TRACK_MAX_ROOMS_EXPLORED}.
      */
     private Optional<TrackHit> findNearestMob(RoomId start, String query) {
+        return findNearest(start, roomId -> firstMatchingMobName(roomId, query));
+    }
+
+    /**
+     * Breadth-first searches the room graph from {@code start} for the nearest room where
+     * {@code matcher} returns a non-null mob display name. Distance is measured in rooms; the
+     * returned hit carries that display name and the first-step direction of the shortest path
+     * (or {@code null} when the match is in the starting room). The search is bounded by
+     * {@link #TRACK_MAX_ROOMS_EXPLORED} so a pathological world cannot stall the tick.
+     */
+    private Optional<TrackHit> findNearest(RoomId start, Function<RoomId, @Nullable String> matcher) {
         Deque<RoomId> frontier = new ArrayDeque<>();
         Map<RoomId, Direction> firstStep = new HashMap<>();
         Set<RoomId> visited = new HashSet<>();
@@ -1521,7 +1577,7 @@ public class GameActionService {
         while (!frontier.isEmpty() && explored < TRACK_MAX_ROOMS_EXPLORED) {
             RoomId current = frontier.removeFirst();
             explored++;
-            String match = firstMatchingMobName(current, query);
+            String match = matcher.apply(current);
             if (match != null) {
                 return Optional.of(new TrackHit(match, firstStep.get(current)));
             }
@@ -1543,10 +1599,26 @@ public class GameActionService {
      * Returns the display name of the first live mob in the given room whose name contains
      * {@code query} (case-insensitive), or {@code null} when none match.
      */
+    @Nullable
     private String firstMatchingMobName(RoomId roomId, String query) {
         for (String name : mobLocatorPort.liveMobNamesInRoom(roomId)) {
             if (name.toLowerCase(Locale.ROOT).contains(query)) {
                 return name;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns the display name of the first live mob in the given room whose template id equals
+     * {@code targetId} (case-insensitive), or {@code null} when none match. Used by
+     * {@code QUEST TRACK} to locate the quest's target mob by id.
+     */
+    @Nullable
+    private String firstMobNameByTemplateId(RoomId roomId, String targetId) {
+        for (MobLocatorPort.TrackableMob mob : mobLocatorPort.liveMobsInRoom(roomId)) {
+            if (mob.templateId().toLowerCase(Locale.ROOT).equals(targetId)) {
+                return mob.displayName();
             }
         }
         return null;

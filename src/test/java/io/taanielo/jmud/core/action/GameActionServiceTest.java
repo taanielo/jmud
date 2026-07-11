@@ -1861,7 +1861,8 @@ class GameActionServiceTest {
 
         @Test
         void tracksNearestMobAndReportsFirstStepDirection() {
-            MobLocatorPort locator = roomId -> DEEP.equals(roomId) ? List.of("Goblin") : List.of();
+            MobLocatorPort locator = roomId -> DEEP.equals(roomId)
+                ? List.of(new MobLocatorPort.TrackableMob("goblin", "Goblin")) : List.of();
             GameActionService service = trackService(locator);
 
             GameActionResult result = service.track(ranger, "goblin");
@@ -1873,7 +1874,8 @@ class GameActionServiceTest {
 
         @Test
         void tracksMobInSameRoom() {
-            MobLocatorPort locator = roomId -> TOWN.equals(roomId) ? List.of("Wolf") : List.of();
+            MobLocatorPort locator = roomId -> TOWN.equals(roomId)
+                ? List.of(new MobLocatorPort.TrackableMob("wolf", "Wolf")) : List.of();
             GameActionService service = trackService(locator);
 
             GameActionResult result = service.track(ranger, "wolf");
@@ -1884,7 +1886,8 @@ class GameActionServiceTest {
 
         @Test
         void partialNameMatchesMobDisplayName() {
-            MobLocatorPort locator = roomId -> FOREST.equals(roomId) ? List.of("Giant Rat") : List.of();
+            MobLocatorPort locator = roomId -> FOREST.equals(roomId)
+                ? List.of(new MobLocatorPort.TrackableMob("rat", "Giant Rat")) : List.of();
             GameActionService service = trackService(locator);
 
             GameActionResult result = service.track(ranger, "rat");
@@ -1910,7 +1913,8 @@ class GameActionServiceTest {
                 List.of(), null, ClassId.of("fighter"));
             trackRoomService.ensurePlayerLocation(fighter.getUsername());
             GameActionService service = trackService(
-                roomId -> DEEP.equals(roomId) ? List.of("Goblin") : List.of());
+                roomId -> DEEP.equals(roomId)
+                    ? List.of(new MobLocatorPort.TrackableMob("goblin", "Goblin")) : List.of());
 
             GameActionResult result = service.track(fighter, "goblin");
 
@@ -1929,11 +1933,75 @@ class GameActionServiceTest {
         @Test
         void deadRangerCannotTrack() {
             GameActionService service = trackService(
-                roomId -> DEEP.equals(roomId) ? List.of("Goblin") : List.of());
+                roomId -> DEEP.equals(roomId)
+                    ? List.of(new MobLocatorPort.TrackableMob("goblin", "Goblin")) : List.of());
 
             GameActionResult result = service.track(ranger.die(), "goblin");
 
             assertTrue(result.messages().getFirst().text().contains("cannot do that"));
+        }
+
+        @Test
+        void questTrackPointsTowardTargetMobByTemplateId() {
+            // The mob's display name ("Giant Rat") differs from its template id ("rat"); QUEST TRACK
+            // must match on the id, unlike the name-based ranger TRACK.
+            MobLocatorPort locator = roomId -> DEEP.equals(roomId)
+                ? List.of(new MobLocatorPort.TrackableMob("rat", "Giant Rat")) : List.of();
+            GameActionService service = trackService(locator);
+
+            GameActionResult result = service.trackQuestTarget(ranger, "rat");
+
+            assertTrue(result.messages().getFirst().text().contains("to the north"),
+                "QUEST TRACK must point toward the first step of the shortest path");
+            assertTrue(result.messages().getFirst().text().contains("Giant Rat"));
+        }
+
+        @Test
+        void questTrackReportsTargetInSameRoom() {
+            MobLocatorPort locator = roomId -> TOWN.equals(roomId)
+                ? List.of(new MobLocatorPort.TrackableMob("wolf", "Wolf")) : List.of();
+            GameActionService service = trackService(locator);
+
+            GameActionResult result = service.trackQuestTarget(ranger, "wolf");
+
+            assertTrue(result.messages().getFirst().text().contains("in this room"));
+        }
+
+        @Test
+        void questTrackIsAvailableToNonRangers() {
+            Player fighter = new Player(
+                User.of(Username.of("brute"), Password.hash("pw", 1000)),
+                5, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+                List.of(), null, ClassId.of("fighter"));
+            trackRoomService.ensurePlayerLocation(fighter.getUsername());
+            GameActionService service = trackService(
+                roomId -> DEEP.equals(roomId)
+                    ? List.of(new MobLocatorPort.TrackableMob("goblin", "Goblin")) : List.of());
+
+            GameActionResult result = service.trackQuestTarget(fighter, "goblin");
+
+            assertTrue(result.messages().getFirst().text().contains("Goblin"),
+                "QUEST TRACK is quest guidance, not a Ranger skill, so any class may use it");
+            assertFalse(result.messages().getFirst().text().contains("rangers"));
+        }
+
+        @Test
+        void questTrackRejectsQuestWithoutMobTarget() {
+            GameActionService service = trackService(MobLocatorPort.NONE);
+
+            GameActionResult result = service.trackQuestTarget(ranger, null);
+
+            assertTrue(result.messages().getFirst().text().contains("no quarry"),
+                "Delivery/exploration quests (null targetMobId) have nothing to track");
+        }
+
+        @Test
+        void questTrackReportsNoTraceWhenTargetAbsent() {
+            GameActionService service = trackService(MobLocatorPort.NONE);
+
+            GameActionResult result = service.trackQuestTarget(ranger, "goblin");
+
+            assertTrue(result.messages().getFirst().text().contains("no trace"));
         }
     }
 

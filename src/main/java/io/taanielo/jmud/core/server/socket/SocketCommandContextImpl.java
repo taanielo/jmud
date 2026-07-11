@@ -221,7 +221,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 ? java.util.List.of()
                 : context.mobRegistry().getMobsInRoom(roomId).stream()
                     .filter(io.taanielo.jmud.core.mob.MobInstance::isAlive)
-                    .map(mob -> mob.template().name())
+                    .map(mob -> new io.taanielo.jmud.core.action.MobLocatorPort.TrackableMob(
+                        mob.template().id().getValue(), mob.template().name()))
                     .toList()
         );
         if (context.duelService() != null) {
@@ -2872,11 +2873,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "LOG" -> handleQuestLog(questRepo);
             case "ACCEPT" -> handleQuestAccept(questRepo, subArgs);
             case "STATUS" -> handleQuestStatus(questRepo);
+            case "TRACK" -> handleQuestTrack(questRepo);
             case "COMPLETE" -> handleQuestComplete(questRepo);
             case "DELIVER" -> handleQuestDeliver(questRepo);
             case "ABANDON" -> handleQuestAbandon();
             default -> writeLineWithPrompt(
-                "Usage: QUEST [LIST|LOG|ACCEPT <id>|STATUS|COMPLETE|DELIVER|ABANDON]");
+                "Usage: QUEST [LIST|LOG|ACCEPT <id>|STATUS|TRACK|COMPLETE|DELIVER|ABANDON]");
         }
     }
 
@@ -5066,6 +5068,32 @@ class SocketCommandContextImpl implements SocketCommandContext {
             int done = template.requiredKills() - active.killsRemaining();
             writeLineWithPrompt(template.name() + ": " + done + "/" + template.requiredKills() + " kills.");
         }
+    }
+
+    private void handleQuestTrack(QuestRepository questRepo) {
+        Player player = session.getPlayer();
+        ActiveQuest active = player.getActiveQuest();
+        if (active == null) {
+            writeLineWithPrompt("You have no active contract to track.");
+            return;
+        }
+        QuestTemplate template;
+        try {
+            template = questRepo.findById(active.templateId()).orElse(null);
+        } catch (QuestRepositoryException e) {
+            log.warn("Failed to load quest template {}: {}", active.templateId(), e.getMessage());
+            writeLineWithPrompt("Quest tracking unavailable.");
+            return;
+        }
+        if (template == null) {
+            writeLineWithPrompt("Unknown quest. Use QUEST ABANDON to clear it.");
+            return;
+        }
+        // QUEST TRACK is read-only quest guidance (like QUEST STATUS/REPUTATION): it does not
+        // consume moves/mana/cooldown and must not interrupt resting.
+        GameActionResult result = gameActionService.trackQuestTarget(player, template.targetMobId());
+        deliverResult(result);
+        sendPrompt();
     }
 
     private void handleQuestComplete(QuestRepository questRepo) {

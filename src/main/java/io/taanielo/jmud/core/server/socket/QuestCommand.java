@@ -12,6 +12,7 @@ import java.util.Optional;
  *   <li>{@code QUEST LOG}            — lists the player's completed one-time contracts</li>
  *   <li>{@code QUEST ACCEPT <name>}  — accepts the named contract</li>
  *   <li>{@code QUEST STATUS}         — prints current quest progress (including explored rooms)</li>
+ *   <li>{@code QUEST TRACK}          — points you toward the nearest live target of your kill quest</li>
  *   <li>{@code QUEST COMPLETE}       — claims kill-quest reward (must be in Courtyard)</li>
  *   <li>{@code QUEST DELIVER}        — turns in collected items to the Guild Clerk, or hands a package to the receiving NPC</li>
  *   <li>{@code QUEST ABANDON}        — drops the active quest with no penalty</li>
@@ -41,6 +42,7 @@ public class QuestCommand extends RegistrableCommand {
                  QUEST LOG              \u2014 list your completed one-time contracts
                  QUEST ACCEPT <id>      \u2014 accept a contract (e.g. QUEST ACCEPT rat-catcher)
                  QUEST STATUS           \u2014 show current quest progress
+                 QUEST TRACK            \u2014 point toward the nearest live target of your kill quest
                  QUEST COMPLETE         \u2014 claim kill-quest reward (must be in the Courtyard)
                  QUEST DELIVER          \u2014 turn in collected items to the Guild Clerk, or hand a package to the receiving NPC
                  QUEST ABANDON          \u2014 drop the active quest with no penalty\
