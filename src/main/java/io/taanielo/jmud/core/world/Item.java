@@ -83,6 +83,15 @@ public class Item {
      * out of the box. See isLocked() and withLocked(boolean).
      */
     boolean locked;
+    /**
+     * Whether this weapon requires both hands to wield. A two-handed weapon in the
+     * {@link EquipmentSlot#WEAPON} slot occupies the {@link EquipmentSlot#OFFHAND} slot as well:
+     * equipping it auto-unequips any off-hand item, and it blocks equipping a new off-hand item
+     * (shield or second weapon) while worn. Only weapons are ever two-handed; defaults to false so
+     * one-handed weapons and legacy item data (which has no two_handed field) keep working exactly as
+     * before. See isTwoHanded().
+     */
+    boolean twoHanded;
 
     /**
      * Constructs an item from its flattened field set. This is the single, private canonical
@@ -111,6 +120,8 @@ public class Item {
      * @param locked            whether this container is locked, or {@code null} to default to
      *                          {@code false} (unlocked); must be {@code null}/{@code false} for
      *                          non-container items
+     * @param twoHanded         whether this weapon requires both hands, or {@code null} to default to
+     *                          {@code false} (one-handed)
      */
     private Item(
         ItemId id,
@@ -132,7 +143,8 @@ public class Item {
         @Nullable Rarity rarity,
         @Nullable List<AffixId> affixes,
         @Nullable Boolean identified,
-        @Nullable Boolean locked
+        @Nullable Boolean locked,
+        @Nullable Boolean twoHanded
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -203,6 +215,7 @@ public class Item {
             throw new IllegalArgumentException("Only container items may be locked");
         }
         this.locked = isLocked;
+        this.twoHanded = twoHanded != null && twoHanded;
     }
 
     /**
@@ -248,6 +261,7 @@ public class Item {
         private Durability durability = Durability.none();
         private RarityProfile rarity = RarityProfile.common();
         private Identification identification = Identification.known();
+        private boolean twoHanded;
 
         private Builder(ItemId id, String name, String description, ItemAttributes attributes) {
             this.id = id;
@@ -328,6 +342,12 @@ public class Item {
             return this;
         }
 
+        /** Marks this weapon as requiring both hands to wield (defaults to one-handed). */
+        public Builder twoHanded(boolean twoHanded) {
+            this.twoHanded = twoHanded;
+            return this;
+        }
+
         /**
          * Assembles the item, validating every facet's invariants through {@link Item}'s canonical
          * constructor.
@@ -355,7 +375,8 @@ public class Item {
                 rarity.rarity(),
                 rarity.affixes(),
                 identification.identified(),
-                container.locked()
+                container.locked(),
+                twoHanded
             );
         }
     }
@@ -459,7 +480,7 @@ public class Item {
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, locked);
+            rarity, affixes, identified, locked, twoHanded);
     }
 
     /**
@@ -493,7 +514,7 @@ public class Item {
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
-            rarity, affixes, identified, locked);
+            rarity, affixes, identified, locked, twoHanded);
     }
 
     /**
@@ -511,7 +532,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, newIdentified, locked);
+            rarity, affixes, newIdentified, locked, twoHanded);
     }
 
     /**
@@ -533,7 +554,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, newLocked);
+            rarity, affixes, identified, newLocked, twoHanded);
     }
 
     /**
@@ -553,7 +574,7 @@ public class Item {
         nextAffixes.add(affixId);
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, nextAffixes, identified, locked);
+            rarity, nextAffixes, identified, locked, twoHanded);
     }
 
     /**
@@ -611,14 +632,19 @@ public class Item {
     }
 
     /**
-     * Returns this item's name annotated with {@code (damaged)} when it is broken, so broken gear
-     * reads distinctly in inventory, equipment and room listings. Non-broken items return their
-     * plain {@link #displayName()}.
+     * Returns this item's name annotated with {@code (damaged)} when it is broken and
+     * {@code (two-handed)} when it is a two-handed weapon, so heavy gear reads distinctly in
+     * inventory, equipment and room listings (e.g. {@code "a greataxe (two-handed)"}). Non-broken,
+     * one-handed items return their plain {@link #displayName()}.
      */
     public String durabilityDisplayName() {
+        String base = displayName();
         if (isBroken()) {
-            return displayName() + " (damaged)";
+            base = base + " (damaged)";
         }
-        return displayName();
+        if (twoHanded) {
+            base = base + " (two-handed)";
+        }
+        return base;
     }
 }

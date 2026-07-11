@@ -25,6 +25,7 @@ public record ItemDto(
     String rarity,
     List<String> affixes,
     Boolean identified,
-    Boolean locked
+    Boolean locked,
+    Boolean twoHanded
 ) {
 }

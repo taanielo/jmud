@@ -51,6 +51,8 @@ import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.OffhandAttackResolver;
+import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
@@ -66,12 +68,14 @@ import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.ContainerLockingService;
 import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
@@ -351,6 +355,121 @@ class GameActionServiceTest {
             .equipSlot(io.taanielo.jmud.core.world.EquipmentSlot.WEAPON)
             .weight(1)
             .value(5)
+            .build();
+    }
+
+    @Test
+    void equipTwoHandedWeaponAutoUnequipsOffhandItem() {
+        Player withGear = attacker.addItem(woodenShield()).addItem(twoHandedGreataxe());
+        Player shielded = withGear.withEquipment(
+            withGear.getEquipment().equip(EquipmentSlot.OFFHAND, ItemId.of("shield")));
+
+        GameActionResult result = service.equipItem(shielded, "greataxe");
+        Player updated = result.updatedSource();
+
+        assertNotNull(updated);
+        assertTrue(updated.getEquipment().isEquipped(ItemId.of("greataxe")));
+        assertNull(updated.getEquipment().equipped(EquipmentSlot.OFFHAND));
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.text().contains("a wooden shield") && m.text().contains("both hands")));
+        // The freed off-hand item is still carried (equipped items live in the inventory).
+        assertTrue(updated.getInventory().stream().anyMatch(i -> i.getId().equals(ItemId.of("shield"))));
+    }
+
+    @Test
+    void equipOffhandBlockedWhileTwoHandedWeaponWorn() {
+        Player withGear = attacker.addItem(twoHandedGreataxe()).addItem(woodenShield());
+        Player wielding = withGear.withEquipment(
+            withGear.getEquipment().equip(EquipmentSlot.WEAPON, ItemId.of("greataxe")));
+
+        GameActionResult result = service.equipItem(wielding, "shield");
+
+        assertNull(result.updatedSource());
+        assertTrue(result.messages().getFirst().text().contains("both hands"));
+        // Nothing was swapped or stacked: the two-hander stays, the off hand stays empty.
+        assertTrue(wielding.getEquipment().isEquipped(ItemId.of("greataxe")));
+        assertNull(wielding.getEquipment().equipped(EquipmentSlot.OFFHAND));
+    }
+
+    @Test
+    void equipOneHandedWeaponLeavesOffhandItemEquipped() {
+        Player withGear = attacker.addItem(woodenShield()).addItem(oneHandedSword());
+        Player shielded = withGear.withEquipment(
+            withGear.getEquipment().equip(EquipmentSlot.OFFHAND, ItemId.of("shield")));
+
+        GameActionResult result = service.equipItem(shielded, "sword");
+        Player updated = result.updatedSource();
+
+        assertNotNull(updated);
+        assertTrue(updated.getEquipment().isEquipped(ItemId.of("sword")));
+        assertTrue(updated.getEquipment().isEquipped(ItemId.of("shield")));
+    }
+
+    @Test
+    void offhandCombatMechanicsDoNotApplyWhileTwoHandedWeaponWorn() {
+        // Equipping the greataxe auto-unequips the off-hand dagger, so no dual-wield bonus attack.
+        Player withGear = attacker.addItem(offhandDagger()).addItem(twoHandedGreataxe());
+        Player dualWielding = withGear.withEquipment(
+            withGear.getEquipment().equip(EquipmentSlot.OFFHAND, ItemId.of("dagger")));
+
+        Player updated = service.equipItem(dualWielding, "greataxe").updatedSource();
+        assertNotNull(updated);
+        assertTrue(new OffhandAttackResolver().resolve(updated).isEmpty());
+
+        // Same for shield block: with the off hand emptied there is no shield to block with.
+        Player withShield = attacker.addItem(woodenShield()).addItem(twoHandedGreataxe());
+        Player blocking = withShield.withEquipment(
+            withShield.getEquipment().equip(EquipmentSlot.OFFHAND, ItemId.of("shield")));
+        Player twoHanded = service.equipItem(blocking, "greataxe").updatedSource();
+        assertNotNull(twoHanded);
+        ItemRepository shieldRepo = new ItemRepository() {
+            @Override
+            public void save(Item item) {
+            }
+
+            @Override
+            public Optional<Item> findById(ItemId id) {
+                return id.equals(ItemId.of("shield")) ? Optional.of(woodenShield()) : Optional.empty();
+            }
+        };
+        assertFalse(new ShieldBlockResolver(shieldRepo).resolve(twoHanded).canBlock());
+    }
+
+    private static Item twoHandedGreataxe() {
+        return Item.builder(ItemId.of("greataxe"), "a greataxe", "A massive two-handed axe.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .attackRef(AttackId.of("attack.greataxe"))
+            .weight(6)
+            .value(100)
+            .twoHanded(true)
+            .build();
+    }
+
+    private static Item oneHandedSword() {
+        return Item.builder(ItemId.of("sword"), "an iron sword", "A one-handed sword.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .attackRef(AttackId.of("attack.sword"))
+            .weight(3)
+            .value(30)
+            .build();
+    }
+
+    private static Item woodenShield() {
+        return Item.builder(ItemId.of("shield"), "a wooden shield", "A sturdy shield.",
+                new ItemAttributes(Map.of("block_chance", 50, "block_reduction", 30)))
+            .equipSlot(EquipmentSlot.OFFHAND)
+            .weight(4)
+            .value(40)
+            .build();
+    }
+
+    private static Item offhandDagger() {
+        return Item.builder(ItemId.of("dagger"), "a parrying dagger", "A light off-hand dagger.",
+                ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.OFFHAND)
+            .attackRef(AttackId.of("attack.dagger"))
+            .weight(1)
+            .value(20)
             .build();
     }
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": 7,
+  "schema_version": 11,
   "id": "shortbow",
   "name": "Shortbow",
   "description": "A compact, fast-drawing bow favoured by scouts and skirmishers.",
@@ -15,5 +15,6 @@
   "value": 25,
   "attack_ref": "attack.shortbow",
   "max_durability": 30,
-  "durability": 30
+  "durability": 30,
+  "two_handed": true
 }
