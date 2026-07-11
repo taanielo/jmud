@@ -141,7 +141,7 @@ public class SocketAuthenticationService implements AuthenticationService {
             return false;
         }
         Duration retryAfter = status.retryAfter();
-        long seconds = Math.max(1, retryAfter.getSeconds());
+        long seconds = Math.max(1, retryAfter.toSeconds());
         messageWriter.writeLine();
         messageWriter.writeLine("Too many login attempts. Try again in " + seconds + "s.");
         messageWriter.write("Enter username: ");

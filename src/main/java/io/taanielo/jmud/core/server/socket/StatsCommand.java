@@ -96,7 +96,7 @@ public class StatsCommand extends RegistrableCommand {
             Locale.ROOT,
             "Avg duration: %s ms | Max: %s ms | Overruns: %d (last %d ticks)",
             millis(summary.averageDurationNanos()),
-            millis(summary.maxDurationNanos()),
+            millis((double) summary.maxDurationNanos()),
             summary.overrunCount(),
             summary.windowTicks()
         ));
@@ -108,7 +108,7 @@ public class StatsCommand extends RegistrableCommand {
                 Locale.ROOT,
                 "Slowest Tickable: %s (%s ms / %d invocations)",
                 slowest,
-                millis(summary.slowestTickableTotalNanos()),
+                millis((double) summary.slowestTickableTotalNanos()),
                 summary.slowestTickableInvocations()
             ));
         }

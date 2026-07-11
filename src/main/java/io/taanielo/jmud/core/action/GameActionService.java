@@ -2159,7 +2159,7 @@ public class GameActionService {
             messages.add(GameMessage.toRoom(source.getUsername(), target.getUsername(), message));
         }
 
-        public List<GameMessage> collected() {
+        List<GameMessage> collected() {
             return List.copyOf(messages);
         }
     }
@@ -2197,7 +2197,7 @@ public class GameActionService {
             messages.add(GameMessage.toRoom(source, target, message));
         }
 
-        public List<GameMessage> collected() {
+        List<GameMessage> collected() {
             return List.copyOf(messages);
         }
     }

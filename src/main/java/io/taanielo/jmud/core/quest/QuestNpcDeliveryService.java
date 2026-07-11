@@ -82,7 +82,8 @@ public class QuestNpcDeliveryService {
      *
      * <p>The caller is responsible for confirming the player has no other active quest and for
      * resolving the {@code packageItem} from the item repository. Fails loudly when the template is
-     * not an NPC-delivery quest or the supplied item does not match {@code packageItemId}.
+     * not an NPC-delivery quest or the supplied item does not match the template's expected
+     * package item id.
      *
      * @param player      the player accepting the quest; must not be null
      * @param template    the NPC-delivery quest template; must not be null

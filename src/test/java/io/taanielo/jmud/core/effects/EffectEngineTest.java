@@ -183,7 +183,7 @@ class EffectEngineTest {
             messages.add(message);
         }
 
-        public List<String> messages() {
+        List<String> messages() {
             return List.copyOf(messages);
         }
     }
