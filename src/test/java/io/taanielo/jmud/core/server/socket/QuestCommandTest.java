@@ -146,7 +146,7 @@ class QuestCommandTest {
 
         assertNull(ctx.savedPlayer, "Player should NOT be saved when already holding a quest");
         assertFalse(ctx.messages.isEmpty());
-        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase().contains("already")),
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase(Locale.ROOT).contains("already")),
             "Expected 'already' in error: " + ctx.messages);
     }
 
@@ -334,7 +334,7 @@ class QuestCommandTest {
 
         command.match("QUEST LOG").orElseThrow().execute(ctx);
 
-        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase().contains("not completed any")),
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase(Locale.ROOT).contains("not completed any")),
             "Expected empty-state message: " + ctx.messages);
     }
 

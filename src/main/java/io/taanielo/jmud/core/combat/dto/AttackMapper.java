@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.combat.dto;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.AttackDefinition;
@@ -63,7 +64,7 @@ public class AttackMapper {
             return RangeType.MELEE;
         }
         try {
-            return RangeType.valueOf(raw.toUpperCase());
+            return RangeType.valueOf(raw.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             return RangeType.MELEE;
         }
@@ -81,7 +82,7 @@ public class AttackMapper {
             return WeaponType.SLASHING;
         }
         try {
-            return WeaponType.valueOf(raw.toUpperCase());
+            return WeaponType.valueOf(raw.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             return WeaponType.SLASHING;
         }

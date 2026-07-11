@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -64,7 +65,7 @@ class PurgeCommandTest {
         command(world, registry, new RecordingPlayerRepository(), broadcaster, "Alice")
             .match("PURGE goblin").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("denied"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("denied"));
         assertFalse(registry.getMobsInRoom(START).isEmpty(), "mob must remain for a non-wizard");
     }
 
@@ -118,7 +119,7 @@ class PurgeCommandTest {
         command(world, registry, repo, broadcaster, "Alice")
             .match("PURGE Ghost").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("online"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("online"));
         assertTrue(repo.deleted.isEmpty(), "an online player must not be deleted");
     }
 
@@ -134,6 +135,6 @@ class PurgeCommandTest {
         command(world, registry, new RecordingPlayerRepository(), broadcaster, "Alice")
             .match("PURGE nobody").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("no mob or offline player"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("no mob or offline player"));
     }
 }

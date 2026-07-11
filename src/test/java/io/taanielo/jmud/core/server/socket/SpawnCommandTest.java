@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -64,7 +65,7 @@ class SpawnCommandTest {
 
         command(world, registry, broadcaster, "Alice").match("SPAWN goblin dest").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("denied"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("denied"));
         assertTrue(registry.getMobsInRoom(DEST).isEmpty(), "no mob should be spawned for a non-wizard");
     }
 
@@ -128,6 +129,6 @@ class SpawnCommandTest {
             null, world.roomService(), broadcaster)
             .match("SPAWN goblin").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("not available"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("not available"));
     }
 }

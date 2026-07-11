@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -208,7 +209,7 @@ class TellCommandTest {
         @Override public void writeLineSafe(String m) { lines.add(m); }
         @Override public void sendPrompt() {}
         @Override public Player getOnlinePlayer(Username u) { return onlinePlayerObjects.get(u); }
-        @Override public void sendToUsername(Username u, String m) { sentToUsername.put(u.getValue().toLowerCase(), m); }
+        @Override public void sendToUsername(Username u, String m) { sentToUsername.put(u.getValue().toLowerCase(Locale.ROOT), m); }
         @Override public void sendToRoom(Player s, Player t, String m) {}
         @Override public void sendToRoom(Player s, String m) {}
         @Override public Optional<Player> resolveTarget(Player s, String i) { return Optional.empty(); }

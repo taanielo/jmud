@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.trade;
 
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -218,7 +219,7 @@ public class TradeService implements Tickable {
         }
         if (match == null) {
             for (Item item : session.itemsOf(player)) {
-                if (item.getName().toLowerCase().startsWith(normalized.toLowerCase())) {
+                if (item.getName().toLowerCase(Locale.ROOT).startsWith(normalized.toLowerCase(Locale.ROOT))) {
                     match = item;
                     break;
                 }

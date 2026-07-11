@@ -72,6 +72,11 @@ tasks.withType(JavaCompile).configureEach {
         disable('MissingSummary')
         disable('AlmostJavadoc')
 
+        // Case-folding without an explicit Locale is host-locale dependent and can silently
+        // break ASCII matching (e.g. Turkish locale dotless-i). Server-authoritative behaviour
+        // must not vary by host locale, so this is a hard error in both main and test sources.
+        check('StringCaseLocaleUsage', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at

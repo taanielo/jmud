@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -76,7 +77,7 @@ class RegrowthSpellTest {
         assertTrue(applied);
         assertEquals(1, target.effects().size());
         assertEquals(REGROWTH_EFFECT, target.effects().getFirst().id());
-        assertTrue(sink.targetMessages().stream().anyMatch(m -> m.toLowerCase().contains("regrow")),
+        assertTrue(sink.targetMessages().stream().anyMatch(m -> m.toLowerCase(Locale.ROOT).contains("regrow")),
             "Apply message should describe the regrowth");
     }
 

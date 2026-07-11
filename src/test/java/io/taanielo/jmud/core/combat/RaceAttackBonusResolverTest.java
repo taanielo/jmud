@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -95,6 +96,6 @@ class RaceAttackBonusResolverTest {
               "carry_base": 50,
               "attack_modifier": %d
             }
-            """, id, id.substring(0, 1).toUpperCase() + id.substring(1), attackModifier));
+            """, id, id.substring(0, 1).toUpperCase(Locale.ROOT) + id.substring(1), attackModifier));
     }
 }

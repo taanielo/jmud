@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -79,7 +80,7 @@ class HealingBaseResolverTest {
               },
               "carry_base": 0
             }
-            """, id, id.substring(0, 1).toUpperCase() + id.substring(1), modifier));
+            """, id, id.substring(0, 1).toUpperCase(Locale.ROOT) + id.substring(1), modifier));
     }
 
     private void seedClass(Path dataRoot, String id, int modifier) throws Exception {
@@ -96,6 +97,6 @@ class HealingBaseResolverTest {
               },
               "carry_bonus": 0
             }
-            """, id, id.substring(0, 1).toUpperCase() + id.substring(1), modifier));
+            """, id, id.substring(0, 1).toUpperCase(Locale.ROOT) + id.substring(1), modifier));
     }
 }

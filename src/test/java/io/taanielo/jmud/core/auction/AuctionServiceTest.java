@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -118,7 +119,7 @@ class AuctionServiceTest {
         AuctionTransactionResult result = auctionService.buy(alice, 1, CREATED_TICK);
 
         assertFalse(result.success());
-        assertTrue(result.message().toLowerCase().contains("own"));
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("own"));
         assertEquals(1, auctionService.activeListings(CREATED_TICK).size());
     }
 

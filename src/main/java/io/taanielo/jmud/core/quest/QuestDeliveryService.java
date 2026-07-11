@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.quest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -159,7 +160,7 @@ public class QuestDeliveryService {
             int stillNeeded = template.requiredDropCount() - held;
             return DeliverResult.failure(
                 "You only have " + held + "/" + template.requiredDropCount()
-                + " " + template.name().toLowerCase() + " items. "
+                + " " + template.name().toLowerCase(Locale.ROOT) + " items. "
                 + "You still need " + stillNeeded + " more.");
         }
 

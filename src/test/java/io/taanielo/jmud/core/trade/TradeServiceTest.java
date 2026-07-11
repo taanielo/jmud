@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -175,7 +176,7 @@ class TradeServiceTest {
         assertFalse(service.isTrading(ALICE));
         assertFalse(service.isTrading(BOB));
         assertNotNull(notifications.get(ALICE));
-        assertTrue(notifications.get(ALICE).getLast().toLowerCase().contains("cancel"));
+        assertTrue(notifications.get(ALICE).getLast().toLowerCase(Locale.ROOT).contains("cancel"));
     }
 
     @Test

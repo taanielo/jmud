@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -258,7 +259,7 @@ class BankServiceTest {
 
         assertFalse(result.success());
         assertNull(result.updatedPlayer());
-        assertTrue(result.message().toLowerCase().contains("lighten"),
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("lighten"),
             "message should tell the player to lighten their load");
     }
 
