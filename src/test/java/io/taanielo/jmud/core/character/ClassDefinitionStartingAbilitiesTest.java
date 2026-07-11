@@ -63,6 +63,19 @@ class ClassDefinitionStartingAbilitiesTest {
     }
 
     @Test
+    void rangerHasTrackAndAimedShot() throws ClassRepositoryException {
+        JsonClassRepository repo = new JsonClassRepository(Path.of("data"));
+        List<ClassDefinition> classes = repo.findAll();
+
+        ClassDefinition ranger = findById(classes, "ranger");
+        List<String> ids = abilityIdValues(ranger.startingAbilityIds());
+
+        assertTrue(ids.contains("skill.track"), "Ranger must have skill.track");
+        assertTrue(ids.contains("skill.aimed-shot"), "Ranger must have skill.aimed-shot");
+        assertEquals(2, ids.size(), "Ranger should have exactly 2 starting abilities");
+    }
+
+    @Test
     void classDefinitionWithNoAbilityIdsHasEmptyList() {
         ClassDefinition def = new ClassDefinition(ClassId.of("test"), "Test", 0, 0);
         assertFalse(def.startingAbilityIds() == null, "startingAbilityIds must never be null");
