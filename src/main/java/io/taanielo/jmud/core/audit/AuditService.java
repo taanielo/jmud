@@ -22,7 +22,7 @@ public class AuditService {
     private final Supplier<String> correlationSupplier;
 
     public static AuditService create(LongSupplier tickSupplier) {
-        Clock clock = Clock.systemDefaultZone();
+        Clock clock = Clock.systemUTC();
         if (!AuditSettings.enabled()) {
             return new AuditService(new NoOpAuditSink(), clock, tickSupplier, AuditService::generateCorrelationId);
         }

@@ -93,6 +93,21 @@ tasks.withType(JavaCompile).configureEach {
         // @SuppressWarnings("ReferenceEquality"). Hard error in both main and test sources.
         check('ReferenceEquality', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
 
+        // A non-atomic read-modify-write of a volatile field is a data race under multiple writers.
+        // jmud's single-writer tick loop (AGENTS.md §5) makes the tick-confined decrements safe, so
+        // the two legitimate call sites carry a targeted @SuppressWarnings citing that contract;
+        // promoting to error keeps any new, genuinely-concurrent volatile updates from slipping in.
+        check('NonAtomicVolatileUpdate', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
+        // Mutating a collection while iterating it in an enhanced-for loop risks
+        // ConcurrentModificationException or skipped elements. Use removeIf/iterator.remove instead.
+        check('ModifyCollectionInEnhancedForLoop', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
+        // Time-based APIs that fall back to the host default timezone make behaviour host-dependent,
+        // undermining deterministic, server-authoritative output (AGENTS.md §5). Require an explicit
+        // zone/clock (e.g. Clock.systemUTC()). Hard error in both main and test sources.
+        check('JavaTimeDefaultTimeZone', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at

@@ -49,6 +49,9 @@ public class PlayerRespawnTicker implements Tickable {
         return scheduled;
     }
 
+    // Single-writer: tick() runs only on the tick thread (AGENTS.md §5), so the
+    // volatile read-decrement-write is not a multi-writer race.
+    @SuppressWarnings("NonAtomicVolatileUpdate")
     @Override
     public void tick() {
         if (!scheduled) {
