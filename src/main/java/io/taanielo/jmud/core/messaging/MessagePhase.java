@@ -17,7 +17,8 @@ public enum MessagePhase {
     DROP,
     ATTACK_HIT,
     ATTACK_MISS,
-    ATTACK_CRIT;
+    ATTACK_CRIT,
+    ATTACK_BLOCK;
 
     public static MessagePhase fromString(String value) {
         if (value == null) {

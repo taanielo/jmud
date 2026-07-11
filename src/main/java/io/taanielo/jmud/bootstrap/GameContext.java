@@ -54,6 +54,7 @@ import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
+import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
@@ -291,6 +292,7 @@ public record GameContext(
         EffectEngine effectEngine = new EffectEngine(effectRepository);
 
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
+        ShieldBlockResolver shieldBlockResolver = new ShieldBlockResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
         ClassArmorBonusResolver classArmorBonusResolver = new ClassArmorBonusResolver(classRepository);
         RaceAttackBonusResolver raceAttackBonusResolver = new RaceAttackBonusResolver(raceRepository);
@@ -302,7 +304,7 @@ public record GameContext(
         CombatRandom worldRandom = seededRng ? new SeededCombatRandom(worldSeed) : new ThreadLocalCombatRandom();
         CombatEngine combatEngine = createCombatEngine(
                 effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, attackRepository,
+                equipmentArmorResolver, shieldBlockResolver, attackRepository,
                 tickClock::currentTick, effectEngine, seededRng, worldSeed);
 
         // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
@@ -642,6 +644,7 @@ public record GameContext(
         RaceAttackBonusResolver attackBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
+        ShieldBlockResolver shieldBlockResolver,
         JsonAttackRepository attackRepository,
         LongSupplier tickSupplier,
         EffectEngine effectEngine,
@@ -653,14 +656,15 @@ public record GameContext(
             CombatRandom threadLocalRandom = new ThreadLocalCombatRandom();
             return new CombatEngine(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
+                equipmentArmorResolver, shieldBlockResolver, (tick, actorId) -> threadLocalRandom, () -> 0L,
+                effectEngine);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-            equipmentArmorResolver, provider, tickSupplier, effectEngine);
+            equipmentArmorResolver, shieldBlockResolver, provider, tickSupplier, effectEngine);
     }
 
     private static ItemRepository createItemRepository() {

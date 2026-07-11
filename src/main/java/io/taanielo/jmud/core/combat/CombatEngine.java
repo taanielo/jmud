@@ -33,6 +33,7 @@ public class CombatEngine {
     private final RaceAttackBonusResolver attackBonusResolver;
     private final ClassArmorBonusResolver classArmorBonusResolver;
     private final EquipmentArmorResolver equipmentArmorResolver;
+    private final ShieldBlockResolver shieldBlockResolver;
     private final CombatRandomProvider randomProvider;
     private final LongSupplier tickSupplier;
     private final EffectEngine effectEngine;
@@ -210,6 +211,7 @@ public class CombatEngine {
             attackBonusResolver,
             ClassArmorBonusResolver.noOp(),
             equipmentArmorResolver,
+            ShieldBlockResolver.noOp(),
             randomProvider,
             tickSupplier,
             effectEngine
@@ -227,6 +229,7 @@ public class CombatEngine {
      * @param attackBonusResolver     resolves race-based attack (hit-chance) bonuses on the attacker
      * @param classArmorBonusResolver resolves class-based AC bonuses on the target
      * @param equipmentArmorResolver  resolves equipment-based AC bonuses on the target
+     * @param shieldBlockResolver     resolves the target's off-hand shield block chance/reduction
      * @param randomProvider          produces a fresh {@link CombatRandom} per encounter
      * @param tickSupplier            supplies the current world tick number
      * @param effectEngine            applies {@link AttackDefinition#effectOnHit()} to targets;
@@ -239,6 +242,7 @@ public class CombatEngine {
         RaceAttackBonusResolver attackBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
+        ShieldBlockResolver shieldBlockResolver,
         CombatRandomProvider randomProvider,
         LongSupplier tickSupplier,
         EffectEngine effectEngine
@@ -250,6 +254,7 @@ public class CombatEngine {
         this.classArmorBonusResolver =
             Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
+        this.shieldBlockResolver = Objects.requireNonNull(shieldBlockResolver, "Shield block resolver is required");
         this.randomProvider = Objects.requireNonNull(randomProvider, "Combat random provider is required");
         this.tickSupplier = Objects.requireNonNull(tickSupplier, "Tick supplier is required");
         this.effectEngine = effectEngine;
@@ -312,6 +317,7 @@ public class CombatEngine {
 
         int damage = 0;
         boolean crit = false;
+        boolean blocked = false;
         if (hit) {
             int baseDamage = random.roll(attack.minDamage(), attack.maxDamage());
             int adjusted = attackerMods.damage().apply(baseDamage + attack.damageBonus());
@@ -320,14 +326,27 @@ public class CombatEngine {
                 int varianceRoll = random.roll(-variance, variance);
                 adjusted = Math.max(0, (int) Math.round(adjusted * (1 + (varianceRoll / 100.0))));
             }
-            int critChance = CombatSettings.baseCritChance()
-                + attack.critBonus();
-            critChance = attackerMods.critChance().apply(critChance);
-            critChance = clamp(critChance, 0, 100);
-            int critRoll = random.roll(1, 100);
-            crit = critRoll <= critChance;
-            if (crit) {
-                adjusted *= CombatSettings.critMultiplier();
+            // A shield in the target's off-hand may block an otherwise-landing hit. Only roll when a
+            // block is possible so equipment without a shield leaves the RNG stream (and therefore
+            // every existing result) unchanged. A block reduces damage and precludes a crit.
+            ShieldBlockResolver.ShieldBlock shieldBlock = shieldBlockResolver.resolve(target);
+            if (shieldBlock.canBlock()) {
+                int blockRoll = random.roll(1, 100);
+                blocked = blockRoll <= clamp(shieldBlock.chancePercent(), 0, 100);
+            }
+            if (blocked) {
+                int reduction = clamp(shieldBlock.reductionPercent(), 0, 100);
+                adjusted = (int) Math.round(adjusted * ((100 - reduction) / 100.0));
+            } else {
+                int critChance = CombatSettings.baseCritChance()
+                    + attack.critBonus();
+                critChance = attackerMods.critChance().apply(critChance);
+                critChance = clamp(critChance, 0, 100);
+                int critRoll = random.roll(1, 100);
+                crit = critRoll <= critChance;
+                if (crit) {
+                    adjusted *= CombatSettings.critMultiplier();
+                }
             }
             damage = Math.max(0, adjusted);
         }
@@ -367,9 +386,16 @@ public class CombatEngine {
         String attackerName = attacker.getUsername().getValue();
         List<MessageSpec> specs = attack.messages();
         if (!specs.isEmpty()) {
-            MessagePhase phase = !hit
-                ? MessagePhase.ATTACK_MISS
-                : (crit ? MessagePhase.ATTACK_CRIT : MessagePhase.ATTACK_HIT);
+            MessagePhase phase;
+            if (!hit) {
+                phase = MessagePhase.ATTACK_MISS;
+            } else if (blocked) {
+                phase = MessagePhase.ATTACK_BLOCK;
+            } else if (crit) {
+                phase = MessagePhase.ATTACK_CRIT;
+            } else {
+                phase = MessagePhase.ATTACK_HIT;
+            }
             MessageContext context = new MessageContext(
                 attacker.getUsername(),
                 target.getUsername(),
@@ -400,6 +426,10 @@ public class CombatEngine {
             sourceMessage = "You miss " + targetName + ".";
             targetMessage = attackerName + " misses you.";
             roomMessage = attackerName + " misses " + targetName + ".";
+        } else if (blocked) {
+            sourceMessage = targetName + " blocks your attack.";
+            targetMessage = "You block " + attackerName + "'s attack with your shield.";
+            roomMessage = targetName + " blocks " + attackerName + "'s attack.";
         } else if (crit) {
             sourceMessage = "You critically hit " + targetName + " for " + damage + ".";
             targetMessage = attackerName + " critically hits you for " + damage + ".";
@@ -410,7 +440,7 @@ public class CombatEngine {
             roomMessage = attackerName + " hits " + targetName + ".";
         }
 
-        return new CombatResult(attacker, updatedTarget, hit, crit, damage,
+        return new CombatResult(attacker, updatedTarget, hit, crit, blocked, damage,
             sourceMessage, targetMessage, roomMessage, rngSeed, effectTargetMessages, effectRoomMessages);
     }
 

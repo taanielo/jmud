@@ -7,6 +7,7 @@ public final class CombatSettings {
     public static final int DEFAULT_BASE_CRIT_CHANCE = 5;
     public static final int DEFAULT_DAMAGE_VARIANCE_PERCENT = 0;
     public static final int DEFAULT_CRIT_MULTIPLIER = 2;
+    public static final int DEFAULT_BLOCK_REDUCTION_PERCENT = 50;
     public static final String DEFAULT_ATTACK_ID = "attack.unarmed";
     public static final int DEFAULT_ATTACK_CADENCE_TICKS = 1;
 
@@ -37,6 +38,22 @@ public final class CombatSettings {
             throw new IllegalArgumentException("Crit multiplier must be >= 1");
         }
         return multiplier;
+    }
+
+    /**
+     * The default percentage by which a successful shield block reduces incoming damage,
+     * used when an off-hand shield item declares a {@code block_chance} stat but no explicit
+     * {@code block_reduction} stat. Clamped to the range {@code [0, 100]}.
+     *
+     * @return the default block-reduction percentage in {@code [0, 100]}
+     */
+    public static int defaultBlockReductionPercent() {
+        int reduction = CONFIG.getInt(
+            "jmud.combat.default_block_reduction_percent", DEFAULT_BLOCK_REDUCTION_PERCENT);
+        if (reduction < 0 || reduction > 100) {
+            throw new IllegalArgumentException("Default block reduction percent must be in [0, 100]");
+        }
+        return reduction;
     }
 
     public static AttackId defaultAttackId() {

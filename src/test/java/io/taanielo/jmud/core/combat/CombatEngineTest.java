@@ -27,7 +27,13 @@ import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
+import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 class CombatEngineTest {
@@ -248,6 +254,7 @@ class CombatEngineTest {
             RaceAttackBonusResolver.noOp(),
             new StubClassArmorBonusResolver(3),
             EquipmentArmorResolver.noOp(),
+            ShieldBlockResolver.noOp(),
             (tick, actorId) -> random,
             () -> 0L,
             null
@@ -464,6 +471,213 @@ class CombatEngineTest {
         assertTrue(result.hit(), "Legacy constructor should still produce correct combat results");
         assertEquals(3, result.damage(), "Legacy constructor should produce correct damage");
         assertEquals(0L, result.rngSeed(), "Legacy fixed-random constructor records seed 0");
+    }
+
+    // ── Shield block tests ────────────────────────────────────────────────
+
+    @Test
+    void shieldBlockReducesDamageAndIsDistinctFromHitAndCrit() throws Exception {
+        // hit roll 10 (hit), damage roll 4, block roll 1 (<= 100 block chance). No crit roll: a
+        // block precludes a crit. 50% reduction on 4 damage => 2.
+        AttackId attackId = AttackId.of("attack.block");
+        AttackDefinition attack = new AttackDefinition(attackId, "block", 4, 4, 0, 0, 0, List.of());
+        ItemId shieldId = ItemId.of("test-shield");
+        CombatEngine engine = shieldEngine(attack, shieldItem(shieldId, 100, 50), shieldId,
+            new FixedCombatRandom(10, 4, 1));
+        Player attacker = player("attacker", List.of());
+        Player target = playerWithOffhand("target", shieldId);
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit(), "a blocked attack is still a hit");
+        assertTrue(result.blocked(), "the shield should block");
+        assertFalse(result.crit(), "a block precludes a crit");
+        assertEquals(2, result.damage(), "block reduces damage by 50%, not to zero");
+        assertEquals(18, result.target().getVitals().hp());
+    }
+
+    @Test
+    void failedShieldRollLeavesAttackUnblocked() throws Exception {
+        // hit roll 10, damage roll 4, block roll 50 (> 25 block chance => no block), crit roll 100.
+        AttackId attackId = AttackId.of("attack.no-block");
+        AttackDefinition attack = new AttackDefinition(attackId, "no-block", 4, 4, 0, 0, 0, List.of());
+        ItemId shieldId = ItemId.of("test-shield");
+        CombatEngine engine = shieldEngine(attack, shieldItem(shieldId, 25, 50), shieldId,
+            new FixedCombatRandom(10, 4, 50, 100));
+        Player attacker = player("attacker", List.of());
+        Player target = playerWithOffhand("target", shieldId);
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertFalse(result.blocked());
+        assertEquals(4, result.damage(), "an unblocked hit deals full damage");
+    }
+
+    @Test
+    void noBlockRollWhenOffhandIsEmpty() throws Exception {
+        // Only three rolls are supplied (hit, damage, crit). If a block roll were consumed the
+        // FixedCombatRandom would run out, so this asserts no block roll happens without a shield.
+        AttackId attackId = AttackId.of("attack.empty-offhand");
+        AttackDefinition attack = new AttackDefinition(attackId, "empty-offhand", 4, 4, 0, 0, 0, List.of());
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(10, 4, 100)
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = player("target", List.of());
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertFalse(result.blocked());
+        assertEquals(4, result.damage());
+    }
+
+    @Test
+    void noBlockRollWhenOffhandItemHasNoBlockStat() throws Exception {
+        // A charm in the off-hand slot with no block_chance behaves exactly as an empty slot: only
+        // hit, damage and crit rolls are consumed.
+        AttackId attackId = AttackId.of("attack.charm-offhand");
+        AttackDefinition attack = new AttackDefinition(attackId, "charm-offhand", 4, 4, 0, 0, 0, List.of());
+        ItemId charmId = ItemId.of("test-charm");
+        Item charm = Item.builder(charmId, "Test Charm", "A trinket.", new ItemAttributes(Map.of("strength", 1)))
+            .equipSlot(EquipmentSlot.OFFHAND).weight(1).value(0).build();
+        CombatEngine engine = shieldEngine(attack, charm, charmId, new FixedCombatRandom(10, 4, 100));
+        Player attacker = player("attacker", List.of());
+        Player target = playerWithOffhand("target", charmId);
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertFalse(result.blocked());
+        assertEquals(4, result.damage());
+    }
+
+    @Test
+    void blockStacksWithHitChanceModifiers() throws Exception {
+        // Class armour bonus 3 lowers hit chance 75 -> 72; roll 70 still hits, then the shield blocks.
+        AttackId attackId = AttackId.of("attack.armor-block");
+        AttackDefinition attack = new AttackDefinition(attackId, "armor-block", 4, 4, 0, 0, 0, List.of());
+        ItemId shieldId = ItemId.of("test-shield");
+        FixedCombatRandom random = new FixedCombatRandom(70, 4, 1);
+        ShieldBlockResolver shieldResolver = shieldResolver(shieldId, shieldItem(shieldId, 100, 50));
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            RaceAttackBonusResolver.noOp(),
+            new StubClassArmorBonusResolver(3),
+            EquipmentArmorResolver.noOp(),
+            shieldResolver,
+            (tick, actorId) -> random,
+            () -> 0L,
+            null
+        );
+        Player attacker = player("attacker", List.of());
+        Player target = playerWithOffhand("target", shieldId);
+
+        CombatResult result = engine.resolve(attacker, target, attackId);
+
+        assertTrue(result.hit());
+        assertTrue(result.blocked());
+        assertEquals(2, result.damage());
+    }
+
+    @Test
+    void blockProducesDistinctDefaultMessages() throws Exception {
+        AttackId attackId = AttackId.of("attack.block-msg");
+        AttackDefinition attack = new AttackDefinition(attackId, "block-msg", 4, 4, 0, 0, 0, List.of());
+        ItemId shieldId = ItemId.of("test-shield");
+        CombatEngine engine = shieldEngine(attack, shieldItem(shieldId, 100, 50), shieldId,
+            new FixedCombatRandom(10, 4, 1));
+
+        CombatResult result = engine.resolve(
+            player("attacker", List.of()), playerWithOffhand("target", shieldId), attackId);
+
+        assertTrue(result.blocked());
+        assertEquals("target blocks your attack.", result.sourceMessage());
+        assertEquals("You block attacker's attack with your shield.", result.targetMessage());
+        assertEquals("target blocks attacker's attack.", result.roomMessage());
+    }
+
+    @Test
+    void seededEngineWithShieldIsDeterministic() throws Exception {
+        AttackId attackId = AttackId.of("attack.block-seed");
+        AttackDefinition attack = new AttackDefinition(attackId, "block-seed", 2, 6, 0, 0, 0, List.of());
+        ItemId shieldId = ItemId.of("test-shield");
+        SeededCombatRandomProvider provider = new SeededCombatRandomProvider(0x5EEDL);
+        ShieldBlockResolver shieldResolver = shieldResolver(shieldId, shieldItem(shieldId, 50, 50));
+
+        CombatResult r1 = seededShieldEngine(attack, attackId, shieldResolver, provider)
+            .resolve(player("attacker", List.of()), playerWithOffhand("target", shieldId), attackId);
+        CombatResult r2 = seededShieldEngine(attack, attackId, shieldResolver, provider)
+            .resolve(player("attacker", List.of()), playerWithOffhand("target", shieldId), attackId);
+
+        assertEquals(r1.hit(), r2.hit());
+        assertEquals(r1.blocked(), r2.blocked());
+        assertEquals(r1.damage(), r2.damage());
+        assertEquals(r1.rngSeed(), r2.rngSeed());
+    }
+
+    private CombatEngine seededShieldEngine(
+        AttackDefinition attack, AttackId attackId, ShieldBlockResolver shieldResolver,
+        SeededCombatRandomProvider provider) {
+        return new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            RaceAttackBonusResolver.noOp(),
+            ClassArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            shieldResolver,
+            provider,
+            () -> 7L,
+            null
+        );
+    }
+
+    private CombatEngine shieldEngine(
+        AttackDefinition attack, Item offhandItem, ItemId offhandId, FixedCombatRandom random) {
+        AttackId attackId = attack.id();
+        return new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            RaceAttackBonusResolver.noOp(),
+            ClassArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            shieldResolver(offhandId, offhandItem),
+            (tick, actorId) -> random,
+            () -> 0L,
+            null
+        );
+    }
+
+    private ShieldBlockResolver shieldResolver(ItemId offhandId, Item offhandItem) {
+        ItemRepository repository = new ItemRepository() {
+            @Override
+            public void save(Item item) {
+            }
+
+            @Override
+            public Optional<Item> findById(ItemId id) {
+                return id.equals(offhandId) ? Optional.of(offhandItem) : Optional.empty();
+            }
+        };
+        return new ShieldBlockResolver(repository);
+    }
+
+    private Item shieldItem(ItemId id, int blockChance, int blockReduction) {
+        return Item.builder(id, "Test Shield", "A test shield.",
+                new ItemAttributes(Map.of("block_chance", blockChance, "block_reduction", blockReduction)))
+            .equipSlot(EquipmentSlot.OFFHAND).weight(1).value(0).build();
+    }
+
+    private Player playerWithOffhand(String username, ItemId offhandId) {
+        return player(username, List.of())
+            .withEquipment(PlayerEquipment.empty().equip(EquipmentSlot.OFFHAND, offhandId));
     }
 
     private Player player(String username, List<EffectInstance> effects) {
