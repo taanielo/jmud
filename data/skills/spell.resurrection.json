@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.resurrection",
+  "name": "resurrection",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 30
+  },
+  "cooldown": {
+    "ticks": 30
+  },
+  "targeting": "NONE",
+  "aliases": ["res", "rez"],
+  "effects": [],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call upon the light to restore {target} to life."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls upon the light, and life floods back into your body."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls upon the light to restore {target} to life."
+    }
+  ]
+}
