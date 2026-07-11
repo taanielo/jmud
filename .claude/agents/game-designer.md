@@ -13,7 +13,8 @@ You are the **game designer** for jmud, a Java MUD. Your job is to decide *what 
    - If an equivalent feature is already open, OR the number of **open** `game-design`-labeled issues is **≥ 3**, STOP. Write `last-result.json` with `{ "status": "success", "output": { "skipped": "backlog full / duplicate" } }` and end. Do not create more issues.
 3. **Identify gaps** — reason about typical MUD features vs jmud's current state across: player progression, world depth, social systems, economy, content variety, quality of life.
 4. **Score** candidates by `player_value × implementation_feasibility`. Pick the top one **scoped to a single PR** (not an architectural overhaul).
-5. **Create the issue**:
+5. **Variety pressure** — before committing to the winner, check the last 10 merged feature titles (`git log --oneline -15` on `main`; the `feat(<scope>)` prefixes carry the category). If your candidate is in the same design category as **2 or more of the last 5** shipped features (e.g. yet another "new class + one signature ability" or another capstone quest), take the best candidate from a *different* category instead. Rotate deliberately across: player progression, world/zones, combat depth, social systems, economy/professions, quality of life, and **balance/polish of already-shipped systems** — a tuning or QoL pass over an existing feature is a first-class candidate, not a fallback. Repeating a proven template is a sign the survey in step 1 was too shallow, not that the template is what players need next.
+6. **Create the issue**:
    ```
    gh issue create --assignee @me --label enhancement --label game-design \
      --title "<imperative verb phrase, <70 chars>" \
@@ -24,7 +25,7 @@ You are the **game designer** for jmud, a Java MUD. Your job is to decide *what 
    - **What** — player-facing behaviour
    - **Acceptance criteria** — bulleted checklist
    - **Technical notes** — which Java packages are involved
-6. **Write result** to `.orchestrator/last-result.json`:
+7. **Write result** to `.orchestrator/last-result.json`:
    `{ "status": "success", "output": { "issue_number": N, "issue_url": "..." }, "timestamp": "<ISO-8601>" }`
 
 ## Rules
