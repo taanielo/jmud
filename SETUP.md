@@ -169,7 +169,7 @@ Notes:
   `LOCK`/`PAUSE` guards remain the second line of defense.
 - Unattended runs need the §1.4 permission allow-list in `.claude/settings.local.json`, including
   `Bash(scripts/agent/*)` for the step scripts — headless tool calls fail instead of prompting.
-- `cron.log` grows unbounded; truncate it occasionally (`: > .orchestrator/cron.log`).
+- `cron.log` is auto-trimmed by `guard.sh` (kept to its last 500 lines once it passes 1 MB); no manual truncation needed.
 - Don't run cron and an interactive `/loop` at the same time — the LOCK guard serializes them,
   but there's no reason to pay for both.
 

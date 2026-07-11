@@ -26,6 +26,12 @@ done
 ERR_FILE="$STATE_DIR/build-error.txt"
 BRANCH="$(git branch --show-current)"
 
+# Count this invocation for the cycle log (reset by branch.sh, read by
+# merge.sh). Counted before the gate runs so a failed check still counts.
+VRUNS="$(cat "$STATE_DIR/verify-runs" 2>/dev/null || echo 0)"
+[[ "$VRUNS" =~ ^[0-9]+$ ]] || VRUNS=0
+echo $(( VRUNS + 1 )) >"$STATE_DIR/verify-runs"
+
 # Guard: never "verify" the wrong state and hand back a meaningless PASS.
 if [ -n "$EXPECT" ] && [ "$BRANCH" != "$EXPECT" ]; then
     fail branch-mismatch "on '$BRANCH' but orchestrator expected '$EXPECT'"
