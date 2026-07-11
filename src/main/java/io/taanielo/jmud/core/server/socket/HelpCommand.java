@@ -46,9 +46,11 @@ public class HelpCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: HELP  |  HELP <command>\n"
-             + "  HELP          — show a sorted list of all commands with short descriptions.\n"
-             + "  HELP <name>   — show the full description for the named command.";
+        return """
+               Usage: HELP  |  HELP <command>
+                 HELP          \u2014 show a sorted list of all commands with short descriptions.
+                 HELP <name>   \u2014 show the full description for the named command.\
+               """;
     }
 
     @Override

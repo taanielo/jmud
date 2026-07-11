@@ -48,10 +48,12 @@ public class StatsCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: STATS\n"
-             + "  Displays aggregated tick-loop performance: average and maximum tick duration,\n"
-             + "  the slowest Tickable by aggregate cost, tick overruns and total uptime ticks.\n"
-             + "  Restricted to wizards.";
+        return """
+               Usage: STATS
+                 Displays aggregated tick-loop performance: average and maximum tick duration,
+                 the slowest Tickable by aggregate cost, tick overruns and total uptime ticks.
+                 Restricted to wizards.\
+               """;
     }
 
     @Override

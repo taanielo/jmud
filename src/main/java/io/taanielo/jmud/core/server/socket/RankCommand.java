@@ -49,11 +49,13 @@ public class RankCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: RANK [DUELS]\n"
-             + "  RANK        Displays every saved player's total kill count, ranked highest to\n"
-             + "              lowest, including players who are not currently online.\n"
-             + "  RANK DUELS  Displays every saved player's duel record (wins/losses/win rate),\n"
-             + "              ranked by wins; only players with at least one duel are listed.";
+        return """
+               Usage: RANK [DUELS]
+                 RANK        Displays every saved player's total kill count, ranked highest to
+                             lowest, including players who are not currently online.
+                 RANK DUELS  Displays every saved player's duel record (wins/losses/win rate),
+                             ranked by wins; only players with at least one duel are listed.\
+               """;
     }
 
     @Override

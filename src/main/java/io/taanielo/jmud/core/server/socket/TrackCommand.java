@@ -28,9 +28,11 @@ public class TrackCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TRACK <mob type>\n"
-             + "  Searches the world for the nearest mob of the named type and points you toward it.\n"
-             + "  Rangers only.";
+        return """
+               Usage: TRACK <mob type>
+                 Searches the world for the nearest mob of the named type and points you toward it.
+                 Rangers only.\
+               """;
     }
 
     @Override

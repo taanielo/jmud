@@ -70,9 +70,11 @@ public class SpawnCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SPAWN <mob-id> [room-id]\n"
-             + "  Instantiates a mob from the given template id into the named room, or your\n"
-             + "  current room when no room is given. Restricted to wizards.";
+        return """
+               Usage: SPAWN <mob-id> [room-id]
+                 Instantiates a mob from the given template id into the named room, or your
+                 current room when no room is given. Restricted to wizards.\
+               """;
     }
 
     @Override

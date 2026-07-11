@@ -23,9 +23,11 @@ public class BuyCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: BUY <item name>\n"
-             + "  Purchases the named item from the shopkeeper. Deducts the item's price from\n"
-             + "  your gold. Use LIST to see what is available and the prices.";
+        return """
+               Usage: BUY <item name>
+                 Purchases the named item from the shopkeeper. Deducts the item's price from
+                 your gold. Use LIST to see what is available and the prices.\
+               """;
     }
 
     @Override

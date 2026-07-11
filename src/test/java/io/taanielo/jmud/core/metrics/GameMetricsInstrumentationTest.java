@@ -154,13 +154,13 @@ class GameMetricsInstrumentationTest {
     void authLockoutCounterIncrementedWhenMaxAttemptsReached() throws IOException {
         // Write a config with max_attempts=2 so we can trigger a lockout quickly
         Path configPath = tempDir.resolve("auth.properties");
-        Files.writeString(configPath, String.join("\n",
-            "jmud.auth.allow_new_users=true",
-            "jmud.auth.max_attempts=2",
-            "jmud.auth.attempt_window_seconds=10",
-            "jmud.auth.lockout_seconds=30",
-            "jmud.auth.pbkdf2.iterations=1000"
-        ));
+        Files.writeString(configPath, """
+                                      jmud.auth.allow_new_users=true
+                                      jmud.auth.max_attempts=2
+                                      jmud.auth.attempt_window_seconds=10
+                                      jmud.auth.lockout_seconds=30
+                                      jmud.auth.pbkdf2.iterations=1000\
+                                      """);
         AuthenticationPolicy policy = AuthenticationPolicy.fromConfig(GameConfig.load(configPath));
 
         SimpleMeterRegistry registry = new SimpleMeterRegistry();

@@ -638,7 +638,7 @@ public class GameActionService {
         messages.add(GameMessage.toRoomAt(
             destinationId, source.getUsername(), playerName + " arrives in a flash of light."));
 
-        return new GameActionResult(null, null, messages, Map.of(RECALL_METADATA_KEY, Boolean.TRUE));
+        return new GameActionResult(null, null, messages, Map.of(RECALL_METADATA_KEY, true));
     }
 
     /**

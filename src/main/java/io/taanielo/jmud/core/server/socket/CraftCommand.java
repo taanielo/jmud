@@ -26,11 +26,13 @@ public class CraftCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: CRAFT [item name]\n"
-             + "  With no argument, lists the recipes the blacksmith in this room can make, showing\n"
-             + "  the materials each needs (and how many you are carrying) plus the gold cost.\n"
-             + "  With an item name, crafts it: the listed materials and gold are consumed and the\n"
-             + "  finished item is added to your inventory. You must be standing near a blacksmith.";
+        return """
+               Usage: CRAFT [item name]
+                 With no argument, lists the recipes the blacksmith in this room can make, showing
+                 the materials each needs (and how many you are carrying) plus the gold cost.
+                 With an item name, crafts it: the listed materials and gold are consumed and the
+                 finished item is added to your inventory. You must be standing near a blacksmith.\
+               """;
     }
 
     @Override

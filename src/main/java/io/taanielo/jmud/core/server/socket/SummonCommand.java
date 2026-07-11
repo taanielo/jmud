@@ -30,11 +30,13 @@ public class SummonCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SUMMON | SUMMON DISMISS\n"
-             + "  Conjures a temporary pet mob that fights hostile mobs in your room and awards you\n"
-             + "  their experience and loot. The pet fades away after a while, or when it is\n"
-             + "  destroyed. You may have only one pet at a time. SUMMON DISMISS releases it early.\n"
-             + "  Requires having learned the summon spell and enough mana.";
+        return """
+               Usage: SUMMON | SUMMON DISMISS
+                 Conjures a temporary pet mob that fights hostile mobs in your room and awards you
+                 their experience and loot. The pet fades away after a while, or when it is
+                 destroyed. You may have only one pet at a time. SUMMON DISMISS releases it early.
+                 Requires having learned the summon spell and enough mana.\
+               """;
     }
 
     @Override

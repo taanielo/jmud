@@ -23,9 +23,11 @@ public class GetCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: GET <item>\n"
-             + "  Picks up the named item from the floor of your current room\n"
-             + "  and adds it to your inventory.";
+        return """
+               Usage: GET <item>
+                 Picks up the named item from the floor of your current room
+                 and adds it to your inventory.\
+               """;
     }
 
     @Override

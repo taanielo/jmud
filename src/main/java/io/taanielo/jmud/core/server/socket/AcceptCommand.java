@@ -23,9 +23,11 @@ public class AcceptCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: ACCEPT\n"
-             + "  Accepts a pending duel challenge issued to you with DUEL, engaging both players in\n"
-             + "  combat. Challenges expire 30 seconds after they are issued.";
+        return """
+               Usage: ACCEPT
+                 Accepts a pending duel challenge issued to you with DUEL, engaging both players in
+                 combat. Challenges expire 30 seconds after they are issued.\
+               """;
     }
 
     @Override

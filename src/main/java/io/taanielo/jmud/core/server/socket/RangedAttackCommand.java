@@ -26,9 +26,11 @@ public class RangedAttackCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SHOOT <target> <direction>\n"
-             + "  Fires your equipped ranged weapon (bow, throwing knife) at the named mob in the\n"
-             + "  adjacent room in the given direction. On a hit the mob closes in to melee.";
+        return """
+               Usage: SHOOT <target> <direction>
+                 Fires your equipped ranged weapon (bow, throwing knife) at the named mob in the
+                 adjacent room in the given direction. On a hit the mob closes in to melee.\
+               """;
     }
 
     @Override

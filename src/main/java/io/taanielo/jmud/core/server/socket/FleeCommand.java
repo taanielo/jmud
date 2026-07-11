@@ -24,9 +24,11 @@ public class FleeCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: FLEE  |  FL\n"
-             + "  Attempts to escape from active combat by moving to a randomly chosen exit.\n"
-             + "  You must be in combat to flee. The direction taken is chosen at random.";
+        return """
+               Usage: FLEE  |  FL
+                 Attempts to escape from active combat by moving to a randomly chosen exit.
+                 You must be in combat to flee. The direction taken is chosen at random.\
+               """;
     }
 
     @Override

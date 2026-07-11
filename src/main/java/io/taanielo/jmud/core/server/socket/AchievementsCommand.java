@@ -25,9 +25,11 @@ public class AchievementsCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: ACHIEVEMENTS\n"
-             + "  Lists every milestone achievement. Unlocked ones show the date and time you\n"
-             + "  earned them; locked ones show your current progress (e.g. 5/100 kills).";
+        return """
+               Usage: ACHIEVEMENTS
+                 Lists every milestone achievement. Unlocked ones show the date and time you
+                 earned them; locked ones show your current progress (e.g. 5/100 kills).\
+               """;
     }
 
     @Override

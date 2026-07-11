@@ -28,9 +28,11 @@ public class TalkCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TALK <npc name>\n"
-             + "  Starts a conversation with a dialogue-capable NPC in your current room.\n"
-             + "  Choose numbered replies with RESPOND <number>.";
+        return """
+               Usage: TALK <npc name>
+                 Starts a conversation with a dialogue-capable NPC in your current room.
+                 Choose numbered replies with RESPOND <number>.\
+               """;
     }
 
     @Override

@@ -27,9 +27,11 @@ public class CompanionsCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: COMPANIONS | PETS\n"
-             + "  Lists the mobs you have tamed as companions, with each pet's current location and\n"
-             + "  hit points. Tame new companions with the TAME command.";
+        return """
+               Usage: COMPANIONS | PETS
+                 Lists the mobs you have tamed as companions, with each pet's current location and
+                 hit points. Tame new companions with the TAME command.\
+               """;
     }
 
     @Override

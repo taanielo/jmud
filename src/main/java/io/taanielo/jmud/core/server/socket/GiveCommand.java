@@ -47,9 +47,11 @@ public class GiveCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: GIVE <playername> <itemname>\n"
-             + "  Hands the named item from your inventory to the named player, who\n"
-             + "  must be in your current room.";
+        return """
+               Usage: GIVE <playername> <itemname>
+                 Hands the named item from your inventory to the named player, who
+                 must be in your current room.\
+               """;
     }
 
     @Override

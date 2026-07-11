@@ -72,9 +72,11 @@ public class PurgeCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: PURGE <mob-name|player-name>\n"
-             + "  Removes a matching mob from your current room, or deletes the persisted record of\n"
-             + "  a named offline player. Restricted to wizards.";
+        return """
+               Usage: PURGE <mob-name|player-name>
+                 Removes a matching mob from your current room, or deletes the persisted record of
+                 a named offline player. Restricted to wizards.\
+               """;
     }
 
     @Override

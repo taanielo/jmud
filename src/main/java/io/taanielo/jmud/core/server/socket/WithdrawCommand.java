@@ -23,9 +23,11 @@ public class WithdrawCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: WITHDRAW <amount>\n"
-             + "  Moves the specified amount of gold from the bank to your carried balance.\n"
-             + "  Requires a bank NPC in the room.";
+        return """
+               Usage: WITHDRAW <amount>
+                 Moves the specified amount of gold from the bank to your carried balance.
+                 Requires a bank NPC in the room.\
+               """;
     }
 
     @Override

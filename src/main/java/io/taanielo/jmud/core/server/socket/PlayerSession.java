@@ -55,7 +55,6 @@ public class PlayerSession {
 
     private final TickRegistry tickRegistry;
     private final PersistenceQueue persistenceQueue;
-    private final RoomService roomService;
     private final EffectEngine effectEngine;
     private final EffectRepository effectRepository;
     private final HealingEngine healingEngine;
@@ -145,7 +144,7 @@ public class PlayerSession {
     ) {
         this.tickRegistry = Objects.requireNonNull(tickRegistry, "Tick registry is required");
         this.persistenceQueue = Objects.requireNonNull(persistenceQueue, "Persistence queue is required");
-        this.roomService = Objects.requireNonNull(roomService, "Room service is required");
+        Objects.requireNonNull(roomService, "Room service is required");
         this.effectEngine = Objects.requireNonNull(effectEngine, "Effect engine is required");
         this.effectRepository = Objects.requireNonNull(effectRepository, "Effect repository is required");
         this.healingEngine = Objects.requireNonNull(healingEngine, "Healing engine is required");

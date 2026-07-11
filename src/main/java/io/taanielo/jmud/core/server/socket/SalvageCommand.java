@@ -27,14 +27,16 @@ public class SalvageCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SALVAGE [item name]\n"
-             + "  With no argument, lists the weapons and armor you are carrying that can be broken\n"
-             + "  down, showing the materials each would yield.\n"
-             + "  With an item name, salvages it: the item is destroyed and materials based on its\n"
-             + "  rarity are added to your inventory. Better gear yields more or rarer materials.\n"
-             + "  You must be standing near a blacksmith, and the item must be unequipped (UNEQUIP\n"
-             + "  it first). Quest items and non-gear (potions, food, keys) cannot be salvaged.\n"
-             + "  Salvaging is irreversible.";
+        return """
+               Usage: SALVAGE [item name]
+                 With no argument, lists the weapons and armor you are carrying that can be broken
+                 down, showing the materials each would yield.
+                 With an item name, salvages it: the item is destroyed and materials based on its
+                 rarity are added to your inventory. Better gear yields more or rarer materials.
+                 You must be standing near a blacksmith, and the item must be unequipped (UNEQUIP
+                 it first). Quest items and non-gear (potions, food, keys) cannot be salvaged.
+                 Salvaging is irreversible.\
+               """;
     }
 
     @Override

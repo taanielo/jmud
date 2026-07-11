@@ -4565,9 +4565,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         connection.writeLine(String.format("  %-24s %-8s %s", "Ability ID", "Cost", "Status"));
         connection.writeLine("  " + "-".repeat(48));
         for (AbilityId abilityId : classDef.startingAbilityIds()) {
-            Ability ability = abilityRegistry.findById(abilityId).orElse(null);
             String displayId = abilityId.getValue();
-            String name = ability != null ? ability.name() : displayId;
             boolean learned = player.getLearnedAbilities().contains(abilityId);
             String status = learned ? "learned" : "unlearned";
             connection.writeLine(String.format("  %-24s %-8s %s", displayId, "1 prac", status));

@@ -28,11 +28,13 @@ public class GatherCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: GATHER\n"
-             + "  Harvests the resource node (an ore vein, a herb patch, and the like) in your current\n"
-             + "  room, adding the raw material to your inventory. A harvested node is stripped bare and\n"
-             + "  must respawn before it can be worked again. Take the gathered materials to a blacksmith\n"
-             + "  to CRAFT new gear.";
+        return """
+               Usage: GATHER
+                 Harvests the resource node (an ore vein, a herb patch, and the like) in your current
+                 room, adding the raw material to your inventory. A harvested node is stripped bare and
+                 must respawn before it can be worked again. Take the gathered materials to a blacksmith
+                 to CRAFT new gear.\
+               """;
     }
 
     @Override

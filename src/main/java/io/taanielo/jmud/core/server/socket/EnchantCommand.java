@@ -27,14 +27,16 @@ public class EnchantCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: ENCHANT [<item> <enchantment>]\n"
-             + "  With no argument, lists the enchantments the enchanter in this room can apply,\n"
-             + "  showing each affix's stat bonus, the materials it needs (and how many you are\n"
-             + "  carrying) and the gold cost.\n"
-             + "  With an item and enchantment name, permanently adds that affix to the item you are\n"
-             + "  carrying: the listed materials and gold are consumed and the item's new stats are\n"
-             + "  reported. Only equippable weapons and armour can be enchanted, and each item can\n"
-             + "  bear a single rune. You must be standing near an enchanter.";
+        return """
+               Usage: ENCHANT [<item> <enchantment>]
+                 With no argument, lists the enchantments the enchanter in this room can apply,
+                 showing each affix's stat bonus, the materials it needs (and how many you are
+                 carrying) and the gold cost.
+                 With an item and enchantment name, permanently adds that affix to the item you are
+                 carrying: the listed materials and gold are consumed and the item's new stats are
+                 reported. Only equippable weapons and armour can be enchanted, and each item can
+                 bear a single rune. You must be standing near an enchanter.\
+               """;
     }
 
     @Override

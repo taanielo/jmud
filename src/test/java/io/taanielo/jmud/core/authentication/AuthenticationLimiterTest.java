@@ -24,13 +24,13 @@ class AuthenticationLimiterTest {
     @Test
     void blocksAfterMaxAttempts() throws IOException {
         Path configPath = tempDir.resolve("auth.properties");
-        Files.writeString(configPath, String.join("\n",
-            "jmud.auth.allow_new_users=true",
-            "jmud.auth.max_attempts=2",
-            "jmud.auth.attempt_window_seconds=10",
-            "jmud.auth.lockout_seconds=30",
-            "jmud.auth.pbkdf2.iterations=1000"
-        ));
+        Files.writeString(configPath, """
+                                      jmud.auth.allow_new_users=true
+                                      jmud.auth.max_attempts=2
+                                      jmud.auth.attempt_window_seconds=10
+                                      jmud.auth.lockout_seconds=30
+                                      jmud.auth.pbkdf2.iterations=1000\
+                                      """);
         AuthenticationPolicy policy = AuthenticationPolicy.fromConfig(GameConfig.load(configPath));
         MutableClock clock = new MutableClock(Instant.EPOCH);
         AuthenticationLimiter limiter = new AuthenticationLimiter(policy, clock);

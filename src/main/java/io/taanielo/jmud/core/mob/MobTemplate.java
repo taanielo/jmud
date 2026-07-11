@@ -13,17 +13,46 @@ import io.taanielo.jmud.core.world.TimeOfDay;
 /**
  * Immutable definition of a mob type loaded from data files.
  * Separate from {@link MobInstance}, which represents a live mob in the world.
+ *
+ * @param specialAttackId optional reference to a rarer, harder-hitting attack (e.g. a boss's "troll
+ *                        smash") that mob AI may use at most once per combat encounter instead of
+ *                        {@link #attackId()}; {@code null} means this mob has no special ability
+ * @param goldDrop optional gold-drop range; {@code null} means this mob drops no gold
+ * @param tags optional classification tags (e.g. {@code "undead"}); always non-null, defaults to an
+ *            empty list when not specified in data
+ * @param wanders when {@code true} the mob may randomly wander between linked rooms on each tick;
+ *              NPCs (tag {@code "npc"}) never wander regardless of this flag; defaults to
+ *              {@code false}
+ * @param nightRespawnTicks optional respawn delay (in ticks) used instead of {@link #respawnTicks()}
+ *                         when the world is in {@link TimeOfDay#NIGHT}; {@code null} means the mob
+ *                         respawns at the same rate day and night
+ * @param summonDurationTicks optional lifetime (in ticks) of a summoned pet spawned from this
+ *                           template (see the necromancer-style SUMMON spell); when non-null this
+ *                           template is a <em>pet template</em>: it is never spawned into the world
+ *                           at start-up and never respawns — an instance exists only while a player's
+ *                           summon is active, and it is removed the moment it dies or this many ticks
+ *                           elapse; {@code null} for ordinary world mobs
+ * @param charmable when {@code true} the mob may be permanently captured as a companion via the TAME
+ *                 command (see the pet/charm system); defaults to {@code false} — ordinary mobs
+ *                 cannot be tamed
+ * @param dialogueId optional id of a dialogue tree this NPC offers via the {@code TALK} command;
+ *                  {@code null} when the mob has no conversation; the referenced tree is loaded from
+ *                  {@code data/dialogues/}
+ * @param factionId optional id of a faction this mob belongs to; {@code null} for faction-neutral
+ *                 mobs; slaying a faction mob shifts the killer's reputation with the faction, and
+ *                 the faction's hostility rules govern whether the mob engages a given player (see
+ *                 the reputation system)
+ * @param worldBoss when {@code true} this mob is a <em>world boss</em>: a rare, powerful encounter
+ *                 whose spawn and death are announced to every online player, and whose loot
+ *                 resolution guarantees at least one rare-or-higher item drop on top of the normal
+ *                 loot table; defaults to {@code false} for ordinary mobs, which produce no such
+ *                 server-wide announcements
  */
 public record MobTemplate(
     MobId id,
     String name,
     int maxHp,
     AttackId attackId,
-    /**
-     * Optional reference to a rarer, harder-hitting attack (e.g. a boss's "troll smash")
-     * that mob AI may use at most once per combat encounter instead of {@link #attackId()}.
-     * {@code null} means this mob has no special ability.
-     */
     AttackId specialAttackId,
     boolean aggressive,
     List<LootEntry> lootTable,
@@ -31,55 +60,14 @@ public record MobTemplate(
     int maxCount,
     int respawnTicks,
     int xpReward,
-    /** Optional gold-drop range; {@code null} means this mob drops no gold. */
     GoldDrop goldDrop,
-    /**
-     * Optional classification tags (e.g. {@code "undead"}).
-     * Always non-null; defaults to an empty list when not specified in data.
-     */
     List<String> tags,
-    /**
-     * When {@code true} the mob may randomly wander between linked rooms on each tick.
-     * NPCs (tag {@code "npc"}) never wander regardless of this flag.
-     * Defaults to {@code false}.
-     */
     boolean wanders,
-    /**
-     * Optional respawn delay (in ticks) used instead of {@link #respawnTicks} when the world is
-     * in {@link TimeOfDay#NIGHT}; {@code null} means the mob respawns at the same rate day and
-     * night.
-     */
     @Nullable Integer nightRespawnTicks,
-    /**
-     * Optional lifetime (in ticks) of a summoned pet spawned from this template (see the
-     * necromancer-style SUMMON spell). When non-null this template is a <em>pet template</em>: it is
-     * never spawned into the world at start-up and never respawns — an instance exists only while a
-     * player's summon is active, and it is removed the moment it dies or this many ticks elapse.
-     * {@code null} for ordinary world mobs.
-     */
     @Nullable Integer summonDurationTicks,
-    /**
-     * When {@code true} the mob may be permanently captured as a companion via the TAME command
-     * (see the pet/charm system). Defaults to {@code false} — ordinary mobs cannot be tamed.
-     */
     boolean charmable,
-    /**
-     * Optional id of a dialogue tree this NPC offers via the {@code TALK} command; {@code null} when
-     * the mob has no conversation. The referenced tree is loaded from {@code data/dialogues/}.
-     */
     @Nullable DialogueId dialogueId,
-    /**
-     * Optional id of a faction this mob belongs to; {@code null} for faction-neutral mobs. Slaying a
-     * faction mob shifts the killer's reputation with the faction, and the faction's hostility rules
-     * govern whether the mob engages a given player (see the reputation system).
-     */
     @Nullable FactionId factionId,
-    /**
-     * When {@code true} this mob is a <em>world boss</em>: a rare, powerful encounter whose spawn and
-     * death are announced to every online player, and whose loot resolution guarantees at least one
-     * rare-or-higher item drop on top of the normal loot table. Defaults to {@code false} for
-     * ordinary mobs, which produce no such server-wide announcements.
-     */
     boolean worldBoss
 ) {
     public MobTemplate {

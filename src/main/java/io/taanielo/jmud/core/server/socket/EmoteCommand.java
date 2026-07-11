@@ -42,12 +42,14 @@ public class EmoteCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: EMOTE <text>  |  ME <text>\n"
-             + "  Describes an action from the third-person perspective.\n"
-             + "  Your name is prepended automatically.\n"
-             + "  You see: You emote: <YourName> <text>\n"
-             + "  Others in the room see: <YourName> <text>\n"
-             + "  Aliases: ME";
+        return """
+               Usage: EMOTE <text>  |  ME <text>
+                 Describes an action from the third-person perspective.
+                 Your name is prepended automatically.
+                 You see: You emote: <YourName> <text>
+                 Others in the room see: <YourName> <text>
+                 Aliases: ME\
+               """;
     }
 
     @Override

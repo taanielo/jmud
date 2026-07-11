@@ -38,10 +38,12 @@ public class NoteCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: NOTE POST <message>  |  NOTE DELETE <number>\n"
-             + "  NOTE POST <message>   — pin a new note to the board in your current room.\n"
-             + "  NOTE DELETE <number>  — remove one of your own notes (numbers come from BOARD).\n"
-             + "  Read the current room's board with the BOARD command.";
+        return """
+               Usage: NOTE POST <message>  |  NOTE DELETE <number>
+                 NOTE POST <message>   \u2014 pin a new note to the board in your current room.
+                 NOTE DELETE <number>  \u2014 remove one of your own notes (numbers come from BOARD).
+                 Read the current room's board with the BOARD command.\
+               """;
     }
 
     @Override

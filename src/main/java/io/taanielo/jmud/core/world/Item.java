@@ -27,10 +27,10 @@ public class Item {
     AttackId attackRef;
     AbilityId teachesAbilityRef;
     /**
-     * Maximum number of items this container can hold, or {@code null} when the item is not a
-     * container. A positive value marks the item as a bag/chest/strongbox; see
-     * {@link #isContainer()}. Contents are packed independently of the container's own
-     * {@link #weight} (items inside do not add carry weight while stored).
+     * Maximum number of items this container can hold, or null when the item is not a container. A
+     * positive value marks the item as a bag/chest/strongbox; see isContainer(). Contents are packed
+     * independently of the container's own weight (items inside do not add carry weight while
+     * stored).
      */
     Integer containerCapacity;
     /**
@@ -40,52 +40,47 @@ public class Item {
      */
     List<Item> containedItems;
     /**
-     * Radius of light this item emits while carried, or {@code null} when the item is not a light
-     * source. A positive value (e.g. {@code 1} for a torch, {@code 2} for a lantern) lets the
-     * carrier see in dark rooms; see {@link #isLightSource()}. Consumed at read time by
-     * {@link io.taanielo.jmud.core.player.LightingService}; not stored on the room.
+     * Radius of light this item emits while carried, or null when the item is not a light source. A
+     * positive value (e.g. 1 for a torch, 2 for a lantern) lets the carrier see in dark rooms; see
+     * isLightSource(). Consumed at read time by LightingService; not stored on the room.
      */
     @Nullable Integer lightRadius;
     /**
-     * Maximum durability of this equippable item, or {@code null} when the item is unbreakable.
-     * A positive value marks the item as breakable gear that wears down as its wearer takes damage
-     * in combat; see {@link #isBreakable()}. Durability logic lives in
-     * {@link io.taanielo.jmud.core.world.ItemDurabilityService}.
+     * Maximum durability of this equippable item, or null when the item is unbreakable. A positive
+     * value marks the item as breakable gear that wears down as its wearer takes damage in combat;
+     * see isBreakable(). Durability logic lives in ItemDurabilityService.
      */
     @Nullable Integer maxDurability;
     /**
-     * Current durability of this item, from {@code 0} (broken, unusable in combat) up to
-     * {@link #maxDurability}. Always {@code null} for unbreakable items; defaults to
-     * {@link #maxDurability} when a breakable item is created without an explicit value.
+     * Current durability of this item, from 0 (broken, unusable in combat) up to maxDurability.
+     * Always null for unbreakable items; defaults to maxDurability when a breakable item is created
+     * without an explicit value.
      */
     @Nullable Integer durability;
     /**
      * Rarity tier of this item, governing its colored display name and which affixes it may carry.
-     * Never {@code null}; defaults to {@link Rarity#COMMON} for items created without an explicit
-     * tier, keeping legacy item data (which has no {@code rarity} field) fully backward compatible.
+     * Never null; defaults to Rarity.COMMON for items created without an explicit tier, keeping
+     * legacy item data (which has no rarity field) fully backward compatible.
      */
     Rarity rarity;
     /**
-     * Ids of the stat affixes attached to this item, resolved into bonus stats by
-     * {@link io.taanielo.jmud.core.world.ItemAffixService}. Always empty for plain items; the base
-     * {@link #attributes} are never mutated to fold these in.
+     * Ids of the stat affixes attached to this item, resolved into bonus stats by ItemAffixService.
+     * Always empty for plain items; the base attributes are never mutated to fold these in.
      */
     List<AffixId> affixes;
     /**
-     * Whether this item's true nature — its {@link #rarity} tier and {@link #affixes} — is known to
-     * its holder. Unidentified items display generically (e.g. {@code "an unidentified longsword"})
-     * and hide their rarity coloring and affix stats until revealed by the IDENTIFY command or by
-     * reading the item; see {@link #presentationName()} and {@link #presentationRarity()}. Defaults
-     * to {@code true} so plain items and legacy item data (which has no {@code identified} field)
-     * are identified out of the box.
+     * Whether this item's true nature — its rarity tier and affixes — is known to its holder.
+     * Unidentified items display generically (e.g. "an unidentified longsword") and hide their rarity
+     * coloring and affix stats until revealed by the IDENTIFY command or by reading the item; see
+     * presentationName() and presentationRarity(). Defaults to true so plain items and legacy item
+     * data (which has no identified field) are identified out of the box.
      */
     boolean identified;
     /**
-     * Whether this container is locked, blocking access to its {@link #containedItems} until it is
-     * opened (e.g. by the rogue PICK skill via {@link ContainerLockingService}). Only container
-     * items may be locked; defaults to {@code false} so plain items and legacy item data (which has
-     * no {@code locked} field) are unlocked out of the box. See {@link #isLocked()} and
-     * {@link #withLocked(boolean)}.
+     * Whether this container is locked, blocking access to its containedItems until it is opened
+     * (e.g. by the rogue PICK skill via ContainerLockingService). Only container items may be locked;
+     * defaults to false so plain items and legacy item data (which has no locked field) are unlocked
+     * out of the box. See isLocked() and withLocked(boolean).
      */
     boolean locked;
 

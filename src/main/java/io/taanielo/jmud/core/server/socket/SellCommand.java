@@ -24,10 +24,12 @@ public class SellCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SELL <item name>\n"
-             + "  Sells the named item from your inventory to the shopkeeper for a fraction\n"
-             + "  of its base value (typically 50%). The item is removed from your inventory\n"
-             + "  and you receive gold in return.";
+        return """
+               Usage: SELL <item name>
+                 Sells the named item from your inventory to the shopkeeper for a fraction
+                 of its base value (typically 50%). The item is removed from your inventory
+                 and you receive gold in return.\
+               """;
     }
 
     @Override

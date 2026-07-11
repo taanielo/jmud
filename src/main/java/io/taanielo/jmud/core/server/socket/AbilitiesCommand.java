@@ -31,10 +31,12 @@ public class AbilitiesCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: ABILITIES\n"
-             + "  Displays a formatted table of every ability you have learned.\n"
-             + "  Each row shows: ability name, type (SKILL/SPELL), resource cost, cooldown.\n"
-             + "  Alias: AB";
+        return """
+               Usage: ABILITIES
+                 Displays a formatted table of every ability you have learned.
+                 Each row shows: ability name, type (SKILL/SPELL), resource cost, cooldown.
+                 Alias: AB\
+               """;
     }
 
     @Override

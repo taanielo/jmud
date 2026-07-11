@@ -25,9 +25,11 @@ public class EatCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: EAT <item>\n"
-             + "  Consumes the named food item from your inventory, restoring hunger.\n"
-             + "  Eating regularly keeps your regeneration from being penalised.";
+        return """
+               Usage: EAT <item>
+                 Consumes the named food item from your inventory, restoring hunger.
+                 Eating regularly keeps your regeneration from being penalised.\
+               """;
     }
 
     @Override

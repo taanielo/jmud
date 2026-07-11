@@ -26,10 +26,12 @@ public class RecallCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: RECALL\n"
-             + "  Teleports you back to the starting/town room. You cannot recall while in\n"
-             + "  active combat — use FLEE first. Recall also has a short cooldown after each\n"
-             + "  use, so it cannot be used repeatedly as an escape button.";
+        return """
+               Usage: RECALL
+                 Teleports you back to the starting/town room. You cannot recall while in
+                 active combat \u2014 use FLEE first. Recall also has a short cooldown after each
+                 use, so it cannot be used repeatedly as an escape button.\
+               """;
     }
 
     @Override

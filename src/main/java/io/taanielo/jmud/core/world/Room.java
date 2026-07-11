@@ -20,28 +20,27 @@ public class Room {
     List<Username> occupants;
     /** Exits that start locked and the key item id required to unlock each one. */
     Map<Direction, ItemId> lockedExits;
-    /** Recommended/minimum level to enter this room, advisory only; {@code null} means no restriction. */
+    /** Recommended/minimum level to enter this room, advisory only; null means no restriction. */
     @Nullable Integer minLevel;
     /**
-     * Optional alternate description shown instead of {@link #description} when the world is in
-     * {@link TimeOfDay#NIGHT}; {@code null} means the room looks the same at night.
+     * Optional alternate description shown instead of the description field when the world is in
+     * TimeOfDay.NIGHT; null means the room looks the same at night.
      */
     @Nullable String nightDescription;
     /**
-     * Optional ambient light level: {@code 0} = pitch dark, {@code 1} = dim, {@code 2} or higher =
-     * naturally lit; {@code null} means the room is naturally lit and needs no light source. Dark
-     * rooms hide their contents from players who carry no sufficient light source; see
-     * {@link #requiredLightRadius()}.
+     * Optional ambient light level: 0 = pitch dark, 1 = dim, 2 or higher = naturally lit; null means
+     * the room is naturally lit and needs no light source. Dark rooms hide their contents from
+     * players who carry no sufficient light source; see requiredLightRadius().
      */
     @Nullable Integer lightLevel;
     /**
      * Whether this room is exposed to the sky, and therefore subject to the world's dynamic
-     * weather; {@code false} means the room is indoors and never shows weather effects.
+     * weather; false means the room is indoors and never shows weather effects.
      */
     boolean outdoor;
     /**
      * Optional pool of atmospheric flavour lines the room emits occasionally during play (e.g.
-     * dripping water, distant howls). Empty means the room is silent; never {@code null}.
+     * dripping water, distant howls). Empty means the room is silent; never null.
      */
     List<String> ambientMessages;
 

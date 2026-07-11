@@ -119,13 +119,13 @@ class SocketAuthenticationServiceTest {
 
     private AuthenticationPolicy createPolicy() throws IOException {
         Path configPath = tempDir.resolve("auth.properties");
-        Files.writeString(configPath, String.join("\n",
-            "jmud.auth.allow_new_users=true",
-            "jmud.auth.max_attempts=5",
-            "jmud.auth.attempt_window_seconds=300",
-            "jmud.auth.lockout_seconds=300",
-            "jmud.auth.pbkdf2.iterations=1000"
-        ));
+        Files.writeString(configPath, """
+                                      jmud.auth.allow_new_users=true
+                                      jmud.auth.max_attempts=5
+                                      jmud.auth.attempt_window_seconds=300
+                                      jmud.auth.lockout_seconds=300
+                                      jmud.auth.pbkdf2.iterations=1000\
+                                      """);
         return AuthenticationPolicy.fromConfig(GameConfig.load(configPath));
     }
 }

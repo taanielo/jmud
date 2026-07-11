@@ -38,10 +38,12 @@ public class GossipCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: GOSSIP <message>\n"
-             + "  Sends a message to every online player, regardless of location.\n"
-             + "  Others see: <YourName> gossips: <message>\n"
-             + "  Aliases: GOS, G";
+        return """
+               Usage: GOSSIP <message>
+                 Sends a message to every online player, regardless of location.
+                 Others see: <YourName> gossips: <message>
+                 Aliases: GOS, G\
+               """;
     }
 
     @Override

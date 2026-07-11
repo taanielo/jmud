@@ -45,19 +45,21 @@ public class TradeCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TRADE [sub-command] [args]\n"
-             + "  TRADE <player>          — propose a trade to a player in your room\n"
-             + "  TRADE ACCEPT            — accept a pending trade proposal\n"
-             + "  TRADE DECLINE           — decline a pending trade proposal\n"
-             + "  TRADE ADD <item>        — add an inventory item to your offer\n"
-             + "  TRADE ADD GOLD <amount> — add gold to your offer\n"
-             + "  TRADE REMOVE <item>     — take an item back out of your offer\n"
-             + "  TRADE CONFIRM           — lock in your offer (swap runs once both confirm)\n"
-             + "  TRADE CANCEL            — cancel the trade before it completes\n"
-             + "  TRADE STATUS            — show the current offer status\n"
-             + "\n"
-             + "Nothing leaves your inventory until both parties confirm matching offers; any change\n"
-             + "to either offer after a confirm clears both confirmations.";
+        return """
+               Usage: TRADE [sub-command] [args]
+                 TRADE <player>          \u2014 propose a trade to a player in your room
+                 TRADE ACCEPT            \u2014 accept a pending trade proposal
+                 TRADE DECLINE           \u2014 decline a pending trade proposal
+                 TRADE ADD <item>        \u2014 add an inventory item to your offer
+                 TRADE ADD GOLD <amount> \u2014 add gold to your offer
+                 TRADE REMOVE <item>     \u2014 take an item back out of your offer
+                 TRADE CONFIRM           \u2014 lock in your offer (swap runs once both confirm)
+                 TRADE CANCEL            \u2014 cancel the trade before it completes
+                 TRADE STATUS            \u2014 show the current offer status
+
+               Nothing leaves your inventory until both parties confirm matching offers; any change
+               to either offer after a confirm clears both confirmations.\
+               """;
     }
 
     @Override

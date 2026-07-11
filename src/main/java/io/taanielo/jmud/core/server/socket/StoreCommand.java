@@ -24,10 +24,12 @@ public class StoreCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: STORE <item name>\n"
-             + "  Moves the named item from your inventory into your bank vault, unequipping it first\n"
-             + "  if worn. Vaulted items are safe from death, corpse decay and looting. The vault has a\n"
-             + "  limited number of slots. Requires a bank NPC in the room.";
+        return """
+               Usage: STORE <item name>
+                 Moves the named item from your inventory into your bank vault, unequipping it first
+                 if worn. Vaulted items are safe from death, corpse decay and looting. The vault has a
+                 limited number of slots. Requires a bank NPC in the room.\
+               """;
     }
 
     @Override

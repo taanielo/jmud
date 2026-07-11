@@ -42,11 +42,13 @@ public class FriendCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: FRIEND  |  FRIEND ADD <name>  |  FRIEND REMOVE <name>  |  FRIEND CLEAR\n"
-             + "  FRIEND               — list your friends and who is online.\n"
-             + "  FRIEND ADD <name>    — add the named player to your friends list.\n"
-             + "  FRIEND REMOVE <name> — remove the named player from your friends list.\n"
-             + "  FRIEND CLEAR         — clear your entire friends list.";
+        return """
+               Usage: FRIEND  |  FRIEND ADD <name>  |  FRIEND REMOVE <name>  |  FRIEND CLEAR
+                 FRIEND               \u2014 list your friends and who is online.
+                 FRIEND ADD <name>    \u2014 add the named player to your friends list.
+                 FRIEND REMOVE <name> \u2014 remove the named player from your friends list.
+                 FRIEND CLEAR         \u2014 clear your entire friends list.\
+               """;
     }
 
     @Override

@@ -40,10 +40,12 @@ public class TellCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TELL <playername> <message>\n"
-             + "  Sends a private message to the named player, wherever they are.\n"
-             + "  The recipient sees: <YourName> tells you: <message>\n"
-             + "  Aliases: T";
+        return """
+               Usage: TELL <playername> <message>
+                 Sends a private message to the named player, wherever they are.
+                 The recipient sees: <YourName> tells you: <message>
+                 Aliases: T\
+               """;
     }
 
     @Override

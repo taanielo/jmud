@@ -42,11 +42,13 @@ public class IgnoreCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: IGNORE  |  IGNORE ADD <name>  |  IGNORE REMOVE <name>  |  IGNORE CLEAR\n"
-             + "  IGNORE               — list the players you are currently ignoring.\n"
-             + "  IGNORE ADD <name>    — mute TELL/SAY from the named player.\n"
-             + "  IGNORE REMOVE <name> — stop ignoring the named player.\n"
-             + "  IGNORE CLEAR         — clear your entire ignore list.";
+        return """
+               Usage: IGNORE  |  IGNORE ADD <name>  |  IGNORE REMOVE <name>  |  IGNORE CLEAR
+                 IGNORE               \u2014 list the players you are currently ignoring.
+                 IGNORE ADD <name>    \u2014 mute TELL/SAY from the named player.
+                 IGNORE REMOVE <name> \u2014 stop ignoring the named player.
+                 IGNORE CLEAR         \u2014 clear your entire ignore list.\
+               """;
     }
 
     @Override

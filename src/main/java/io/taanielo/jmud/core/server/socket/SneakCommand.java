@@ -27,10 +27,12 @@ public class SneakCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SNEAK | HIDE\n"
-             + "  Toggles stealth. While hidden, aggressive mobs will not engage you, and a\n"
-             + "  BACKSTAB opened from the shadows strikes for bonus damage. Attacking or using\n"
-             + "  an ability reveals you. Rogues only.";
+        return """
+               Usage: SNEAK | HIDE
+                 Toggles stealth. While hidden, aggressive mobs will not engage you, and a
+                 BACKSTAB opened from the shadows strikes for bonus damage. Attacking or using
+                 an ability reveals you. Rogues only.\
+               """;
     }
 
     @Override
