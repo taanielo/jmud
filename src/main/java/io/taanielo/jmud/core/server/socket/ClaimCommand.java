@@ -24,10 +24,12 @@ public class ClaimCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: CLAIM <item name>\n"
-             + "  Moves the named item from your bank vault back into your inventory. Fails if carrying\n"
-             + "  it would exceed your carry weight — lighten your load first. Requires a bank NPC in the\n"
-             + "  room.";
+        return """
+               Usage: CLAIM <item name>
+                 Moves the named item from your bank vault back into your inventory. Fails if carrying
+                 it would exceed your carry weight \u2014 lighten your load first. Requires a bank NPC in the
+                 room.\
+               """;
     }
 
     @Override

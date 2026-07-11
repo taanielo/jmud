@@ -24,10 +24,12 @@ public class DuelCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: DUEL <player>\n"
-             + "  Challenges a player in your room to a consensual duel. They must ACCEPT within 30\n"
-             + "  seconds to engage. Duels are fought to near death; the loser drops no items or gold\n"
-             + "  and the winner gains no experience.";
+        return """
+               Usage: DUEL <player>
+                 Challenges a player in your room to a consensual duel. They must ACCEPT within 30
+                 seconds to engage. Duels are fought to near death; the loser drops no items or gold
+                 and the winner gains no experience.\
+               """;
     }
 
     @Override

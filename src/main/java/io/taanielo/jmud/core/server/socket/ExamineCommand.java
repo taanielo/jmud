@@ -28,10 +28,12 @@ public class ExamineCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: EXAMINE <item>  |  EX <item>  |  EXAM <item>\n"
-             + "  Displays the full description, equipment slot (if any), and stat bonuses\n"
-             + "  for an item found in your inventory or on the floor of the current room.\n"
-             + "  Partial name matching is supported (e.g. EXAMINE ir matches Iron Sword).";
+        return """
+               Usage: EXAMINE <item>  |  EX <item>  |  EXAM <item>
+                 Displays the full description, equipment slot (if any), and stat bonuses
+                 for an item found in your inventory or on the floor of the current room.
+                 Partial name matching is supported (e.g. EXAMINE ir matches Iron Sword).\
+               """;
     }
 
     @Override

@@ -29,11 +29,13 @@ public class TameCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TAME <mob>\n"
-             + "  Permanently captures a charmable mob in your room as a loyal companion. The\n"
-             + "  companion follows you between rooms, fights hostile mobs at your side, and is saved\n"
-             + "  so it survives logout. Only some creatures can be tamed, and you may keep only a few\n"
-             + "  companions at once. Use COMPANIONS to list your tamed pets.";
+        return """
+               Usage: TAME <mob>
+                 Permanently captures a charmable mob in your room as a loyal companion. The
+                 companion follows you between rooms, fights hostile mobs at your side, and is saved
+                 so it survives logout. Only some creatures can be tamed, and you may keep only a few
+                 companions at once. Use COMPANIONS to list your tamed pets.\
+               """;
     }
 
     @Override

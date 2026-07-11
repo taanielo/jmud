@@ -40,20 +40,22 @@ public class PartyCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: PARTY [sub-command] [args]\n"
-             + "  PARTY                  — show current party members and their HP\n"
-             + "  PARTY FORM             — create a new party (you become the leader)\n"
-             + "  PARTY INVITE <player>  — invite an online player to your party\n"
-             + "  PARTY ACCEPT           — accept a pending party invitation\n"
-             + "  PARTY DECLINE          — decline a pending party invitation\n"
-             + "  PARTY LEAVE            — leave your current party\n"
-             + "  PARTY DISBAND          — disband the party (leader only)\n"
-             + "  PARTY LOOT <mode>      — set loot mode: free (floor drops) or round-robin (leader only)\n"
-             + "\n"
-             + "XP earned from mob kills is split equally among party members in the same room.\n"
-             + "In round-robin loot mode, dropped items are handed to party members in turn instead of\n"
-             + "landing on the floor. PARTY LOOT with no argument reports the current mode.\n"
-             + "Add {partyHp} to your prompt format to display party member HP at a glance.";
+        return """
+               Usage: PARTY [sub-command] [args]
+                 PARTY                  \u2014 show current party members and their HP
+                 PARTY FORM             \u2014 create a new party (you become the leader)
+                 PARTY INVITE <player>  \u2014 invite an online player to your party
+                 PARTY ACCEPT           \u2014 accept a pending party invitation
+                 PARTY DECLINE          \u2014 decline a pending party invitation
+                 PARTY LEAVE            \u2014 leave your current party
+                 PARTY DISBAND          \u2014 disband the party (leader only)
+                 PARTY LOOT <mode>      \u2014 set loot mode: free (floor drops) or round-robin (leader only)
+
+               XP earned from mob kills is split equally among party members in the same room.
+               In round-robin loot mode, dropped items are handed to party members in turn instead of
+               landing on the floor. PARTY LOOT with no argument reports the current mode.
+               Add {partyHp} to your prompt format to display party member HP at a glance.\
+               """;
     }
 
     @Override

@@ -25,9 +25,11 @@ public class ReadCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: READ <item>  (alias: REA)\n"
-             + "  Reads the named scroll from your inventory, permanently teaching you\n"
-             + "  the ability it references. The scroll is consumed on success.";
+        return """
+               Usage: READ <item>  (alias: REA)
+                 Reads the named scroll from your inventory, permanently teaching you
+                 the ability it references. The scroll is consumed on success.\
+               """;
     }
 
     @Override

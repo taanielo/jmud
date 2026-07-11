@@ -25,9 +25,11 @@ public class DrinkCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: DRINK <item>  (alias: DR)\n"
-             + "  Consumes the named drink item from your inventory, restoring thirst.\n"
-             + "  Drinking regularly keeps your regeneration from being penalised.";
+        return """
+               Usage: DRINK <item>  (alias: DR)
+                 Consumes the named drink item from your inventory, restoring thirst.
+                 Drinking regularly keeps your regeneration from being penalised.\
+               """;
     }
 
     @Override

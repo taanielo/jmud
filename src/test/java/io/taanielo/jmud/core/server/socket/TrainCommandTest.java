@@ -272,7 +272,6 @@ class TrainCommandTest {
             }
             String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
             String sub = parts[0];
-            String subArgs = parts[1];
             switch (sub) {
                 case "LIST" -> {
                     messages.add("Master Trainer — Trainable Abilities (Practice Points: " + player.getPracticePoints() + "):");

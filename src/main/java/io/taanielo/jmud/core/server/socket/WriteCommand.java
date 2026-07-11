@@ -25,9 +25,11 @@ public class WriteCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: WRITE <ability>  (alias: WRI)\n"
-             + "  Inscribes a new scroll for the named ability, provided you already know\n"
-             + "  it, and adds the scroll to your inventory.";
+        return """
+               Usage: WRITE <ability>  (alias: WRI)
+                 Inscribes a new scroll for the named ability, provided you already know
+                 it, and adds the scroll to your inventory.\
+               """;
     }
 
     @Override

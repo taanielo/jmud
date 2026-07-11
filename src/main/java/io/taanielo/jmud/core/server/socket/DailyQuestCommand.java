@@ -33,12 +33,14 @@ public class DailyQuestCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: DAILY_QUEST <sub-command> [args]\n"
-             + "  DAILY_QUEST                 — list today's active daily quest in each pool\n"
-             + "  DAILY_QUEST LIST            — same as the bare command\n"
-             + "  DAILY_QUEST ACCEPT <pool>   — accept a pool's active daily quest (e.g. DAILY_QUEST ACCEPT slayer)\n"
-             + "  DAILY_QUEST STATUS          — show progress on your held daily quest\n"
-             + "  DAILY_QUEST COMPLETE        — claim the daily bonus reward once complete";
+        return """
+               Usage: DAILY_QUEST <sub-command> [args]
+                 DAILY_QUEST                 \u2014 list today's active daily quest in each pool
+                 DAILY_QUEST LIST            \u2014 same as the bare command
+                 DAILY_QUEST ACCEPT <pool>   \u2014 accept a pool's active daily quest (e.g. DAILY_QUEST ACCEPT slayer)
+                 DAILY_QUEST STATUS          \u2014 show progress on your held daily quest
+                 DAILY_QUEST COMPLETE        \u2014 claim the daily bonus reward once complete\
+               """;
     }
 
     @Override

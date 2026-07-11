@@ -32,10 +32,12 @@ public class BoardCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: BOARD\n"
-             + "  BOARD   — list every note pinned to the board in your current room, showing\n"
-             + "            each note's number, author, timestamp, and text.\n"
-             + "  Post and remove notes with the NOTE command (see HELP NOTE).";
+        return """
+               Usage: BOARD
+                 BOARD   \u2014 list every note pinned to the board in your current room, showing
+                           each note's number, author, timestamp, and text.
+                 Post and remove notes with the NOTE command (see HELP NOTE).\
+               """;
     }
 
     @Override

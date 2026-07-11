@@ -40,10 +40,12 @@ public class TitleCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TITLE  |  TITLE <name>  |  TITLE NONE\n"
-             + "  TITLE          — list your earned titles and show which is active.\n"
-             + "  TITLE <name>   — display an earned title (case-insensitive).\n"
-             + "  TITLE NONE     — stop displaying a title (also TITLE CLEAR).";
+        return """
+               Usage: TITLE  |  TITLE <name>  |  TITLE NONE
+                 TITLE          \u2014 list your earned titles and show which is active.
+                 TITLE <name>   \u2014 display an earned title (case-insensitive).
+                 TITLE NONE     \u2014 stop displaying a title (also TITLE CLEAR).\
+               """;
     }
 
     @Override

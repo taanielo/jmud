@@ -28,9 +28,11 @@ public class PickCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: PICK <container>\n"
-             + "  Attempts to pick the lock on a locked container in the room. Rogues only.\n"
-             + "  Success scales with your level; a hidden trap may spring and injure you.";
+        return """
+               Usage: PICK <container>
+                 Attempts to pick the lock on a locked container in the room. Rogues only.
+                 Success scales with your level; a hidden trap may spring and injure you.\
+               """;
     }
 
     @Override

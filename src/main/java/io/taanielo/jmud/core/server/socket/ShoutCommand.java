@@ -56,9 +56,11 @@ public class ShoutCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SHOUT <message>\n"
-             + "  Sends a message to everyone in your current room, and to everyone in\n"
-             + "  every room reachable via one exit from your room.";
+        return """
+               Usage: SHOUT <message>
+                 Sends a message to everyone in your current room, and to everyone in
+                 every room reachable via one exit from your room.\
+               """;
     }
 
     @Override

@@ -31,12 +31,14 @@ public class AbilityCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: USE <ability-name> [target]\n"
-             + "  Activates any learned ability, regardless of whether it is a skill or a spell.\n"
-             + "  Examples:\n"
-             + "    USE bash               — use the Bash skill on your current target\n"
-             + "    USE fireball goblin    — cast Fireball at the goblin\n"
-             + "  See also: CAST (spell-only), ABILITIES (list all known abilities)";
+        return """
+               Usage: USE <ability-name> [target]
+                 Activates any learned ability, regardless of whether it is a skill or a spell.
+                 Examples:
+                   USE bash               \u2014 use the Bash skill on your current target
+                   USE fireball goblin    \u2014 cast Fireball at the goblin
+                 See also: CAST (spell-only), ABILITIES (list all known abilities)\
+               """;
     }
 
     @Override

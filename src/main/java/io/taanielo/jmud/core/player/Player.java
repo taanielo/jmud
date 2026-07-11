@@ -262,59 +262,6 @@ public class Player implements EffectTarget, Combatant {
         PlayerPreferences preferences,
         PlayerAbilities abilities,
         PlayerInventory inventory,
-        PlayerEquipment equipment
-    ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, false, 0, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults(), PlayerPets.empty(), PlayerReputation.empty(), PlayerAchievements.empty(), PlayerExploration.empty(), PlayerIgnoreList.empty(), PlayerFriendList.empty(), PlayerGuildMembership.none(), PlayerVault.empty(), PlayerCompletedQuests.empty(), 0, 0);
-    }
-
-    private Player(
-        PlayerIdentity identity,
-        PlayerCombatState combatState,
-        PlayerPreferences preferences,
-        PlayerAbilities abilities,
-        PlayerInventory inventory,
-        PlayerEquipment equipment,
-        boolean resting,
-        int gold
-    ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, null, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults(), PlayerPets.empty(), PlayerReputation.empty(), PlayerAchievements.empty(), PlayerExploration.empty(), PlayerIgnoreList.empty(), PlayerFriendList.empty(), PlayerGuildMembership.none(), PlayerVault.empty(), PlayerCompletedQuests.empty(), 0, 0);
-    }
-
-    private Player(
-        PlayerIdentity identity,
-        PlayerCombatState combatState,
-        PlayerPreferences preferences,
-        PlayerAbilities abilities,
-        PlayerInventory inventory,
-        PlayerEquipment equipment,
-        boolean resting,
-        int gold,
-        ActiveQuest activeQuest
-    ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, 0L, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults(), PlayerPets.empty(), PlayerReputation.empty(), PlayerAchievements.empty(), PlayerExploration.empty(), PlayerIgnoreList.empty(), PlayerFriendList.empty(), PlayerGuildMembership.none(), PlayerVault.empty(), PlayerCompletedQuests.empty(), 0, 0);
-    }
-
-    private Player(
-        PlayerIdentity identity,
-        PlayerCombatState combatState,
-        PlayerPreferences preferences,
-        PlayerAbilities abilities,
-        PlayerInventory inventory,
-        PlayerEquipment equipment,
-        boolean resting,
-        int gold,
-        ActiveQuest activeQuest,
-        long totalKills
-    ) {
-        this(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, 0, 0, PlayerTitles.empty(), PlayerAliases.empty(), PlayerMailbox.empty(), PlayerSustenance.defaults(), PlayerPets.empty(), PlayerReputation.empty(), PlayerAchievements.empty(), PlayerExploration.empty(), PlayerIgnoreList.empty(), PlayerFriendList.empty(), PlayerGuildMembership.none(), PlayerVault.empty(), PlayerCompletedQuests.empty(), 0, 0);
-    }
-
-    private Player(
-        PlayerIdentity identity,
-        PlayerCombatState combatState,
-        PlayerPreferences preferences,
-        PlayerAbilities abilities,
-        PlayerInventory inventory,
         PlayerEquipment equipment,
         boolean resting,
         int gold,
@@ -382,6 +329,7 @@ public class Player implements EffectTarget, Combatant {
         return identity.experience();
     }
 
+    @Override
     @JsonProperty("vitals")
     public PlayerVitals getVitals() {
         return combatState.vitals();
@@ -773,6 +721,7 @@ public class Player implements EffectTarget, Combatant {
         return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, Objects.requireNonNull(newPets, "Pets are required"), reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
     }
 
+    @Override
     @JsonIgnore
     public Username getUsername() {
         return identity.user().getUsername();

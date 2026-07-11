@@ -125,6 +125,21 @@ tasks.withType(JavaCompile).configureEach {
         // error in both main and test sources.
         check('AddressSelection', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
 
+        // Mechanical warning-ratchet checks (issue #452). Each was swept to zero occurrences and is
+        // pinned at ERROR so the debt cannot silently re-accumulate: multi-line string
+        // concatenations must be text blocks; malformed/misplaced Javadoc tags are rejected; unused
+        // fields/locals/methods, missing @Override, non-static inner classes, unnecessary saved
+        // lambdas, and Boolean.TRUE/FALSE literals are all disallowed. Applied to both sources.
+        check('StringConcatToTextBlock', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('UnrecognisedJavadocTag', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('NotJavadoc', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('UnusedVariable', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('UnusedMethod', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('MissingOverride', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('ClassCanBeStatic', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('UnnecessaryLambda', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+        check('BooleanLiteral', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at

@@ -30,9 +30,11 @@ public class ConsiderCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: CONSIDER <target>  |  CON <target>\n"
-             + "  Compares the target mob's power against your own and prints a qualitative\n"
-             + "  danger assessment. Prefix matching is supported (e.g. CON gob matches Goblin).";
+        return """
+               Usage: CONSIDER <target>  |  CON <target>
+                 Compares the target mob's power against your own and prints a qualitative
+                 danger assessment. Prefix matching is supported (e.g. CON gob matches Goblin).\
+               """;
     }
 
     @Override

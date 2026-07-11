@@ -23,9 +23,11 @@ public class DepositCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: DEPOSIT <amount>\n"
-             + "  Moves the specified amount of gold from your carried balance to the bank.\n"
-             + "  Banked gold is safe from death and never lost. Requires a bank NPC in the room.";
+        return """
+               Usage: DEPOSIT <amount>
+                 Moves the specified amount of gold from your carried balance to the bank.
+                 Banked gold is safe from death and never lost. Requires a bank NPC in the room.\
+               """;
     }
 
     @Override

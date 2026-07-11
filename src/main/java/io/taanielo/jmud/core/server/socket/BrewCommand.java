@@ -26,11 +26,13 @@ public class BrewCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: BREW [potion name]\n"
-             + "  With no argument, lists the potion recipes the alchemist in this room can make,\n"
-             + "  showing the herbs each needs (and how many you are carrying) plus the gold cost.\n"
-             + "  With a potion name, brews it: the listed herbs and gold are consumed and the\n"
-             + "  finished potion is added to your inventory. You must be standing near an alchemist.";
+        return """
+               Usage: BREW [potion name]
+                 With no argument, lists the potion recipes the alchemist in this room can make,
+                 showing the herbs each needs (and how many you are carrying) plus the gold cost.
+                 With a potion name, brews it: the listed herbs and gold are consumed and the
+                 finished potion is added to your inventory. You must be standing near an alchemist.\
+               """;
     }
 
     @Override

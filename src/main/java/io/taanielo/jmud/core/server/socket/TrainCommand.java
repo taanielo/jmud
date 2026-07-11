@@ -33,10 +33,12 @@ public class TrainCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: TRAIN <sub-command> [args]\n"
-             + "  TRAIN LIST         — show abilities trainable by your class\n"
-             + "  TRAIN <id>         — spend one practice point to learn the ability (e.g. TRAIN skill.bash)\n"
-             + "Requires the Master Trainer to be present (Training Yard only).";
+        return """
+               Usage: TRAIN <sub-command> [args]
+                 TRAIN LIST         \u2014 show abilities trainable by your class
+                 TRAIN <id>         \u2014 spend one practice point to learn the ability (e.g. TRAIN skill.bash)
+               Requires the Master Trainer to be present (Training Yard only).\
+               """;
     }
 
     @Override

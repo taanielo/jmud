@@ -36,10 +36,12 @@ public class AliasCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: ALIAS  |  ALIAS <name> <expansion>  |  ALIAS -d <name>\n"
-             + "  ALIAS                    — list your currently defined aliases.\n"
-             + "  ALIAS <name> <expansion> — define or overwrite an alias.\n"
-             + "  ALIAS -d <name>          — remove an alias.";
+        return """
+               Usage: ALIAS  |  ALIAS <name> <expansion>  |  ALIAS -d <name>
+                 ALIAS                    \u2014 list your currently defined aliases.
+                 ALIAS <name> <expansion> \u2014 define or overwrite an alias.
+                 ALIAS -d <name>          \u2014 remove an alias.\
+               """;
     }
 
     @Override

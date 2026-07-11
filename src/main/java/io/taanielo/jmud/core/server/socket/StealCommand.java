@@ -28,9 +28,11 @@ public class StealCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: STEAL <npc>\n"
-             + "  Attempts to pickpocket gold from an NPC in the room. Rogues only.\n"
-             + "  Success scales with your level; if you are caught, the NPC turns on you.";
+        return """
+               Usage: STEAL <npc>
+                 Attempts to pickpocket gold from an NPC in the room. Rogues only.
+                 Success scales with your level; if you are caught, the NPC turns on you.\
+               """;
     }
 
     @Override

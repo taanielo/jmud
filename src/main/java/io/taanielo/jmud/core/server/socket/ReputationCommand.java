@@ -43,9 +43,11 @@ public class ReputationCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: REPUTATION (or REP)\n"
-             + "  Lists every faction you have a tracked standing with, its numeric value,\n"
-             + "  and whether that faction regards you as Hostile, Neutral or Friendly.";
+        return """
+               Usage: REPUTATION (or REP)
+                 Lists every faction you have a tracked standing with, its numeric value,
+                 and whether that faction regards you as Hostile, Neutral or Friendly.\
+               """;
     }
 
     @Override

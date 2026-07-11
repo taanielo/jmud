@@ -41,14 +41,16 @@ public class FollowCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: FOLLOW [player|OFF]\n"
-             + "  FOLLOW              — show who you are currently following\n"
-             + "  FOLLOW <player>     — start following an online member of your party\n"
-             + "  FOLLOW OFF          — stop following (UNFOLLOW does the same)\n"
-             + "\n"
-             + "While following, you are moved one step behind the leader whenever they walk to an\n"
-             + "adjacent room. Following stops automatically if you are in combat, overburdened, cannot\n"
-             + "take the same exit, leave the party, or either of you disconnects.";
+        return """
+               Usage: FOLLOW [player|OFF]
+                 FOLLOW              \u2014 show who you are currently following
+                 FOLLOW <player>     \u2014 start following an online member of your party
+                 FOLLOW OFF          \u2014 stop following (UNFOLLOW does the same)
+
+               While following, you are moved one step behind the leader whenever they walk to an
+               adjacent room. Following stops automatically if you are in combat, overburdened, cannot
+               take the same exit, leave the party, or either of you disconnects.\
+               """;
     }
 
     @Override

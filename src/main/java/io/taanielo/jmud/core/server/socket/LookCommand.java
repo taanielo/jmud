@@ -22,9 +22,11 @@ public class LookCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: LOOK  |  LOOK <target>\n"
-             + "  LOOK        — describe the current room, its exits, and visible occupants.\n"
-             + "  LOOK <name> — examine a specific player or object in the room.";
+        return """
+               Usage: LOOK  |  LOOK <target>
+                 LOOK        \u2014 describe the current room, its exits, and visible occupants.
+                 LOOK <name> \u2014 examine a specific player or object in the room.\
+               """;
     }
 
     @Override

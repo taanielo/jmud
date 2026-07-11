@@ -24,10 +24,12 @@ public class MapCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: MAP\n"
-             + "  Draws a small ASCII minimap centred on your current room. Only rooms you have\n"
-             + "  previously visited are shown: @ is your current room, # a room you have explored,\n"
-             + "  and . an unexplored room adjacent to explored territory.";
+        return """
+               Usage: MAP
+                 Draws a small ASCII minimap centred on your current room. Only rooms you have
+                 previously visited are shown: @ is your current room, # a room you have explored,
+                 and . an unexplored room adjacent to explored territory.\
+               """;
     }
 
     @Override

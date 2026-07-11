@@ -25,9 +25,11 @@ public class ListCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: LIST\n"
-             + "  When a shopkeeper is present in the room, shows available wares with prices.\n"
-             + "  Prints an error if there is no shop here.";
+        return """
+               Usage: LIST
+                 When a shopkeeper is present in the room, shows available wares with prices.
+                 Prints an error if there is no shop here.\
+               """;
     }
 
     @Override

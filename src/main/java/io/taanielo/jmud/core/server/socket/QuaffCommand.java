@@ -24,9 +24,11 @@ public class QuaffCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: QUAFF <item>  (alias: QU)\n"
-             + "  Consumes the named item from your inventory, applying its effects\n"
-             + "  immediately. Healing potions restore HP; poisonous potions deal damage.";
+        return """
+               Usage: QUAFF <item>  (alias: QU)
+                 Consumes the named item from your inventory, applying its effects
+                 immediately. Healing potions restore HP; poisonous potions deal damage.\
+               """;
     }
 
     @Override

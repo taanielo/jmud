@@ -26,12 +26,14 @@ public class CookCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: COOK [meal name]\n"
-             + "  With no argument, lists the meal recipes the cook in this room can make,\n"
-             + "  showing the ingredients each needs (and how many you are carrying) plus the gold cost.\n"
-             + "  With a meal name, cooks it: the listed ingredients and gold are consumed and the\n"
-             + "  finished meal is added to your inventory. You must be standing near a cook.\n"
-             + "  Some meals grant a short timed buff when eaten (EAT <meal>).";
+        return """
+               Usage: COOK [meal name]
+                 With no argument, lists the meal recipes the cook in this room can make,
+                 showing the ingredients each needs (and how many you are carrying) plus the gold cost.
+                 With a meal name, cooks it: the listed ingredients and gold are consumed and the
+                 finished meal is added to your inventory. You must be standing near a cook.
+                 Some meals grant a short timed buff when eaten (EAT <meal>).\
+               """;
     }
 
     @Override

@@ -109,7 +109,6 @@ class WakeCommandTest {
     private static class CapturingContext implements SocketCommandContext {
         boolean stopRestingCalled = false;
         String stopRestingMessage = null;
-        String promptMessage = "";
         final List<String> lines = new ArrayList<>();
         private final Player player;
 
@@ -130,7 +129,7 @@ class WakeCommandTest {
         @Override public void sendMove(Direction d) {}
         @Override public void useAbility(String a) {}
         @Override public void updateAnsi(String a) {}
-        @Override public void writeLineWithPrompt(String m) { promptMessage = m; }
+        @Override public void writeLineWithPrompt(String m) { }
         @Override public void writeLineSafe(String m) { lines.add(m); }
         @Override public void sendPrompt() {}
         @Override public void sendToUsername(Username u, String m) {}

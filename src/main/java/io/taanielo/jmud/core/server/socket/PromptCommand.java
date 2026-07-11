@@ -40,16 +40,18 @@ public class PromptCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: PROMPT [sub-command] [args]\n"
-             + "  PROMPT                          — show your current prompt format and tokens\n"
-             + "  PROMPT SET <format>             — set and save your prompt format string\n"
-             + "  PROMPT COLOR [on|off|toggle|status] — control ANSI color in your prompt\n"
-             + "\n"
-             + "Format tokens:\n"
-             + "  %h/%H hit points   %m/%M mana   %v moves   %x experience   %l level   %% literal %\n"
-             + "  {hp} {maxHp} {mana} {maxMana} {move} {maxMove} {exp} {partyHp} are also supported.\n"
-             + "\n"
-             + "Example: PROMPT SET [%h/%Hhp %m/%Mmn %vmv] >";
+        return """
+               Usage: PROMPT [sub-command] [args]
+                 PROMPT                          \u2014 show your current prompt format and tokens
+                 PROMPT SET <format>             \u2014 set and save your prompt format string
+                 PROMPT COLOR [on|off|toggle|status] \u2014 control ANSI color in your prompt
+
+               Format tokens:
+                 %h/%H hit points   %m/%M mana   %v moves   %x experience   %l level   %% literal %
+                 {hp} {maxHp} {mana} {maxMana} {move} {maxMove} {exp} {partyHp} are also supported.
+
+               Example: PROMPT SET [%h/%Hhp %m/%Mmn %vmv] >\
+               """;
     }
 
     @Override

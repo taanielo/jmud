@@ -27,9 +27,11 @@ public class IdentifyCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: IDENTIFY <item>  (alias: IDENT)\n"
-             + "  Studies the named unidentified item in your inventory, revealing its rarity\n"
-             + "  tier and any stat affixes it carries. Already-identified items reveal nothing new.";
+        return """
+               Usage: IDENTIFY <item>  (alias: IDENT)
+                 Studies the named unidentified item in your inventory, revealing its rarity
+                 tier and any stat affixes it carries. Already-identified items reveal nothing new.\
+               """;
     }
 
     @Override

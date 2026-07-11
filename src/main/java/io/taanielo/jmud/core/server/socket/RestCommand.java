@@ -27,10 +27,12 @@ public class RestCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: REST  |  SLEEP\n"
-             + "  Enters a resting state. While resting, HP, mana, and move regenerate\n"
-             + "  each game tick. Use WAKE or STAND to cancel resting voluntarily.\n"
-             + "  Resting is interrupted automatically when you move, attack, or are hit.";
+        return """
+               Usage: REST  |  SLEEP
+                 Enters a resting state. While resting, HP, mana, and move regenerate
+                 each game tick. Use WAKE or STAND to cancel resting voluntarily.
+                 Resting is interrupted automatically when you move, attack, or are hit.\
+               """;
     }
 
     @Override

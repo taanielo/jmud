@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.function.Predicate;
-
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Password;
@@ -25,7 +23,10 @@ class TradeExecutionServiceTest {
 
     private static final Username ALICE = Username.of("Alice");
     private static final Username BOB = Username.of("Bob");
-    private static final Predicate<Player> NEVER_OVERBURDENED = player -> false;
+
+    private static boolean neverOverburdened(Player player) {
+        return false;
+    }
 
     private final TradeExecutionService service = new TradeExecutionService();
 
@@ -43,7 +44,7 @@ class TradeExecutionServiceTest {
         session.addItem(BOB, sword);
 
         TradeExecutionService.TradeExecutionResult result =
-            service.execute(alice, bob, session, NEVER_OVERBURDENED);
+            service.execute(alice, bob, session, TradeExecutionServiceTest::neverOverburdened);
 
         assertTrue(result.success());
         Player updatedAlice = result.updatedProposer();
@@ -72,7 +73,7 @@ class TradeExecutionServiceTest {
         session.addItem(ALICE, torch);
 
         TradeExecutionService.TradeExecutionResult result =
-            service.execute(alice, bob, session, NEVER_OVERBURDENED);
+            service.execute(alice, bob, session, TradeExecutionServiceTest::neverOverburdened);
 
         assertTrue(result.success());
         assertFalse(result.updatedProposer().getEquipment().isEquipped(torch.getId()));
@@ -92,7 +93,7 @@ class TradeExecutionServiceTest {
         session.addGold(ALICE, 50);
 
         TradeExecutionService.TradeExecutionResult result =
-            service.execute(alice, bob, session, NEVER_OVERBURDENED);
+            service.execute(alice, bob, session, TradeExecutionServiceTest::neverOverburdened);
 
         assertFalse(result.success());
         assertNotNull(result.error());
@@ -110,7 +111,7 @@ class TradeExecutionServiceTest {
         session.addItem(ALICE, torch);
 
         TradeExecutionService.TradeExecutionResult result =
-            service.execute(alice, bob, session, NEVER_OVERBURDENED);
+            service.execute(alice, bob, session, TradeExecutionServiceTest::neverOverburdened);
 
         assertFalse(result.success());
         assertNotNull(result.error());

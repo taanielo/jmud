@@ -11,13 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.action.PlayerEventBus;
-import io.taanielo.jmud.core.authentication.Password;
-import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatRandom;
-import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
@@ -43,15 +40,8 @@ class MobRegistryWanderTest {
 
     private static final RoomId SPAWN_ROOM = RoomId.of("room.spawn");
     private static final RoomId NORTH_ROOM = RoomId.of("room.north");
-    private static final AttackId DEFAULT_ATTACK =
-        AttackId.of(CombatSettings.DEFAULT_ATTACK_ID);
 
     // ── helpers ───────────────────────────────────────────────────────
-
-    private Player player(String name) {
-        User user = User.of(Username.of(name), Password.hash("pw", 1));
-        return Player.of(user, "%hp> ");
-    }
 
     private MobTemplate wanderingTemplate(boolean wanders, List<String> tags) {
         return new MobTemplate(

@@ -84,9 +84,11 @@ public class ScoreCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SCORE\n"
-             + "  Shows your current level, experience points, HP, Mana, and Move.\n"
-             + "  Alias: SC";
+        return """
+               Usage: SCORE
+                 Shows your current level, experience points, HP, Mana, and Move.
+                 Alias: SC\
+               """;
     }
 
     @Override

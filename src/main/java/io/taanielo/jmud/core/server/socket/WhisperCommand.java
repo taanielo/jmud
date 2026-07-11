@@ -48,10 +48,12 @@ public class WhisperCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: WHISPER <playername> <message>\n"
-             + "  Sends a private message to the named player, who must be in your\n"
-             + "  current room.\n"
-             + "  The recipient sees: <YourName> whispers to you: <message>";
+        return """
+               Usage: WHISPER <playername> <message>
+                 Sends a private message to the named player, who must be in your
+                 current room.
+                 The recipient sees: <YourName> whispers to you: <message>\
+               """;
     }
 
     @Override

@@ -34,9 +34,11 @@ public class GetFromCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: GET <item> FROM <container>\n"
-             + "  Removes the named item from the named container (a bag, chest, or\n"
-             + "  strongbox) you are carrying and adds it to your inventory.";
+        return """
+               Usage: GET <item> FROM <container>
+                 Removes the named item from the named container (a bag, chest, or
+                 strongbox) you are carrying and adds it to your inventory.\
+               """;
     }
 
     @Override

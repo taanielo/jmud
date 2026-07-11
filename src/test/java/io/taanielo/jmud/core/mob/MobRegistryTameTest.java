@@ -88,7 +88,7 @@ class MobRegistryTameTest {
         return new Harness(tamer, templates);
     }
 
-    private final class Harness {
+    private static final class Harness {
         final MobRegistry registry;
         final RoomService roomService;
         final StubPlayerRepository playerRepo;

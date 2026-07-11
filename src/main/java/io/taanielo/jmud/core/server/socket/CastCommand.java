@@ -32,14 +32,16 @@ public class CastCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: CAST <spell-name> [target]\n"
-             + "  Activates a learned spell-type ability. Skills cannot be used with CAST.\n"
-             + "  Examples:\n"
-             + "    CAST fireball              — cast Fireball on your current target\n"
-             + "    CAST heal self             — cast Heal on yourself\n"
-             + "    CAST lightning bolt goblin — cast Lightning Bolt at the goblin\n"
-             + "  To use skill-type abilities, use the USE command instead.\n"
-             + "  See also: USE (all abilities), ABILITIES (list all known abilities)";
+        return """
+               Usage: CAST <spell-name> [target]
+                 Activates a learned spell-type ability. Skills cannot be used with CAST.
+                 Examples:
+                   CAST fireball              \u2014 cast Fireball on your current target
+                   CAST heal self             \u2014 cast Heal on yourself
+                   CAST lightning bolt goblin \u2014 cast Lightning Bolt at the goblin
+                 To use skill-type abilities, use the USE command instead.
+                 See also: USE (all abilities), ABILITIES (list all known abilities)\
+               """;
     }
 
     @Override

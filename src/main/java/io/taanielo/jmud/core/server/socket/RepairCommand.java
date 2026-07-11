@@ -24,10 +24,12 @@ public class RepairCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: REPAIR <item name>\n"
-             + "  Asks the blacksmith in the current room to restore the named item to full\n"
-             + "  durability. The cost scales with the item's value and how damaged it is. You\n"
-             + "  must be carrying the item and have enough gold.";
+        return """
+               Usage: REPAIR <item name>
+                 Asks the blacksmith in the current room to restore the named item to full
+                 durability. The cost scales with the item's value and how damaged it is. You
+                 must be carrying the item and have enough gold.\
+               """;
     }
 
     @Override

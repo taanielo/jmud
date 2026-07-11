@@ -69,7 +69,6 @@ class RestingTickerTest {
 
     @Test
     void tickDoesNothingWhenPlayerIsDead() {
-        Player player = makePlayer(0, 20, 10, 20, 10, 20).die();
         // dead player won't have resting=true since die() clears it, so force it via withResting
         // Actually die() clears resting, but let's keep the spirit of the test:
         // a dead player is not rested even if somehow set to resting.

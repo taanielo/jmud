@@ -35,14 +35,16 @@ public class QuestCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: QUEST <sub-command> [args]\n"
-             + "  QUEST LIST             — show available contracts\n"
-             + "  QUEST LOG              — list your completed one-time contracts\n"
-             + "  QUEST ACCEPT <id>      — accept a contract (e.g. QUEST ACCEPT rat-catcher)\n"
-             + "  QUEST STATUS           — show current quest progress\n"
-             + "  QUEST COMPLETE         — claim kill-quest reward (must be in the Courtyard)\n"
-             + "  QUEST DELIVER          — turn in collected items to the Guild Clerk, or hand a package to the receiving NPC\n"
-             + "  QUEST ABANDON          — drop the active quest with no penalty";
+        return """
+               Usage: QUEST <sub-command> [args]
+                 QUEST LIST             \u2014 show available contracts
+                 QUEST LOG              \u2014 list your completed one-time contracts
+                 QUEST ACCEPT <id>      \u2014 accept a contract (e.g. QUEST ACCEPT rat-catcher)
+                 QUEST STATUS           \u2014 show current quest progress
+                 QUEST COMPLETE         \u2014 claim kill-quest reward (must be in the Courtyard)
+                 QUEST DELIVER          \u2014 turn in collected items to the Guild Clerk, or hand a package to the receiving NPC
+                 QUEST ABANDON          \u2014 drop the active quest with no penalty\
+               """;
     }
 
     @Override

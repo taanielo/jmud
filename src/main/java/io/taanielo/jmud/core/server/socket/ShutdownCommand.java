@@ -88,9 +88,11 @@ public class ShutdownCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: SHUTDOWN\n"
-             + "  Warns every connected player, then saves all players and stops the server after a\n"
-             + "  short delay. Restricted to wizards.";
+        return """
+               Usage: SHUTDOWN
+                 Warns every connected player, then saves all players and stops the server after a
+                 short delay. Restricted to wizards.\
+               """;
     }
 
     @Override

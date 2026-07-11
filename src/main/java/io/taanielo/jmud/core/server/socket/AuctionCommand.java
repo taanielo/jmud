@@ -43,13 +43,15 @@ public class AuctionCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: AUCTION LIST  |  AUCTION SELL <item> <price>  |  AUCTION BUY <#>  |  AUCTION CANCEL <#>\n"
-             + "  AUCTION LIST                  — list all active listings (item, price, seller, ticks left).\n"
-             + "  AUCTION SELL <item> <price>   — list an item from your inventory for a gold price.\n"
-             + "  AUCTION BUY <#>               — buy the listing with the given number.\n"
-             + "  AUCTION CANCEL <#>            — cancel your own listing and get the item back.\n"
-             + "  Must be used at the Auction House. Sold gold reaches the seller even while offline;\n"
-             + "  listings expire after a while and are returned to the seller.";
+        return """
+               Usage: AUCTION LIST  |  AUCTION SELL <item> <price>  |  AUCTION BUY <#>  |  AUCTION CANCEL <#>
+                 AUCTION LIST                  \u2014 list all active listings (item, price, seller, ticks left).
+                 AUCTION SELL <item> <price>   \u2014 list an item from your inventory for a gold price.
+                 AUCTION BUY <#>               \u2014 buy the listing with the given number.
+                 AUCTION CANCEL <#>            \u2014 cancel your own listing and get the item back.
+                 Must be used at the Auction House. Sold gold reaches the seller even while offline;
+                 listings expire after a while and are returned to the seller.\
+               """;
     }
 
     @Override

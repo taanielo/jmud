@@ -24,9 +24,11 @@ public class VaultCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: VAULT\n"
-             + "  Lists the items currently stored in your bank vault, with their weights and the number\n"
-             + "  of slots used. Requires a bank NPC in the room.";
+        return """
+               Usage: VAULT
+                 Lists the items currently stored in your bank vault, with their weights and the number
+                 of slots used. Requires a bank NPC in the room.\
+               """;
     }
 
     @Override

@@ -100,11 +100,13 @@ public class ReloadCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: RELOAD\n"
-             + "  Re-reads room, item and mob definitions from the JSON data files and applies them\n"
-             + "  to the running world without disconnecting anyone. Reads happen off the tick thread\n"
-             + "  and changes take effect atomically; a parse error aborts the reload with no partial\n"
-             + "  updates. Restricted to wizards.";
+        return """
+               Usage: RELOAD
+                 Re-reads room, item and mob definitions from the JSON data files and applies them
+                 to the running world without disconnecting anyone. Reads happen off the tick thread
+                 and changes take effect atomically; a parse error aborts the reload with no partial
+                 updates. Restricted to wizards.\
+               """;
     }
 
     @Override

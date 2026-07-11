@@ -31,9 +31,11 @@ public class PutCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: PUT <item> <into|in> <container>\n"
-             + "  Moves the named item from your inventory into the named container\n"
-             + "  (a bag, chest, or strongbox) you are carrying, if it has room.";
+        return """
+               Usage: PUT <item> <into|in> <container>
+                 Moves the named item from your inventory into the named container
+                 (a bag, chest, or strongbox) you are carrying, if it has room.\
+               """;
     }
 
     @Override
