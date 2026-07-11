@@ -85,7 +85,7 @@ class MapServiceTest {
      * line (the legend intentionally contains the {@code @}/{@code #}/{@code .} symbols).
      */
     private static String gridBody(String map) {
-        String[] lines = map.split("\n");
+        String[] lines = map.split("\n", -1);
         StringBuilder body = new StringBuilder();
         for (int i = 1; i < lines.length - 1; i++) {
             body.append(lines[i]).append('\n');
@@ -156,7 +156,7 @@ class MapServiceTest {
         MapService service = new MapService(crossWorld());
         Player player = playerVisiting(NORTH);
 
-        String[] lines = service.renderMap(player, CENTER).split("\n");
+        String[] lines = service.renderMap(player, CENTER).split("\n", -1);
         int playerLine = -1;
         int playerCol = -1;
         // Scan only the grid rows (skip the header at index 0 and the legend at the end).

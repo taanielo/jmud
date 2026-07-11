@@ -29,7 +29,7 @@ public class AbilityRegistry {
             return Optional.empty();
         }
         String trimmed = input.trim();
-        String[] tokens = trimmed.split("\\s+");
+        String[] tokens = trimmed.split("\\s+", -1);
 
         List<Candidate> candidates = new ArrayList<>();
         for (AbilityId abilityId : allowedAbilityIds) {

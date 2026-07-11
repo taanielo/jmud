@@ -1,6 +1,5 @@
 package io.taanielo.jmud.core.authentication;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -109,7 +108,11 @@ public final class Password {
     }
 
     private static Password parseEncoded(String value) {
-        String[] parts = value.split("\\$");
+        // Limit 0 keeps the historical behaviour of discarding trailing empty segments, so a
+        // malformed value ending in a bare delimiter (e.g. an empty hash) is rejected by the
+        // strict five-part check below rather than parsed into an unusable credential. This must
+        // stay exactly as-is to preserve stored-password compatibility (AGENTS.md §11).
+        String[] parts = value.split("\\$", 0);
         if (parts.length != 5) {
             throw new IllegalArgumentException("Invalid password format");
         }

@@ -136,7 +136,7 @@ class CharacterCreationServiceTest {
         assertFalse(prompt.replace("\r\n", "").contains("\n"),
             "Prompt must not contain bare '\\n' line breaks");
 
-        String[] lines = prompt.split("\r\n");
+        String[] lines = prompt.split("\r\n", -1);
         assertEquals(5, lines.length, "Expected a header line, three race lines, and the input prompt");
         assertEquals("Choose your race:", lines[0]);
         assertTrue(lines[1].contains("elf"));
@@ -155,7 +155,7 @@ class CharacterCreationServiceTest {
         assertFalse(prompt.replace("\r\n", "").contains("\n"),
             "Prompt must not contain bare '\\n' line breaks");
 
-        String[] lines = prompt.split("\r\n");
+        String[] lines = prompt.split("\r\n", -1);
         assertEquals(5, lines.length, "Expected a header line, three class lines, and the input prompt");
         assertEquals("Choose your class:", lines[0]);
         assertTrue(lines[1].contains("adventurer"));

@@ -82,6 +82,11 @@ tasks.withType(JavaCompile).configureEach {
         // it ignores the exception. Hard error in both main and test sources.
         check('EmptyCatch', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
 
+        // String.split(String) treats its argument as a regex and silently discards trailing empty
+        // strings, a classic source of subtle bugs (e.g. credential parsing in Password). Every
+        // call site must pass an explicit limit to reveal its intent. Hard error in both sources.
+        check('StringSplitter', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at

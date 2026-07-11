@@ -71,10 +71,10 @@ class HelpCommandTest {
                 .toList();
 
         // "alpha", "help", "mango", "zebra" (help itself is registered too)
-        assertEquals("alpha", commandLines.get(0).trim().split("\\s+")[0]);
-        assertEquals("help",  commandLines.get(1).trim().split("\\s+")[0]);
-        assertEquals("mango", commandLines.get(2).trim().split("\\s+")[0]);
-        assertEquals("zebra", commandLines.get(3).trim().split("\\s+")[0]);
+        assertEquals("alpha", commandLines.get(0).trim().split("\\s+", -1)[0]);
+        assertEquals("help",  commandLines.get(1).trim().split("\\s+", -1)[0]);
+        assertEquals("mango", commandLines.get(2).trim().split("\\s+", -1)[0]);
+        assertEquals("zebra", commandLines.get(3).trim().split("\\s+", -1)[0]);
     }
 
     @Test
