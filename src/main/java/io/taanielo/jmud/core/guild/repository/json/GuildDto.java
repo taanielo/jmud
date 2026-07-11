@@ -5,7 +5,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * JSON transfer object for a single guild file ({@code guilds/&lt;id&gt;.json}).
+ * JSON transfer object for a single guild file ({@code guilds/<id>.json}).
  */
 record GuildDto(
     int schemaVersion,

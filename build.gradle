@@ -65,7 +65,19 @@ test {
 }
 
 tasks.withType(JavaCompile).configureEach {
+    // Warning-clean is an enforced invariant, not a one-time cleanup (issue #453). Error Prone
+    // emits its findings as javac diagnostics, so -Werror fails the build on any plain-javac OR
+    // Error Prone warning of any class — including checks that default to WARNING and would
+    // otherwise accumulate invisibly behind a green build. The explicit CheckSeverity.ERROR
+    // promotions below are kept as defense-in-depth: they survive if -Werror is ever relaxed.
+    options.compilerArgs << '-Werror'
     options.errorprone {
+        // Lombok-generated members (builders, constructors, equals/hashCode) are not hand-written
+        // and must not trip -Werror; suppress Error Prone findings in generated code rather than
+        // weakening -Werror.
+        disableWarningsInGeneratedCode = true
+
+
         // Lombok generates code (builders, constructors, equals/hashCode) that Error Prone's
         // default checks were not designed to review; disabling avoids noisy false positives
         // on generated members we don't hand-write.
