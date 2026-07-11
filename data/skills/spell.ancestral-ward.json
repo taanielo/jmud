@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.ancestral-ward",
+  "name": "ancestral ward",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["ward"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "ancestral-ward"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call on the ancestors, wreathing all around you in {ability}."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls on the ancestors, wreathing the whole room in a protective ward."
+    }
+  ]
+}
