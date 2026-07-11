@@ -16,6 +16,7 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.combat.Combatant;
+import io.taanielo.jmud.core.craft.PlayerProficiencies;
 import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.effects.EffectTarget;
 import io.taanielo.jmud.core.faction.PlayerReputation;
@@ -74,6 +75,8 @@ public class Player implements EffectTarget, Combatant {
     private final int duelWins;
     /** Duels lost by combat resolution; never negative, defaults to {@code 0} for existing players. */
     private final int duelLosses;
+    /** Crafting proficiency points per profession; defaults to empty (all level 0) for existing players. */
+    private final PlayerProficiencies proficiencies;
 
     public static Player of(User user, String promptFormat) {
         return new Player(user, 1, 0, PlayerVitals.defaults(), List.of(), promptFormat, false, List.of(), null, null);
@@ -185,7 +188,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -223,7 +226,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("activeTitle") String activeTitle,
         @JsonProperty("completedQuests") List<String> completedQuests,
         @JsonProperty("duelWins") Integer duelWins,
-        @JsonProperty("duelLosses") Integer duelLosses
+        @JsonProperty("duelLosses") Integer duelLosses,
+        @JsonProperty("proficiencies") Map<String, Integer> proficiencies
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId),
@@ -252,7 +256,8 @@ public class Player implements EffectTarget, Combatant {
             new PlayerVault(bankedItems),
             new PlayerCompletedQuests(completedQuests),
             duelWins == null ? 0 : Math.max(0, duelWins),
-            duelLosses == null ? 0 : Math.max(0, duelLosses)
+            duelLosses == null ? 0 : Math.max(0, duelLosses),
+            PlayerProficiencies.fromStringMap(proficiencies)
         );
     }
 
@@ -283,7 +288,8 @@ public class Player implements EffectTarget, Combatant {
         PlayerVault vault,
         PlayerCompletedQuests completedQuests,
         int duelWins,
-        int duelLosses
+        int duelLosses,
+        PlayerProficiencies proficiencies
     ) {
         this.identity = Objects.requireNonNull(identity, "Identity is required");
         this.combatState = Objects.requireNonNull(combatState, "Combat state is required");
@@ -312,6 +318,7 @@ public class Player implements EffectTarget, Combatant {
         this.completedQuests = Objects.requireNonNullElse(completedQuests, PlayerCompletedQuests.empty());
         this.duelWins = Math.max(0, duelWins);
         this.duelLosses = Math.max(0, duelLosses);
+        this.proficiencies = Objects.requireNonNullElse(proficiencies, PlayerProficiencies.empty());
     }
 
     @JsonProperty("user")
@@ -619,7 +626,7 @@ public class Player implements EffectTarget, Combatant {
         if (updated == completedQuests) {
             return this;
         }
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, updated, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, updated, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -628,7 +635,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newVault the new vault state; must not be null
      */
     public Player withVault(PlayerVault newVault) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, Objects.requireNonNull(newVault, "Vault is required"), completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, Objects.requireNonNull(newVault, "Vault is required"), completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -656,7 +663,7 @@ public class Player implements EffectTarget, Combatant {
      *                           {@link PlayerGuildMembership#none()} to clear)
      */
     public Player withGuildMembership(PlayerGuildMembership newGuildMembership) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, Objects.requireNonNull(newGuildMembership, "Guild membership is required"), vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, Objects.requireNonNull(newGuildMembership, "Guild membership is required"), vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -665,7 +672,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newIgnoreList the new ignore-list state; must not be null
      */
     public Player withIgnoreList(PlayerIgnoreList newIgnoreList) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, Objects.requireNonNull(newIgnoreList, "Ignore list is required"), friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, Objects.requireNonNull(newIgnoreList, "Ignore list is required"), friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -674,7 +681,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newFriendList the new friends-list state; must not be null
      */
     public Player withFriendList(PlayerFriendList newFriendList) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, Objects.requireNonNull(newFriendList, "Friend list is required"), guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, Objects.requireNonNull(newFriendList, "Friend list is required"), guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -691,7 +698,7 @@ public class Player implements EffectTarget, Combatant {
         if (updated == exploration) {
             return this;
         }
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, updated, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, updated, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -700,7 +707,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newAchievements the new achievements state; must not be null
      */
     public Player withAchievements(PlayerAchievements newAchievements) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, Objects.requireNonNull(newAchievements, "Achievements are required"), exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, Objects.requireNonNull(newAchievements, "Achievements are required"), exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -709,7 +716,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newReputation the new reputation state; must not be null
      */
     public Player withReputation(PlayerReputation newReputation) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, Objects.requireNonNull(newReputation, "Reputation is required"), achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, Objects.requireNonNull(newReputation, "Reputation is required"), achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -718,7 +725,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newPets the new tamed-pet state; must not be null
      */
     public Player withTamedPets(PlayerPets newPets) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, Objects.requireNonNull(newPets, "Pets are required"), reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, Objects.requireNonNull(newPets, "Pets are required"), reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     @Override
@@ -781,19 +788,19 @@ public class Player implements EffectTarget, Combatant {
             return this;
         }
         // Dying always clears the resting flag.
-        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState.die(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player respawn() {
-        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState.respawn(), preferences, abilities, inventory, equipment, false, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withoutEffects() {
-        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState.withoutEffects(), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withAnsiEnabled(boolean enabled) {
-        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences.withAnsiEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -803,19 +810,19 @@ public class Player implements EffectTarget, Combatant {
      * @return an updated player
      */
     public Player withPromptFormat(String nextFormat) {
-        return new Player(identity, combatState, preferences.withPromptFormat(nextFormat), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences.withPromptFormat(nextFormat), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withVitals(PlayerVitals updatedVitals) {
-        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState.withVitals(updatedVitals), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withDead(boolean dead) {
-        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState.withDead(dead), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withLearnedAbilities(List<AbilityId> learnedAbilities) {
-        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities.withLearned(learnedAbilities), inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -824,7 +831,7 @@ public class Player implements EffectTarget, Combatant {
      * @param earnedTitles the new titles list
      */
     public Player withTitles(List<String> earnedTitles) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withEarned(earnedTitles), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withEarned(earnedTitles), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -834,7 +841,7 @@ public class Player implements EffectTarget, Combatant {
      * @param title the title to grant; must not be null
      */
     public Player grantTitle(String title) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.grant(title), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.grant(title), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -845,7 +852,7 @@ public class Player implements EffectTarget, Combatant {
      * @throws IllegalArgumentException when the title has not been earned
      */
     public Player withActiveTitle(String title) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withActive(title), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles.withActive(title), aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -860,7 +867,7 @@ public class Player implements EffectTarget, Combatant {
         if (cleared == titles) {
             return this;
         }
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, cleared, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, cleared, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -870,7 +877,7 @@ public class Player implements EffectTarget, Combatant {
      * @param expansion the command line the alias expands to; must not be blank
      */
     public Player defineAlias(String name, String expansion) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.define(name, expansion), mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.define(name, expansion), mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -880,7 +887,7 @@ public class Player implements EffectTarget, Combatant {
      * @param name the alias name to remove; case-insensitive
      */
     public Player removeAlias(String name) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.remove(name), mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases.remove(name), mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -889,7 +896,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newMailbox the new mailbox state
      */
     public Player withMailbox(PlayerMailbox newMailbox) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, newMailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, newMailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -898,30 +905,30 @@ public class Player implements EffectTarget, Combatant {
      * @param newSustenance the new sustenance state; must not be null
      */
     public Player withSustenance(PlayerSustenance newSustenance) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, Objects.requireNonNull(newSustenance, "Sustenance is required"), pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, Objects.requireNonNull(newSustenance, "Sustenance is required"), pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withInventory(List<Item> items) {
-        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory.withItems(items), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player addItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory.addItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player removeItem(Item item) {
-        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory.removeItem(item), equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     public Player withEquipment(PlayerEquipment nextEquipment) {
-        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, nextEquipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
      * Returns a copy of this player with the given identity (level and experience).
      */
     public Player withIdentity(PlayerIdentity nextIdentity) {
-        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(nextIdentity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -932,7 +939,7 @@ public class Player implements EffectTarget, Combatant {
      * @param resting {@code true} to enter a resting state, {@code false} to wake up
      */
     public Player withResting(boolean resting) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -943,7 +950,7 @@ public class Player implements EffectTarget, Combatant {
      * @param active {@code true} to enter stealth, {@code false} to leave it
      */
     public Player withStealth(boolean active) {
-        return new Player(identity, combatState.withStealth(active), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState.withStealth(active), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -952,7 +959,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newGold the new gold amount; negative values are clamped to 0
      */
     public Player withGold(int newGold) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, newGold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, newGold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -970,7 +977,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newBankedGold the new banked gold amount; negative values are clamped to 0
      */
     public Player withBankedGold(int newBankedGold) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, newBankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, newBankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -988,7 +995,7 @@ public class Player implements EffectTarget, Combatant {
      * @param quest the quest to set, or {@code null} to clear the active quest
      */
     public Player withActiveQuest(ActiveQuest quest) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, quest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, quest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -997,7 +1004,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newTotalKills the new kill count; negative values are clamped to 0
      */
     public Player withTotalKills(long newTotalKills) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, newTotalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, newTotalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -1006,7 +1013,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newPracticePoints the new practice point count; negative values are clamped to 0
      */
     public Player withPracticePoints(int newPracticePoints) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, newPracticePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -1058,7 +1065,8 @@ public class Player implements EffectTarget, Combatant {
             titles.active(),
             completedQuests.toIdList(),
             duelWins,
-            duelLosses
+            duelLosses,
+            proficiencies.toStringMap()
         );
     }
 
@@ -1084,7 +1092,7 @@ public class Player implements EffectTarget, Combatant {
      * @param newDuelWins the new duel-win count; negative values are clamped to 0
      */
     public Player withDuelWins(int newDuelWins) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, newDuelWins, duelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, newDuelWins, duelLosses, proficiencies);
     }
 
     /**
@@ -1093,6 +1101,32 @@ public class Player implements EffectTarget, Combatant {
      * @param newDuelLosses the new duel-loss count; negative values are clamped to 0
      */
     public Player withDuelLosses(int newDuelLosses) {
-        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, newDuelLosses);
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, newDuelLosses, proficiencies);
+    }
+
+    /**
+     * Returns this player's crafting proficiencies as a profession-id to accumulated-points map, for
+     * JSON serialisation. Empty when the player has never practised a profession.
+     */
+    @JsonProperty("proficiencies")
+    public Map<String, Integer> getProficiencies() {
+        return proficiencies.toStringMap();
+    }
+
+    /**
+     * Returns this player's crafting proficiency component (accumulated points per profession).
+     */
+    @JsonIgnore
+    public PlayerProficiencies proficiencies() {
+        return proficiencies;
+    }
+
+    /**
+     * Returns a copy of this player with the given crafting proficiencies.
+     *
+     * @param newProficiencies the new proficiency state; must not be null
+     */
+    public Player withProficiencies(PlayerProficiencies newProficiencies) {
+        return new Player(identity, combatState, preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, Objects.requireNonNull(newProficiencies, "Proficiencies are required"));
     }
 }

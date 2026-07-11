@@ -4,6 +4,7 @@
   "name": "Dire Fang Dagger",
   "output_item": "dire-fang-dagger",
   "gold_cost": 30,
+  "min_skill": 2,
   "materials": [
     { "item": "dire-wolf-fang", "quantity": 2 }
   ]

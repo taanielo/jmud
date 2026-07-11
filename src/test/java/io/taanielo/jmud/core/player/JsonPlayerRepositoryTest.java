@@ -25,6 +25,8 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.RaceId;
+import io.taanielo.jmud.core.craft.PlayerProficiencies;
+import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectInstance;
 import io.taanielo.jmud.core.faction.FactionId;
@@ -149,6 +151,36 @@ class JsonPlayerRepositoryTest {
 
         assertTrue(loaded.isPresent());
         assertEquals(-30, loaded.get().reputation().standing(FactionId.of("bandits")));
+    }
+
+    @Test
+    void savesAndLoadsCraftingProficiencies() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("smith"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withProficiencies(
+            PlayerProficiencies.empty().gain(ProfessionId.BLACKSMITHING, 250));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(250, loaded.get().proficiencies().points(ProfessionId.BLACKSMITHING));
+        assertEquals(2, loaded.get().proficiencies().level(ProfessionId.BLACKSMITHING));
+    }
+
+    @Test
+    void loadsPlayerWithoutProficiencyDataAtLevelZero() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("greenhorn"), Password.hash("pw", 1000));
+        // A player saved before proficiencies existed round-trips with an empty proficiency set.
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().proficiencies().isEmpty());
+        assertEquals(0, loaded.get().proficiencies().level(ProfessionId.COOKING));
     }
 
     @Test

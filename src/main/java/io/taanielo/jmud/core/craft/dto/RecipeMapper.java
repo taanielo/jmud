@@ -33,7 +33,11 @@ public class RecipeMapper {
         List<RecipeMaterial> materials = materialDtos.stream()
             .map(m -> toMaterial(id, m))
             .toList();
-        return new Recipe(RecipeId.of(id), name, ItemId.of(outputItem), goldCost, materials);
+        int minSkill = dto.minSkill() == null ? 0 : dto.minSkill();
+        int proficiencyGain = dto.proficiencyGain() == null
+            ? Recipe.DEFAULT_PROFICIENCY_GAIN : dto.proficiencyGain();
+        return new Recipe(RecipeId.of(id), name, ItemId.of(outputItem), goldCost, materials,
+            minSkill, proficiencyGain);
     }
 
     private RecipeMaterial toMaterial(String recipeId, RecipeMaterialDto dto) {

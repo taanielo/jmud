@@ -77,8 +77,10 @@ public class CraftingService {
             lines.add("The " + profile.crafter() + " has no recipes to offer.");
             return lines;
         }
+        int playerLevel = player.proficiencies().level(profile.profession());
         lines.add("The " + profile.crafter() + " can " + profile.verb() + " the following ("
-            + profile.command() + " <item> to make one):");
+            + profile.command() + " <item> to make one) [your " + profile.profession().value()
+            + " level: " + playerLevel + "]:");
         for (Recipe recipe : recipes) {
             List<String> parts = new ArrayList<>();
             for (RecipeMaterial material : recipe.materials()) {
@@ -86,8 +88,11 @@ public class CraftingService {
                 parts.add(String.format("%s (have %d / need %d)",
                     itemName(material.itemId()), have, material.quantity()));
             }
-            lines.add(String.format("  %s — %s; %d gold",
-                resolveOutputName(recipe), String.join(", ", parts), recipe.goldCost()));
+            String lockTag = recipe.minSkill() > playerLevel
+                ? " [requires " + profile.profession().value() + " " + recipe.minSkill() + "]"
+                : "";
+            lines.add(String.format("  %s — %s; %d gold%s",
+                resolveOutputName(recipe), String.join(", ", parts), recipe.goldCost(), lockTag));
         }
         return lines;
     }
@@ -116,6 +121,15 @@ public class CraftingService {
                 "The " + profile.crafter() + " knows no recipe for '" + input.trim() + "'.");
         }
         Recipe recipe = recipeOpt.get();
+
+        int playerLevel = player.proficiencies().level(profile.profession());
+        if (recipe.minSkill() > playerLevel) {
+            return CraftOutcome.failure(
+                "Your " + profile.profession().value() + " skill is too low to " + profile.verb()
+                    + " the " + resolveOutputName(recipe) + ". It requires "
+                    + profile.profession().value() + " level " + recipe.minSkill()
+                    + ", but you are only level " + playerLevel + ".");
+        }
 
         List<String> shortfalls = new ArrayList<>();
         for (RecipeMaterial material : recipe.materials()) {
@@ -153,11 +167,22 @@ public class CraftingService {
         for (RecipeMaterial material : recipe.materials()) {
             consume(inventory, material.itemId(), material.quantity());
         }
-        Player updated = player.withInventory(inventory).addGold(-recipe.goldCost()).addItem(output);
-        return CraftOutcome.success(
-            "The " + profile.crafter() + " " + profile.craftAction() + " a " + output.getName()
-                + " for " + recipe.goldCost() + " gold. You now have " + updated.getGold() + " gold.",
-            updated);
+        PlayerProficiencies grown =
+            player.proficiencies().gain(profile.profession(), recipe.proficiencyGain());
+        int newLevel = grown.level(profile.profession());
+        Player updated = player.withInventory(inventory)
+            .addGold(-recipe.goldCost())
+            .addItem(output)
+            .withProficiencies(grown);
+        StringBuilder message = new StringBuilder("The ").append(profile.crafter()).append(' ')
+            .append(profile.craftAction()).append(" a ").append(output.getName())
+            .append(" for ").append(recipe.goldCost()).append(" gold. You now have ")
+            .append(updated.getGold()).append(" gold.");
+        if (newLevel > playerLevel) {
+            message.append(" Your ").append(profile.profession().value())
+                .append(" proficiency rises to level ").append(newLevel).append('!');
+        }
+        return CraftOutcome.success(message.toString(), updated);
     }
 
     private Optional<Recipe> findRecipe(String normalized) {

@@ -180,4 +180,78 @@ class CraftingServiceTest {
         assertFalse(outcome.success());
         assertNull(outcome.updatedPlayer());
     }
+
+    @Test
+    void successfulCraftGrantsProficiencyPointsInTheProfession() {
+        Player player = withPelts(player(50), 2);
+
+        CraftOutcome outcome = service.craft(player, "wolf pelt cloak");
+
+        assertTrue(outcome.success());
+        assertEquals(Recipe.DEFAULT_PROFICIENCY_GAIN,
+            outcome.updatedPlayer().proficiencies().points(ProfessionId.BLACKSMITHING),
+            "default proficiency gain awarded");
+        assertEquals(0, outcome.updatedPlayer().proficiencies().level(ProfessionId.BLACKSMITHING),
+            "25 points is not yet a full level");
+    }
+
+    @Test
+    void crossingPointThresholdLevelsUpWithMessage() {
+        Recipe fastRecipe = new Recipe(
+            RecipeId.of("wolf-pelt-cloak"), "Wolf Pelt Cloak", CLOAK, 0,
+            List.of(new RecipeMaterial(WOLF_PELT, 2)), 0, PlayerProficiencies.POINTS_PER_LEVEL);
+        CraftingService fast = new CraftingService(List.of(fastRecipe), itemRepository);
+        Player player = withPelts(player(0), 2);
+
+        CraftOutcome outcome = fast.craft(player, "wolf pelt cloak");
+
+        assertTrue(outcome.success());
+        assertEquals(1, outcome.updatedPlayer().proficiencies().level(ProfessionId.BLACKSMITHING),
+            "100 points is exactly one level");
+        assertTrue(outcome.message().contains("proficiency rises to level 1"), () -> outcome.message());
+    }
+
+    @Test
+    void lockedRecipeFailsWithoutConsumingMaterialsOrGold() {
+        Recipe lockedRecipe = new Recipe(
+            RecipeId.of("wolf-pelt-cloak"), "Wolf Pelt Cloak", CLOAK, 15,
+            List.of(new RecipeMaterial(WOLF_PELT, 2)), 3, 25);
+        CraftingService gated = new CraftingService(List.of(lockedRecipe), itemRepository);
+        Player player = withPelts(player(50), 2);
+
+        CraftOutcome outcome = gated.craft(player, "wolf pelt cloak");
+
+        assertFalse(outcome.success());
+        assertNull(outcome.updatedPlayer(), "no player change, so nothing consumed");
+        assertTrue(outcome.message().contains("level 3"), () -> outcome.message());
+        assertTrue(outcome.message().contains("level 0"), () -> outcome.message());
+    }
+
+    @Test
+    void recipeWithoutProficiencyDataIsCraftableByAnyoneWithDefaults() {
+        Recipe legacyRecipe = new Recipe(
+            RecipeId.of("wolf-pelt-cloak"), "Wolf Pelt Cloak", CLOAK, 15,
+            List.of(new RecipeMaterial(WOLF_PELT, 2)));
+        assertEquals(0, legacyRecipe.minSkill(), "omitted min_skill defaults to no requirement");
+        assertEquals(Recipe.DEFAULT_PROFICIENCY_GAIN, legacyRecipe.proficiencyGain());
+
+        // Player.of() starts with no proficiency data, mirroring an existing save file.
+        CraftOutcome outcome = new CraftingService(List.of(legacyRecipe), itemRepository)
+            .craft(withPelts(player(50), 2), "wolf pelt cloak");
+
+        assertTrue(outcome.success(), () -> outcome.message());
+    }
+
+    @Test
+    void formatRecipesShowsProficiencyLevelAndFlagsLockedRecipes() {
+        Recipe lockedRecipe = new Recipe(
+            RecipeId.of("wolf-pelt-cloak"), "Wolf Pelt Cloak", CLOAK, 15,
+            List.of(new RecipeMaterial(WOLF_PELT, 2)), 3, 25);
+        CraftingService gated = new CraftingService(List.of(lockedRecipe), itemRepository);
+
+        String body = String.join("\n", gated.formatRecipes(withPelts(player(50), 2)));
+
+        assertTrue(body.contains("blacksmithing level: 0"), body);
+        assertTrue(body.contains("[requires blacksmithing 3]"), body);
+    }
 }
