@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,7 +45,7 @@ class ShutdownCommandTest {
 
         command(handle, broadcaster, "Alice").match("SHUTDOWN").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("denied"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("denied"));
         assertFalse(ran.get(), "shutdown must not run for a non-wizard");
         assertTrue(broadcaster.globalDeliveries.isEmpty());
     }
@@ -56,7 +57,7 @@ class ShutdownCommandTest {
 
         command(new ShutdownHandle(), broadcaster, "Alice").match("SHUTDOWN").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("not available"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("not available"));
         assertTrue(broadcaster.globalDeliveries.isEmpty());
     }
 
@@ -74,7 +75,7 @@ class ShutdownCommandTest {
         assertTrue(ran.get(), "shutdown sequence should have been triggered");
         assertFalse(broadcaster.globalDeliveries.isEmpty(), "a warning should be broadcast to all clients");
         assertTrue(WizardCommandSupport.text(broadcaster.globalDeliveries.get(0).message())
-            .toLowerCase().contains("shut down"));
-        assertTrue(context.promptMessage.toLowerCase().contains("shutdown initiated"));
+            .toLowerCase(Locale.ROOT).contains("shut down"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("shutdown initiated"));
     }
 }

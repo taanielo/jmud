@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.world.dto;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -25,9 +26,9 @@ public class RoomMapper {
             .map(item -> item.getId().getValue())
             .toList();
         Map<String, String> exits = new HashMap<>();
-        room.getExits().forEach((dir, roomId) -> exits.put(dir.name().toLowerCase(), roomId.getValue()));
+        room.getExits().forEach((dir, roomId) -> exits.put(dir.name().toLowerCase(Locale.ROOT), roomId.getValue()));
         Map<String, String> lockedExits = new HashMap<>();
-        room.getLockedExits().forEach((dir, keyId) -> lockedExits.put(dir.name().toLowerCase(), keyId.getValue()));
+        room.getLockedExits().forEach((dir, keyId) -> lockedExits.put(dir.name().toLowerCase(Locale.ROOT), keyId.getValue()));
         Integer minLevel = room.getMinLevel();
         String nightDescription = room.getNightDescription();
         Integer lightLevel = room.getLightLevel();

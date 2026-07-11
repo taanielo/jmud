@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -199,7 +200,7 @@ class PlayerMailServiceTest {
         MailResult result = service.sendGold(sender, recipient, 100, "too much", 50);
 
         assertFalse(result.success());
-        assertTrue(result.message().toLowerCase().contains("gold"));
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("gold"));
         assertEquals(null, result.updatedSender());
         assertEquals(null, result.updatedPlayer());
     }

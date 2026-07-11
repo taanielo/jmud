@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.weather;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -23,7 +24,7 @@ class WeatherRoomViewTest {
 
         List<String> lines = view.weatherLines(room("field", true));
 
-        assertTrue(lines.stream().anyMatch(line -> line.toLowerCase().contains("fog")),
+        assertTrue(lines.stream().anyMatch(line -> line.toLowerCase(Locale.ROOT).contains("fog")),
             "expected a fog description line, got " + lines);
         assertTrue(lines.stream().anyMatch(line -> line.startsWith("Visibility:")),
             "expected a visibility line, got " + lines);

@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.combat;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.effects.EffectDefinition;
@@ -43,7 +44,7 @@ public class CombatModifierResolver {
                 .orElseThrow(() -> new EffectRepositoryException("Unknown effect id " + instance.id().getValue()));
             int stacks = Math.max(1, instance.stacks());
             for (EffectModifier modifier : definition.modifiers()) {
-                String stat = modifier.stat().trim().toLowerCase();
+                String stat = modifier.stat().trim().toLowerCase(Locale.ROOT);
                 int amount = modifier.amount();
                 if (modifier.operation() == ModifierOperation.ADD) {
                     int total = amount * stacks;

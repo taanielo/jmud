@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 
@@ -92,7 +93,7 @@ class ReloadCommandTest {
 
         command(succeedingService(), broadcaster, registry, "Alice").match("RELOAD").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("denied"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("denied"));
         assertTrue(broadcaster.playerDeliveries.isEmpty());
         assertTrue(registry.snapshot().isEmpty(), "a denied reload must not schedule a commit");
     }
@@ -106,7 +107,7 @@ class ReloadCommandTest {
 
         command(succeedingService(), broadcaster, registry, "Alice").match("RELOAD").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("reloading"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("reloading"));
         // The commit (and its confirmation) is deferred to the tick thread.
         assertTrue(broadcaster.playerDeliveries.isEmpty(), "confirmation must wait for the tick-thread commit");
 
@@ -130,6 +131,6 @@ class ReloadCommandTest {
         assertEquals(1, broadcaster.playerDeliveries.size());
         String message = WizardCommandSupport.text(broadcaster.playerDeliveries.getFirst());
         assertTrue(message.contains("bad room json"));
-        assertTrue(message.toLowerCase().contains("no changes applied"));
+        assertTrue(message.toLowerCase(Locale.ROOT).contains("no changes applied"));
     }
 }

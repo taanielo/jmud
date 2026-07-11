@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -92,7 +93,7 @@ public class HelpCommand extends RegistrableCommand {
      * @param name    the command name to look up (case-insensitive)
      */
     private void handleDetail(SocketCommandContext context, String name) {
-        String lower = name.toLowerCase();
+        String lower = name.toLowerCase(Locale.ROOT);
         Optional<SocketCommandHandler> found = registry.commands().stream()
                 .filter(h -> h.name().equalsIgnoreCase(lower))
                 .findFirst();

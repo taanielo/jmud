@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,7 @@ class PlayerAliasServiceTest {
 
         assertFalse(result.success());
         assertNull(result.updatedPlayer());
-        assertTrue(result.message().toLowerCase().contains("itself"));
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("itself"));
     }
 
     @Test
@@ -52,7 +53,7 @@ class PlayerAliasServiceTest {
         AliasResult result = service.define(player, "kill", "attack rat", Set.of("kill", "look"));
 
         assertTrue(result.success());
-        assertTrue(result.message().toLowerCase().contains("warning"));
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("warning"));
         assertEquals("attack rat", result.updatedPlayer().aliases().expansionOf("kill"));
     }
 
@@ -93,6 +94,6 @@ class PlayerAliasServiceTest {
 
         assertFalse(result.success());
         assertTrue(result.lines().isEmpty());
-        assertTrue(result.message().toLowerCase().contains("no aliases"));
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("no aliases"));
     }
 }

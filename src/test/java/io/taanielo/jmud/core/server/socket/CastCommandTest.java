@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -58,7 +59,7 @@ class CastCommandTest {
         CastCommand cmd = new CastCommand(new SocketCommandRegistry());
         String desc = cmd.shortDescription();
         assertFalse(desc.isBlank(), "shortDescription must not be blank");
-        assertTrue(desc.toLowerCase().contains("cast") || desc.toLowerCase().contains("spell"),
+        assertTrue(desc.toLowerCase(Locale.ROOT).contains("cast") || desc.toLowerCase(Locale.ROOT).contains("spell"),
             "shortDescription should mention cast or spell");
     }
 
@@ -74,7 +75,7 @@ class CastCommandTest {
     void longDescriptionMentionsSpellOnlyRestriction() {
         CastCommand cmd = new CastCommand(new SocketCommandRegistry());
         String desc = cmd.longDescription();
-        assertTrue(desc.toLowerCase().contains("spell"),
+        assertTrue(desc.toLowerCase(Locale.ROOT).contains("spell"),
             "longDescription must explain spell-only restriction");
     }
 

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -313,7 +314,7 @@ class GameActionServicePlayerDuelTest {
     private boolean roomHasCorpse() {
         // The attacker never leaves ROOM_A, so look through their eyes to inspect the ground.
         return roomService.look(attacker.getUsername()).lines().stream()
-            .anyMatch(line -> line.toLowerCase().contains("corpse"));
+            .anyMatch(line -> line.toLowerCase(Locale.ROOT).contains("corpse"));
     }
 
     private CombatEngine defaultCombat() {

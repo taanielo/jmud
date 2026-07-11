@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -45,7 +46,7 @@ class TurnUndeadEngineTest {
         // Tag checker: returns true only for known undead names
         AbilityMobTagChecker tagChecker =
             (target, tag) -> "undead".equals(tag)
-                && UNDEAD_NAMES.contains(target.getUsername().getValue().toLowerCase());
+                && UNDEAD_NAMES.contains(target.getUsername().getValue().toLowerCase(Locale.ROOT));
 
         return new AbilityEngine(
             registry, costResolver, effectResolver, messageSink, null, tagChecker

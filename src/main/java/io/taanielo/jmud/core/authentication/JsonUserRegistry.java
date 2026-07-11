@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.world.repository.json.JsonDataMapper;
@@ -118,7 +120,7 @@ public class JsonUserRegistry implements UserRegistry {
     // -------------------------------------------------------------------------
 
     private Path userFilePath(Username username) {
-        return usersDirPath.resolve(username.getValue().toLowerCase() + ".json");
+        return usersDirPath.resolve(username.getValue().toLowerCase(Locale.ROOT) + ".json");
     }
 
     private void writeUser(Path filePath, User user) throws UserRegistryException {

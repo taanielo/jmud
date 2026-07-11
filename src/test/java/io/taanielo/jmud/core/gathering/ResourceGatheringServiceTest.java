@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -82,7 +83,7 @@ class ResourceGatheringServiceTest {
 
         assertFalse(outcome.success());
         assertNull(outcome.updatedPlayer());
-        assertTrue(outcome.message().toLowerCase().contains("nothing here"));
+        assertTrue(outcome.message().toLowerCase(Locale.ROOT).contains("nothing here"));
     }
 
     @Test
@@ -93,7 +94,7 @@ class ResourceGatheringServiceTest {
 
         assertFalse(second.success());
         assertNull(second.updatedPlayer());
-        assertTrue(second.message().toLowerCase().contains("stripped bare"));
+        assertTrue(second.message().toLowerCase(Locale.ROOT).contains("stripped bare"));
     }
 
     @Test
@@ -122,7 +123,7 @@ class ResourceGatheringServiceTest {
 
         assertTrue(first.success());
         assertFalse(second.success());
-        assertTrue(second.message().toLowerCase().contains("stripped bare"));
+        assertTrue(second.message().toLowerCase(Locale.ROOT).contains("stripped bare"));
     }
 
     @Test

@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.ability;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -288,7 +289,7 @@ public class AbilityEngine {
     private String formatEffect(AbilityEffect effect, Player target) {
         return switch (effect.kind()) {
             case VITALS -> {
-                String stat = effect.stat().name().toLowerCase();
+                String stat = effect.stat().name().toLowerCase(Locale.ROOT);
                 String verb = effect.operation() == AbilityOperation.INCREASE ? "gains" : "loses";
                 yield target.getUsername().getValue() + " " + verb + " " + effect.amount() + " " + stat + ".";
             }

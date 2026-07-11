@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -114,7 +115,7 @@ class QuestDeliveryServiceTest {
         QuestDeliveryService.DeliverResult result = service.deliver(basePlayer);
         assertFalse(result.success());
         assertFalse(result.messages().isEmpty());
-        assertTrue(result.messages().getFirst().toLowerCase().contains("no active"),
+        assertTrue(result.messages().getFirst().toLowerCase(Locale.ROOT).contains("no active"),
             "Expected 'no active' in: " + result.messages());
     }
 

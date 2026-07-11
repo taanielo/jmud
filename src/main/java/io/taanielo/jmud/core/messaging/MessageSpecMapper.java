@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.messaging;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
@@ -34,8 +35,8 @@ public final class MessageSpecMapper {
         List<MessageSpecDto> dtos = new ArrayList<>();
         for (MessageSpec spec : specs) {
             dtos.add(new MessageSpecDto(
-                spec.phase().name().toLowerCase(),
-                spec.channel().name().toLowerCase(),
+                spec.phase().name().toLowerCase(Locale.ROOT),
+                spec.channel().name().toLowerCase(Locale.ROOT),
                 spec.text()
             ));
         }

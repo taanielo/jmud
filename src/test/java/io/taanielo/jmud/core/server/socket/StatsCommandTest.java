@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -58,7 +59,7 @@ class StatsCommandTest {
 
         cmd.match("STATS").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("denied"),
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("denied"),
             "non-wizard should be denied");
         assertTrue(context.lines.isEmpty(), "no stats table should be shown to a non-wizard");
     }

@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.server.socket;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,7 @@ class MonstersLineFormatterTest {
 
     private static MobInstance mob(String name) {
         MobTemplate template = new MobTemplate(
-            io.taanielo.jmud.core.mob.MobId.of(name.toLowerCase().replace(' ', '-')),
+            io.taanielo.jmud.core.mob.MobId.of(name.toLowerCase(Locale.ROOT).replace(' ', '-')),
             name,
             10,
             null,

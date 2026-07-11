@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class GotoCommandTest {
 
         command(world, broadcaster, "Alice").match("GOTO dest").get().execute(context);
 
-        assertTrue(context.promptMessage.toLowerCase().contains("denied"));
+        assertTrue(context.promptMessage.toLowerCase(Locale.ROOT).contains("denied"));
         assertEquals(START, world.roomService().findPlayerLocation(bob.getUsername()).orElseThrow(),
             "denied admin must not be moved");
         assertTrue(broadcaster.roomDeliveries.isEmpty());

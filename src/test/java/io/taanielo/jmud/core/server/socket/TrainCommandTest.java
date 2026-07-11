@@ -134,7 +134,7 @@ class TrainCommandTest {
         command.match("TRAIN skill.bash").orElseThrow().execute(ctx);
 
         assertNull(ctx.savedPlayer, "Player should NOT be saved");
-        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase().contains("no practice")),
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase(Locale.ROOT).contains("no practice")),
             "Expected 'no practice' message: " + ctx.messages);
     }
 
@@ -147,7 +147,7 @@ class TrainCommandTest {
         command.match("TRAIN skill.bash").orElseThrow().execute(ctx);
 
         assertNull(ctx.savedPlayer, "Player should NOT be saved when re-training known ability");
-        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase().contains("already")),
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase(Locale.ROOT).contains("already")),
             "Expected 'already' message: " + ctx.messages);
     }
 
@@ -187,7 +187,7 @@ class TrainCommandTest {
         command.match("TRAIN spell.heal").orElseThrow().execute(ctx);
 
         assertNull(ctx.savedPlayer, "Player should NOT be saved");
-        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase().contains("not trainable")),
+        assertTrue(ctx.messages.stream().anyMatch(m -> m.toLowerCase(Locale.ROOT).contains("not trainable")),
             "Expected 'not trainable' message: " + ctx.messages);
     }
 
