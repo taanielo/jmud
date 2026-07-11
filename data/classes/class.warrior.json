@@ -6,5 +6,5 @@
     "base_modifier": 3
   },
   "carry_bonus": 20,
-  "ability_ids": ["skill.bash"]
+  "ability_ids": ["skill.bash", "skill.rend"]
 }

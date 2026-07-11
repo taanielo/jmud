@@ -29,7 +29,8 @@ class ClassDefinitionStartingAbilitiesTest {
         List<String> ids = abilityIdValues(warrior.startingAbilityIds());
 
         assertTrue(ids.contains("skill.bash"), "Warrior must have skill.bash");
-        assertEquals(1, ids.size(), "Warrior should have exactly 1 starting ability");
+        assertTrue(ids.contains("skill.rend"), "Warrior must have skill.rend");
+        assertEquals(2, ids.size(), "Warrior should have exactly 2 starting abilities");
     }
 
     @Test

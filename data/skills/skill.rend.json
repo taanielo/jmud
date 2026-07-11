@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.rend",
+  "name": "rend",
+  "type": "SKILL",
+  "level": 1,
+  "cost": {
+    "move": 4
+  },
+  "cooldown": {
+    "ticks": 4
+  },
+  "targeting": "HARMFUL",
+  "aliases": [],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 5
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "rend"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You tear a deep, ragged wound across {target}!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} rends a deep, weeping gash across your flesh!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} rends {target} with a brutal, tearing blow!"
+    }
+  ]
+}
