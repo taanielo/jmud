@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "iron-forged-chest",
+  "name": "Iron-Forged Cuirass",
+  "output_item": "iron-forged-chest",
+  "gold_cost": 45,
+  "materials": [
+    { "item": "iron-ore", "quantity": 5 },
+    { "item": "wild-herbs", "quantity": 2 }
+  ]
+}

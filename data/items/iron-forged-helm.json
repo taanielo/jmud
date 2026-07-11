@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "iron-forged-helm",
+  "name": "Iron-Forged Helm",
+  "description": "A full iron helm smelted from raw ore, its brow reinforced against a heavy blow.",
+  "attributes": {
+    "stats": {
+      "ac": 4
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "head",
+  "weight": 5,
+  "value": 55,
+  "attack_ref": null
+}

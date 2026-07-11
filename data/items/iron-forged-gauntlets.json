@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "iron-forged-gauntlets",
+  "name": "Iron-Forged Gauntlets",
+  "description": "Heavy gauntlets hammered from raw iron ore, their articulated plates guarding the hands and wrists.",
+  "attributes": {
+    "stats": {
+      "ac": 3
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "hands",
+  "weight": 4,
+  "value": 45,
+  "attack_ref": null
+}

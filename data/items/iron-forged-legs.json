@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "iron-forged-legs",
+  "name": "Iron-Forged Greaves",
+  "description": "Iron greaves smelted from raw ore, guarding the legs with overlapping plates.",
+  "attributes": {
+    "stats": {
+      "ac": 5
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "legs",
+  "weight": 9,
+  "value": 75,
+  "attack_ref": null
+}
