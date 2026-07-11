@@ -14,16 +14,18 @@ import java.util.Objects;
 public enum Rarity {
 
     /** The default tier: no visual highlight and no affixes. */
-    COMMON("common"),
+    COMMON("common", 0),
     /** An uplifted tier that may roll a single stat affix. */
-    UNCOMMON("uncommon"),
+    UNCOMMON("uncommon", 1),
     /** The top tier that rolls one or two stat affixes. */
-    RARE("rare");
+    RARE("rare", 2);
 
     private final String id;
+    private final int tier;
 
-    Rarity(String id) {
+    Rarity(String id, int tier) {
         this.id = id;
+        this.tier = tier;
     }
 
     /**
@@ -64,6 +66,19 @@ public enum Rarity {
      */
     public boolean isCommon() {
         return this == COMMON;
+    }
+
+    /**
+     * Returns whether this tier is at least as rare as the given tier. The comparison uses an
+     * explicit stable rank rather than enum declaration order (via {@code ordinal()}), so
+     * inserting or reordering tiers later cannot silently shift rarity-quality thresholds such as
+     * guaranteed world-boss loot.
+     *
+     * @param other the tier to compare against
+     * @return {@code true} when this tier's rank is greater than or equal to {@code other}'s
+     */
+    public boolean isAtLeast(Rarity other) {
+        return this.tier >= other.tier;
     }
 
     /**
