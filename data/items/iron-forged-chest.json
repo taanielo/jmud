@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "iron-forged-chest",
+  "name": "Iron-Forged Cuirass",
+  "description": "A banded iron cuirass forged from raw ore, layered over a padded backing for serious protection.",
+  "attributes": {
+    "stats": {
+      "ac": 8
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 14,
+  "value": 110,
+  "attack_ref": null
+}

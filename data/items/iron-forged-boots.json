@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "iron-forged-boots",
+  "name": "Iron-Forged Boots",
+  "description": "Sturdy boots plated with beaten iron over a leather lining, shielding the feet without slowing the stride.",
+  "attributes": {
+    "stats": {
+      "ac": 3
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "feet",
+  "weight": 5,
+  "value": 50,
+  "attack_ref": null
+}

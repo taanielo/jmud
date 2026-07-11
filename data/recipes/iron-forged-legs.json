@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "iron-forged-legs",
+  "name": "Iron-Forged Greaves",
+  "output_item": "iron-forged-legs",
+  "gold_cost": 35,
+  "materials": [
+    { "item": "iron-ore", "quantity": 4 },
+    { "item": "wild-herbs", "quantity": 1 }
+  ]
+}

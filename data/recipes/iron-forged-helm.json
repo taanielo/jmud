@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "iron-forged-helm",
+  "name": "Iron-Forged Helm",
+  "output_item": "iron-forged-helm",
+  "gold_cost": 25,
+  "materials": [
+    { "item": "iron-ore", "quantity": 3 },
+    { "item": "wild-herbs", "quantity": 1 }
+  ]
+}
