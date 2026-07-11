@@ -424,6 +424,35 @@ class SocketCommandContextImpl implements SocketCommandContext {
         writeLineWithPrompt("ANSI is now " + (enabled ? "ON" : "OFF"));
     }
 
+    private void handleAutoLootCommand(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to change autoloot settings.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.equals("STATUS")) {
+            writeLineWithPrompt("AUTOLOOT is " + (player.isAutoLootEnabled() ? "ON" : "OFF"));
+            return;
+        }
+        switch (normalized) {
+            case "ON" -> setAutoLootEnabled(true);
+            case "OFF" -> setAutoLootEnabled(false);
+            case "TOGGLE" -> setAutoLootEnabled(!player.isAutoLootEnabled());
+            default -> writeLineWithPrompt("Usage: AUTOLOOT [on|off|toggle|status]");
+        }
+    }
+
+    private void setAutoLootEnabled(boolean enabled) {
+        Player player = session.getPlayer();
+        if (player.isAutoLootEnabled() == enabled) {
+            writeLineWithPrompt("AUTOLOOT is already " + (enabled ? "ON" : "OFF"));
+            return;
+        }
+        session.replacePlayer(player.withAutoLootEnabled(enabled));
+        writeLineWithPrompt("AUTOLOOT is now " + (enabled ? "ON" : "OFF"));
+    }
+
     // ── AFK / away status (issue #464) ──────────────────────────────────
 
     @Override
@@ -1314,6 +1343,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
     @Override
     public void updateAnsi(String args) {
         handleAnsiCommand(args);
+    }
+
+    @Override
+    public void updateAutoLoot(String args) {
+        handleAutoLootCommand(args);
     }
 
     @Override

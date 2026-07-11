@@ -669,7 +669,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
 
     /**
      * Assigns each rolled loot item to its destination. In {@link LootMode#FREE} (or when the killer
-     * is not in a party) every item drops to the room floor as before. In {@link LootMode#ROUND_ROBIN}
+     * is not in a party) every item drops to the room floor as before — unless the killer has autoloot
+     * enabled ({@link Player#isAutoLootEnabled()}) and can still carry the item, in which case it goes
+     * straight into their inventory with a {@code "You loot ..."} message; an item the killer cannot
+     * carry still drops to the floor so nothing is lost. In {@link LootMode#ROUND_ROBIN}
      * each item is handed to the next eligible party member in rotation — skipping members whose
      * inventory is full — and only falls to the floor (with an explanatory message) when no eligible
      * member can carry it, so an item is never lost. Recipients get a {@code "You loot ..."} message
@@ -697,6 +700,15 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         boolean roundRobin = mode == LootMode.ROUND_ROBIN && !eligible.isEmpty();
         for (Item item : drops) {
             if (!roundRobin) {
+                Player attackerSnapshot = working.get(attacker);
+                if (attackerSnapshot != null
+                    && attackerSnapshot.isAutoLootEnabled()
+                    && canReceiveItem(attackerSnapshot, item)) {
+                    working.put(attacker, attackerSnapshot.addItem(item));
+                    attackerMessages.add(GameMessage.toSource(
+                        "You loot a " + item.getName() + "."));
+                    continue;
+                }
                 roomService.addItem(mob.roomId(), item);
                 attackerMessages.add(GameMessage.toSource(
                     "A " + item.getName() + " drops to the ground."));

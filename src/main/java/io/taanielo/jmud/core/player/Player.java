@@ -188,7 +188,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -227,12 +227,13 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("completedQuests") List<String> completedQuests,
         @JsonProperty("duelWins") Integer duelWins,
         @JsonProperty("duelLosses") Integer duelLosses,
-        @JsonProperty("proficiencies") Map<String, Integer> proficiencies
+        @JsonProperty("proficiencies") Map<String, Integer> proficiencies,
+        @JsonProperty("autoLootEnabled") Boolean autoLootEnabled
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId),
             new PlayerCombatState(vitals, effects, dead),
-            new PlayerPreferences(promptFormat, ansiEnabled),
+            new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled),
             new PlayerAbilities(learnedAbilities),
             new PlayerInventory(inventory),
             equipment == null ? PlayerEquipment.empty() : equipment,
@@ -355,6 +356,11 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("ansiEnabled")
     public boolean isAnsiEnabled() {
         return preferences.ansiEnabled();
+    }
+
+    @JsonProperty("autoLootEnabled")
+    public boolean isAutoLootEnabled() {
+        return preferences.autoLootEnabled();
     }
 
     @JsonProperty("learnedAbilities")
@@ -804,6 +810,18 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns a copy of this player with autoloot enabled or disabled, preserving all other state.
+     * When enabled, items dropped by mobs the player kills solo are placed directly into the player's
+     * inventory instead of onto the room floor (subject to carry capacity).
+     *
+     * @param enabled whether autoloot should be enabled
+     * @return an updated player
+     */
+    public Player withAutoLootEnabled(boolean enabled) {
+        return new Player(identity, combatState, preferences.withAutoLootEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
+    }
+
+    /**
      * Returns a copy of this player with the given prompt format string, preserving all other state.
      *
      * @param nextFormat the new prompt format (token substitution handled by {@code PromptRenderer})
@@ -1066,7 +1084,8 @@ public class Player implements EffectTarget, Combatant {
             completedQuests.toIdList(),
             duelWins,
             duelLosses,
-            proficiencies.toStringMap()
+            proficiencies.toStringMap(),
+            preferences.autoLootEnabled()
         );
     }
 

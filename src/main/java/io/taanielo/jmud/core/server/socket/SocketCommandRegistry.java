@@ -138,6 +138,7 @@ public class SocketCommandRegistry {
         new RestCommand(registry);
         new WakeCommand(registry);
         new AnsiCommand(registry);
+        new AutoLootCommand(registry);
         new PromptCommand(registry);
         new GoldCommand(registry);
         new ListCommand(registry);

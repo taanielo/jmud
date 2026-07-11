@@ -95,6 +95,42 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsAutoLootPreference() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("looter"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withAutoLootEnabled(true);
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().isAutoLootEnabled(), "autoloot preference should round-trip");
+
+        Path file = tempDir.resolve("players").resolve("looter.json");
+        JsonNode root = new ObjectMapper().readTree(Files.readString(file));
+        assertTrue(root.get("autoLootEnabled").asBoolean(), "autoLootEnabled should be persisted");
+    }
+
+    @Test
+    void loadsPlayerWithoutAutoLootFieldAsDisabled() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("veteran"), Password.hash("pw", 1000));
+        // Mirror a legacy save that predates the autoLootEnabled field.
+        repository.savePlayer(Player.of(user, "%hp> "));
+        Path file = tempDir.resolve("players").resolve("veteran.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("autoLootEnabled");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertFalse(loaded.get().isAutoLootEnabled(),
+            "Player with no autoLootEnabled field should default to off");
+    }
+
+    @Test
     void loadsPlayerWithoutFriendsFieldAsEmptyList() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("lonely"), Password.hash("pw", 1000));
