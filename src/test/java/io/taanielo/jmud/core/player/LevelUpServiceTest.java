@@ -93,6 +93,33 @@ class LevelUpServiceTest {
     }
 
     @Test
+    void levelUpGrantsMoveGain() {
+        Player player = basePlayer(1, 0);
+        int initialMaxMove = player.getVitals().maxMove();
+
+        LevelUpService.LevelUpResult result = service.awardXp(player, 100);
+
+        int expectedMaxMove = initialMaxMove + LevelUpService.MOVE_GAIN_PER_LEVEL;
+        assertEquals(expectedMaxMove, result.player().getVitals().maxMove());
+        assertEquals(expectedMaxMove, result.player().getVitals().move(),
+            "Move should be restored to the new max on level-up");
+    }
+
+    @Test
+    void multipleLevelUpsCompoundMoveGain() {
+        Player player = basePlayer(1, 0);
+        int initialMaxMove = player.getVitals().maxMove();
+
+        // Level 1->2: 100, Level 2->3: 200 => 300 total for 2 level-ups
+        LevelUpService.LevelUpResult result = service.awardXp(player, 300);
+
+        int expectedMaxMove = initialMaxMove + 2 * LevelUpService.MOVE_GAIN_PER_LEVEL;
+        assertEquals(3, result.player().getLevel());
+        assertEquals(expectedMaxMove, result.player().getVitals().maxMove());
+        assertEquals(expectedMaxMove, result.player().getVitals().move());
+    }
+
+    @Test
     void levelUpRestoresVitalsToFull() {
         // Player is partially damaged before the level-up
         User user = User.of(Username.of("hero"), Password.hash("pw", 1000));
@@ -104,6 +131,7 @@ class LevelUpServiceTest {
         PlayerVitals after = result.player().getVitals();
         assertEquals(after.maxHp(), after.hp(), "HP should be restored to max on level-up");
         assertEquals(after.maxMana(), after.mana(), "Mana should be restored to max on level-up");
+        assertEquals(after.maxMove(), after.move(), "Move should be restored to max on level-up");
     }
 
     // ── awardXp: multiple level-ups ──────────────────────────────────────────
