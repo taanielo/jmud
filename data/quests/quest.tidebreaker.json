@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "tidebreaker",
+  "name": "Tidebreaker",
+  "description": "The drowned sailors are only the wake of a deeper wrong. Their captain still walks the lighthouse summit above the wreck of the Grey Gull, and while he holds the light the isle's dead will never rest. Keeper Maelis asks one last thing: climb to the summit, break the Drowned Captain's watch, and let the tide finally close over the Grey Gull for good.",
+  "target_mob_id": "drowned-captain",
+  "required_kills": 1,
+  "gold_reward": 500,
+  "xp_reward": 1200,
+  "title_reward": "Tidebreaker",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 25,
+  "repeatable": false,
+  "prerequisite_quest_id": "drowned-watch"
+}
