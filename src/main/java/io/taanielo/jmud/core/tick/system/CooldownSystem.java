@@ -39,11 +39,6 @@ public class CooldownSystem implements Tickable {
 
     @Override
     public void tick() {
-        for (Map.Entry<String, AtomicInteger> entry : cooldowns.entrySet()) {
-            int remaining = entry.getValue().decrementAndGet();
-            if (remaining <= 0) {
-                cooldowns.remove(entry.getKey(), entry.getValue());
-            }
-        }
+        cooldowns.entrySet().removeIf(entry -> entry.getValue().decrementAndGet() <= 0);
     }
 }

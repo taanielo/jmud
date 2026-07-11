@@ -518,6 +518,9 @@ public class PlayerSession {
      * @return {@code true} when the countdown has reached zero and the session should be reaped;
      *     {@code false} otherwise (including when the session is not linkdead)
      */
+    // Single-writer: tickLinkdead() runs only on the tick thread (AGENTS.md §5), so the
+    // volatile read-decrement-write is not a multi-writer race.
+    @SuppressWarnings("NonAtomicVolatileUpdate")
     public boolean tickLinkdead() {
         if (!linkdead) {
             return false;
