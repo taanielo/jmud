@@ -75,6 +75,8 @@ Available keys:
 - `jmud.effects.enabled`
 - `jmud.tick.interval.ms`
 - `jmud.output.ansi.enabled` (default ANSI colors for new players)
+- `jmud.movement.step_cost` (move points spent per room step)
+- `jmud.movement.overburdened_surcharge` (extra move points per step while overburdened)
 
 Players can toggle ANSI output in-game with `ANSI on|off|toggle|status`.
 
