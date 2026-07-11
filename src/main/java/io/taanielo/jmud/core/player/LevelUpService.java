@@ -7,7 +7,8 @@ package io.taanielo.jmud.core.player;
  * <p>Formula:
  * <ul>
  *   <li>XP required to advance from level {@code N} to {@code N+1}: {@code N * 100}</li>
- *   <li>Each level-up grants {@code +10} permanent max HP and {@code +5} permanent max mana.</li>
+ *   <li>Each level-up grants {@code +10} permanent max HP, {@code +5} permanent max mana,
+ *       and {@code +3} permanent max move.</li>
  * </ul>
  *
  * <p>The service is stateless and thread-safe; callers are responsible for
@@ -25,6 +26,9 @@ public class LevelUpService {
 
     /** Max-mana gain applied per level-up. */
     public static final int MANA_GAIN_PER_LEVEL = 5;
+
+    /** Max-move gain applied per level-up. */
+    public static final int MOVE_GAIN_PER_LEVEL = 3;
 
     /** Practice points awarded per level-up. */
     public static final int PRACTICE_POINTS_PER_LEVEL = 1;
@@ -54,11 +58,12 @@ public class LevelUpService {
             newLevel++;
             int newMaxHp = newVitals.maxHp() + HP_GAIN_PER_LEVEL;
             int newMaxMana = newVitals.maxMana() + MANA_GAIN_PER_LEVEL;
+            int newMaxMove = newVitals.maxMove() + MOVE_GAIN_PER_LEVEL;
             // Restore player to full on level-up (classic MUD behaviour)
             newVitals = new PlayerVitals(
                 newMaxHp, newMaxHp, newMaxHp,
                 newMaxMana, newMaxMana,
-                newVitals.maxMove(), newVitals.maxMove()
+                newMaxMove, newMaxMove
             );
             newPracticePoints += PRACTICE_POINTS_PER_LEVEL;
             leveledUp = true;
