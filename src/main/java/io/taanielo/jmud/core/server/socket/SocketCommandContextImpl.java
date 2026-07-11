@@ -71,6 +71,7 @@ import io.taanielo.jmud.core.player.AliasResult;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.MailResult;
+import io.taanielo.jmud.core.player.MovementCostService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
 import io.taanielo.jmud.core.player.PlayerFriendList;
@@ -148,6 +149,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final AbilityRegistry abilityRegistry;
     private final AbilityTargetResolver abilityTargetResolver;
     private final EncumbranceService encumbranceService;
+    private final MovementCostService movementCostService;
     private final RoomService roomService;
     private final AuditService auditService;
     private final PersistenceQueue persistenceQueue;
@@ -187,6 +189,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         this.abilityRegistry = Objects.requireNonNull(context.abilityRegistry(), "Ability registry is required");
         this.abilityTargetResolver = Objects.requireNonNull(context.abilityTargetResolver(), "Ability target resolver is required");
         this.encumbranceService = Objects.requireNonNull(context.encumbranceService(), "Encumbrance service is required");
+        this.movementCostService = new MovementCostService(encumbranceService);
         this.roomService = Objects.requireNonNull(context.roomService(), "Room service is required");
         this.auditService = Objects.requireNonNull(context.auditService(), "Audit service is required");
         this.persistenceQueue = Objects.requireNonNull(context.persistenceQueue(), "Persistence queue is required");
@@ -940,8 +943,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         cancelRestIfActive();
         session.clearDialogue();
         Player player = session.getPlayer();
-        if (encumbranceService.isOverburdened(player)) {
-            writeLineWithPrompt("You are carrying too much to do that.");
+        if (movementCostService.isExhausted(player)) {
+            writeLineWithPrompt(MovementCostService.EXHAUSTED_MESSAGE);
             return;
         }
         RoomService.LookResult currentLook = roomService.look(player.getUsername(), session.getTextStyler());
@@ -950,10 +953,28 @@ class SocketCommandContextImpl implements SocketCommandContext {
         RoomService.MoveResult result =
             roomService.move(player.getUsername(), direction, session.getTextStyler());
         emitMoveAudit(player, direction, fromRoom, result);
+        if (result.moved()) {
+            player = spendMovePoints(player);
+        }
         renderMoveOutcome(player, direction, oldRoom, result, null);
         if (result.moved()) {
             triggerAutoFollow(player.getUsername(), fromRoom, direction);
         }
+    }
+
+    /**
+     * Deducts the move-point cost of one step from the given (already-moved) player, replaces the
+     * session snapshot, and persists it through the write-behind queue. Runs on the tick thread as
+     * part of command execution (AGENTS.md §5).
+     *
+     * @param player the player who just completed a room transition
+     * @return the updated player snapshot with move points spent
+     */
+    private Player spendMovePoints(Player player) {
+        Player spent = movementCostService.spend(player);
+        session.replacePlayer(spent);
+        saveOrWarn(spent);
+        return spent;
     }
 
     /** Emits the {@code player.move} audit event for a move attempt (successful or blocked). */
@@ -1100,9 +1121,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 "You are locked in combat and stop following " + leaderName.getValue() + ".");
             return;
         }
-        if (encumbranceService.isOverburdened(player)) {
+        if (movementCostService.isExhausted(player)) {
             cancelFollow(partyService, player.getUsername(),
-                "You are carrying too much and stop following " + leaderName.getValue() + ".");
+                "You are too exhausted to keep following " + leaderName.getValue() + ". REST to recover.");
             return;
         }
         cancelRestIfActive();
@@ -1118,6 +1139,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 "You cannot follow " + leaderName.getValue() + " " + direction.label() + " from here.");
             return;
         }
+        player = spendMovePoints(player);
         renderMoveOutcome(player, direction, oldRoom, result,
             "You follow " + leaderName.getValue() + " " + direction.label() + ".");
     }
@@ -2017,9 +2039,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
+        if (movementCostService.isExhausted(player)) {
+            writeLineWithPrompt(MovementCostService.EXHAUSTED_MESSAGE);
+            return;
+        }
         GameActionResult result = gameActionService.recall(player);
         deliverResult(result);
         if (result.metadata().containsKey("recalled")) {
+            spendMovePoints(player);
             RoomService.LookResult look = roomService.look(player.getUsername(), session.getTextStyler());
             connection.writeLines(look.lines());
             writeRoomOccupantLines(look.room());
