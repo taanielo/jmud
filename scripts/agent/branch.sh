@@ -59,5 +59,9 @@ else
     run git checkout -b "$BRANCH" origin/main || fail branch "could not create $BRANCH"
 fi
 
+# 4. Reset the per-cycle verify counter (verify.sh increments it; merge.sh
+#    logs it as verify_runs — 1 means clean first pass, >1 means retries).
+echo 0 >"$STATE_DIR/verify-runs"
+
 ok "$(jq -n --arg b "$BRANCH" --argjson i "$ISSUE" '{branch: $b, issue: $i}')" \
    "branch=$BRANCH stashed=$STASHED autosave_stashes=$AUTOSAVES resumed=$RESUMED"

@@ -17,6 +17,20 @@ cd "$REPO_ROOT"
 ISSUE="${1-}"
 CI_WAIT_SECS=900   # give up on CI after ~15 min
 
+# The argument is the ISSUE number, never the PR number (the PR is found from
+# the current branch). A PR number here corrupts cycle-log.jsonl — it has
+# happened (issue #329 was logged as 330). GitHub numbers issues and PRs in
+# one sequence, so a numeric check can't catch it; the resolved URL can.
+if [ -n "$ISSUE" ]; then
+    [[ "$ISSUE" =~ ^[0-9]+$ ]] || fail usage "issue number must be numeric, got '$ISSUE'"
+    ISSUE_URL="$(gh issue view "$ISSUE" --json url -q .url 2>>"$STEP_LOG" || true)"
+    case "$ISSUE_URL" in
+        */issues/*) : ;;
+        */pull/*)   fail usage "#$ISSUE is a pull request, not an issue — pass the issue number (the PR is derived from the current branch)" ;;
+        *)          echo "WARN could not verify #$ISSUE is an issue (gh lookup failed) — proceeding, but check cycle-log.jsonl" ;;
+    esac
+fi
+
 PR_JSON="$(gh pr view --json number,url,state,mergeable 2>>"$STEP_LOG")" \
     || fail no-pr "no PR found for the current branch"
 PR_NUM="$(jq -r .number <<<"$PR_JSON")"
@@ -40,16 +54,44 @@ back_to_main() {
 append_cycle_log() {
     local cycle_log="$STATE_DIR/cycle-log.jsonl"
     grep -q "\"pr\":$PR_NUM[,}]" "$cycle_log" 2>/dev/null && return 0
-    local merged_at
+    local merged_at started_at verify_runs
     merged_at="$(gh pr view "$PR_NUM" --json mergedAt -q '.mergedAt // empty' 2>>"$STEP_LOG")"
     [ -n "$merged_at" ] || merged_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    # started_at = this session's guard time (a resumed cycle logs its last
+    # session's start, not the very first attempt — good enough for cadence
+    # metrics). verify_runs counts verify.sh invocations this cycle: 1 = clean
+    # first pass, >1 = build retries were needed.
+    started_at="$(jq -r '.started_at // empty' "$STATE_DIR/LOCK" 2>/dev/null || true)"
+    verify_runs="$(cat "$STATE_DIR/verify-runs" 2>/dev/null || true)"
+    [[ "$verify_runs" =~ ^[0-9]+$ ]] || verify_runs=null
     jq -cn --argjson p "$PR_NUM" --argjson i "${ISSUE:-null}" --arg m "$merged_at" \
-        '{issue: $i, pr: $p, merged_at: $m}' >>"$cycle_log"
+        --arg s "$started_at" --argjson v "$verify_runs" \
+        '{issue: $i, pr: $p, merged_at: $m,
+          started_at: (if $s == "" then null else $s end), verify_runs: $v}' >>"$cycle_log"
+}
+
+# GitHub auto-closes the linked issue only if the PR body carried a closing
+# keyword; that has silently failed before (issue #339 stayed open after its
+# PR merged). Verify and close explicitly — idempotent, skipped when no issue
+# number was passed.
+close_linked_issue() {
+    [ -n "$ISSUE" ] || return 0
+    sleep 3   # give GitHub's closes-keyword automation a moment to run first
+    local ist
+    ist="$(gh issue view "$ISSUE" --json state -q .state 2>>"$STEP_LOG" || true)"
+    if [ "$ist" = "OPEN" ]; then
+        if run gh issue close "$ISSUE" --comment "Closed by PR #$PR_NUM (merge.sh: auto-close did not fire)"; then
+            echo "WARN issue #$ISSUE was not auto-closed by the merge — closed it explicitly"
+        else
+            echo "WARN issue #$ISSUE is still open and the explicit close failed — close it manually"
+        fi
+    fi
 }
 
 # Idempotent: a crash after merging must not re-fail the cycle.
 if [ "$PR_STATE" = "MERGED" ]; then
     append_cycle_log
+    close_linked_issue
     back_to_main
     ok "$(result_json)" "merged=true pr=$PR_NUM (was already merged)"
 fi
@@ -88,6 +130,7 @@ fi
 
 run gh pr merge "$PR_NUM" --squash --delete-branch || fail merge "gh pr merge --squash failed"
 append_cycle_log
+close_linked_issue
 back_to_main
 
 ok "$(result_json)" "merged=true pr=$PR_NUM"

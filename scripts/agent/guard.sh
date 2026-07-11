@@ -56,6 +56,18 @@ if [ ! -s "$STATE_FILE" ]; then
     log "created default orchestrator-state.json"
 fi
 
+# Keep cron.log bounded (headless firings append to it forever; SETUP.md used
+# to ask a human to truncate it). Truncate IN PLACE via `cat >` — the running
+# cron session holds an O_APPEND fd on this file, so replacing it with mv/rename
+# would silently divert the session's remaining output to an orphaned inode.
+CRON_LOG="$STATE_DIR/cron.log"
+if [ -f "$CRON_LOG" ] && [ "$(stat -c%s "$CRON_LOG" 2>/dev/null || echo 0)" -gt 1048576 ]; then
+    tail -n 500 "$CRON_LOG" >"$CRON_LOG.trim.tmp" \
+        && cat "$CRON_LOG.trim.tmp" >"$CRON_LOG" \
+        && rm -f "$CRON_LOG.trim.tmp" \
+        && log "trimmed cron.log (>1 MB) to its last 500 lines"
+fi
+
 log "lock acquired"
 echo "OK lock=acquired replaced_stale_lock_age=$REPLACED_AGE"
 exit 0
