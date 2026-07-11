@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.embercrawler",
+  "name": "molten mandibles",
+  "min_damage": 16,
+  "max_damage": 26,
+  "hit_bonus": 3,
+  "crit_bonus": 2,
+  "damage_bonus": 5,
+  "weapon_type": "PIERCING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 35
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The embercrawler clamps its molten mandibles into you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The embercrawler snaps at you and its mandibles clash on empty air."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The embercrawler drives its white-hot mandibles deep and sears you for {damage}!"
+    }
+  ]
+}

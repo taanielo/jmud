@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "obsidian-golem",
+  "name": "Obsidian Golem",
+  "max_hp": 200,
+  "attack_id": "attack.obsidian-golem",
+  "aggressive": true,
+  "tags": ["fire", "construct", "emberdeep"],
+  "spawn_room_id": "emberdeep-ember-nest",
+  "max_count": 2,
+  "respawn_ticks": 60,
+  "xp_reward": 230,
+  "loot": [
+    {
+      "item_id": "molten-core-shard",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 40,
+    "max": 70
+  }
+}

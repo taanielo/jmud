@@ -1,0 +1,29 @@
+{
+  "schema_version": 4,
+  "id": "ember-wyrm",
+  "name": "Pyraxis, the Ember Wyrm",
+  "max_hp": 480,
+  "attack_id": "attack.ember-wyrm",
+  "special_attack_id": "attack.ember-wyrm-breath",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["fire", "dragon", "boss", "emberdeep"],
+  "spawn_room_id": "emberdeep-forge-heart",
+  "max_count": 1,
+  "respawn_ticks": 300,
+  "xp_reward": 1000,
+  "loot": [
+    {
+      "item_id": "emberforged-greataxe",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "molten-core-shard",
+      "drop_chance": 1.0
+    }
+  ],
+  "gold_drop": {
+    "min": 250,
+    "max": 450
+  }
+}

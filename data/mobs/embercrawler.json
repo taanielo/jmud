@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "embercrawler",
+  "name": "Embercrawler",
+  "max_hp": 145,
+  "attack_id": "attack.embercrawler",
+  "aggressive": true,
+  "tags": ["fire", "insect", "emberdeep"],
+  "spawn_room_id": "emberdeep-obsidian-passage",
+  "max_count": 3,
+  "respawn_ticks": 40,
+  "xp_reward": 160,
+  "loot": [
+    {
+      "item_id": "molten-core-shard",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 25,
+    "max": 50
+  }
+}

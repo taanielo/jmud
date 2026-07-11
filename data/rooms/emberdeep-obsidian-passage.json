@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "emberdeep-obsidian-passage",
+  "name": "Obsidian Passage",
+  "description": "The walls here are sheeted in volcanic glass, black and glossy as still water, throwing back warped reflections of anything that moves. The passage twists downward through cooled lava that once flowed like a river and froze mid-surge into knife-edged waves. Every surface is faintly warm to the touch, and the air tastes of iron and ash.",
+  "item_ids": [],
+  "exits": {
+    "up": "emberdeep-fissure",
+    "down": "emberdeep-magma-flow"
+  },
+  "min_level": 21,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A sheet of obsidian ticks and creaks as unseen heat works through the stone.",
+    "Your own warped reflection slides across the glassy walls, a step behind you.",
+    "Somewhere ahead, a heavy, chittering scuttle echoes and then falls silent."
+  ]
+}
