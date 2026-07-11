@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "rend",
+  "name": "Rend",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 3
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A deep, weeping wound opens and blood streams from the gash."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is torn open by a savage, bleeding wound."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "Your open wound bleeds freely, sapping your strength."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Your wound finally clots and the bleeding stops."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name}'s bleeding wound finally closes over."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is bleeding from a deep, gaping wound."
+    }
+  ]
+}
