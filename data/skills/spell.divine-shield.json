@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.divine-shield",
+  "name": "divine shield",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 10
+  },
+  "cooldown": {
+    "ticks": 30
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["divine ward"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "divine-shield"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call upon your faith and wreathe {target} in a radiant divine shield."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} wreathes you in a radiant divine shield."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} wreathes {target} in a radiant divine shield."
+    }
+  ]
+}

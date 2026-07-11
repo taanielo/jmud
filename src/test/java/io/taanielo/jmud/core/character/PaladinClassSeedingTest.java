@@ -20,13 +20,15 @@ import io.taanielo.jmud.core.player.Player;
 
 /**
  * Verifies that {@code class.paladin.json} loads correctly and that a new player seeded from the
- * Paladin class receives its self-heal ({@code spell.lay.on.hands}) and undead-smite
- * ({@code spell.smite}) abilities, and that the class exposes its heavy-armour bonus.
+ * Paladin class receives its self-heal ({@code spell.lay.on.hands}), undead-smite
+ * ({@code spell.smite}) and signature ward ({@code spell.divine-shield}) abilities, and that the
+ * class exposes its heavy-armour bonus.
  */
 class PaladinClassSeedingTest {
 
     private static final AbilityId LAY_ON_HANDS = AbilityId.of("spell.lay.on.hands");
     private static final AbilityId SMITE = AbilityId.of("spell.smite");
+    private static final AbilityId DIVINE_SHIELD = AbilityId.of("spell.divine-shield");
 
     @TempDir
     Path tempDir;
@@ -47,7 +49,7 @@ class PaladinClassSeedingTest {
         assertEquals(1, paladin.healingBaseModifier());
         assertEquals(8, paladin.carryBonus());
         assertEquals(5, paladin.armorBonus());
-        assertEquals(List.of(LAY_ON_HANDS, SMITE), paladin.startingAbilityIds());
+        assertEquals(List.of(LAY_ON_HANDS, SMITE, DIVINE_SHIELD), paladin.startingAbilityIds());
     }
 
     @Test
@@ -65,11 +67,13 @@ class PaladinClassSeedingTest {
             .withLearnedAbilities(paladin.startingAbilityIds());
 
         List<AbilityId> learned = player.getLearnedAbilities();
-        assertEquals(2, learned.size());
+        assertEquals(3, learned.size());
         assertTrue(learned.contains(LAY_ON_HANDS),
             "Paladin starting abilities must include spell.lay.on.hands");
         assertTrue(learned.contains(SMITE),
             "Paladin starting abilities must include spell.smite");
+        assertTrue(learned.contains(DIVINE_SHIELD),
+            "Paladin starting abilities must include spell.divine-shield");
     }
 
     @Test
@@ -81,6 +85,7 @@ class PaladinClassSeedingTest {
         assertEquals(5, paladin.armorBonus(), "Paladin should grant a heavy-armour AC bonus");
         assertTrue(paladin.startingAbilityIds().contains(LAY_ON_HANDS));
         assertTrue(paladin.startingAbilityIds().contains(SMITE));
+        assertTrue(paladin.startingAbilityIds().contains(DIVINE_SHIELD));
     }
 
     // ── helpers ─────────────────────────────────────────────────────────
@@ -94,7 +99,7 @@ class PaladinClassSeedingTest {
               "healing": {"base_modifier": 1},
               "carry_bonus": 8,
               "armor_bonus": 5,
-              "ability_ids": ["spell.lay.on.hands", "spell.smite"]
+              "ability_ids": ["spell.lay.on.hands", "spell.smite", "spell.divine-shield"]
             }
             """;
     }
