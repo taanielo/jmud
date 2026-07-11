@@ -4,11 +4,11 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.Getter;
-
 import org.apache.commons.lang3.StringUtils;
 
-public class Username {
+import lombok.Getter;
+
+public final class Username {
     @Getter
     private final String value;
     private final String lowercaseValue;
@@ -22,9 +22,10 @@ public class Username {
     public boolean equals(Object o) {
         if (this == o)
             return true;
-        if (o == null || getClass() != o.getClass())
+        // Username is final, so instanceof is exact here and correctly rejects null; there are no
+        // subclasses whose identity a getClass() check would need to preserve.
+        if (!(o instanceof Username username))
             return false;
-        Username username = (Username)o;
         // username comparison should be always case-insensitive to avoid similar usernames (ex. "MadBob" vs "madbob")
         return StringUtils.equals(lowercaseValue, username.lowercaseValue);
     }

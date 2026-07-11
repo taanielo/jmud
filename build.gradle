@@ -108,6 +108,23 @@ tasks.withType(JavaCompile).configureEach {
         // zone/clock (e.g. Clock.systemUTC()). Hard error in both main and test sources.
         check('JavaTimeDefaultTimeZone', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
 
+        // getClass()-based equals() silently breaks symmetry across subclasses; for a final value
+        // type instanceof is exact and clearer. Username (the sole site) was made final and switched
+        // to instanceof. Hard error keeps new value types from reintroducing the pattern.
+        check('EqualsGetClass', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
+        // Enum.ordinal() ties logic to declaration order, so inserting/reordering constants silently
+        // shifts behaviour (and corrupts data if an ordinal is persisted). The rarity-threshold site
+        // now compares an explicit stable rank; Rarity itself persists by string id, not ordinal, so
+        // save data is unaffected. Hard error in both main and test sources.
+        check('EnumOrdinal', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
+        // Converting a hostname to a single IP address ignores multi-homed resolution; prefer explicit
+        // InetAddress resolution (e.g. InetAddress.getLoopbackAddress()). This does not change which
+        // interface the real server binds to (SocketServer still binds the configured host). Hard
+        // error in both main and test sources.
+        check('AddressSelection', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at

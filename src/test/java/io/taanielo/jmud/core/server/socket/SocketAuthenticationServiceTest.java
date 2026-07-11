@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -112,7 +113,7 @@ class SocketAuthenticationServiceTest {
 
         @Override
         public SocketAddress getRemoteSocketAddress() {
-            return new InetSocketAddress("127.0.0.1", 12345);
+            return new InetSocketAddress(InetAddress.getLoopbackAddress(), 12345);
         }
     }
 

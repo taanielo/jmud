@@ -1770,7 +1770,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     }
 
     private static boolean isRareOrHigher(Rarity rarity) {
-        return rarity.ordinal() >= Rarity.RARE.ordinal();
+        return rarity.isAtLeast(Rarity.RARE);
     }
 
     /**
