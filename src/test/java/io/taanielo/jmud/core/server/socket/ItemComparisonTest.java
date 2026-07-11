@@ -27,8 +27,9 @@ class ItemComparisonTest {
     private static final String ESC = String.valueOf((char) 27);
 
     /** Resolver that just reads each item's declared base stats — no affix service needed. */
-    private static final Function<Item, Map<String, Integer>> BASE_STATS =
-        item -> item.getAttributes().getStats();
+    private static Map<String, Integer> baseStats(Item item) {
+        return item.getAttributes().getStats();
+    }
 
     private static Item weapon(String id, String name, Map<String, Integer> stats, int weight, int value) {
         return Item.builder(ItemId.of(id), name, "A " + name + ".", new ItemAttributes(stats))
@@ -42,7 +43,7 @@ class ItemComparisonTest {
     void emptySlotShowsCandidateStatsWithNote() {
         Item candidate = weapon("sword", "Iron Sword", Map.of("strength", 3), 5, 40);
 
-        List<String> lines = ItemComparison.format(candidate, Optional.empty(), BASE_STATS);
+        List<String> lines = ItemComparison.format(candidate, Optional.empty(), ItemComparisonTest::baseStats);
 
         assertTrue(lines.stream().anyMatch(l -> l.contains("Iron Sword")));
         assertTrue(lines.stream().anyMatch(l -> l.contains("Nothing is currently equipped")),
@@ -57,7 +58,7 @@ class ItemComparisonTest {
         Item equipped = weapon("old", "Rusty Sword", Map.of("strength", 3), 5, 20);
         Item candidate = weapon("new", "Keen Sword", Map.of("strength", 5), 4, 60);
 
-        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), BASE_STATS);
+        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), ItemComparisonTest::baseStats);
 
         String strengthLine = lines.stream()
             .filter(l -> l.contains("strength"))
@@ -72,7 +73,7 @@ class ItemComparisonTest {
         Item equipped = weapon("old", "Plain Sword", Map.of("strength", 4), 5, 20);
         Item candidate = weapon("new", "Agile Dagger", Map.of("dexterity", 2), 2, 30);
 
-        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), BASE_STATS);
+        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), ItemComparisonTest::baseStats);
 
         String strengthLine = lines.stream().filter(l -> l.contains("strength")).findFirst().orElseThrow();
         assertTrue(strengthLine.contains("4 -> 0") && strengthLine.contains("(-4)"),
@@ -102,7 +103,7 @@ class ItemComparisonTest {
         Item equipped = weapon("old", "Rusty Sword", Map.of(), 5, 20);
         Item candidate = weapon("new", "Keen Sword", Map.of(), 4, 60);
 
-        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), BASE_STATS);
+        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), ItemComparisonTest::baseStats);
 
         assertTrue(lines.stream().anyMatch(l -> l.contains("weight") && l.contains("5 -> 4")),
             "Weight diff expected: " + lines);
@@ -125,7 +126,7 @@ class ItemComparisonTest {
             .durability(Durability.of(80, 80))
             .build();
 
-        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), BASE_STATS);
+        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), ItemComparisonTest::baseStats);
 
         assertTrue(lines.stream().anyMatch(l -> l.contains("durability") && l.contains("10/50 -> 80/80")),
             "Durability current/max for both items expected: " + lines);
@@ -136,7 +137,7 @@ class ItemComparisonTest {
         Item equipped = weapon("old", "Rusty Sword", Map.of(), 5, 20);
         Item candidate = weapon("new", "Keen Sword", Map.of(), 4, 60);
 
-        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), BASE_STATS);
+        List<String> lines = ItemComparison.format(candidate, Optional.of(equipped), ItemComparisonTest::baseStats);
 
         assertFalse(lines.stream().anyMatch(l -> l.contains("durability")),
             "No durability line when neither item is breakable: " + lines);
@@ -153,7 +154,7 @@ class ItemComparisonTest {
             .build();
 
         List<String> lines = ItemComparison.format(
-            candidate, Optional.of(equipped), BASE_STATS, new AnsiTextStyler());
+            candidate, Optional.of(equipped), ItemComparisonTest::baseStats, new AnsiTextStyler());
 
         String header = lines.get(0);
         assertTrue(header.contains(ESC + "[32m"), "Uncommon candidate should be green-wrapped: " + header);
