@@ -131,7 +131,10 @@ public class JsonUserRegistry implements UserRegistry {
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(tempFile);
-            } catch (IOException ignored) {
+            } catch (IOException cleanupFailure) {
+                // Best-effort cleanup after a failed write; a leaked *.tmp must not mask the
+                // original write failure that is rethrown below. Log so it is visible (AGENTS.md §7).
+                log.warn("Failed to delete temporary user file {}", tempFile, cleanupFailure);
             }
             throw new UserRegistryException(
                 "Failed to write user " + user.getUsername().getValue() + " to " + filePath + ": " + e.getMessage(), e

@@ -28,6 +28,9 @@ import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class JsonRoomRepository implements RoomRepository, RoomContentReloader {
 
     private static final String ROOMS_DIR = "rooms";
@@ -152,7 +155,11 @@ public class JsonRoomRepository implements RoomRepository, RoomContentReloader {
             if (tempFile != null) {
                 try {
                     Files.deleteIfExists(tempFile);
-                } catch (IOException ignored) {
+                } catch (IOException e) {
+                    // Best-effort cleanup: the atomic move usually already consumed the temp file,
+                    // so a failure here only leaves a stray *.tmp behind and must not mask the
+                    // original write outcome. Log so leaked temp files are visible (AGENTS.md §7).
+                    log.warn("Failed to delete temporary room file {}", tempFile, e);
                 }
             }
         }

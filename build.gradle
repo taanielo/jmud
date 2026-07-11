@@ -77,6 +77,11 @@ tasks.withType(JavaCompile).configureEach {
         // must not vary by host locale, so this is a hard error in both main and test sources.
         check('StringCaseLocaleUsage', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
 
+        // A silently swallowed exception hides corrupted game data and player-facing faults with
+        // no trace (AGENTS.md §7). Every catch block must log, rethrow, or explicitly justify why
+        // it ignores the exception. Hard error in both main and test sources.
+        check('EmptyCatch', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
+
         if (name == 'compileJava') {
             check('NullAway', net.ltgt.gradle.errorprone.CheckSeverity.ERROR)
             // NullAway 0.12.x rejects specifying both AnnotatedPackages and OnlyNullMarked at
