@@ -23,145 +23,152 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
 
 /**
- * Unit tests for {@link TellCommand}.
+ * Unit tests for {@link ReplyCommand}.
  */
-class TellCommandTest {
+class ReplyCommandTest {
 
     // --- token matching ---
 
     @Test
-    void matchesTellToken() {
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        assertTrue(cmd.match("TELL taaniel hello").isPresent());
-        assertTrue(cmd.match("tell taaniel hello").isPresent());
+    void matchesReplyToken() {
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), new TellService());
+        assertTrue(cmd.match("REPLY hello").isPresent());
+        assertTrue(cmd.match("reply hello").isPresent());
     }
 
     @Test
-    void matchesTAlias() {
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        assertTrue(cmd.match("T taaniel hello").isPresent());
-        assertTrue(cmd.match("t taaniel hello").isPresent());
+    void matchesRAlias() {
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), new TellService());
+        assertTrue(cmd.match("R hello").isPresent());
+        assertTrue(cmd.match("r hello").isPresent());
     }
 
     @Test
     void doesNotMatchOtherTokens() {
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), new TellService());
         assertFalse(cmd.match("SAY hello").isPresent());
         assertFalse(cmd.match("WHO").isPresent());
         assertFalse(cmd.match("").isPresent());
     }
 
-    // --- delivery ---
+    // --- reply after a tell ---
 
     @Test
-    void deliversTellToRecipient() {
+    void repliesToLastTellSender() {
+        TellService tellService = new TellService();
         CapturingContext context = new CapturingContext("Sender");
         context.addOnlinePlayer("Recipient");
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Recipient hello there").get().execute(context);
+        // Recipient told Sender earlier this session.
+        tellService.recordReceivedTell(Username.of("Sender"), Username.of("Recipient"));
 
-        assertEquals("Sender tells you: hello there",
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), tellService);
+        cmd.match("REPLY hi back").get().execute(context);
+
+        assertEquals("Sender tells you: hi back",
                 context.sentToUsername.get("recipient"),
-                "Recipient should receive the formatted tell message");
+                "Reply should be delivered to the last tell sender in tell format");
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("You tell Recipient: hi back")),
+                "Sender should see the tell-style confirmation");
     }
 
+    // --- reply after a whisper (same map, recorded on receipt) ---
+
     @Test
-    void senderSeesConfirmation() {
+    void repliesToLastWhisperSender() {
+        TellService tellService = new TellService();
         CapturingContext context = new CapturingContext("Sender");
-        context.addOnlinePlayer("Recipient");
+        context.addOnlinePlayer("Whisperer");
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Recipient hello there").get().execute(context);
+        // A whisper received earlier records the whisperer as the reply target.
+        tellService.recordReceivedTell(Username.of("Sender"), Username.of("Whisperer"));
 
-        assertTrue(context.lines.stream().anyMatch(l -> l.equals("You tell Recipient: hello there")),
-                "Sender should see confirmation line");
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), tellService);
+        cmd.match("REPLY over here").get().execute(context);
+
+        assertEquals("Sender tells you: over here",
+                context.sentToUsername.get("whisperer"),
+                "Reply should target the last whisper sender");
     }
 
+    // --- reply with no prior message ---
+
     @Test
-    void playerNotOnlineReturnsError() {
+    void replyWithNoPriorSenderExplains() {
+        TellService tellService = new TellService();
         CapturingContext context = new CapturingContext("Sender");
-        // No players added — target is offline.
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Ghost hello").get().execute(context);
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), tellService);
+        cmd.match("REPLY hello").get().execute(context);
 
-        assertTrue(context.promptMessage.contains("Ghost") && context.promptMessage.contains("not online"),
-                "Error message should name the missing player");
+        assertTrue(context.sentToUsername.isEmpty(), "Nothing should be delivered with no reply target");
+        assertTrue(context.promptMessage.contains("no one to reply to"),
+                "Player should be told there is no one to reply to");
     }
 
     @Test
     void missingMessageReturnsUsageError() {
+        TellService tellService = new TellService();
         CapturingContext context = new CapturingContext("Sender");
-        context.addOnlinePlayer("Recipient");
+        tellService.recordReceivedTell(Username.of("Sender"), Username.of("Recipient"));
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Recipient").get().execute(context);
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), tellService);
+        cmd.match("REPLY").get().execute(context);
 
-        assertFalse(context.promptMessage.isBlank(), "Usage error should be written via writeLineWithPrompt");
-        assertTrue(context.promptMessage.contains("Usage"), "Error should mention usage");
+        assertTrue(context.promptMessage.contains("Usage"), "Empty reply should show usage");
     }
 
+    // --- reply to a now-offline sender ---
+
     @Test
-    void missingAllArgsReturnsUsageError() {
+    void replyToOfflineSenderReturnsClearError() {
+        TellService tellService = new TellService();
         CapturingContext context = new CapturingContext("Sender");
+        // Recipient told Sender, then disconnected: never added as an online player.
+        tellService.recordReceivedTell(Username.of("Sender"), Username.of("Recipient"));
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL").get().execute(context);
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), tellService);
+        cmd.match("REPLY are you there").get().execute(context);
 
-        assertFalse(context.promptMessage.isBlank(), "Usage error should be written via writeLineWithPrompt");
-        assertTrue(context.promptMessage.contains("Usage"), "Error should mention usage");
+        assertTrue(context.sentToUsername.isEmpty(), "Nothing should be delivered to an offline target");
+        assertTrue(context.promptMessage.contains("Recipient") && context.promptMessage.contains("no longer online"),
+                "Player should be told the target went offline");
     }
 
-    @Test
-    void targetLookupIsCaseInsensitive() {
-        CapturingContext context = new CapturingContext("Sender");
-        context.addOnlinePlayer("TAANIEL");
-
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL taaniel hi").get().execute(context);
-
-        assertFalse(context.sentToUsername.isEmpty(),
-                "Tell should be delivered even when case differs");
-    }
-
-    // --- ignore filtering (issue #339) ---
+    // --- reply respecting ignore lists ---
 
     @Test
-    void tellFromIgnoredSenderIsSilentlyDropped() {
+    void replyFromIgnoredSenderIsSilentlyDropped() {
+        TellService tellService = new TellService();
         CapturingContext context = new CapturingContext("Sender");
         context.addOnlinePlayer("Recipient", "Sender");
+        tellService.recordReceivedTell(Username.of("Sender"), Username.of("Recipient"));
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Recipient hello there").get().execute(context);
+        ReplyCommand cmd = new ReplyCommand(new SocketCommandRegistry(), tellService);
+        cmd.match("REPLY hi back").get().execute(context);
 
         assertTrue(context.sentToUsername.isEmpty(),
                 "Recipient ignoring the sender should receive nothing");
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("You tell Recipient: hi back")),
+                "Sender should still see normal confirmation when ignored");
     }
 
-    @Test
-    void senderStillSeesConfirmationWhenIgnored() {
-        CapturingContext context = new CapturingContext("Sender");
-        context.addOnlinePlayer("Recipient", "Sender");
-
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Recipient hello there").get().execute(context);
-
-        assertTrue(context.lines.stream().anyMatch(l -> l.equals("You tell Recipient: hello there")),
-                "Sender should see normal confirmation and not learn they were ignored");
-    }
+    // --- receipt updates the reply pointer ---
 
     @Test
-    void tellDeliveredWhenRecipientIgnoresSomeoneElse() {
-        CapturingContext context = new CapturingContext("Sender");
-        context.addOnlinePlayer("Recipient", "Someone");
+    void receivingTellUpdatesReplyPointer() {
+        TellService tellService = new TellService();
+        CapturingContext senderCtx = new CapturingContext("Bob");
+        senderCtx.addOnlinePlayer("Alice");
 
-        TellCommand cmd = new TellCommand(new SocketCommandRegistry(), new TellService());
-        cmd.match("TELL Recipient hello there").get().execute(context);
+        // Bob's reply pointer starts empty; simulate Alice telling Bob via TellCommand.
+        TellCommand tell = new TellCommand(new SocketCommandRegistry(), tellService);
+        CapturingContext aliceCtx = new CapturingContext("Alice");
+        aliceCtx.addOnlinePlayer("Bob");
+        tell.match("TELL Bob hi").get().execute(aliceCtx);
 
-        assertEquals("Sender tells you: hello there",
-                context.sentToUsername.get("recipient"),
-                "Tell should be delivered when recipient does not ignore the sender");
+        assertEquals(Optional.of(Username.of("Alice")), tellService.lastSender(Username.of("Bob")),
+                "Receiving a tell should record the sender as Bob's reply target");
     }
 
     // --- helpers ---
@@ -175,7 +182,7 @@ class TellCommandTest {
         return stubPlayer(name).withIgnoreList(new PlayerIgnoreList(List.of(ignored)));
     }
 
-    private static class CapturingContext implements SocketCommandContext {
+    private static final class CapturingContext implements SocketCommandContext {
         final List<String> lines = new ArrayList<>();
         String promptMessage = "";
         final Map<String, String> sentToUsername = new HashMap<>();

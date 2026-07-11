@@ -1,8 +1,10 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.player.Player;
 
 /**
@@ -19,13 +21,17 @@ import io.taanielo.jmud.core.player.Player;
  */
 public class TellCommand extends RegistrableCommand {
 
+    private final TellService tellService;
+
     /**
      * Creates a {@code TellCommand} and registers it with the given registry.
      *
-     * @param registry the registry to register this command with
+     * @param registry    the registry to register this command with
+     * @param tellService service that records the last private-message sender for {@code REPLY}
      */
-    public TellCommand(SocketCommandRegistry registry) {
+    public TellCommand(SocketCommandRegistry registry, TellService tellService) {
         super(registry);
+        this.tellService = Objects.requireNonNull(tellService, "Tell service is required");
     }
 
     @Override
@@ -96,6 +102,8 @@ public class TellCommand extends RegistrableCommand {
         boolean ignored = targetPlayer != null && targetPlayer.ignoreList().has(senderName);
         if (!ignored) {
             context.sendToUsername(targetUsername, senderName + " tells you: " + message);
+            // The recipient just received a private message; make the sender their REPLY target.
+            tellService.recordReceivedTell(targetUsername, sender.getUsername());
         }
         context.writeLineSafe("You tell " + targetUsername.getValue() + ": " + message);
         context.sendPrompt();
