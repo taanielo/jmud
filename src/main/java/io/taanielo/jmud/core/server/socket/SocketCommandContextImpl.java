@@ -226,6 +226,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.weatherEngine() != null) {
             this.gameActionService.setWeatherEngine(context.weatherEngine());
         }
+        if (context.partyService() != null) {
+            this.gameActionService.setPartyService(context.partyService());
+        }
+        this.gameActionService.setOnlinePlayerLookup(
+            username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
     }
 
     // ── Client interface ───────────────────────────────────────────────

@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.action;
 
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -44,14 +45,18 @@ import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
+import io.taanielo.jmud.core.party.PartyService;
+import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
+import io.taanielo.jmud.core.player.OnlinePlayerLookup;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.weather.Weather;
 import io.taanielo.jmud.core.weather.WeatherEngine;
 import io.taanielo.jmud.core.world.ContainerLockingService;
+import io.taanielo.jmud.core.world.Corpse;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.EquipmentSlot;
 import io.taanielo.jmud.core.world.Item;
@@ -125,6 +130,19 @@ public class GameActionService {
      */
     private DuelService duelService = new DuelService();
     /**
+     * Shared party registry, used by {@link #resurrect} to confirm the caster and their target
+     * belong to the same party. {@code null} until the composition root wires the shared instance via
+     * {@link #setPartyService(PartyService)}; while absent, resurrection rejects every target.
+     */
+    private @Nullable PartyService partyService;
+    /**
+     * Port that resolves a connected player by username regardless of location, used by
+     * {@link #resurrect} to fetch a dead party member's live state (they have been removed from the
+     * room map while awaiting respawn). Defaults to {@link OnlinePlayerLookup#NONE} so non-wired
+     * tests and code paths simply never find a target.
+     */
+    private OnlinePlayerLookup onlinePlayerLookup = OnlinePlayerLookup.NONE;
+    /**
      * Optional weather source used to apply ambient combat modifiers to attacks. {@code null} means
      * the weather subsystem is disabled; combat then resolves with no environmental modifiers. The
      * composition root wires the shared engine via {@link #setWeatherEngine(WeatherEngine)}.
@@ -144,6 +162,8 @@ public class GameActionService {
     private static final String RECALL_METADATA_KEY = "recalled";
     /** Ability id of the rogue BACKSTAB skill, which gains a bonus when opened from stealth. */
     private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
+    /** Ability id of the Cleric RESURRECTION spell, resolved by dedicated logic in {@link #resurrect}. */
+    private static final AbilityId RESURRECTION_ABILITY_ID = AbilityId.of("spell.resurrection");
     /** Extra damage a BACKSTAB deals when the attacker strikes from stealth. */
     private static final int STEALTH_BACKSTAB_BONUS_DAMAGE = 10;
     /** Base percentage chance (out of 100) that a rogue STEAL attempt succeeds, before the level bonus. */
@@ -412,6 +432,31 @@ public class GameActionService {
     }
 
     /**
+     * Injects the shared party registry used by {@link #resurrect} to verify party membership.
+     *
+     * <p>Called once by the composition root so every per-session service references the same
+     * registry. Without it, resurrection cannot confirm a shared party and rejects every target.
+     *
+     * @param partyService the shared party registry
+     */
+    public void setPartyService(PartyService partyService) {
+        this.partyService = Objects.requireNonNull(partyService, "Party service is required");
+    }
+
+    /**
+     * Injects the port used by {@link #resurrect} to resolve a dead party member's live state by
+     * username, independent of their (cleared) location.
+     *
+     * <p>Called once by the composition root; when absent, resurrection never finds a target.
+     *
+     * @param onlinePlayerLookup the connected-player lookup port
+     */
+    public void setOnlinePlayerLookup(OnlinePlayerLookup onlinePlayerLookup) {
+        this.onlinePlayerLookup =
+            Objects.requireNonNull(onlinePlayerLookup, "Online player lookup is required");
+    }
+
+    /**
      * Resolves the weather currently affecting the given player's room, or {@link Weather#clear()}
      * when the weather subsystem is disabled or the player's location is unknown.
      */
@@ -597,6 +642,99 @@ public class GameActionService {
     }
 
     /**
+     * Resolves the Cleric RESURRECTION spell: revives a dead party member at the caster's location,
+     * refunding the gold their corpse holds.
+     *
+     * <p>This spell sits outside the generic ability effect pipeline because its target is dead and
+     * has no room location, so it is dispatched here from {@link #useAbility} (the command-only pattern
+     * of the rogue PICK skill, AGENTS.md §3.3). It succeeds only when the named target:
+     * <ul>
+     *   <li>is a member of the caster's party ({@link PartyService#inSameParty}),</li>
+     *   <li>is currently dead ({@link Player#isDead()}), and</li>
+     *   <li>still has an un-decayed corpse tracked by {@link RoomService} (cast before
+     *       {@link DeathSettings#corpseDecaySeconds()} elapses).</li>
+     * </ul>
+     * On success the target is restored via the half-vitals {@link Player#respawn()} transition, moved
+     * to the caster's current room, refunded {@link Corpse#gold()}, and the corpse is consumed. Every
+     * rejection (blank name, not partied, not dead, decayed corpse, on cooldown, insufficient mana)
+     * returns a specific message and spends no mana. All state mutation happens on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param caster     the Cleric casting the spell
+     * @param targetName the raw name of the party member to revive
+     * @return a result carrying the mana-charged caster as {@link GameActionResult#updatedSource()}
+     *         and the revived target as {@link GameActionResult#updatedTarget()} on success, or an
+     *         error result describing the rejection
+     */
+    public GameActionResult resurrect(Player caster, String targetName) {
+        Objects.requireNonNull(caster, "Caster is required");
+        String normalized = targetName == null ? "" : targetName.trim();
+        if (normalized.isEmpty()) {
+            return GameActionResult.error("Resurrect whom?");
+        }
+        if (cooldownTracker.isOnCooldown(RESURRECTION_ABILITY_ID)) {
+            int remaining = cooldownTracker.remainingTicks(RESURRECTION_ABILITY_ID);
+            return GameActionResult.error(
+                "You cannot channel another resurrection yet (" + remaining + " ticks remaining).");
+        }
+        Ability spell = abilityRegistry.findById(RESURRECTION_ABILITY_ID).orElse(null);
+        if (spell == null) {
+            return GameActionResult.error("You do not know how to resurrect the dead.");
+        }
+        Player target = onlinePlayerLookup.find(Username.of(normalized)).orElse(null);
+        if (target == null) {
+            return GameActionResult.error("There is no one by that name to resurrect.");
+        }
+        if (target.getUsername().equals(caster.getUsername())) {
+            return GameActionResult.error("You cannot resurrect yourself.");
+        }
+        if (partyService == null
+            || !partyService.inSameParty(caster.getUsername(), target.getUsername())) {
+            return GameActionResult.error(
+                target.getUsername().getValue() + " is not in your party.");
+        }
+        if (!target.isDead()) {
+            return GameActionResult.error(
+                target.getUsername().getValue() + " is not dead.");
+        }
+        Corpse corpse = roomService.findCorpseByOwner(target.getUsername().getValue()).orElse(null);
+        Instant decayCutoff = Instant.now().minusSeconds(DeathSettings.corpseDecaySeconds());
+        if (corpse == null || !corpse.spawnedAt().isAfter(decayCutoff)) {
+            return GameActionResult.error(
+                target.getUsername().getValue()
+                    + "'s corpse has decayed to dust. There is nothing left to restore.");
+        }
+        RoomId casterRoom = roomService.findPlayerLocation(caster.getUsername()).orElse(null);
+        if (casterRoom == null) {
+            return GameActionResult.error("You are nowhere; you cannot anchor a resurrection here.");
+        }
+        if (!abilityCostResolver.canAfford(caster, spell.cost())) {
+            return GameActionResult.error("You do not have enough mana to cast resurrection.");
+        }
+
+        Player updatedCaster = abilityCostResolver.applyCost(caster, spell.cost());
+        cooldownTracker.startCooldown(RESURRECTION_ABILITY_ID, spell.cooldown().ticks());
+
+        Player revived = target.respawn().addGold(corpse.gold());
+        roomService.movePlayerTo(revived.getUsername(), casterRoom);
+        roomService.removeCorpse(corpse);
+
+        String casterName = updatedCaster.getUsername().getValue();
+        String revivedName = revived.getUsername().getValue();
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You call upon the light to restore " + revivedName + " to life."));
+        messages.add(GameMessage.toPlayer(revived.getUsername(),
+            casterName + " calls upon the light, and life floods back into your body."));
+        messages.add(GameMessage.toPlayer(revived.getUsername(),
+            "You have been resurrected."));
+        messages.add(GameMessage.toRoom(updatedCaster.getUsername(), revived.getUsername(),
+            casterName + " calls upon the light to restore " + revivedName + " to life."));
+
+        return new GameActionResult(updatedCaster, revived, messages);
+    }
+
+    /**
      * Attempts to flee from active combat by disengaging and choosing a random available exit.
      *
      * <p>This is the flee game rule, kept out of the transport adapter so it is deterministic and
@@ -715,6 +853,17 @@ public class GameActionService {
      * @return result with updated source/target and ability messages
      */
     public GameActionResult useAbility(Player source, String input) {
+        // The RESURRECTION spell targets a dead, locationless party member, so it cannot flow through
+        // the generic effect pipeline (which resolves targets in the caster's room). Intercept it here
+        // when the caster has learned it and route to the dedicated logic in resurrect() — mirroring
+        // the command-only pattern used by the rogue PICK skill (AGENTS.md §3.3).
+        Optional<AbilityMatch> resurrectionMatch = abilityRegistry
+            .findBestMatch(input, source.getLearnedAbilities())
+            .filter(match -> RESURRECTION_ABILITY_ID.equals(match.ability().id()));
+        if (resurrectionMatch.isPresent()) {
+            return resurrect(source, resurrectionMatch.get().remainingTarget());
+        }
+
         CollectingAbilityMessageSink sink = new CollectingAbilityMessageSink();
         DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(
             abilityEffectEngine, sink, AbilityEffectListener.noop()

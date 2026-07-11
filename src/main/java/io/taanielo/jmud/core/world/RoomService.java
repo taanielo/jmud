@@ -153,6 +153,20 @@ public class RoomService {
     }
 
     /**
+     * Relocates a player directly to the given room, bypassing exit and lock checks.
+     *
+     * <p>Used when a player is moved by fiat rather than by walking — for example the Cleric
+     * resurrection spell placing a revived party member into the caster's room. Tick-thread only
+     * (AGENTS.md §5).
+     *
+     * @param username the player to relocate
+     * @param roomId   the destination room id
+     */
+    public void movePlayerTo(Username username, RoomId roomId) {
+        locationService.movePlayerTo(username, roomId);
+    }
+
+    /**
      * Returns the exit map for the given room, or an empty map if the room cannot be found.
      */
     public Map<Direction, RoomId> getExits(RoomId roomId) {
@@ -191,6 +205,26 @@ public class RoomService {
      */
     public Corpse spawnCorpse(Username username, RoomId roomId, int gold) {
         return itemService.spawnCorpse(username, roomId, gold);
+    }
+
+    /**
+     * Finds the tracked corpse belonging to the named owner, if one is still present.
+     *
+     * @param ownerName the name of the dead player whose corpse to find
+     * @return the tracked corpse, or empty when none is currently tracked for that owner
+     */
+    public Optional<Corpse> findCorpseByOwner(String ownerName) {
+        return itemService.findCorpseByOwner(ownerName);
+    }
+
+    /**
+     * Removes a specific tracked corpse and its ground item from the world (consumed, not decayed).
+     *
+     * @param corpse the corpse to remove
+     * @return {@code true} if the corpse was tracked and has now been removed
+     */
+    public boolean removeCorpse(Corpse corpse) {
+        return itemService.removeCorpse(corpse);
     }
 
     /**

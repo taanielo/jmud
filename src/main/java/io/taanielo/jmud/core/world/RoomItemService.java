@@ -118,6 +118,50 @@ public class RoomItemService {
     }
 
     /**
+     * Finds the tracked corpse belonging to the named owner, if one is still present in the world.
+     *
+     * <p>Owner matching is case-insensitive. When a player has died more than once and multiple
+     * corpses are tracked, the most recently spawned one is returned. Used by the Cleric
+     * resurrection spell to locate a fallen party member's remains before they decay.
+     *
+     * @param ownerName the name of the dead player whose corpse to find
+     * @return the tracked corpse, or empty when none is currently tracked for that owner
+     */
+    public Optional<Corpse> findCorpseByOwner(String ownerName) {
+        if (ownerName == null || ownerName.isBlank()) {
+            return Optional.empty();
+        }
+        String normalized = ownerName.trim().toLowerCase(Locale.ROOT);
+        Corpse best = null;
+        for (Corpse corpse : trackedCorpses) {
+            if (corpse.ownerName().toLowerCase(Locale.ROOT).equals(normalized)
+                && (best == null || corpse.spawnedAt().isAfter(best.spawnedAt()))) {
+                best = corpse;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /**
+     * Removes a specific tracked corpse and its associated ground item from the world.
+     *
+     * <p>The targeted counterpart to {@link #removeExpiredCorpses(Duration)}: used when a corpse is
+     * consumed rather than decayed — for example when the Cleric resurrection spell revives its
+     * owner and refunds the gold the corpse held.
+     *
+     * @param corpse the corpse to remove
+     * @return {@code true} if the corpse was tracked and has now been removed
+     */
+    public boolean removeCorpse(Corpse corpse) {
+        Objects.requireNonNull(corpse, "Corpse is required");
+        boolean removed = trackedCorpses.remove(corpse);
+        if (removed) {
+            removeTransientItemById(corpse.roomId(), corpse.itemId());
+        }
+        return removed;
+    }
+
+    /**
      * Attempts to find and remove a transient item from the specified room by name or id prefix.
      *
      * @param roomId the room to search
