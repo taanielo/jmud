@@ -49,7 +49,9 @@ jq -n --arg pid "guard-$$" '{pid: $pid, started_at: (now | todate)}' >"$STATE_DI
 STATE_FILE="$STATE_DIR/orchestrator-state.json"
 if [ ! -s "$STATE_FILE" ]; then
     jq -n '{current_issue: null, todo_line: null, stage: "FIND_ISSUE", build_retries: 0,
-            cycles_since_last_optimization: 0, blocked_issues: [], parked_pr: null,
+            cycles_since_last_optimization: 0,
+            cycles_since_last_review: 0, last_reviewed_commit: null,
+            blocked_issues: [], parked_pr: null,
             waiting_for_session_reset: false, last_updated: (now | todate)}' >"$STATE_FILE"
     log "created default orchestrator-state.json"
 fi
