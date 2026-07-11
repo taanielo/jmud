@@ -12,6 +12,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.achievement.Achievement;
+import io.taanielo.jmud.core.achievement.AchievementCondition;
+import io.taanielo.jmud.core.achievement.AchievementId;
+import io.taanielo.jmud.core.achievement.AchievementRepository;
+import io.taanielo.jmud.core.achievement.AchievementRepositoryException;
+import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -190,6 +196,58 @@ class QuestKillServiceTest {
 
         assertFalse(result.player().completedQuests().hasCompleted(RAT_CATCHER_ID));
         assertEquals(0, result.player().completedQuests().count());
+    }
+
+    @Test
+    void grantCompletionRewardUnlocksQuestAchievementOnOneTimeQuest() throws AchievementRepositoryException {
+        QuestTemplate nonRepeatable = nonRepeatableQuest();
+        service.setAchievementService(questMilestoneService());
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(nonRepeatable.id(), 0));
+
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, nonRepeatable);
+
+        assertTrue(result.player().achievements().has(AchievementId.of("quests_1")));
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.equals("Achievement unlocked: Errand Runner!")),
+            "Expected unlock message in: " + result.messages());
+    }
+
+    @Test
+    void grantCompletionRewardDoesNotUnlockAchievementForRepeatableQuest()
+        throws AchievementRepositoryException {
+        service.setAchievementService(questMilestoneService());
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, RAT_CATCHER);
+
+        assertFalse(result.player().achievements().has(AchievementId.of("quests_1")));
+        assertFalse(result.messages().stream().anyMatch(m -> m.startsWith("Achievement unlocked")));
+    }
+
+    private static QuestTemplate nonRepeatableQuest() {
+        return new QuestTemplate(
+            QuestId.of("bandit-captain-fall"), "The Captain's Fall", "Finish the captain.",
+            "bandit-captain", 1, 200, 500,
+            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0, false, null);
+    }
+
+    private static AchievementService questMilestoneService() throws AchievementRepositoryException {
+        AchievementRepository repository = new AchievementRepository() {
+            private final Achievement questsOne = new Achievement(
+                AchievementId.of("quests_1"), "Errand Runner", "Complete 1 one-time contract.",
+                AchievementCondition.QUESTS_COMPLETED, 1);
+
+            @Override
+            public List<Achievement> findAll() {
+                return List.of(questsOne);
+            }
+
+            @Override
+            public Optional<Achievement> findById(AchievementId id) {
+                return findAll().stream().filter(a -> a.id().equals(id)).findFirst();
+            }
+        };
+        return new AchievementService(repository);
     }
 
     @Test

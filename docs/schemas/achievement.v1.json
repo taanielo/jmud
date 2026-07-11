@@ -35,9 +35,10 @@
       "type": "string",
       "enum": [
         "total_kills",
-        "level"
+        "level",
+        "quests_completed"
       ],
-      "description": "The player statistic tracked toward this achievement: total_kills (cumulative mob kills) or level (character level)."
+      "description": "The player statistic tracked toward this achievement: total_kills (cumulative mob kills), level (character level), or quests_completed (cumulative distinct one-time quests completed)."
     },
     "threshold": {
       "type": "integer",

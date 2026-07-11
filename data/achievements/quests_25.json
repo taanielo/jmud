@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "quests_25",
+  "name": "Quest Veteran",
+  "description": "Complete 25 one-time contracts.",
+  "condition": "quests_completed",
+  "threshold": 25
+}

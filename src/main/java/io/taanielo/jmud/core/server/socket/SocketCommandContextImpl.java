@@ -4909,6 +4909,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         QuestKillService questKillSvc = new QuestKillService(
             questRepo, context.questItemRewardService(), context.questReputationRewardService());
+        questKillSvc.setAchievementService(context.achievementService());
         QuestKillService.CompletionResult result = questKillSvc.grantCompletionReward(player, template);
         Player rewarded = result.player();
         session.replacePlayer(rewarded);
@@ -4954,6 +4955,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         QuestDeliveryService deliverySvc = new QuestDeliveryService(
             questRepo, context.questItemRewardService(), context.questReputationRewardService());
+        deliverySvc.setAchievementService(context.achievementService());
         QuestDeliveryService.DeliverResult result = deliverySvc.deliver(player);
         if (result.success()) {
             session.replacePlayer(result.player());
@@ -4972,6 +4974,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
                     && m.template().id().getValue().equalsIgnoreCase(template.receiverNpcId()));
         QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(
             questRepo, context.questItemRewardService(), context.questReputationRewardService());
+        npcDeliverySvc.setAchievementService(context.achievementService());
         DeliveryQuestResult result = npcDeliverySvc.deliver(player, roomId, receiverPresent);
         if (result.success()) {
             session.replacePlayer(result.player());

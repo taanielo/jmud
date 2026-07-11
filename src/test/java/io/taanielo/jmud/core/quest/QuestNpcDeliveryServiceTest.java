@@ -12,6 +12,12 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.achievement.Achievement;
+import io.taanielo.jmud.core.achievement.AchievementCondition;
+import io.taanielo.jmud.core.achievement.AchievementId;
+import io.taanielo.jmud.core.achievement.AchievementRepository;
+import io.taanielo.jmud.core.achievement.AchievementRepositoryException;
+import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -150,7 +156,66 @@ class QuestNpcDeliveryServiceTest {
         assertFalse(result.success());
     }
 
+    @Test
+    void deliverUnlocksQuestAchievementOnOneTimeErrand() throws AchievementRepositoryException {
+        QuestTemplate oneTime = nonRepeatableDispatch();
+        QuestNpcDeliveryService svc = new QuestNpcDeliveryService(new StubQuestRepository(List.of(oneTime)));
+        svc.setAchievementService(questMilestoneService());
+        Player carrying = basePlayer
+            .withActiveQuest(new ActiveQuest(oneTime.id(), 0))
+            .addItem(packageItem());
+
+        DeliveryQuestResult result = svc.deliver(carrying, RECEIVER_ROOM, true);
+
+        assertTrue(result.success());
+        assertTrue(result.player().achievements().has(AchievementId.of("quests_1")));
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.equals("Achievement unlocked: Errand Runner!")),
+            "Expected unlock message in: " + result.messages());
+    }
+
+    @Test
+    void deliverDoesNotUnlockAchievementForRepeatableErrand() throws AchievementRepositoryException {
+        service.setAchievementService(questMilestoneService());
+        Player carrying = basePlayer
+            .withActiveQuest(new ActiveQuest(DISPATCH_ID, 0))
+            .addItem(packageItem());
+
+        DeliveryQuestResult result = service.deliver(carrying, RECEIVER_ROOM, true);
+
+        assertTrue(result.success());
+        assertFalse(result.player().achievements().has(AchievementId.of("quests_1")));
+        assertFalse(result.messages().stream().anyMatch(m -> m.startsWith("Achievement unlocked")));
+    }
+
     // ── helpers ────────────────────────────────────────────────────────
+
+    private static QuestTemplate nonRepeatableDispatch() {
+        return new QuestTemplate(
+            QuestId.of("deliver-relic"), "The Sealed Relic", "Carry the relic to Ranger Sella.",
+            null, 0, 30, 90, null, 0, null,
+            "quartermaster", "forest-ranger", "hunters-clearing", "sealed-dispatch",
+            List.of(), null, null, 0, null, 0, false, null);
+    }
+
+    private static AchievementService questMilestoneService() throws AchievementRepositoryException {
+        AchievementRepository repository = new AchievementRepository() {
+            private final Achievement questsOne = new Achievement(
+                AchievementId.of("quests_1"), "Errand Runner", "Complete 1 one-time contract.",
+                AchievementCondition.QUESTS_COMPLETED, 1);
+
+            @Override
+            public List<Achievement> findAll() {
+                return List.of(questsOne);
+            }
+
+            @Override
+            public Optional<Achievement> findById(AchievementId id) {
+                return findAll().stream().filter(a -> a.id().equals(id)).findFirst();
+            }
+        };
+        return new AchievementService(repository);
+    }
 
     private static Item packageItem() {
         return makeItem("sealed-dispatch", "a sealed dispatch");

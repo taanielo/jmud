@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "quests_5",
+  "name": "Errand Runner",
+  "description": "Complete 5 one-time contracts.",
+  "condition": "quests_completed",
+  "threshold": 5
+}

@@ -27,6 +27,14 @@ public enum AchievementCondition {
         public long currentValue(Player player) {
             return player.getLevel();
         }
+    },
+
+    /** Cumulative number of distinct one-time (non-repeatable) quests the player has completed. */
+    QUESTS_COMPLETED("quests") {
+        @Override
+        public long currentValue(Player player) {
+            return player.completedQuests().count();
+        }
     };
 
     private final String progressUnit;

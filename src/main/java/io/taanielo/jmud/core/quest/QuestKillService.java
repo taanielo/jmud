@@ -7,6 +7,8 @@ import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.taanielo.jmud.core.achievement.Achievement;
+import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.quest.QuestItemRewardService.ItemRewardGrant;
@@ -28,6 +30,8 @@ public class QuestKillService {
     private final QuestRepository questRepository;
     private final QuestItemRewardService itemRewardService;
     private final QuestReputationRewardService reputationRewardService;
+    /** Optional achievement service that unlocks quest-milestone achievements on completion; may be null. */
+    private AchievementService achievementService;
 
     public QuestKillService(QuestRepository questRepository) {
         this(questRepository, null, null);
@@ -59,6 +63,16 @@ public class QuestKillService {
         this.questRepository = Objects.requireNonNull(questRepository, "questRepository is required");
         this.itemRewardService = itemRewardService;
         this.reputationRewardService = reputationRewardService;
+    }
+
+    /**
+     * Registers the achievement service that unlocks quest-milestone achievements (e.g. "Errand
+     * Runner" at 5 completed quests) when a one-time quest is completed via this service.
+     *
+     * @param achievementService the achievement service; may be null to disable achievement unlocks
+     */
+    public void setAchievementService(AchievementService achievementService) {
+        this.achievementService = achievementService;
     }
 
     /**
@@ -166,10 +180,31 @@ public class QuestKillService {
 
         if (!template.isRepeatable()) {
             rewarded = rewarded.withCompletedQuest(template.id());
+            rewarded = unlockQuestAchievements(rewarded, messages);
         }
 
         return new CompletionResult(
             rewarded, lvResult.leveledUp(), List.copyOf(messages), itemGrant.droppedItems());
+    }
+
+    /**
+     * Checks and unlocks any milestone achievements the just-completed one-time quest satisfied,
+     * appending an {@code "Achievement unlocked: <name>!"} line to {@code messages} per new unlock.
+     * Returns the player unchanged when no achievement service is configured or nothing new unlocked.
+     *
+     * @param player   the player who has just had a completed quest recorded; must not be null
+     * @param messages the mutable message list to append unlock notices to; must not be null
+     * @return the player with any newly unlocked achievements applied
+     */
+    private Player unlockQuestAchievements(Player player, List<String> messages) {
+        if (achievementService == null) {
+            return player;
+        }
+        AchievementService.UnlockResult result = achievementService.checkAndUnlock(player);
+        for (Achievement unlocked : result.newlyUnlocked()) {
+            messages.add("Achievement unlocked: " + unlocked.name() + "!");
+        }
+        return result.player();
     }
 
     /**
