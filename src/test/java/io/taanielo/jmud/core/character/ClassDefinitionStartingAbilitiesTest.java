@@ -10,7 +10,11 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.ability.Ability;
 import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.ability.AbilityTargeting;
+import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
+import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 
@@ -46,7 +50,25 @@ class ClassDefinitionStartingAbilitiesTest {
         assertTrue(ids.contains("spell.stoneskin"), "Mage must have spell.stoneskin");
         assertTrue(ids.contains("spell.haste"), "Mage must have spell.haste");
         assertTrue(ids.contains("spell.summon"), "Mage must have spell.summon");
-        assertEquals(5, ids.size(), "Mage should have exactly 5 starting abilities");
+        assertTrue(ids.contains("spell.chain-lightning"), "Mage must have spell.chain-lightning");
+        assertEquals(6, ids.size(), "Mage should have exactly 6 starting abilities");
+    }
+
+    @Test
+    void mageChainLightningGrantResolvesToAoeSpell()
+        throws ClassRepositoryException, AbilityRepositoryException {
+        JsonClassRepository classRepo = new JsonClassRepository(Path.of("data"));
+        JsonAbilityRepository abilityRepo = new JsonAbilityRepository(Path.of("data"));
+
+        ClassDefinition mage = findById(classRepo.findAll(), "mage");
+        assertTrue(abilityIdValues(mage.startingAbilityIds()).contains("spell.chain-lightning"),
+            "Mage must be granted Chain Lightning as its signature ability");
+
+        Ability chainLightning =
+            abilityRepo.findById(AbilityId.of("spell.chain-lightning")).orElseThrow(
+                () -> new AssertionError("spell.chain-lightning must exist in data"));
+        assertEquals(AbilityTargeting.AoE, chainLightning.targeting(),
+            "Chain Lightning granted to Mage must be an AoE spell so it hits every hostile mob");
     }
 
     @Test
