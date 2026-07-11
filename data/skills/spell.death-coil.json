@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.death-coil",
+  "name": "death coil",
+  "type": "SPELL",
+  "level": 1,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["coil"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 12
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "wither"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You hurl a writhing coil of shadow that drains the life from {target}!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} lashes you with a coil of shadow that gnaws at your very life force!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} lashes {target} with a writhing coil of draining shadow!"
+    }
+  ]
+}

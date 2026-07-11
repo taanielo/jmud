@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "wither",
+  "name": "Wither",
+  "duration_ticks": 10,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A rotting curse takes hold, draining the strength from your limbs."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name}'s flesh begins to wither and rot."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "Your life force ebbs as the wither gnaws at you."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The withering curse loosens its grip and your strength returns."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks withered and drained."
+    }
+  ]
+}
