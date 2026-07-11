@@ -20,7 +20,7 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
  *
  * <p>Only the off-hand slot is inspected, so a shield confers a mechanical benefit that a plain
  * armour piece (resolved by {@link EquipmentArmorResolver}) does not. Off-hand items without a
- * {@code block_chance} stat (e.g. a light trinket or an off-hand weapon) contribute {@link #none()},
+ * {@code block_chance} stat (e.g. a light trinket or an off-hand weapon) contribute {@link ShieldBlock#none()},
  * leaving combat resolution identical to the pre-shield behaviour.
  */
 public class ShieldBlockResolver {
