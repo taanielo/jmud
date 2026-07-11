@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "frostbound-cull",
+  "name": "Frostbound Cull",
+  "description": "The trail into the Frozen Peaks is thick with frost imps, and their spiteful mischief has driven back every scout the militia sends up from the foothills. Thin the little horrors — cull eight frost imps from the snow-laden slopes — and the way to the heights may open again.",
+  "target_mob_id": "frost-imp",
+  "required_kills": 8,
+  "gold_reward": 160,
+  "xp_reward": 420,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 8
+}
