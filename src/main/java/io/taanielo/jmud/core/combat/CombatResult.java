@@ -9,6 +9,9 @@ import io.taanielo.jmud.core.player.Player;
  * The outcome of a single combat resolution, including updated target state,
  * messages to deliver, and the RNG seed used so any encounter is fully replayable.
  *
+ * @param blocked              whether the target blocked the attack with an off-hand shield; a
+ *                             blocked attack is still a {@link #hit()} but its damage was reduced
+ *                             (not zeroed). Mutually exclusive with {@link #crit()}
  * @param effectTargetMessages messages delivered to the target when an on-hit status
  *                             effect was applied (e.g. "You are poisoned."); empty when
  *                             no effect was applied
@@ -20,6 +23,7 @@ public record CombatResult(
     Player target,
     boolean hit,
     boolean crit,
+    boolean blocked,
     int damage,
     String sourceMessage,
     String targetMessage,
@@ -42,12 +46,14 @@ public record CombatResult(
         Player target,
         boolean hit,
         boolean crit,
+        boolean blocked,
         int damage,
         String sourceMessage,
         String targetMessage,
         String roomMessage,
         long rngSeed
     ) {
-        this(attacker, target, hit, crit, damage, sourceMessage, targetMessage, roomMessage, rngSeed, List.of(), List.of());
+        this(attacker, target, hit, crit, blocked, damage, sourceMessage, targetMessage, roomMessage, rngSeed,
+            List.of(), List.of());
     }
 }
