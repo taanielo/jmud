@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "id": "vharixis-end",
+  "name": "Vharixis's End",
+  "description": "Beyond the culled slopes, atop the ice-shattered summit where frost-rimed bones lie strewn among fangs of blue ice, coils Vharixis the Frost Wyrm. The cold that gnaws the peaks is the dragon's own hunger given breath. Climb to the summit, face the wyrm in its lair, and end it — only then will the Frozen Peaks thaw of their terror.",
+  "target_mob_id": "frost-wyrm",
+  "required_kills": 1,
+  "gold_reward": 500,
+  "xp_reward": 1200,
+  "title_reward": "Wyrmslayer",
+  "item_reward": "runed-longsword",
+  "item_reward_quantity": 1,
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 25,
+  "repeatable": false,
+  "prerequisite_quest_id": "frostbound-cull"
+}
