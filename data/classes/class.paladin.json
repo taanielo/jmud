@@ -7,5 +7,5 @@
   },
   "carry_bonus": 8,
   "armor_bonus": 5,
-  "ability_ids": ["spell.lay.on.hands", "spell.smite"]
+  "ability_ids": ["spell.lay.on.hands", "spell.smite", "spell.divine-shield"]
 }
