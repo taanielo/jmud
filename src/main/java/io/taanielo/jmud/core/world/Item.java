@@ -84,12 +84,11 @@ public class Item {
      */
     boolean locked;
     /**
-     * Whether this weapon requires both hands to wield. A two-handed weapon in the
-     * {@link EquipmentSlot#WEAPON} slot occupies the {@link EquipmentSlot#OFFHAND} slot as well:
-     * equipping it auto-unequips any off-hand item, and it blocks equipping a new off-hand item
-     * (shield or second weapon) while worn. Only weapons are ever two-handed; defaults to false so
-     * one-handed weapons and legacy item data (which has no two_handed field) keep working exactly as
-     * before. See isTwoHanded().
+     * Whether this weapon requires both hands to wield. A two-handed weapon in the WEAPON slot
+     * occupies the OFFHAND slot as well: equipping it auto-unequips any off-hand item, and it blocks
+     * equipping a new off-hand item (shield or second weapon) while worn. Only weapons are ever
+     * two-handed; defaults to false so one-handed weapons and legacy item data (which has no
+     * two_handed field) keep working exactly as before. See isTwoHanded().
      */
     boolean twoHanded;
 
