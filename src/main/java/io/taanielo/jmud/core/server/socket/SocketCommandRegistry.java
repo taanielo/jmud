@@ -185,6 +185,7 @@ public class SocketCommandRegistry {
         new IgnoreCommand(registry);
         new FriendCommand(registry);
         new AfkCommand(registry);
+        new LfgCommand(registry);
         new MailCommand(registry);
         new BoardCommand(registry);
         new NoteCommand(registry);

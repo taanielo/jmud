@@ -188,4 +188,59 @@ class WhoListingTest {
             "1 player online."
         ), lines);
     }
+
+    @Test
+    void insertsLevelClassAfterNameAndLfgTagLast() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Sparky"), Username.of("Bob")),
+            name -> "",
+            name -> "",
+            name -> false,
+            name -> false,
+            name -> name.getValue().equals("Sparky") ? " [12 Warrior]" : " [3 Adventurer]",
+            name -> name.getValue().equals("Sparky") ? " [LFG: tank for Catacombs]" : "");
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Sparky [12 Warrior] [LFG: tank for Catacombs]",
+            "  Bob [3 Adventurer]",
+            "2 players online."
+        ), lines);
+    }
+
+    @Test
+    void fullyDecoratedLineRendersEveryMarkerInOrder() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Sparky")),
+            name -> " [Ironclad]",
+            name -> " the Centurion",
+            name -> true,
+            name -> true,
+            name -> " [30 Paladin]",
+            name -> " [LFG]");
+
+        assertEquals(List.of(
+            "Players online:",
+            "* Sparky [30 Paladin] [Ironclad] the Centurion [AFK] [LFG]",
+            "1 player online."
+        ), lines);
+    }
+
+    @Test
+    void emptyLevelClassAndLfgResolversRenderBareName() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Solo")),
+            name -> "",
+            name -> "",
+            name -> false,
+            name -> false,
+            name -> "",
+            name -> "");
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Solo",
+            "1 player online."
+        ), lines);
+    }
 }

@@ -118,20 +118,56 @@ public final class WhoListing {
             Function<Username, String> titleResolver,
             Predicate<Username> isFriend,
             Predicate<Username> isAway) {
+        return format(onlineNames, tagResolver, titleResolver, isFriend, isAway, name -> "", name -> "");
+    }
+
+    /**
+     * Formats the given online player names into fully-decorated display lines, including each
+     * player's level/class and any looking-for-group tag (issue #510).
+     *
+     * <p>Behaves like {@link #format(List, Function, Function, Predicate, Predicate)} but inserts the
+     * result of {@code levelClassResolver} (e.g. {@code " [12 Warrior]"}) immediately after the name
+     * and appends the result of {@code lfgResolver} (e.g. {@code " [LFG]"} or
+     * {@code " [LFG: tank for Catacombs]"}) at the very end. Both resolvers must return an empty
+     * string when there is nothing to show for a player, never {@code null}. The rendered order is
+     * {@code name + levelClass + guildTag + title + afk + lfg}, so a fully-decorated line reads
+     * {@code "* Sparky [12 Warrior] [Ironclad] the Centurion [AFK] [LFG: tank]"}.
+     *
+     * @param onlineNames        the authenticated, connected player names to list
+     * @param tagResolver        resolves the guild-tag suffix for each name
+     * @param titleResolver      resolves the active-title suffix for each name
+     * @param isFriend           tests whether each name is on the viewer's friends list
+     * @param isAway             tests whether each name is currently away from keyboard
+     * @param levelClassResolver resolves the level/class suffix for each name
+     * @param lfgResolver        resolves the looking-for-group suffix for each name
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(
+            List<Username> onlineNames,
+            Function<Username, String> tagResolver,
+            Function<Username, String> titleResolver,
+            Predicate<Username> isFriend,
+            Predicate<Username> isAway,
+            Function<Username, String> levelClassResolver,
+            Function<Username, String> lfgResolver) {
         Objects.requireNonNull(onlineNames, "Online names are required");
         Objects.requireNonNull(tagResolver, "Tag resolver is required");
         Objects.requireNonNull(titleResolver, "Title resolver is required");
         Objects.requireNonNull(isFriend, "Friend predicate is required");
         Objects.requireNonNull(isAway, "Away predicate is required");
+        Objects.requireNonNull(levelClassResolver, "Level/class resolver is required");
+        Objects.requireNonNull(lfgResolver, "LFG resolver is required");
         List<String> lines = new ArrayList<>(onlineNames.size() + 2);
         lines.add(HEADER);
         for (Username name : onlineNames) {
             Username resolved = Objects.requireNonNull(name, "Online name is required");
+            String levelClass = Objects.requireNonNullElse(levelClassResolver.apply(resolved), "");
             String tag = Objects.requireNonNullElse(tagResolver.apply(resolved), "");
             String title = Objects.requireNonNullElse(titleResolver.apply(resolved), "");
             String prefix = isFriend.test(resolved) ? "* " : "  ";
             String afk = isAway.test(resolved) ? " [AFK]" : "";
-            lines.add(prefix + resolved.getValue() + tag + title + afk);
+            String lfg = Objects.requireNonNullElse(lfgResolver.apply(resolved), "");
+            lines.add(prefix + resolved.getValue() + levelClass + tag + title + afk + lfg);
         }
         lines.add(footer(onlineNames.size()));
         return List.copyOf(lines);

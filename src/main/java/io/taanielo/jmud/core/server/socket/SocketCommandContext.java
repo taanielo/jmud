@@ -1127,4 +1127,64 @@ public interface SocketCommandContext extends Client {
         return java.util.Optional.empty();
     }
 
+    /**
+     * Handles the {@code LFG} command (issue #510): with no argument it toggles the caller's
+     * looking-for-group status on (with a default marker) or off; with an argument it turns the
+     * status on with that custom note; with {@code STATUS} it reports the current state without
+     * toggling.
+     *
+     * <p>The status is transient session state, never persisted, and — unlike {@code AFK} — is
+     * <em>not</em> cleared by the player's next command; it stays on until toggled off or the player
+     * disconnects.
+     *
+     * <p>The default implementation is a no-op so existing test stubs do not need to be updated.
+     *
+     * @param args the optional custom LFG note, {@code STATUS}, or blank to toggle
+     */
+    default void toggleLfg(String args) {}
+
+    /**
+     * Returns whether the given online player is currently flagged looking-for-group. Used by
+     * {@code WHO} to render an {@code [LFG]} tag next to those players.
+     *
+     * <p>The default implementation returns {@code false} so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player to test
+     * @return {@code true} when that player's session is currently LFG
+     */
+    default boolean isPlayerLfg(Username username) {
+        return false;
+    }
+
+    /**
+     * Returns the {@code WHO}-roster suffix for the given online player's looking-for-group status,
+     * e.g. {@code " [LFG]"} or {@code " [LFG: tank for Catacombs]"}, or an empty string when they are
+     * not LFG. Used by {@code WHO} to annotate each name after the other markers.
+     *
+     * <p>The default implementation returns an empty string so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player whose LFG tag to resolve
+     * @return the LFG suffix with a leading space, or {@code ""}
+     */
+    default String lfgTag(Username username) {
+        return "";
+    }
+
+    /**
+     * Returns the {@code WHO}-roster level/class suffix for the given online player, e.g.
+     * {@code " [12 Warrior]"}, resolving the class display name from the class registry. Returns an
+     * empty string when the player is not online or their class cannot be resolved.
+     *
+     * <p>The default implementation returns an empty string so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player whose level/class tag to resolve
+     * @return the level/class suffix with a leading space, or {@code ""}
+     */
+    default String levelClassTag(Username username) {
+        return "";
+    }
+
 }
