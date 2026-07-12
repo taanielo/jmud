@@ -1,0 +1,127 @@
+/* jmud web client (issue #527). Plain CSS, no build pipeline, no external fonts/CDN. */
+:root {
+    --bg: #101014;
+    --fg: #d0d0d0;
+    --bar-bg: #1c1c24;
+    --accent: #4fa3ff;
+    --ok: #3ecf6b;
+    --bad: #e05c5c;
+    --mono: ui-monospace, "DejaVu Sans Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 15px;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+#bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bar-bg);
+    border-bottom: 1px solid #000;
+}
+
+#brand {
+    font-weight: bold;
+    color: var(--accent);
+}
+
+.status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status.connected { background: rgba(62, 207, 107, 0.15); color: var(--ok); }
+.status.disconnected { background: rgba(224, 92, 92, 0.15); color: var(--bad); }
+.status.connecting { background: rgba(79, 163, 255, 0.15); color: var(--accent); }
+
+#url {
+    flex: 1;
+    min-width: 120px;
+    padding: 4px 8px;
+    background: #0b0b0f;
+    color: var(--fg);
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 13px;
+}
+
+#bar button {
+    padding: 4px 12px;
+    background: var(--accent);
+    color: #041018;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#bar button:hover { filter: brightness(1.1); }
+
+#terminal {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px;
+    outline: none;
+}
+
+#output {
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+.line { min-height: 1.35em; }
+
+#inputForm {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bar-bg);
+    border-top: 1px solid #000;
+}
+
+#prompt-hint { color: var(--accent); }
+
+#input {
+    flex: 1;
+    padding: 6px 8px;
+    background: #0b0b0f;
+    color: var(--fg);
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 15px;
+}
+
+#input:disabled { opacity: 0.5; }
+
+/* ANSI SGR palette (standard + bright). */
+.b { font-weight: bold; }
+.fg30 { color: #2e3436; } .fg31 { color: #cc0000; } .fg32 { color: #4e9a06; }
+.fg33 { color: #c4a000; } .fg34 { color: #3465a4; } .fg35 { color: #75507b; }
+.fg36 { color: #06989a; } .fg37 { color: #d3d7cf; }
+.fg90 { color: #555753; } .fg91 { color: #ef2929; } .fg92 { color: #8ae234; }
+.fg93 { color: #fce94f; } .fg94 { color: #729fcf; } .fg95 { color: #ad7fa8; }
+.fg96 { color: #34e2e2; } .fg97 { color: #eeeeec; }
+.bg40 { background: #2e3436; } .bg41 { background: #cc0000; } .bg42 { background: #4e9a06; }
+.bg43 { background: #c4a000; } .bg44 { background: #3465a4; } .bg45 { background: #75507b; }
+.bg46 { background: #06989a; } .bg47 { background: #d3d7cf; }
