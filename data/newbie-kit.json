@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "starting_gold": 40,
+  "starting_items": [
+    { "item": "bread", "quantity": 2 },
+    { "item": "water", "quantity": 2 }
+  ]
+}

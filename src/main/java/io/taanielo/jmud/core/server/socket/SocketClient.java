@@ -429,6 +429,12 @@ public class SocketClient implements Client {
             player = player.withIdentity(player.identity().withClassId(classDef.id()));
             player = context.characterCreationService().applyClassStartingState(player, classDef);
         }
+        // Grant the data-driven newbie starting kit (issue #519): a small gold purse plus provisions
+        // so a fresh character can eat, drink and buy a meal before their first fight, bootstrapping
+        // the early-game economy. Applied only here at creation, so existing saves are never re-kitted.
+        if (context.newbieKitService() != null) {
+            player = context.newbieKitService().applyTo(player);
+        }
         session.setPlayer(player);
         context.persistenceQueue().enqueueSave(player);
         // Creation is complete: only now does the player enter the world — room placement plus the

@@ -181,7 +181,7 @@ T1="$OUT_DIR/phase1-new-user.txt"
 # starter quest (issue #518). QUEST LIST/ACCEPT/STATUS resolve at the Guild Clerk
 # but do not require standing in the Courtyard to inspect the contract board.
 run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
-    "score" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" "quit"
+    "score" "inventory" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" "quit"
 
 # Note: the prompt is written without a trailing newline, so command output
 # can share a line with it — don't anchor patterns with ^ unless the line is
@@ -192,6 +192,12 @@ expect "$T1" "onboarding points at the Guild Clerk" 'QUEST LIST at the Guild Cle
 expect "$T1" "SCORE header present"               '--- Score ---'
 expect "$T1" "SCORE shows Level"                  'Level : [0-9]+'
 expect "$T1" "SCORE shows AC"                     'AC    : [0-9]+'
+# Newbie starting kit (issue #519): a fresh character receives a small gold purse plus
+# provisions (bread + waterskin) so they can eat, drink and buy a meal before their first
+# fight. Values are data-driven in data/newbie-kit.json.
+expect "$T1" "SCORE shows a non-zero starting gold purse" 'Gold  : [1-9][0-9]*'
+expect "$T1" "INVENTORY holds starter bread"      'Loaf of Bread'
+expect "$T1" "INVENTORY holds starter waterskin"  'Waterskin'
 expect "$T1" "QUEST LIST shows the contract board" 'Available Contracts'
 expect "$T1" "QUEST LIST shows a recommended level column" 'Lvl'
 expect "$T1" "QUEST LIST offers the starter quest"  'rat-catcher'
@@ -213,8 +219,8 @@ expect "$T2" "WHO lists the test user"            "$TEST_USER"
 
 # ── phase 2b: item durability / REPAIR command ───────────────────────────────
 # The REPAIR command (issue #271) is served by a blacksmith NPC in the armory.
-# A brand-new character starts in the training-yard with no gold, so rather than
-# scripting a fragile buy/navigate/fight-until-broken flow we assert the command
+# A brand-new character starts in the training-yard away from any forge, so rather
+# than scripting a fragile buy/navigate/fight-until-broken flow we assert the command
 # is wired up and gives its expected "no blacksmith here" guidance when invoked
 # away from a forge. The break-in-combat and repair maths are covered by the
 # ItemDurabilityService unit tests.
