@@ -8,6 +8,6 @@
   "carry_bonus": 8,
   "armor_bonus": 5,
   "ability_ids": ["spell.lay.on.hands", "spell.smite", "spell.divine-shield"],
-  "trainable_ability_ids": ["spell.bless"],
+  "trainable_ability_ids": ["spell.bless", "skill.second-wind"],
   "description": "A durable holy knight who fights and heals in equal measure. Paladins mend with lay on hands, guard with divine shield and smite the undead; note that smite only strikes undead, so rely on your weapon against the living."
 }

@@ -25,6 +25,7 @@ class BardClassSeedingTest {
     private static final Path DATA_ROOT = Path.of("data");
     private static final AbilityId BATTLE_HYMN = AbilityId.of("spell.battle-hymn");
     private static final AbilityId HASTE = AbilityId.of("spell.haste");
+    private static final AbilityId BLESS = AbilityId.of("spell.bless");
     private static final AbilityId DISCORD = AbilityId.of("spell.discord");
 
     @Test
@@ -37,7 +38,7 @@ class BardClassSeedingTest {
         assertEquals("bard", bard.id().getValue());
         assertEquals("Bard", bard.name());
         assertEquals(List.of(BATTLE_HYMN, DISCORD), bard.startingAbilityIds());
-        assertEquals(List.of(HASTE), bard.trainableAbilityIds());
+        assertEquals(List.of(HASTE, BLESS), bard.trainableAbilityIds());
     }
 
     @Test
