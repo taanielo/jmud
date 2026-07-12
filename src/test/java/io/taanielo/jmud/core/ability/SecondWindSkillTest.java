@@ -89,7 +89,7 @@ class SecondWindSkillTest {
         AbilityTargetResolver resolver = (p, input) -> Optional.empty();
 
         AbilityUseResult result = engine.use(
-            warrior, "second-wind", List.of(SECOND_WIND), resolver, recordingCooldowns());
+            warrior, "secondwind", List.of(SECOND_WIND), resolver, recordingCooldowns());
 
         assertEquals("Bruenor", result.target().getUsername().getValue(),
             "second wind must default to the caster");
@@ -111,7 +111,7 @@ class SecondWindSkillTest {
         };
 
         AbilityUseResult result = engine.use(
-            warrior, "second-wind", List.of(SECOND_WIND), resolver, onCooldown);
+            warrior, "secondwind", List.of(SECOND_WIND), resolver, onCooldown);
 
         assertTrue(result.messages().stream().anyMatch(m -> m.contains("cooldown")),
             "second wind must be blocked while on cooldown");
@@ -123,13 +123,13 @@ class SecondWindSkillTest {
         Player exhausted = new Player(
             User.of(Username.of("Tired"), Password.hash("pw")),
             1, 0,
-            new PlayerVitals(20, 60, 0, 0, 1, 30),
+            new PlayerVitals(20, 60, 0, 5, 1, 30),
             new ArrayList<>(), "prompt", false, List.of(), null, null);
         AbilityEngine engine = engine(ability);
         AbilityTargetResolver resolver = (p, input) -> Optional.empty();
 
         AbilityUseResult result = engine.use(
-            exhausted, "second-wind", List.of(SECOND_WIND), resolver, recordingCooldowns());
+            exhausted, "secondwind", List.of(SECOND_WIND), resolver, recordingCooldowns());
 
         assertTrue(result.messages().stream().anyMatch(m -> m.contains("resources")),
             "second wind must be rejected when the Warrior lacks the move cost");
@@ -151,7 +151,7 @@ class SecondWindSkillTest {
         return new Player(
             User.of(Username.of(name), Password.hash("pw")),
             1, 0,
-            new PlayerVitals(30, 80, 0, 0, 30, 30),
+            new PlayerVitals(30, 80, 0, 5, 30, 30),
             new ArrayList<>(), "prompt", false, List.of(), null, null);
     }
 
