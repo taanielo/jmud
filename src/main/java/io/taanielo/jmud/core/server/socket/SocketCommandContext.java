@@ -287,6 +287,21 @@ public interface SocketCommandContext extends Client {
     default void executeAssist(String args) {}
 
     /**
+     * Executes a TAUNT command: the Warrior-only skill that forces a mob already in combat in the
+     * caller's room to prioritise attacking the caller for the next few AI decisions, peeling it off
+     * an ally.
+     *
+     * <p>Fails with a clear message when the caller has not learned the skill (including non-Warriors),
+     * the skill is on cooldown, no matching mob is present, or the named mob is not currently engaged
+     * in combat. Costs move points on success and starts the skill's cooldown.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the name of the mob to taunt
+     */
+    default void executeTaunt(String args) {}
+
+    /**
      * Executes a SHOOT command: fires a ranged weapon at a mob in an adjacent room.
      *
      * <p>Parses {@code args} as {@code <target> <direction>}, verifies the player wields a ranged

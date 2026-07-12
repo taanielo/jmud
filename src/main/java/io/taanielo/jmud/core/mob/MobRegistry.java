@@ -539,6 +539,77 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     }
 
     /**
+     * Number of AI decisions a single Warrior TAUNT holds a mob's aggro before it expires and normal
+     * random targeting resumes. Kept short so TAUNT is a burst peel, not a permanent lock.
+     */
+    private static final int TAUNT_DURATION_TICKS = 3;
+
+    /**
+     * Processes the Warrior {@code TAUNT} skill: forces a mob in the taunter's room that is already in
+     * combat to prioritise attacking the taunter for the next few AI decisions (see
+     * {@link #selectAiTarget}). The taunter is engaged with the mob as a side effect so they become a
+     * valid target, exactly like {@link #processPlayerAttack}.
+     *
+     * <p>The named mob is resolved case-insensitively among the mobs in {@code roomId}. The taunt fails
+     * — with no state change and no move-point cost — when the taunter is dead, over-encumbered, cannot
+     * afford the move cost, no matching (live, attackable) mob is present, or the mob is not currently
+     * engaged in combat. Class/learned-skill and cooldown gating are enforced by the calling command
+     * before this method is reached (mirroring the AoE/summon dispatch pattern). All mutation runs on
+     * the tick thread via the taunter's command queue (AGENTS.md §5).
+     *
+     * @param taunter    the Warrior invoking the skill
+     * @param mobName    the raw mob-name input naming the target
+     * @param tauntSkill the resolved {@code skill.taunt} ability (supplies the move cost)
+     * @param roomId     the taunter's current room
+     * @return result whose {@link GameActionResult#updatedSource()} is the move-charged taunter on
+     *         success (signalling the caller to start the cooldown), or an error with no state change
+     */
+    public GameActionResult processPlayerTaunt(
+        Player taunter, String mobName, Ability tauntSkill, RoomId roomId) {
+        Objects.requireNonNull(taunter, "Taunter is required");
+        Objects.requireNonNull(tauntSkill, "Taunt skill is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (mobName == null || mobName.isBlank()) {
+            return GameActionResult.error("Taunt what?");
+        }
+        if (taunter.isDead()) {
+            return GameActionResult.error("You cannot do that while dead.");
+        }
+        if (encumbranceService != null && encumbranceService.isOverburdened(taunter)) {
+            return GameActionResult.error("You are carrying too much to do that.");
+        }
+        if (taunter.getVitals().move() < tauntSkill.cost().move()) {
+            return GameActionResult.error("You are too winded to bellow a challenge.");
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), mobName.trim());
+        if (mob == null || !mob.isAlive()) {
+            return GameActionResult.error("No such target here.");
+        }
+        if (mob.isPet()) {
+            return GameActionResult.error("You cannot taunt a friendly companion.");
+        }
+        if (mob.template().hasTag("npc")) {
+            return GameActionResult.error("You cannot taunt that.");
+        }
+        if (mob.engagedPlayers().isEmpty()) {
+            return GameActionResult.error("The " + mob.template().name() + " is not fighting anyone.");
+        }
+
+        Player updated = taunter.withVitals(taunter.getVitals().consumeMove(tauntSkill.cost().move()));
+        mob.engage(taunter.getUsername());
+        playerCombatTargets.put(taunter.getUsername(), mob.instanceId());
+        mob.applyTaunt(taunter.getUsername(), TAUNT_DURATION_TICKS);
+
+        String mobDisplayName = mob.template().name();
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You bellow a challenge, drawing the " + mobDisplayName + "'s attention squarely onto you!"));
+        messages.add(GameMessage.toRoomAt(roomId, taunter.getUsername(),
+            taunter.getUsername().getValue() + " bellows a challenge at the " + mobDisplayName + "!"));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
      * Finds the {@link Username} of a player currently in {@code roomId} whose name matches
      * {@code name} case-insensitively (usernames compare case-insensitively), or {@code null} when no
      * such player is present.
@@ -1519,6 +1590,30 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
 
     // ── Mob AI ────────────────────────────────────────────────────────
 
+    /**
+     * Chooses which engaged player a mob attacks this AI decision. When an active Warrior TAUNT is in
+     * force ({@link MobInstance#activeTaunter()}) and the taunter is still a live candidate — present
+     * in the room and engaged — the mob is forced onto the taunter and one taunt decision is consumed.
+     * Otherwise, or once the taunt has expired or its taunter left combat/the room, the mob falls back
+     * to the normal uniform-random pick among {@code candidates}. Runs on the tick thread (AGENTS.md
+     * §5).
+     *
+     * @param mob        the acting mob
+     * @param candidates the engaged players present in the mob's room (never empty)
+     * @return the username the mob will attack this decision
+     */
+    private Username selectAiTarget(MobInstance mob, List<Username> candidates) {
+        Username taunter = mob.activeTaunter();
+        if (taunter != null && candidates.contains(taunter)) {
+            Player tauntingPlayer = playerRepository.loadPlayer(taunter).orElse(null);
+            if (tauntingPlayer != null && !tauntingPlayer.isDead()) {
+                mob.consumeTauntTick();
+                return taunter;
+            }
+        }
+        return candidates.get(random.roll(0, candidates.size() - 1));
+    }
+
     private void runMobAi(MobInstance mob) {
         List<Username> candidates;
         Set<Username> engaged = mob.engagedPlayers();
@@ -1531,7 +1626,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         if (candidates.isEmpty()) {
             return;
         }
-        Username targetUsername = candidates.get(random.roll(0, candidates.size() - 1));
+        Username targetUsername = selectAiTarget(mob, candidates);
         Player target = playerRepository.loadPlayer(targetUsername).orElse(null);
         if (target == null || target.isDead()) {
             return;

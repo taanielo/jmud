@@ -2110,6 +2110,52 @@ class SocketCommandContextImpl implements SocketCommandContext {
         sendPrompt();
     }
 
+    /** Ability id of the Warrior TAUNT skill (data/skills/skill.taunt.json). */
+    private static final AbilityId TAUNT_ABILITY_ID = AbilityId.of("skill.taunt");
+
+    @Override
+    public void executeTaunt(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to taunt.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        if (!player.getLearnedAbilities().contains(TAUNT_ABILITY_ID)) {
+            writeLineWithPrompt("You do not know how to taunt.");
+            return;
+        }
+        Ability taunt = abilityRegistry.findById(TAUNT_ABILITY_ID).orElse(null);
+        if (taunt == null) {
+            writeLineWithPrompt("You cannot taunt right now.");
+            return;
+        }
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(taunt.id())) {
+            writeLineWithPrompt("You are still catching your breath ("
+                + cooldowns.remainingTicks(taunt.id()) + " ticks remaining).");
+            return;
+        }
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("There is nothing here to taunt.");
+            return;
+        }
+        breakStealthIfActive();
+        breakMountIfActive();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        GameActionResult result = context.mobRegistry()
+            .processPlayerTaunt(player, args, taunt, roomIdOpt.get());
+        if (result.updatedSource() != null && taunt.cooldown().ticks() > 0) {
+            cooldowns.startCooldown(taunt.id(), taunt.cooldown().ticks());
+        }
+        deliverResult(result);
+        sendPrompt();
+    }
+
     @Override
     public void executeRangedAttack(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {

@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jspecify.annotations.Nullable;
 
@@ -38,6 +39,20 @@ public class MobInstance {
      * and {@link #respawn()}).
      */
     private final AtomicBoolean specialAbilityUsed = new AtomicBoolean(false);
+    /**
+     * The player currently forcing this mob's aggro via the Warrior TAUNT skill, or {@code null}
+     * when no taunt is active. Paired with {@link #tauntTicksRemaining}: the taunt is only honoured
+     * while the counter is positive. Mutated exclusively through {@link MobRegistry} on the tick
+     * thread; cleared when the taunter disengages ({@link #disengage(Username)}) or on
+     * {@link #respawn()}, mirroring {@link #specialAbilityUsed}.
+     */
+    private final AtomicReference<Username> taunter = new AtomicReference<>();
+    /**
+     * Remaining number of AI decisions for which {@link #taunter} holds this mob's aggro. Decremented
+     * on the tick thread via {@link #consumeTauntTick()}; when it reaches zero the taunt expires and
+     * the mob resumes normal random targeting.
+     */
+    private final AtomicInteger tauntTicksRemaining = new AtomicInteger(0);
     /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
     private volatile RoomId currentRoomId;
     /**
@@ -179,8 +194,12 @@ public class MobInstance {
 
     public void disengage(Username player) {
         engagedPlayers.remove(player);
+        if (player.equals(taunter.get())) {
+            clearTaunt();
+        }
         if (engagedPlayers.isEmpty()) {
             specialAbilityUsed.set(false);
+            clearTaunt();
         }
     }
 
@@ -204,6 +223,50 @@ public class MobInstance {
      */
     public void markSpecialAbilityUsed() {
         specialAbilityUsed.set(true);
+    }
+
+    /**
+     * Forces this mob to prioritise attacking {@code taunter} for the next {@code durationTicks} AI
+     * decisions, overriding its normal random-candidate targeting (see the Warrior TAUNT skill). A
+     * fresh taunt fully replaces any previous one. Must only be called from the tick thread via
+     * {@link MobRegistry}.
+     *
+     * @param taunter       the player drawing the mob's aggro
+     * @param durationTicks how many AI decisions the taunt holds; must be positive
+     */
+    public void applyTaunt(Username taunter, int durationTicks) {
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException("Taunt duration must be positive");
+        }
+        this.taunter.set(Objects.requireNonNull(taunter, "Taunter is required"));
+        this.tauntTicksRemaining.set(durationTicks);
+    }
+
+    /**
+     * Returns the player currently holding this mob's aggro via an active taunt, or {@code null} when
+     * no taunt is active (never applied, expired, or cleared on disengage/respawn).
+     *
+     * @return the active taunter's username, or {@code null}
+     */
+    @Nullable
+    public Username activeTaunter() {
+        return tauntTicksRemaining.get() > 0 ? taunter.get() : null;
+    }
+
+    /**
+     * Consumes one AI decision from an active taunt, expiring it (and clearing the taunter) when the
+     * remaining count reaches zero. A no-op when no taunt is active. Must only be called from the tick
+     * thread.
+     */
+    public void consumeTauntTick() {
+        if (tauntTicksRemaining.get() > 0 && tauntTicksRemaining.decrementAndGet() <= 0) {
+            clearTaunt();
+        }
+    }
+
+    private void clearTaunt() {
+        taunter.set(null);
+        tauntTicksRemaining.set(0);
     }
 
     /**
@@ -288,6 +351,7 @@ public class MobInstance {
         respawnTicksRemaining.set(0);
         engagedPlayers.clear();
         specialAbilityUsed.set(false);
+        clearTaunt();
         currentRoomId = template.spawnRoomId();
     }
 }
