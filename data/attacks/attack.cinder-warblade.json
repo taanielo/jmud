@@ -1,0 +1,58 @@
+{
+  "schema_version": 5,
+  "id": "attack.cinder-warblade",
+  "name": "cinder warblade",
+  "weapon_type": "SLASHING",
+  "min_damage": 9,
+  "max_damage": 17,
+  "hit_bonus": 6,
+  "crit_bonus": 3,
+  "damage_bonus": 4,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You carve into {target} with the cinder warblade and its burning edge sears the wound shut for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} carves into you with a cinder warblade whose edge burns as it bites, for {damage}."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} carves into {target} with a burning cinder warblade."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You sweep the cinder warblade at {target} and it hisses through empty air."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} sweeps a cinder warblade at you and it hisses past."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} sweeps a cinder warblade at {target} and misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You bury the cinder warblade deep in {target} and its trapped fire erupts along the blade for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} buries a cinder warblade deep in you and its trapped fire erupts for {damage}!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} buries a cinder warblade deep in {target} and fire bursts along the blade!"
+    }
+  ]
+}

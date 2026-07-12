@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.cinder-tyrant-scourge",
+  "name": "Cinder Scourge",
+  "min_damage": 38,
+  "max_damage": 58,
+  "hit_bonus": 4,
+  "crit_bonus": 4,
+  "damage_bonus": 10,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 70
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Vhalgrimm rises from its throne and the whole scorched circle erupts, a scourging storm of embers and grave-ash that flays you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Vhalgrimm looses its cinder scourge across the black glass and you dive behind a leaning shard as the firestorm roars past."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Vhalgrimm's cinder scourge catches you in the open and the searing ash strips you to the bone for {damage}!"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": 11,
+  "id": "scarplate-of-embers",
+  "name": "the Scarplate of Embers",
+  "description": "A cuirass hammered from plates of cooled slag over a lining of ash-cloth, its surface a map of the same cruel scarring that marks all the Cinder Reaches. The plates are veined with dull, banked fire that flares when the wearer is struck, and the whole harness carries a low, patient warmth that turns aside the worst of a blow. It is heavy, ugly, and very hard to break.",
+  "attributes": {
+    "stats": {
+      "ac": 12
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 16,
+  "value": 300,
+  "rarity": "rare"
+}

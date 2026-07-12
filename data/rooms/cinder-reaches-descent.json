@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "cinder-reaches-descent",
+  "name": "The Scorched Descent",
+  "description": "A fault in the floor of the Forge-Heart gapes wide where the world boss once thrashed against its chains of stone, and a stair of fused, glassy steps spirals down into a darkness that the molten light above cannot reach. The air cools as it falls, but it carries a wrongness the fire never had: a greasy, sulphurous reek and the faint after-smell of burnt hair. Whatever Pyraxis was, it left something of itself scarred into the deep rock here.",
+  "item_ids": [],
+  "exits": {
+    "up": "emberdeep-forge-heart",
+    "down": "cinder-reaches-ashfall-chasm"
+  },
+  "min_level": 26,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A draught of cold, sour air climbs the stair from below and gutters the last of the forge-light.",
+    "One of the glassy steps ticks and splinters underfoot, and the crack echoes down into the dark for a long time.",
+    "Far beneath you something exhales, slow and rasping, and the smell of scorched hair thickens."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.cinder-tyrant",
+  "name": "scarring blows",
+  "min_damage": 26,
+  "max_damage": 40,
+  "hit_bonus": 5,
+  "crit_bonus": 4,
+  "damage_bonus": 8,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 50
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Vhalgrimm rakes you with talons of blackened slag that leave smouldering scars across your flesh for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Vhalgrimm sweeps a taloned arm through the dark and you throw yourself clear of the scorching arc."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Vhalgrimm seizes you in both burning hands and brands you to the bone for {damage}!"
+    }
+  ]
+}

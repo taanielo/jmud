@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "cinder-reaches-ashfall-chasm",
+  "name": "The Ashfall Chasm",
+  "description": "The stair spills out onto the lip of a vast chasm where grey ash sifts down endlessly from unseen heights, falling soft and constant as snow that has forgotten how to be cold. It heaps in dunes against the walls and swallows sound, so that footsteps land dead and dull. Here and there the ash stirs of its own accord, coiling upward into half-shapes that hold a moment before slumping back, as though the fall itself is haunted by the things that burned in it.",
+  "item_ids": [],
+  "exits": {
+    "up": "cinder-reaches-descent",
+    "down": "cinder-reaches-cinder-drifts"
+  },
+  "min_level": 27,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "Ash sifts down in a grey curtain and settles cold and weightless on your shoulders.",
+    "A dune of ash slides and collapses somewhere in the dark with a long, whispering hiss.",
+    "For an instant the falling ash twists into the outline of a screaming face, then unravels and is gone."
+  ]
+}
