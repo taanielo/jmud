@@ -3540,10 +3540,23 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (result.success()) {
             setGuildMembership(leaver, PlayerGuildMembership.none());
             if (result.guild() != null) {
-                List<Username> online = onlinePlayerNames();
-                for (GuildMember member : result.guild().members()) {
-                    if (online.contains(member.username())) {
-                        sendToUsername(member.username(), leaver.getValue() + " has left the guild.");
+                if (result.guild().memberCount() == 0) {
+                    // Departure emptied the guild, so it was auto-disbanded. Mirror GUILD DISBAND and
+                    // hand the shared vault and pooled treasury back to the leaver so nothing is lost.
+                    String treasurySummary = refundTreasuryToLeaver(result.guild());
+                    if (treasurySummary != null) {
+                        connection.writeLine(treasurySummary);
+                    }
+                    String vaultSummary = returnVaultToLeader(result.guild());
+                    if (vaultSummary != null) {
+                        connection.writeLine(vaultSummary);
+                    }
+                } else {
+                    List<Username> online = onlinePlayerNames();
+                    for (GuildMember member : result.guild().members()) {
+                        if (online.contains(member.username())) {
+                            sendToUsername(member.username(), leaver.getValue() + " has left the guild.");
+                        }
                     }
                 }
             }
@@ -3787,6 +3800,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * empty. Runs on the tick thread; the room drop is an in-memory mutation (AGENTS.md §5).
      */
     @Nullable
+    // Refunds a disbanded guild's pooled treasury gold to the current player (the leaver/leader),
+    // returning a player-facing summary or null when the treasury was empty.
+    private String refundTreasuryToLeaver(Guild disbanded) {
+        int gold = disbanded.treasuryGold();
+        if (gold <= 0) {
+            return null;
+        }
+        Player updated = session.getPlayer().addGold(gold);
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        return gold + " gold from the guild treasury is returned to you.";
+    }
+
     private String returnVaultToLeader(Guild disbanded) {
         List<VaultedItem> items = disbanded.vaultedItems();
         if (items.isEmpty()) {
