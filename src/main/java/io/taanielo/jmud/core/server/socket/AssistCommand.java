@@ -23,13 +23,14 @@ public class AssistCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: ASSIST <player>\n"
-             + "  Engages you in combat against whatever mob the named player in your current room is\n"
-             + "  currently fighting, exactly as if you had typed KILL against that mob. Handy in a\n"
-             + "  party when several similar mobs are present and you cannot tell which one your\n"
-             + "  ally is fighting; pairs naturally with the {partyHp} prompt token. Assisting works\n"
-             + "  regardless of party membership. Fails if the named player is not here or is not\n"
-             + "  fighting anything.";
+        return """
+                Usage: ASSIST <player>
+                  Engages you in combat against whatever mob the named player in your current room is
+                  currently fighting, exactly as if you had typed KILL against that mob. Handy in a
+                  party when several similar mobs are present and you cannot tell which one your
+                  ally is fighting; pairs naturally with the {partyHp} prompt token. Assisting works
+                  regardless of party membership. Fails if the named player is not here or is not
+                  fighting anything.""";
     }
 
     @Override
