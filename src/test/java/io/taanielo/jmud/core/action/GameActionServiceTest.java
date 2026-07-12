@@ -524,6 +524,75 @@ class GameActionServiceTest {
         assertFalse(new ShieldBlockResolver(shieldRepo).resolve(twoHanded).canBlock());
     }
 
+    @Test
+    void equipNeckAndFingerJewelryWorksLikeAnyOtherSlot() {
+        Player withGear = attacker.addItem(travelersAmulet()).addItem(copperRing());
+
+        Player wornAmulet = service.equipItem(withGear, "travelers-amulet").updatedSource();
+        assertNotNull(wornAmulet);
+        assertTrue(wornAmulet.getEquipment().isEquipped(ItemId.of("travelers-amulet")));
+        assertEquals(ItemId.of("travelers-amulet"), wornAmulet.getEquipment().equipped(EquipmentSlot.NECK));
+
+        Player wornRing = service.equipItem(wornAmulet, "copper-ring").updatedSource();
+        assertNotNull(wornRing);
+        assertEquals(ItemId.of("copper-ring"), wornRing.getEquipment().equipped(EquipmentSlot.FINGER));
+
+        GameActionResult unequip = service.unequipSlot(wornRing, "finger");
+        assertNotNull(unequip.updatedSource());
+        assertNull(unequip.updatedSource().getEquipment().equipped(EquipmentSlot.FINGER));
+        // The neck amulet is untouched by unequipping the finger slot.
+        assertEquals(ItemId.of("travelers-amulet"),
+            unequip.updatedSource().getEquipment().equipped(EquipmentSlot.NECK));
+    }
+
+    @Test
+    void equippingNeckAndFingerDoesNotTouchOffhandCombatResolution() {
+        // A shield in the off hand keeps its dual-wield/shield-block eligibility while jewelry is worn.
+        Player withGear = attacker.addItem(woodenShield())
+            .addItem(travelersAmulet())
+            .addItem(copperRing());
+        Player shielded = withGear.withEquipment(
+            withGear.getEquipment().equip(EquipmentSlot.OFFHAND, ItemId.of("shield")));
+
+        Player wornAmulet = service.equipItem(shielded, "travelers-amulet").updatedSource();
+        assertNotNull(wornAmulet);
+        Player wornRing = service.equipItem(wornAmulet, "copper-ring").updatedSource();
+        assertNotNull(wornRing);
+
+        // Off-hand slot is untouched by neck/finger equips.
+        assertEquals(ItemId.of("shield"), wornRing.getEquipment().equipped(EquipmentSlot.OFFHAND));
+        ItemRepository shieldRepo = new ItemRepository() {
+            @Override
+            public void save(Item item) {
+            }
+
+            @Override
+            public Optional<Item> findById(ItemId id) {
+                return id.equals(ItemId.of("shield")) ? Optional.of(woodenShield()) : Optional.empty();
+            }
+        };
+        assertTrue(new ShieldBlockResolver(shieldRepo).resolve(wornRing).canBlock(),
+            "Shield block must remain available after equipping neck/finger jewelry");
+    }
+
+    private static Item travelersAmulet() {
+        return Item.builder(ItemId.of("travelers-amulet"), "a traveler's amulet",
+                "A worn pendant.", new ItemAttributes(Map.of("dexterity", 1)))
+            .equipSlot(EquipmentSlot.NECK)
+            .weight(1)
+            .value(40)
+            .build();
+    }
+
+    private static Item copperRing() {
+        return Item.builder(ItemId.of("copper-ring"), "a copper ring",
+                "A plain copper band.", new ItemAttributes(Map.of("ac", 1)))
+            .equipSlot(EquipmentSlot.FINGER)
+            .weight(1)
+            .value(25)
+            .build();
+    }
+
     private static Item twoHandedGreataxe() {
         return Item.builder(ItemId.of("greataxe"), "a greataxe", "A massive two-handed axe.", ItemAttributes.empty())
             .equipSlot(EquipmentSlot.WEAPON)

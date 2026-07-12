@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "signet-of-warding",
+  "name": "Signet of Warding",
+  "output_item": "signet-of-warding",
+  "gold_cost": 60,
+  "min_skill": 1,
+  "materials": [
+    { "item": "iron-ore", "quantity": 2 }
+  ]
+}

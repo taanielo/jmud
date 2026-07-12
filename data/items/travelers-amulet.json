@@ -1,0 +1,17 @@
+{
+  "schema_version": 13,
+  "id": "travelers-amulet",
+  "name": "Traveler's Amulet",
+  "description": "A worn pendant strung on a leather cord, said to steady the hand of those long on the road.",
+  "attributes": {
+    "stats": {
+      "dexterity": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 40,
+  "attack_ref": null
+}
