@@ -228,3 +228,35 @@ run is active.
 - **What seeds a cycle:** if `TODO.md` has unchecked `- [ ]` items, `FIND_ISSUE` turns the first one
   into an issue (via `issue-creator`) *before* falling through to `game-designer`. Empty/checked
   `TODO.md` ⇒ `game-designer` invents the feature.
+
+---
+
+## 4. Playing via the browser web client (issue #527)
+
+The WebSocket transport (issue #526) doubles as an embedded HTTP server for a
+dependency-free browser terminal (assets live in `web/`, served by the jmud
+process — no CDN, no build step).
+
+**Open it locally:** start jmud (the WebSocket server is on by default) and browse
+to the WebSocket port over plain HTTP:
+
+```bash
+./gradlew run --args="--ws-port 8080"
+# then open http://127.0.0.1:8080/ in a browser and click Connect
+```
+
+`GET /` serves the terminal page; `GET /ws` is the game WebSocket. The page
+pre-fills its WebSocket-URL field from the address you loaded it from, so a local
+run needs no configuration — create a character, fight, chat, QUIT exactly as over
+telnet, colors included. Password prompts are masked automatically (heuristic: the
+input masks when the last server line ends with `password:`). Command history is on
+the up/down arrows; a dropped connection shows a disconnected badge with a one-click
+**Reconnect** that resumes through the server-side linkdead path (issue #343).
+
+**Point it at a remote server:** the same `web/` assets can be hosted from any
+static web host (or opened from disk). Set the field at the top of the page to your
+server's endpoint — e.g. `wss://mud.example.com/ws` — and click Connect. For a
+public deployment, terminate TLS (`wss://`) at a reverse proxy in front of jmud and
+restrict the browser `Origin` with `--ws-allowed-origins` (see the runbook config
+table). Override the served asset directory with `--ws-web-root <dir>` /
+`JMUD_WS_WEB_ROOT` if you relocate `web/`.

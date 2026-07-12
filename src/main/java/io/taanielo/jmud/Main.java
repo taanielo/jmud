@@ -15,6 +15,7 @@ import io.taanielo.jmud.core.server.socket.DefaultClientPool;
 import io.taanielo.jmud.core.server.socket.ShutdownCoordinator;
 import io.taanielo.jmud.core.server.socket.SocketServer;
 import io.taanielo.jmud.core.server.ssh.SshServer;
+import io.taanielo.jmud.core.server.websocket.StaticHttpContent;
 import io.taanielo.jmud.core.server.websocket.WebSocketServer;
 import io.taanielo.jmud.core.server.websocket.WsOriginPolicy;
 
@@ -35,13 +36,17 @@ public class Main {
         String wsHost = resolveHost(args, "--ws-host", "JMUD_WS_HOST", "127.0.0.1");
         int wsPort = resolvePort(args, "--ws-port", "JMUD_WS_PORT", 8080);
         WsOriginPolicy wsOriginPolicy = resolveWsOriginPolicy(args);
+        String wsWebRoot = resolveHost(args, "--ws-web-root", "JMUD_WS_WEB_ROOT", "web");
+        StaticHttpContent wsStaticContent = new StaticHttpContent(Path.of(wsWebRoot));
         ClientPool clientPool = new DefaultClientPool();
         GameContext context = GameContext.create(clientPool);
         context.tickScheduler().start();
 
         Server telnetServer = telnetEnabled ? new SocketServer(telnetHost, telnetPort, context, clientPool) : null;
         Server sshServer = new SshServer(sshHost, sshPort, context, clientPool);
-        Server wsServer = wsEnabled ? new WebSocketServer(wsHost, wsPort, context, clientPool, wsOriginPolicy) : null;
+        Server wsServer = wsEnabled
+            ? new WebSocketServer(wsHost, wsPort, context, clientPool, wsOriginPolicy, wsStaticContent)
+            : null;
         List<Server> servers = new ArrayList<>();
         if (telnetServer != null) {
             servers.add(telnetServer);

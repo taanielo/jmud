@@ -51,6 +51,27 @@ class WsClientConnectionTest {
     }
 
     @Test
+    void completesHandshakeFromPreReadRequestWithoutRereading() throws IOException {
+        ByteArrayOutputStream inbound = new ByteArrayOutputStream();
+        inbound.writeBytes(HANDSHAKE.getBytes(StandardCharsets.US_ASCII));
+        inbound.writeBytes(maskedTextFrame("look\n"));
+        FakeSocket socket = new FakeSocket(inbound.toByteArray());
+        // Simulate the WebSocketServer routing layer: read the request first, then hand the already-
+        // read streams and request to the connection so it does not re-read the handshake.
+        InputStream in = socket.getInputStream();
+        OutputStream out = socket.getOutputStream();
+        WebSocketHandshake.Request request = WebSocketHandshake.readRequest(in);
+        WsClientConnection connection =
+            new WsClientConnection(socket, in, out, request, WsOriginPolicy.permissive());
+
+        connection.open();
+
+        assertTrue(socket.captured().toString(StandardCharsets.US_ASCII)
+            .startsWith("HTTP/1.1 101 Switching Protocols\r\n"));
+        assertEquals("look", connection.readLine());
+    }
+
+    @Test
     void passesAnsiSequencesThroughUnmodified() throws IOException {
         ByteArrayOutputStream inbound = new ByteArrayOutputStream();
         inbound.writeBytes(HANDSHAKE.getBytes(StandardCharsets.US_ASCII));

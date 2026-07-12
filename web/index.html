@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>jmud — web client</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header id="bar">
+        <span id="brand">jmud</span>
+        <span id="status" class="status disconnected">disconnected</span>
+        <input id="url" type="text" spellcheck="false" autocomplete="off"
+               aria-label="WebSocket URL"
+               title="WebSocket endpoint, e.g. wss://your-host/ws">
+        <button id="connect" type="button">Connect</button>
+        <button id="disconnect" type="button" hidden>Disconnect</button>
+    </header>
+
+    <main id="terminal" tabindex="0" aria-label="Game output">
+        <div id="output"></div>
+    </main>
+
+    <form id="inputForm" autocomplete="off">
+        <span id="prompt-hint" aria-hidden="true">&gt;</span>
+        <input id="input" type="text" spellcheck="false" autocomplete="off"
+               autocapitalize="off" aria-label="Command input" disabled>
+    </form>
+
+    <script src="app.js"></script>
+</body>
+</html>

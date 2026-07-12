@@ -339,6 +339,33 @@ PYEOF
     expect "$T2J" "WS session reaches the in-world prompt"     '\[[0-9]+/[0-9]+hp .*\]'
     expect "$T2J" "WS SCORE header present"                   '--- Score ---'
     expect "$T2J" "WS WHO lists the WebSocket user"           "$TEST_WS"
+
+    # ── phase 2k: static browser client served on the same port (issue #527) ──
+    # A plain GET / on the WebSocket port must return the single-page terminal
+    # client from web/, proving the embedded HTTP server serves static assets.
+    log "Phase 2k: browser web client served over HTTP GET /"
+    T2K="$OUT_DIR/phase2k-webclient.txt"
+    python3 - "127.0.0.1" "$WS_PORT" > "$T2K" 2>/dev/null <<'PYEOF'
+import socket, sys
+host, port = sys.argv[1], int(sys.argv[2])
+sock = socket.create_connection((host, port), timeout=15)
+sock.sendall(f"GET / HTTP/1.1\r\nHost: {host}:{port}\r\nConnection: close\r\n\r\n".encode("ascii"))
+buf = b""
+sock.settimeout(5)
+try:
+    while True:
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        buf += chunk
+except socket.timeout:
+    pass
+sock.close()
+sys.stdout.write(buf.decode("utf-8", "replace"))
+PYEOF
+    expect "$T2K" "GET / returns HTTP 200"                   '^HTTP/1.1 200 OK'
+    expect "$T2K" "GET / serves HTML content type"          'Content-Type: text/html'
+    expect "$T2K" "GET / serves the jmud web client page"   '<title>jmud'
 else
     log "  SKIP: python3 not available; WebSocket phase skipped"
 fi
