@@ -15,6 +15,8 @@ import io.taanielo.jmud.core.server.socket.DefaultClientPool;
 import io.taanielo.jmud.core.server.socket.ShutdownCoordinator;
 import io.taanielo.jmud.core.server.socket.SocketServer;
 import io.taanielo.jmud.core.server.ssh.SshServer;
+import io.taanielo.jmud.core.server.websocket.WebSocketServer;
+import io.taanielo.jmud.core.server.websocket.WsOriginPolicy;
 
 @Slf4j
 public class Main {
@@ -29,17 +31,25 @@ public class Main {
         int telnetPort = resolvePort(args, "--telnet-port", "JMUD_TELNET_PORT", 4444);
         String sshHost = resolveHost(args, "--ssh-host", "JMUD_SSH_HOST", "0.0.0.0");
         int sshPort = resolvePort(args, "--ssh-port", "JMUD_SSH_PORT", 2222);
+        boolean wsEnabled = resolveBoolean(args, "--ws-enabled", "JMUD_WS_ENABLED", true);
+        String wsHost = resolveHost(args, "--ws-host", "JMUD_WS_HOST", "127.0.0.1");
+        int wsPort = resolvePort(args, "--ws-port", "JMUD_WS_PORT", 8080);
+        WsOriginPolicy wsOriginPolicy = resolveWsOriginPolicy(args);
         ClientPool clientPool = new DefaultClientPool();
         GameContext context = GameContext.create(clientPool);
         context.tickScheduler().start();
 
         Server telnetServer = telnetEnabled ? new SocketServer(telnetHost, telnetPort, context, clientPool) : null;
         Server sshServer = new SshServer(sshHost, sshPort, context, clientPool);
+        Server wsServer = wsEnabled ? new WebSocketServer(wsHost, wsPort, context, clientPool, wsOriginPolicy) : null;
         List<Server> servers = new ArrayList<>();
         if (telnetServer != null) {
             servers.add(telnetServer);
         }
         servers.add(sshServer);
+        if (wsServer != null) {
+            servers.add(wsServer);
+        }
 
         ShutdownCoordinator shutdownCoordinator = new ShutdownCoordinator(
             servers,
@@ -60,14 +70,22 @@ public class Main {
         if (telnetEnabled && !isLoopbackHost(telnetHost)) {
             log.warn("Telnet is enabled on non-loopback host {}. Telnet is unencrypted.", telnetHost);
         }
+        if (wsEnabled && !isLoopbackHost(wsHost)) {
+            log.warn("WebSocket is enabled on non-loopback host {}. Plain ws:// is unencrypted; "
+                + "terminate TLS (wss://) at a reverse proxy for public deployments.", wsHost);
+        }
         Thread telnetThread = telnetEnabled ? Thread.ofVirtual().name("telnet-server").start(telnetServer) : null;
         Thread sshThread = Thread.ofVirtual().name("ssh-server").start(sshServer);
+        Thread wsThread = wsEnabled ? Thread.ofVirtual().name("ws-server").start(wsServer) : null;
         log.info("Servers started");
         try {
             if (telnetThread != null) {
                 telnetThread.join();
             }
             sshThread.join();
+            if (wsThread != null) {
+                wsThread.join();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("Main thread interrupted, stopping servers");
@@ -75,7 +93,27 @@ public class Main {
                 telnetThread.interrupt();
             }
             sshThread.interrupt();
+            if (wsThread != null) {
+                wsThread.interrupt();
+            }
         }
+    }
+
+    /**
+     * Resolves the WebSocket {@code Origin} allowlist from {@code --ws-allowed-origins} or
+     * {@code JMUD_WS_ALLOWED_ORIGINS} (comma-separated). An unset/blank value yields a permissive
+     * policy, matching the loopback-bound default deployment.
+     */
+    private static WsOriginPolicy resolveWsOriginPolicy(String[] args) {
+        String value = findArgValue(args, "--ws-allowed-origins");
+        if (value == null || value.isBlank()) {
+            value = System.getenv("JMUD_WS_ALLOWED_ORIGINS");
+        }
+        if (value == null || value.isBlank()) {
+            return WsOriginPolicy.permissive();
+        }
+        List<String> origins = List.of(value.split(",", -1));
+        return WsOriginPolicy.of(origins);
     }
 
     private static int resolvePort(String[] args, String argName, String envName, int defaultPort) {

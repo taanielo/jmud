@@ -76,5 +76,5 @@ game-designer should propose closing.
 | PvP (duels, rankings, arena events) | ✅ | none known |
 | Pets (tame/summon) | ✅ | none known |
 | Weather & world ambience | ✅ | none known |
-| Transports (telnet, SSH) | ✅ | WebSocket 🔨 #526 · web client 🔨 #527 |
+| Transports (telnet, SSH, WebSocket) | ✅ #526 | web client 🔨 #527 |
 | Admin/wizard tooling | ✅ | none known |

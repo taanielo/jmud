@@ -19,14 +19,17 @@ set -u
 
 TELNET_PORT="${SMOKE_TELNET_PORT:-4491}"
 SSH_PORT="${SMOKE_SSH_PORT:-4492}"
+WS_PORT="${SMOKE_WS_PORT:-4493}"
 OUT_DIR="build/smoke-test"
 SERVER_LOG="$OUT_DIR/server.log"
+WS_CLIENT="$OUT_DIR/ws_client.py"
 TEST_USER="smoke$(date +%s)"
 TEST_ROGUE="rogue$(date +%s)"
 TEST_LINK="link$(date +%s)"
 TEST_CREA="crea$(date +%s)"
 TEST_CREB="creb$(date +%s)"
 TEST_DUMMY="dummy$(date +%s)"
+TEST_WS="wsock$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -100,6 +103,7 @@ cleanup() {
     rm -f "data/users/$TEST_CREA.json" "players/$TEST_CREA.json"
     rm -f "data/users/$TEST_CREB.json" "players/$TEST_CREB.json"
     rm -f "data/users/$TEST_DUMMY.json" "players/$TEST_DUMMY.json"
+    rm -f "data/users/$TEST_WS.json" "players/$TEST_WS.json"
     # Restore the committed bulletin board so the smoke test leaves no trace.
     if [ -f "$BOARD_BACKUP" ]; then
         cp "$BOARD_BACKUP" "$BOARD_FILE"
@@ -126,9 +130,9 @@ if nc -z 127.0.0.1 "$TELNET_PORT" 2>/dev/null; then
 fi
 
 # ── start server ─────────────────────────────────────────────────────────────
-log "Starting server on telnet:$TELNET_PORT ssh:$SSH_PORT (log: $SERVER_LOG)"
+log "Starting server on telnet:$TELNET_PORT ssh:$SSH_PORT ws:$WS_PORT (log: $SERVER_LOG)"
 ./gradlew run --console=plain -q \
-    --args="--telnet-port $TELNET_PORT --ssh-port $SSH_PORT" \
+    --args="--telnet-port $TELNET_PORT --ssh-port $SSH_PORT --ws-port $WS_PORT" \
     > "$SERVER_LOG" 2>&1 &
 
 waited=0
@@ -224,6 +228,120 @@ run_session "$T2" "$TEST_USER" "$TEST_PASS" "who" "quit"
 
 expect "$T2" "re-login reaches prompt"            '\[[0-9]+/[0-9]+hp .*\]'
 expect "$T2" "WHO lists the test user"            "$TEST_USER"
+
+# ── phase 2j: WebSocket transport (issue #526) ───────────────────────────────
+# The WebSocket endpoint (--ws-port) serves the same game, login flow and single-
+# writer tick model as telnet; only the wire framing differs (RFC 6455 text frames,
+# no telnet IAC bytes). We drive it with a dependency-free Python client (stdlib
+# sockets + a minimal handshake/framing implementation) that creates a character,
+# runs SCORE/WHO and QUITs. Skipped cleanly when python3 is unavailable.
+log "Phase 2j: WebSocket create character, SCORE/WHO, QUIT"
+if command -v python3 >/dev/null 2>&1; then
+    cat > "$WS_CLIENT" <<'PYEOF'
+import base64, os, socket, struct, sys, time
+
+host, port = sys.argv[1], int(sys.argv[2])
+lines = sys.argv[3:]
+
+sock = socket.create_connection((host, port), timeout=15)
+key = base64.b64encode(os.urandom(16)).decode("ascii")
+handshake = (
+    "GET / HTTP/1.1\r\n"
+    f"Host: {host}:{port}\r\n"
+    "Upgrade: websocket\r\n"
+    "Connection: Upgrade\r\n"
+    f"Sec-WebSocket-Key: {key}\r\n"
+    "Sec-WebSocket-Version: 13\r\n"
+    "Origin: http://localhost\r\n"
+    "\r\n"
+)
+sock.sendall(handshake.encode("ascii"))
+
+buf = b""
+while b"\r\n\r\n" not in buf:
+    chunk = sock.recv(4096)
+    if not chunk:
+        break
+    buf += chunk
+
+def send_text(text):
+    payload = text.encode("utf-8")
+    header = bytearray([0x81])
+    mask = os.urandom(4)
+    n = len(payload)
+    if n <= 125:
+        header.append(0x80 | n)
+    elif n <= 0xFFFF:
+        header.append(0x80 | 126)
+        header += struct.pack(">H", n)
+    else:
+        header.append(0x80 | 127)
+        header += struct.pack(">Q", n)
+    header += mask
+    masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    sock.sendall(bytes(header) + masked)
+
+raw = bytearray()
+
+def drain(timeout):
+    sock.settimeout(timeout)
+    try:
+        while True:
+            data = sock.recv(4096)
+            if not data:
+                break
+            raw.extend(data)
+    except socket.timeout:
+        pass
+
+drain(1.5)
+for line in lines:
+    send_text(line + "\n")
+    drain(1.5)
+drain(2.0)
+sock.close()
+
+def parse(data):
+    i, n, out = 0, len(data), []
+    while i + 2 <= n:
+        b0, b1 = data[i], data[i + 1]
+        i += 2
+        opcode = b0 & 0x0F
+        length = b1 & 0x7F
+        if length == 126:
+            if i + 2 > n:
+                break
+            length = (data[i] << 8) | data[i + 1]
+            i += 2
+        elif length == 127:
+            if i + 8 > n:
+                break
+            length = 0
+            for k in range(8):
+                length = (length << 8) | data[i + k]
+            i += 8
+        if i + length > n:
+            break
+        payload = data[i:i + length]
+        i += length
+        if opcode in (0x0, 0x1):
+            out.append(payload.decode("utf-8", "replace"))
+    return "".join(out)
+
+sys.stdout.write(parse(raw))
+PYEOF
+    T2J="$OUT_DIR/phase2j-websocket.txt"
+    python3 "$WS_CLIENT" 127.0.0.1 "$WS_PORT" \
+        "$TEST_WS" "$TEST_PASS" "human" "warrior" "score" "who" "quit" \
+        | tr -d '\r' > "$T2J" 2>/dev/null
+
+    expect "$T2J" "WS creation completes and enters the world" 'Welcome to the realm!'
+    expect "$T2J" "WS session reaches the in-world prompt"     '\[[0-9]+/[0-9]+hp .*\]'
+    expect "$T2J" "WS SCORE header present"                   '--- Score ---'
+    expect "$T2J" "WS WHO lists the WebSocket user"           "$TEST_WS"
+else
+    log "  SKIP: python3 not available; WebSocket phase skipped"
+fi
 
 # ── phase 2b: item durability / REPAIR command ───────────────────────────────
 # The REPAIR command (issue #271) is served by a blacksmith NPC in the armory.

@@ -46,9 +46,9 @@ class ArchitectureTest {
                     .and(DescribedPredicate.not(JavaClass.Predicates.equivalentTo(Main.class)))
                     .should()
                     .dependOnClassesThat()
-                    .resideInAnyPackage("..core.server.socket..", "..core.server.ssh..")
-                    .because("transport adapters (socket/ssh) are infrastructure and must only be wired from "
-                            + "the composition root and Main (AGENTS.md §3.2, §3.3)");
+                    .resideInAnyPackage("..core.server.socket..", "..core.server.ssh..", "..core.server.websocket..")
+                    .because("transport adapters (socket/ssh/websocket) are infrastructure and must only be wired "
+                            + "from the composition root and Main (AGENTS.md §3.2, §3.3)");
 
     /**
      * Repository construction: {@code Json*Repository} implementations may only be instantiated
