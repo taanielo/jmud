@@ -24,6 +24,8 @@ SERVER_LOG="$OUT_DIR/server.log"
 TEST_USER="smoke$(date +%s)"
 TEST_ROGUE="rogue$(date +%s)"
 TEST_LINK="link$(date +%s)"
+TEST_CREA="crea$(date +%s)"
+TEST_CREB="creb$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -94,6 +96,8 @@ cleanup() {
     rm -f "data/users/$TEST_USER.json" "players/$TEST_USER.json"
     rm -f "data/users/$TEST_ROGUE.json" "players/$TEST_ROGUE.json"
     rm -f "data/users/$TEST_LINK.json" "players/$TEST_LINK.json"
+    rm -f "data/users/$TEST_CREA.json" "players/$TEST_CREA.json"
+    rm -f "data/users/$TEST_CREB.json" "players/$TEST_CREB.json"
     # Restore the committed bulletin board so the smoke test leaves no trace.
     if [ -f "$BOARD_BACKUP" ]; then
         cp "$BOARD_BACKUP" "$BOARD_FILE"
@@ -380,6 +384,55 @@ LINKDEAD_LOG="$OUT_DIR/server-linkdead-window.log"
 tail -c "+$((LINKDEAD_LOG_OFFSET + 1))" "$SERVER_LOG" > "$LINKDEAD_LOG"
 expect "$LINKDEAD_LOG" "server marked the dropped session linkdead" 'went linkdead'
 expect "$LINKDEAD_LOG" "server reattached the reconnecting client"  'reattached to linkdead session'
+
+# ── phase 3c: mid-creation world isolation (issues #253/#512) ────────────────
+# A player still answering the race/class prompts must not be in the world yet:
+# no room occupancy (invisible to LOOK), no WHO entry, and no game broadcasts or
+# prompts interrupting the creation flow. World entry happens only when creation
+# completes (SocketClient.finishCharacterCreation).
+log "Phase 3c: mid-creation player is isolated from the world"
+T3C_A="$OUT_DIR/phase3c-observer.txt"
+T3C_B="$OUT_DIR/phase3c-creation.txt"
+
+# B: new user who parks at the race prompt for ~20s, then completes creation.
+{
+    sleep 1.5
+    printf '%s\r\n' "$TEST_CREB"; sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"; sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"
+    sleep 20                      # parked at the race prompt while A observes
+    printf '%s\r\n' "human";   sleep 1.5
+    printf '%s\r\n' "warrior"; sleep 3
+    printf '%s\r\n' "quit";    sleep 1
+} | timeout 60 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T3C_B" &
+CREB_PID=$!
+
+sleep 8   # B is authenticated and parked at the race prompt
+
+# A: existing user; observes the world and talks while B is mid-creation.
+# A finishes well inside B's 20s parked window, so everything A sees (and says)
+# happens while B is still choosing a race.
+run_session "$T3C_A" "$TEST_USER" "$TEST_PASS" \
+    "look" "who" "gossip smoke-creation-leak-check" "quit"
+
+wait "$CREB_PID" 2>/dev/null
+
+if grep -q "$TEST_CREB" "$T3C_A"; then
+    fail "mid-creation player is visible to LOOK/WHO"
+else
+    pass "mid-creation player hidden from LOOK and WHO"
+fi
+
+# Everything B received before "Welcome to the realm!" is creation-flow output:
+# it must contain no game prompt and no broadcast/mob text.
+PRE_CREATION=$(sed '/Welcome to the realm!/,$d' "$T3C_B")
+if printf '%s' "$PRE_CREATION" | grep -qE '\[[0-9]+/[0-9]+hp |wanders|smoke-creation-leak-check'; then
+    fail "game output leaked into the character-creation flow"
+else
+    pass "no game output during character creation"
+fi
+expect "$T3C_B" "creation completes and enters the world" 'Welcome to the realm!'
+expect "$T3C_B" "post-creation prompt rendered"           '\[[0-9]+/[0-9]+hp .*\]'
 
 # ── phase 4: graceful shutdown on SIGTERM ────────────────────────────────────
 # SIGTERM (the default kill signal) must trigger ShutdownCoordinator's orderly

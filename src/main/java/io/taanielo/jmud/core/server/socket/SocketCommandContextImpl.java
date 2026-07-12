@@ -267,6 +267,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             // Linkdead players are still in the world (attackable, occupying their room) but are
             // unresponsive, so they are omitted from the WHO roster (issue #343).
             .filter(sc -> !sc.session().isLinkdead())
+            // Players still answering the race/class prompts have not entered the world yet and
+            // must not be visible to WHO or targetable by TELL/WHISPER/GIVE (issue #512).
+            .filter(Client::isInWorld)
             .map(SocketClient::authenticatedUsername)
             .flatMap(Optional::stream)
             .toList();
@@ -5780,16 +5783,57 @@ class SocketCommandContextImpl implements SocketCommandContext {
     // ── Post-login wiring (called once after a player authenticates) ───
 
     /**
-     * Registers event-bus, effect, and healing callbacks on the session, enqueues the
-     * initial death-state check, and either starts character creation (for new players) or
-     * dispatches an immediate {@code look} command.
+     * Either starts character creation (for brand-new players, deferring all in-world wiring
+     * to {@link #completeWorldEntry()} — issue #512) or wires world presence and dispatches an
+     * immediate {@code look} command.
      *
      * <p>Must be called on the reader thread immediately after authentication completes, before
      * the main read loop continues.
      *
-     * @param isNew {@code true} when this is the player's very first login (new character)
+     * @param entersCreation {@code true} when the player is brand-new and about to answer the
+     *                       race/class creation prompts instead of entering the world
+     * @param isReattach     {@code true} when adopting a linkdead session (issue #343)
      */
-    void registerPostLoginCallbacks(boolean isNew, boolean isReattach) {
+    void registerPostLoginCallbacks(boolean entersCreation, boolean isReattach) {
+        // A brand-new player answers the race/class prompts before entering the world: show the
+        // gossip history banner, start creation, and defer every piece of in-world wiring to
+        // completeWorldEntry(), invoked by SocketClient.finishCharacterCreation (issue #512).
+        // Until then the player has no room location, receives no event-bus deliveries, and is
+        // invisible to WHO/mob AI.
+        if (entersCreation) {
+            sendGossipHistory();
+            client.beginCharacterCreation();
+            return;
+        }
+        wireWorldPresence(isReattach);
+        // Show recent gossip history exactly once, before any other post-login output.
+        sendGossipHistory();
+        // Notify of any unread mail waiting in the player's mailbox.
+        sendMailNotice();
+        String correlationId = auditService.newCorrelationId();
+        session.enqueueCommand(() -> dispatcher.dispatch(this, "look", correlationId));
+    }
+
+    /**
+     * Completes deferred world entry for a player who has just finished character creation
+     * (issue #512): performs the in-world wiring that {@link #registerPostLoginCallbacks} skips
+     * while the creation prompts are active. The caller ({@code SocketClient.finishCharacterCreation})
+     * is responsible for room placement beforehand and for dispatching the initial {@code look}.
+     */
+    void completeWorldEntry() {
+        wireWorldPresence(false);
+    }
+
+    /**
+     * Registers everything that makes this connection a live participant in the game world:
+     * the player-event-bus listener (mob-initiated combat results), effect and healing/sustenance
+     * tick callbacks, the death-state check, tamed-pet respawn, and the friend login notice.
+     * Must only run once the player is actually in-world (issue #512).
+     *
+     * @param isReattach {@code true} when adopting a linkdead session — the player never left,
+     *                   so friends are not re-notified of a login
+     */
+    private void wireWorldPresence(boolean isReattach) {
         // Register player-event-bus listener for mob-initiated combat results
         if (context.playerEventBus() != null && session.getPlayer() != null) {
             context.playerEventBus().register(session.getPlayer().getUsername(), result ->
@@ -5838,21 +5882,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
                     .ifPresent(room -> context.mobRegistry().spawnTamedPets(current, room));
             });
         }
-        // Show recent gossip history exactly once, before any other post-login output.
-        sendGossipHistory();
-        // Notify of any unread mail waiting in the player's mailbox.
-        sendMailNotice();
         // On a genuine login (never a linkdead reattach — that player was already online), tell every
         // online player who has this player friended that they have entered the game.
         if (!isReattach && session.getPlayer() != null) {
             notifyFriendsOfLogin(session.getPlayer());
-        }
-        // Start character creation for brand-new players; dispatch look for returning ones
-        if (isNew && context.characterCreationService() != null) {
-            client.beginCharacterCreation();
-        } else {
-            String correlationId = auditService.newCorrelationId();
-            session.enqueueCommand(() -> dispatcher.dispatch(this, "look", correlationId));
         }
     }
 

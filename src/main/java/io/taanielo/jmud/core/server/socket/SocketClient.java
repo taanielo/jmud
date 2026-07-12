@@ -243,7 +243,11 @@ public class SocketClient implements Client {
             commandContext.emitAudit(eventType, AuditSubject.player(player.getUsername()),
                 null, commandContext.resolveRoomId(player), "success",
                 Map.of("reason", reason));
-            commandContext.notifyFriendsOfLogout(player);
+            // A player who disconnected mid character-creation never entered the world, so
+            // friends were never told they arrived — don't announce a departure (issue #512).
+            if (isInWorld()) {
+                commandContext.notifyFriendsOfLogout(player);
+            }
         }
         if (sessionRegistry != null && player != null) {
             sessionRegistry.removeIf(player.getUsername(), session);
@@ -298,7 +302,11 @@ public class SocketClient implements Client {
             });
         session.setPlayer(player);
         session.setTextStyler(TextStylers.forEnabled(player.isAnsiEnabled()));
-        if (player.isDead()) {
+        boolean entersCreation = created.get() && context.characterCreationService() != null;
+        if (entersCreation) {
+            // World entry is deferred until finishCharacterCreation (issue #512): a player still
+            // choosing race/class must not be a room occupant, broadcast recipient, or mob target.
+        } else if (player.isDead()) {
             context.roomService().clearPlayerLocation(player.getUsername());
         } else {
             context.roomService().ensurePlayerLocation(player.getUsername());
@@ -308,7 +316,7 @@ public class SocketClient implements Client {
         }
         commandContext.emitAudit("player.login", AuditSubject.player(player.getUsername()),
             null, commandContext.resolveRoomId(player), "success", Map.of("newPlayer", created.get()));
-        commandContext.registerPostLoginCallbacks(created.get(), false);
+        commandContext.registerPostLoginCallbacks(entersCreation, false);
     }
 
     /**
@@ -428,6 +436,11 @@ public class SocketClient implements Client {
         }
         session.setPlayer(player);
         context.persistenceQueue().enqueueSave(player);
+        // Creation is complete: only now does the player enter the world — room placement plus the
+        // in-world wiring (event bus, effect/healing/sustenance ticks, friend notify) that was
+        // deferred by completeAuthentication (issue #512).
+        context.roomService().ensurePlayerLocation(player.getUsername());
+        commandContext.completeWorldEntry();
         connection.writeLine("You are now a " + player.getRace().getValue()
             + " " + player.getClassId().getValue() + ". Welcome to the realm!");
         String cid = auditService.newCorrelationId();
