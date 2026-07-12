@@ -247,17 +247,19 @@ expect "$T2B2" "STATS denied for non-wizard" 'restricted to wizards'
 
 # ── phase 2b3: TRAIN LIST works on day one (issue #516) ──────────────────────
 # A fresh character starts in the training-yard with the Master Trainer present and
-# two starting practice points. TRAIN LIST must show the class's advanced abilities as
-# learnable — for a warrior that is skill.second-wind / skill.taunt. This guards against
+# starting practice points. TRAIN LIST must show the class's advanced abilities — for a
+# warrior that is skill.second-wind (level 3) / skill.taunt (level 5). This guards against
 # the regression where every class ability was auto-granted at creation, leaving the
-# trainer with nothing to teach.
+# trainer with nothing to teach. Per issue #522 the status column is level-gated: at
+# level 1 both warrior abilities are above the character's level, so they appear as
+# "requires level N" rather than immediately trainable.
 log "Phase 2b3: TRAIN LIST shows learnable entries for a fresh warrior"
 T2B3="$OUT_DIR/phase2b3-train.txt"
 run_session "$T2B3" "$TEST_USER" "$TEST_PASS" "train list" "quit"
 
-expect "$T2B3" "TRAIN LIST shows the trainer header"   'Trainable Abilities'
-expect "$T2B3" "TRAIN LIST reports practice points"    'Practice Points: [1-9]'
-expect "$T2B3" "TRAIN LIST offers an unlearned skill"  'skill\.(second-wind|taunt) .*unlearned'
+expect "$T2B3" "TRAIN LIST shows the trainer header"     'Trainable Abilities'
+expect "$T2B3" "TRAIN LIST reports practice points"      'Practice Points: [1-9]'
+expect "$T2B3" "TRAIN LIST lists a level-gated skill"    'skill\.(second-wind|taunt) .*requires level [0-9]'
 
 # ── phase 2c: locked container is visible and rogue-gated ────────────────────
 # The training-yard holds a locked treasure chest (issue #277). A locked
