@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "warrior",
   "name": "Warrior",
   "healing": {
@@ -7,5 +7,6 @@
   },
   "carry_bonus": 20,
   "ability_ids": ["skill.bash", "skill.rend"],
-  "trainable_ability_ids": ["skill.second-wind", "skill.taunt"]
+  "trainable_ability_ids": ["skill.second-wind", "skill.taunt"],
+  "description": "The archetypal front-line fighter: tough, hard-hitting and simple to play. Warriors bash foes to stun them and rend for bleeding damage, then train second wind and taunt to endure and control fights."
 }

@@ -187,6 +187,10 @@ run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
 # can share a line with it — don't anchor patterns with ^ unless the line is
 # known to start fresh.
 expect "$T1" "prompt rendered after login"        '\[[0-9]+/[0-9]+hp .*\]'
+# Creation prompts describe each race/class and list a class's starting abilities
+# (issue #521) so players can make an informed pick instead of choosing blind.
+expect "$T1" "race prompt shows a description"     'Versatile and balanced'
+expect "$T1" "class prompt lists starting abilities" 'Starting abilities:'
 expect "$T1" "onboarding hint shown at creation"  'WIELD IRON SWORD'
 expect "$T1" "onboarding points at the Guild Clerk" 'QUEST LIST at the Guild Clerk'
 expect "$T1" "SCORE header present"               '--- Score ---'

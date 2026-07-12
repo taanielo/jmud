@@ -47,6 +47,16 @@ class JsonClassRepositoryFindAllTest {
     }
 
     @Test
+    void findAll_everyClassHasACreationDescription() throws ClassRepositoryException {
+        JsonClassRepository repo = new JsonClassRepository(Path.of("data"));
+
+        for (ClassDefinition classDefinition : repo.findAll()) {
+            assertFalse(classDefinition.description().isBlank(),
+                "Class '" + classDefinition.id().getValue() + "' must have a creation description");
+        }
+    }
+
+    @Test
     void findAll_returnsEmptyForEmptyDir(@TempDir Path tempDir) throws ClassRepositoryException {
         // A fresh temp subdirectory guarantees the path has no class files on every
         // machine and in CI, and keeps the repository working tree free of

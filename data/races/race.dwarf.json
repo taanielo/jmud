@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "dwarf",
   "name": "Dwarf",
   "healing": {
     "base_modifier": 0
   },
   "carry_base": 100,
-  "armor_bonus": 2
+  "armor_bonus": 2,
+  "description": "Stout mountain folk with tough hides and broad shoulders. Dwarves shrug off blows with natural armor and haul the heaviest loads, making them dependable front-line fighters."
 }

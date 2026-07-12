@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:race:v3",
+  "title": "Race (v3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "healing",
+    "carry_base"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 3
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "healing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_modifier"
+      ],
+      "properties": {
+        "base_modifier": {
+          "type": "integer"
+        }
+      }
+    },
+    "carry_base": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "armor_bonus": {
+      "type": "integer",
+      "default": 0
+    },
+    "mana_modifier": {
+      "type": "integer",
+      "default": 0,
+      "description": "Signed adjustment applied to a new character's maximum mana at creation. Positive values grant a deeper mana pool (e.g. Elf); negative values shrink it (e.g. Orc)."
+    },
+    "attack_modifier": {
+      "type": "integer",
+      "default": 0,
+      "description": "Signed adjustment applied to the character's combat hit chance, representing physical prowess. Positive values improve landing attacks (e.g. Orc)."
+    },
+    "description": {
+      "type": "string",
+      "default": "",
+      "description": "One to two sentences of flavour shown at character creation, covering the race's playstyle, benefits and signature traits. Optional for backward compatibility; defaults to an empty string."
+    }
+  }
+}

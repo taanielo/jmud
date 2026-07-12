@@ -4,8 +4,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
@@ -44,16 +46,39 @@ public class CharacterCreationService {
 
     private final RaceRepository raceRepository;
     private final ClassRepository classRepository;
+    private final AbilityRegistry abilityRegistry;
 
     /**
-     * Constructs the service with the given repositories.
+     * Constructs the service with the given repositories and an empty ability registry.
+     *
+     * <p>Class-selection prompts built by this instance render starting abilities by their
+     * id value only, because no display names can be resolved. Prefer
+     * {@link #CharacterCreationService(RaceRepository, ClassRepository, AbilityRegistry)} in
+     * production so abilities show their friendly names.
      *
      * @param raceRepository  repository used to look up available races
      * @param classRepository repository used to look up available classes
      */
     public CharacterCreationService(RaceRepository raceRepository, ClassRepository classRepository) {
+        this(raceRepository, classRepository, new AbilityRegistry(List.of()));
+    }
+
+    /**
+     * Constructs the service with the given repositories and ability registry.
+     *
+     * @param raceRepository  repository used to look up available races
+     * @param classRepository repository used to look up available classes
+     * @param abilityRegistry registry used to resolve starting-ability display names for the
+     *                        class-selection prompt
+     */
+    public CharacterCreationService(
+        RaceRepository raceRepository,
+        ClassRepository classRepository,
+        AbilityRegistry abilityRegistry
+    ) {
         this.raceRepository = Objects.requireNonNull(raceRepository, "Race repository is required");
         this.classRepository = Objects.requireNonNull(classRepository, "Class repository is required");
+        this.abilityRegistry = Objects.requireNonNull(abilityRegistry, "Ability registry is required");
     }
 
     /**
@@ -71,6 +96,7 @@ public class CharacterCreationService {
               .append(" - ").append(race.name());
             appendRaceHint(sb, race);
             sb.append("\r\n");
+            appendDescription(sb, race.description());
         }
         sb.append("Enter race name: ");
         return sb.toString();
@@ -91,6 +117,8 @@ public class CharacterCreationService {
               .append(" - ").append(cd.name());
             appendClassHint(sb, cd);
             sb.append("\r\n");
+            appendDescription(sb, cd.description());
+            appendStartingAbilities(sb, cd);
         }
         sb.append("Enter class name: ");
         return sb.toString();
@@ -261,6 +289,30 @@ public class CharacterCreationService {
         } else if (value < 0) {
             sb.append(", ").append(label).append(' ').append(value);
         }
+    }
+
+    private void appendDescription(StringBuilder sb, String description) {
+        if (description == null || description.isBlank()) {
+            return;
+        }
+        sb.append("      ").append(description.strip()).append("\r\n");
+    }
+
+    private void appendStartingAbilities(StringBuilder sb, ClassDefinition cd) {
+        List<AbilityId> startingAbilities = cd.startingAbilityIds();
+        if (startingAbilities.isEmpty()) {
+            return;
+        }
+        String names = startingAbilities.stream()
+            .map(this::abilityDisplayName)
+            .collect(Collectors.joining(", "));
+        sb.append("      Starting abilities: ").append(names).append("\r\n");
+    }
+
+    private String abilityDisplayName(AbilityId abilityId) {
+        return abilityRegistry.findById(abilityId)
+            .map(ability -> ability.name())
+            .orElse(abilityId.getValue());
     }
 
     private void appendClassHint(StringBuilder sb, ClassDefinition cd) {

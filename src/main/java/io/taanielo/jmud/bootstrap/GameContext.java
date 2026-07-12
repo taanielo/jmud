@@ -428,7 +428,8 @@ public record GameContext(
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);
 
-        CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
+        CharacterCreationService characterCreationService =
+            new CharacterCreationService(raceRepository, classRepository, abilityRegistry);
         NewbieKitService newbieKitService = new NewbieKitService(createNewbieKit(), itemRepository);
         ShopService shopService = createShopService(itemRepository, reputationService);
         BankService bankService = createBankService();

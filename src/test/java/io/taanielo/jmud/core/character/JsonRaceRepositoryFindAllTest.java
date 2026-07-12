@@ -63,6 +63,16 @@ class JsonRaceRepositoryFindAllTest {
     }
 
     @Test
+    void findAll_everyRaceHasACreationDescription() throws RaceRepositoryException {
+        JsonRaceRepository repo = new JsonRaceRepository(Path.of("data"));
+
+        for (Race race : repo.findAll()) {
+            assertFalse(race.description().isBlank(),
+                "Race '" + race.id().getValue() + "' must have a creation description");
+        }
+    }
+
+    @Test
     void findAll_returnsEmptyForEmptyDir(@TempDir Path tempDir) throws RaceRepositoryException {
         // Requesting a data root with no race files must return empty rather than throw.
         // A fresh temp subdirectory guarantees this holds on every machine and in CI,

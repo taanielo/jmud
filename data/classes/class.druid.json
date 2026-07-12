@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "druid",
   "name": "Druid",
   "healing": {
@@ -7,5 +7,6 @@
   },
   "carry_bonus": 7,
   "ability_ids": ["spell.cure", "spell.moonfire"],
-  "trainable_ability_ids": ["spell.regrowth", "spell.stoneskin"]
+  "trainable_ability_ids": ["spell.regrowth", "spell.stoneskin"],
+  "description": "A nature caster who balances healing and elemental damage. Druids mend with cure and burn foes with moonfire, then train regrowth and stoneskin to sustain and armor themselves."
 }

@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "id": "cleric",
   "name": "Cleric",
   "healing": {
@@ -7,5 +7,6 @@
   },
   "carry_bonus": 10,
   "ability_ids": ["spell.heal.group", "spell.turn.undead", "spell.smite", "spell.resurrection"],
-  "trainable_ability_ids": ["spell.bless"]
+  "trainable_ability_ids": ["spell.bless"],
+  "description": "A divine healer and undead-hunter. Clerics keep the party alive with group heal and resurrection and wreck the undead with turn undead and smite; note that smite only strikes undead, so bring a weapon against the living."
 }
