@@ -24,6 +24,7 @@ import io.taanielo.jmud.core.creation.CharacterCreationState;
 import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingClass;
 import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingRace;
 import io.taanielo.jmud.core.messaging.Message;
+import io.taanielo.jmud.core.messaging.NewPlayerHintMessage;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
 import io.taanielo.jmud.core.messaging.WelcomeBannerMessage;
 import io.taanielo.jmud.core.messaging.WelcomeMessage;
@@ -437,6 +438,9 @@ public class SocketClient implements Client {
         commandContext.completeWorldEntry();
         connection.writeLine("You are now a " + player.getRace().getValue()
             + " " + player.getClassId().getValue() + ". Welcome to the realm!");
+        // One-time onboarding hint (issue #517): point the brand-new player at the tools that keep
+        // them alive early (iron sword + WIELD, CONSIDER, TRAIN) before the first LOOK output.
+        sendMessage(NewPlayerHintMessage.of(session.getTextStyler()));
         String cid = auditService.newCorrelationId();
         session.enqueueCommand(() -> commandDispatcher.dispatch(commandContext, "look", cid));
     }

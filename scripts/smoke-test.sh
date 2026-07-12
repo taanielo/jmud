@@ -183,6 +183,7 @@ run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" "scor
 # can share a line with it — don't anchor patterns with ^ unless the line is
 # known to start fresh.
 expect "$T1" "prompt rendered after login"        '\[[0-9]+/[0-9]+hp .*\]'
+expect "$T1" "onboarding hint shown at creation"  'WIELD IRON SWORD'
 expect "$T1" "SCORE header present"               '--- Score ---'
 expect "$T1" "SCORE shows Level"                  'Level : [0-9]+'
 expect "$T1" "SCORE shows AC"                     'AC    : [0-9]+'
