@@ -606,6 +606,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             "You bellow a challenge, drawing the " + mobDisplayName + "'s attention squarely onto you!"));
         messages.add(GameMessage.toRoomAt(roomId, taunter.getUsername(),
             taunter.getUsername().getValue() + " bellows a challenge at the " + mobDisplayName + "!"));
+        // Entering combat via a successful taunt throws the taunter off any mount they were riding.
+        // Folding the dismount into the returned source (rather than a caller-side side effect) keeps it
+        // consistent with the ATTACK path and ensures a failed taunt never dismounts (AGENTS.md §5).
+        if (updated.isMounted()) {
+            String mountName = updated.mount().mountName();
+            updated = updated.withMount(PlayerMount.dismounted());
+            messages.add(GameMessage.toSource(
+                "The clash of combat spooks " + mountName + " and you drop down to fight on foot!"));
+            messages.add(GameMessage.toRoomAt(roomId, taunter.getUsername(),
+                taunter.getUsername().getValue() + " leaps down from " + mountName
+                    + " as battle is joined."));
+        }
         return new GameActionResult(updated, null, messages);
     }
 

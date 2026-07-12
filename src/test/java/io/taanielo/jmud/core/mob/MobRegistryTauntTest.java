@@ -30,6 +30,7 @@ import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
@@ -175,6 +176,46 @@ class MobRegistryTauntTest {
         assertNull(result.updatedSource(), "A rejected taunt spends no move points");
         assertNull(registry.getMobsInRoom(ROOM_ID).get(0).activeTaunter(),
             "A rejected taunt sets no taunt state");
+    }
+
+    @Test
+    void taunt_dismountsMountedTaunterOnSuccess_foldedIntoReturnedSource() throws Exception {
+        Player tank = player("Thane").withMount(PlayerMount.riding("warhorse", 1));
+        Player ally = player("Mira");
+        StubPlayerRepository playerRepo = new StubPlayerRepository(tank, ally);
+        RoomService roomService = new RoomService(new StubRoomRepository(ROOM_ID), ROOM_ID);
+        roomService.ensurePlayerLocation(tank.getUsername());
+        roomService.ensurePlayerLocation(ally.getUsername());
+        MobRegistry registry = buildRegistry(roomService, playerRepo, new PlayerEventBus());
+
+        // The ally engages the mob so it is in combat and can be taunted.
+        registry.processPlayerAttack(ally, "Rat", ROOM_ID);
+
+        GameActionResult taunt = registry.processPlayerTaunt(tank, "Rat", tauntSkill(), ROOM_ID);
+
+        assertTrue(taunt.updatedSource() != null, "A successful taunt returns the updated source");
+        assertFalse(taunt.updatedSource().isMounted(),
+            "A successful taunt must throw the mounted taunter off their mount");
+        assertTrue(taunt.messages().stream().anyMatch(m -> m.text().contains("drop down to fight on foot")),
+            "The dismount message must be delivered on a successful mounted taunt");
+    }
+
+    @Test
+    void taunt_failedTaunt_leavesMountIntactNoDismountMessage() throws Exception {
+        Player tank = player("Thane").withMount(PlayerMount.riding("warhorse", 1));
+        StubPlayerRepository playerRepo = new StubPlayerRepository(tank);
+        RoomService roomService = new RoomService(new StubRoomRepository(ROOM_ID), ROOM_ID);
+        roomService.ensurePlayerLocation(tank.getUsername());
+        MobRegistry registry = buildRegistry(roomService, playerRepo, new PlayerEventBus());
+
+        // No such mob: the taunt is rejected before any state change.
+        GameActionResult result = registry.processPlayerTaunt(tank, "Dragon", tauntSkill(), ROOM_ID);
+
+        assertEquals("No such target here.", result.messages().get(0).text());
+        assertNull(result.updatedSource(), "A rejected taunt returns no updated source");
+        assertTrue(tank.isMounted(), "A failed taunt must not dismount the rider");
+        assertFalse(result.messages().stream().anyMatch(m -> m.text().contains("drop down to fight on foot")),
+            "A failed taunt must not emit a spurious dismount message");
     }
 
     @Test
