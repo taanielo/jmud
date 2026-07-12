@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "cinderforged-cuirass",
+  "name": "the Cinderforged Cuirass",
+  "output_item": "cinderforged-cuirass",
+  "gold_cost": 220,
+  "min_skill": 3,
+  "materials": [
+    { "item": "demoncore-cinder", "quantity": 3 },
+    { "item": "iron-ore", "quantity": 5 }
+  ]
+}

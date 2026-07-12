@@ -1,0 +1,17 @@
+{
+  "schema_version": 12,
+  "id": "cinderforged-cuirass",
+  "name": "the Cinderforged Cuirass",
+  "description": "A breastplate a blacksmith has beaten around a demoncore cinder set into the sternum, so that the whole harness drinks in the mote's ruinous heat and holds it, radiating the same banked warmth that hangs over the Cinder Reaches. The iron has taken on a scorched, oil-black sheen streaked with dull red where the cinder's fire bled through the forging, and a struck blow slides off with a faint hiss of ash. It is not the equal of a true slag-plate, but it turns a cut well enough and never lets the wearer forget what is smouldering against their chest.",
+  "attributes": {
+    "stats": {
+      "ac": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 15,
+  "value": 220,
+  "rarity": "uncommon"
+}
