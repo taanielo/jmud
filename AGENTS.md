@@ -256,6 +256,7 @@ Agents must:
 * Preserve save-game compatibility unless explicitly approved
 * Keep game data (abilities, spells, items, rooms, effects, etc.) in JSON under `data/` with versioned schemas
 * Store non-generic domain data in `data/*` JSON (e.g., races in `data/races/`)
+* **Feature completeness**: `docs/content-dod.md` defines what "complete" means per content type; `docs/feature-matrix.md` tracks it per entity/system. Any PR that adds or changes game content must update the affected matrix rows in the same PR; an issue introducing a new content *type* must add its DoD section. Prefer `--validate-data` rules over matrix rows wherever the check is mechanical.
 
 Breaking changes to game rules must be clearly documented.
 
