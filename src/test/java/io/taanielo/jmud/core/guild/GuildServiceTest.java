@@ -158,6 +158,24 @@ class GuildServiceTest {
     }
 
     @Test
+    void leaveByLastMemberReturnsVaultAndTreasuryInSnapshot() {
+        service.create(ALICE, "Ironclad");
+        service.deposit(ALICE, 75);
+        service.storeItem(ALICE, item("sword", "a longsword"));
+        service.storeItem(ALICE, item("shield", "a shield"));
+
+        GuildResult result = service.leave(ALICE);
+
+        // The guild auto-disbands, but the returned snapshot must still carry the pooled vault and
+        // treasury so the command handler can hand them back to the leaving member (see issue #486).
+        assertTrue(result.success());
+        assertEquals(0, result.guild().memberCount());
+        assertEquals(75, result.guild().treasuryGold());
+        assertEquals(2, result.guild().vaultedItems().size());
+        assertTrue(service.guildOf(ALICE).isEmpty());
+    }
+
+    @Test
     void kickIsLeaderOnly() {
         service.create(ALICE, "Ironclad");
         service.invite(ALICE, BOB, true);
