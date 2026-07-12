@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:newbie-kit:v1",
+  "title": "Newbie starting-kit definition (v1)",
+  "description": "The single newbie-kit file at data/newbie-kit.json. Defines the starting gold purse and provisions granted to every brand-new character once, at the moment character creation completes. It bootstraps the early-game economy (hunger/thirst decay, food/water costing gold) so a fresh level-1 character is not simultaneously broke, hungry and thirsty. Applied only at creation; existing saves are never re-kitted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "starting_gold",
+    "starting_items"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "starting_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Gold added to a new character's purse at creation. Kept small: enough for a few meals and a repair, not enough to skip the early game."
+    },
+    "starting_items": {
+      "type": "array",
+      "description": "Items placed directly into a new character's inventory at creation. Each item id must exist under data/items/.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item"
+        ],
+        "properties": {
+          "item": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Id of the granted item (data/items/<id>.json)."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "How many copies of the item to grant. Defaults to 1 when omitted."
+          }
+        }
+      }
+    }
+  }
+}

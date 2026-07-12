@@ -66,6 +66,10 @@ import io.taanielo.jmud.core.craft.Recipe;
 import io.taanielo.jmud.core.craft.RecipeRepositoryException;
 import io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
+import io.taanielo.jmud.core.creation.NewbieKit;
+import io.taanielo.jmud.core.creation.NewbieKitException;
+import io.taanielo.jmud.core.creation.NewbieKitService;
+import io.taanielo.jmud.core.creation.json.JsonNewbieKitRepository;
 import io.taanielo.jmud.core.dialogue.DialogueRepositoryException;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.repository.json.JsonDialogueRepository;
@@ -205,6 +209,7 @@ public record GameContext(
     PlayerEventBus playerEventBus,
     MobRegistry mobRegistry,
     CharacterCreationService characterCreationService,
+    NewbieKitService newbieKitService,
     ShopService shopService,
     QuestRepository questRepository,
     DailyQuestService dailyQuestService,
@@ -424,6 +429,7 @@ public record GameContext(
             contentReloadService, tickThreadDispatcher);
 
         CharacterCreationService characterCreationService = new CharacterCreationService(raceRepository, classRepository);
+        NewbieKitService newbieKitService = new NewbieKitService(createNewbieKit(), itemRepository);
         ShopService shopService = createShopService(itemRepository, reputationService);
         BankService bankService = createBankService();
         QuestRepository baseQuestRepository = createQuestRepository();
@@ -516,6 +522,7 @@ public record GameContext(
             playerEventBus,
             mobRegistry,
             characterCreationService,
+            newbieKitService,
             shopService,
             questRepository,
             dailyQuestService,
@@ -675,6 +682,14 @@ public record GameContext(
             return new JsonItemRepository();
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize item repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static NewbieKit createNewbieKit() {
+        try {
+            return new JsonNewbieKitRepository().load();
+        } catch (NewbieKitException e) {
+            throw new IllegalStateException("Failed to initialize newbie kit: " + e.getMessage(), e);
         }
     }
 
