@@ -411,7 +411,7 @@ class GuildServiceTest {
         service.create(ALICE, "Ironclad");
         service.storeItem(ALICE, item("sword", "a longsword"));
 
-        GuildVaultResult claim = service.claimItem(ALICE, "longsword", 0, 100);
+        GuildVaultResult claim = service.claimItem(ALICE, "sword", 0, 100);
 
         assertTrue(claim.success());
         assertEquals("a longsword", claim.item().getName());
@@ -426,13 +426,13 @@ class GuildServiceTest {
         service.accept(BOB);
         service.storeItem(BOB, item("sword", "a longsword"));
 
-        GuildVaultResult claim = service.claimItem(BOB, "longsword", 0, 100);
+        GuildVaultResult claim = service.claimItem(BOB, "sword", 0, 100);
 
         assertFalse(claim.success());
         assertEquals(1, service.guildOf(ALICE).orElseThrow().vaultedItems().size());
 
         service.promote(ALICE, BOB);
-        assertTrue(service.claimItem(BOB, "longsword", 0, 100).success());
+        assertTrue(service.claimItem(BOB, "sword", 0, 100).success());
     }
 
     @Test
