@@ -11,7 +11,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The kobold scratches you for {damage}."
+      "text": "The kobold scratches you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -21,7 +21,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The kobold rakes its claws across you for {damage}!"
+      "text": "The kobold rakes its claws across you! The blow {verb} you!"
     }
   ]
 }

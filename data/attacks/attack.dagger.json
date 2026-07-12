@@ -12,12 +12,12 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "You stab {target} with your dagger for {damage}."
+      "text": "You stab {target} with your dagger. Your strike {verb} them!"
     },
     {
       "phase": "attack_hit",
       "channel": "target",
-      "text": "{source} stabs you with a dagger for {damage}."
+      "text": "{source} stabs you with a dagger. The blows {verb} you!"
     },
     {
       "phase": "attack_hit",
@@ -42,12 +42,12 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "You pierce {target} through a gap in their armour with your dagger for {damage}!"
+      "text": "You pierce {target} through a gap in their armour with your dagger! Your strike {verb} them!"
     },
     {
       "phase": "attack_crit",
       "channel": "target",
-      "text": "{source} pierces you through a gap in your armour with a dagger for {damage}!"
+      "text": "{source} pierces you through a gap in your armour with a dagger! The blows {verb} you!"
     },
     {
       "phase": "attack_crit",

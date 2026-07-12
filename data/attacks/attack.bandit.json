@@ -11,7 +11,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The bandit slashes at you with a notched blade for {damage}."
+      "text": "The bandit slashes at you with a notched blade. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -21,7 +21,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The bandit finds an opening and cuts deep for {damage}!"
+      "text": "The bandit finds an opening and cuts deep! The blow {verb} you!"
     }
   ]
 }

@@ -26,6 +26,7 @@ TEST_ROGUE="rogue$(date +%s)"
 TEST_LINK="link$(date +%s)"
 TEST_CREA="crea$(date +%s)"
 TEST_CREB="creb$(date +%s)"
+TEST_DUMMY="dummy$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -98,6 +99,7 @@ cleanup() {
     rm -f "data/users/$TEST_LINK.json" "players/$TEST_LINK.json"
     rm -f "data/users/$TEST_CREA.json" "players/$TEST_CREA.json"
     rm -f "data/users/$TEST_CREB.json" "players/$TEST_CREB.json"
+    rm -f "data/users/$TEST_DUMMY.json" "players/$TEST_DUMMY.json"
     # Restore the committed bulletin board so the smoke test leaves no trace.
     if [ -f "$BOARD_BACKUP" ]; then
         cp "$BOARD_BACKUP" "$BOARD_FILE"
@@ -290,6 +292,26 @@ expect "$T2D" "SNEAK toggles stealth on then off"   'fade into the shadows'
 expect "$T2D" "SNEAK reveals on second toggle"      'emerge from stealth'
 # The training dummy carries no gold, so STEAL resolves cleanly to its no-gold outcome.
 expect "$T2D" "STEAL command executes"              'nothing worth stealing|lift .* gold|caught'
+
+# ── phase 2d2: worded combat output (issue #525) ─────────────────────────────
+# Classic-MUD worded damage replaces numeric combat output: striking the 100-HP
+# training dummy in the training-yard reports a damage-tier verb ("You scratch the
+# Training Dummy!") and, because the dummy survives, a condition phrase describing
+# its remaining health in words instead of an HP total. The verb/condition bucket
+# maths are covered exhaustively by DamageVerbTableTest/TargetConditionTableTest;
+# here we assert the words reach a real client and carry no numbers. Combat
+# state persists across reconnects (FLEE is the only way out and it relocates
+# the player to a random exit, which would corrupt later phases' assumption
+# that $TEST_USER is in the training-yard), so this uses its own throwaway
+# character that no later phase touches again.
+log "Phase 2d2: worded damage verb + condition line when attacking the training dummy"
+T2D2="$OUT_DIR/phase2d2-worded-combat.txt"
+run_session "$T2D2" "$TEST_DUMMY" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
+    "kill training dummy" "quit"
+
+expect "$T2D2" "strike reports a worded damage verb"        'You .+ the Training Dummy!'
+expect "$T2D2" "strike reports the target condition in words" \
+    'The Training Dummy (is in|has|looks) '
 
 # ── phase 2e: consensual duel (DUEL/ACCEPT) command wiring ───────────────────
 # Duels (issue #317) require two players connected at once, which the sequential

@@ -12,12 +12,12 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "You bludgeon {target} with your iron mace for {damage}."
+      "text": "You bludgeon {target} with your iron mace. Your strike {verb} them!"
     },
     {
       "phase": "attack_hit",
       "channel": "target",
-      "text": "{source} bludgeons you with an iron mace for {damage}."
+      "text": "{source} bludgeons you with an iron mace. The blows {verb} you!"
     },
     {
       "phase": "attack_hit",
@@ -42,12 +42,12 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "You smash {target} with a bone-crushing blow from your iron mace for {damage}!"
+      "text": "You smash {target} with a bone-crushing blow from your iron mace! Your strike {verb} them!"
     },
     {
       "phase": "attack_crit",
       "channel": "target",
-      "text": "{source} smashes you with a bone-crushing blow from an iron mace for {damage}!"
+      "text": "{source} smashes you with a bone-crushing blow from an iron mace! The blows {verb} you!"
     },
     {
       "phase": "attack_crit",

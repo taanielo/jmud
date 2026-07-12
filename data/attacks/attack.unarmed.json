@@ -11,12 +11,12 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "You hit {target} for {damage}."
+      "text": "You hit {target}. Your strike {verb} them!"
     },
     {
       "phase": "attack_hit",
       "channel": "target",
-      "text": "{source} hits you for {damage}."
+      "text": "{source} hits you. The blows {verb} you!"
     },
     {
       "phase": "attack_hit",
@@ -41,12 +41,12 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "You critically hit {target} for {damage}."
+      "text": "You critically hit {target}. Your strike {verb} them!"
     },
     {
       "phase": "attack_crit",
       "channel": "target",
-      "text": "{source} critically hits you for {damage}."
+      "text": "{source} critically hits you. The blows {verb} you!"
     },
     {
       "phase": "attack_crit",

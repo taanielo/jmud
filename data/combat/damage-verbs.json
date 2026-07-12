@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "tiers": [
+    { "min_percent": 1, "max_percent": 4, "third_person": "scratches", "second_person": "scratch" },
+    { "min_percent": 5, "max_percent": 9, "third_person": "grazes", "second_person": "graze" },
+    { "min_percent": 10, "max_percent": 14, "third_person": "hits", "second_person": "hit" },
+    { "min_percent": 15, "max_percent": 19, "third_person": "injures", "second_person": "injure" },
+    { "min_percent": 20, "max_percent": 24, "third_person": "wounds", "second_person": "wound" },
+    { "min_percent": 25, "max_percent": 34, "third_person": "mauls", "second_person": "maul" },
+    { "min_percent": 35, "max_percent": 44, "third_person": "DECIMATES", "second_person": "DECIMATE" },
+    { "min_percent": 45, "max_percent": 54, "third_person": "DEVASTATES", "second_person": "DEVASTATE" },
+    { "min_percent": 55, "max_percent": 69, "third_person": "MUTILATES", "second_person": "MUTILATE" },
+    { "min_percent": 70, "max_percent": 84, "third_person": "MASSACRES", "second_person": "MASSACRE" },
+    { "min_percent": 85, "max_percent": 99, "third_person": "ANNIHILATES", "second_person": "ANNIHILATE" },
+    { "min_percent": 100, "max_percent": null, "third_person": "does === UNSPEAKABLE === damage to", "second_person": "do === UNSPEAKABLE === damage to" }
+  ]
+}

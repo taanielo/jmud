@@ -13,7 +13,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "You snap off a quick shot at {target} for {damage}."
+      "text": "You snap off a quick shot at {target}. Your strike {verb} them!"
     },
     {
       "phase": "attack_hit",
@@ -28,7 +28,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "Your arrow buries itself deep in {target} for {damage}!"
+      "text": "Your arrow buries itself deep in {target}! The blow {verb} you!"
     }
   ]
 }

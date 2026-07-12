@@ -11,7 +11,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The crypt warden smashes you with its fists for {damage}."
+      "text": "The crypt warden smashes you with its fists. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -21,7 +21,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The crypt warden delivers a crushing blow for {damage}!"
+      "text": "The crypt warden delivers a crushing blow! The blow {verb} you!"
     }
   ]
 }

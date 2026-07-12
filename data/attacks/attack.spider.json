@@ -15,7 +15,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The giant spider sinks its fangs into you for {damage}."
+      "text": "The giant spider sinks its fangs into you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -25,7 +25,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The giant spider drives its fangs deep into you for {damage}!"
+      "text": "The giant spider drives its fangs deep into you! The blow {verb} you!"
     }
   ]
 }

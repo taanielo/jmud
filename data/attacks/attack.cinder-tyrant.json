@@ -16,7 +16,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "Vhalgrimm rakes you with talons of blackened slag that leave smouldering scars across your flesh for {damage}."
+      "text": "Vhalgrimm rakes you with talons of blackened slag that leave smouldering scars across your flesh. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -26,7 +26,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "Vhalgrimm seizes you in both burning hands and brands you to the bone for {damage}!"
+      "text": "Vhalgrimm seizes you in both burning hands and brands you to the bone! The blow {verb} you!"
     }
   ]
 }

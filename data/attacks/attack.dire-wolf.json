@@ -11,7 +11,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The dire wolf savagely bites you for {damage}."
+      "text": "The dire wolf savagely bites you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -21,7 +21,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The dire wolf tears into you with a vicious bite for {damage}!"
+      "text": "The dire wolf tears into you with a vicious bite! The blow {verb} you!"
     }
   ]
 }

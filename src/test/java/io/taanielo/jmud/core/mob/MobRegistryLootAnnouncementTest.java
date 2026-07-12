@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.mob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -20,6 +21,11 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.flavor.DamageVerb;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTier;
+import io.taanielo.jmud.core.combat.flavor.TargetConditionTable;
+import io.taanielo.jmud.core.combat.flavor.TargetConditionTier;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -139,6 +145,45 @@ class MobRegistryLootAnnouncementTest {
         assertTrue(
             texts.stream().anyMatch(t -> t.contains("drops to the ground")),
             "Expected 'drops to the ground' in messages but got: " + texts);
+    }
+
+    /**
+     * With the worded-damage tables configured (issue #525) a surviving mob's strike line reads in
+     * classic-MUD words — a damage-tier verb and a condition phrase — with no numbers.
+     */
+    @Test
+    void processPlayerAttack_reportsWordedDamageAndConditionWhenTablesSet() {
+        Player attacker = player("hero");
+        // 100-HP mob survives the 1-damage default strike (1% -> "scratch", 99% -> "a few scratches").
+        MobTemplate template = templateWithGuaranteedLoot(100, HEALTH_POTION);
+
+        List<GameActionResult> captured = new ArrayList<>();
+        MobRegistry registry = buildRegistry(template, HEALTH_POTION, attacker, captured);
+        registry.setDamageVerbTable(verbTable());
+        registry.setTargetConditionTable(conditionTable());
+
+        GameActionResult result = registry.processPlayerAttack(attacker, "Goblin", ROOM_ID);
+
+        String strike = result.messages().stream()
+            .map(GameMessage::text)
+            .filter(t -> t.startsWith("You "))
+            .findFirst()
+            .orElseThrow();
+        assertEquals("You scratch the Goblin! The Goblin has a few scratches.", strike);
+        assertFalse(strike.matches(".*\\d.*"), "worded strike must contain no numbers: " + strike);
+    }
+
+    private static DamageVerbTable verbTable() {
+        return new DamageVerbTable(List.of(
+            new DamageVerbTier(1, 4, new DamageVerb("scratches", "scratch")),
+            new DamageVerbTier(5, null, new DamageVerb("mauls", "maul"))));
+    }
+
+    private static TargetConditionTable conditionTable() {
+        return new TargetConditionTable(List.of(
+            new TargetConditionTier(100, 100, "is in perfect condition"),
+            new TargetConditionTier(90, 99, "has a few scratches"),
+            new TargetConditionTier(1, 89, "looks pretty hurt")));
     }
 
     /**

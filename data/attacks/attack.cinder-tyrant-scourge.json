@@ -16,7 +16,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "Vhalgrimm rises from its throne and the whole scorched circle erupts, a scourging storm of embers and grave-ash that flays you for {damage}."
+      "text": "Vhalgrimm rises from its throne and the whole scorched circle erupts, a scourging storm of embers and grave-ash that flays you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -26,7 +26,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "Vhalgrimm's cinder scourge catches you in the open and the searing ash strips you to the bone for {damage}!"
+      "text": "Vhalgrimm's cinder scourge catches you in the open and the searing ash strips you to the bone! The blow {verb} you!"
     }
   ]
 }

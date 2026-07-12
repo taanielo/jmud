@@ -34,6 +34,9 @@ import io.taanielo.jmud.core.combat.CombatAttributeBonusResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.RangeType;
+import io.taanielo.jmud.core.combat.flavor.DamageVerb;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
+import io.taanielo.jmud.core.combat.flavor.TargetConditionTable;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
@@ -114,6 +117,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      * mob combat is unchanged until the composition root injects the real resolver.
      */
     private CombatAttributeBonusResolver attributeBonusResolver = CombatAttributeBonusResolver.noOp();
+    /**
+     * Optional worded-damage verb table. When set, a mob's hit message can substitute {@code {verb}}
+     * with the classic-MUD damage tier (e.g. "MAULS") resolved from the damage dealt as a percentage
+     * of the victim's maximum HP. Null leaves {@code {verb}} rendering as an empty string.
+     */
+    private DamageVerbTable damageVerbTable;
+    /**
+     * Optional target-condition table. When set alongside {@link #damageVerbTable}, a player's strike
+     * against a mob reports the mob's condition ("looks pretty hurt") instead of a numeric HP total.
+     * Null falls back to the legacy numeric "(N HP remaining)" line.
+     */
+    private TargetConditionTable targetConditionTable;
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -189,6 +204,61 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     public void setCombatAttributeBonusResolver(CombatAttributeBonusResolver attributeBonusResolver) {
         this.attributeBonusResolver =
             Objects.requireNonNull(attributeBonusResolver, "Attribute bonus resolver is required");
+    }
+
+    /**
+     * Registers the worded-damage verb table used to substitute {@code {verb}} in a mob's hit message
+     * with the classic-MUD damage tier (e.g. "MAULS"). When not set, {@code {verb}} renders empty.
+     *
+     * @param damageVerbTable the verb table; may be null to disable worded-damage substitution
+     */
+    public void setDamageVerbTable(DamageVerbTable damageVerbTable) {
+        this.damageVerbTable = damageVerbTable;
+    }
+
+    /**
+     * Registers the target-condition table used to describe a struck mob's remaining health in words
+     * ("looks pretty hurt") instead of a numeric HP total. When not set, the legacy numeric line is
+     * used.
+     *
+     * @param targetConditionTable the condition table; may be null to keep the numeric HP line
+     */
+    public void setTargetConditionTable(TargetConditionTable targetConditionTable) {
+        this.targetConditionTable = targetConditionTable;
+    }
+
+    /**
+     * Builds the self-facing line shown to a player who has just struck a mob in melee. When the
+     * worded-damage tables are configured this reads as a classic-MUD verb line with no numbers
+     * ("You maul the Goblin! The Goblin looks pretty hurt."); otherwise it falls back to the legacy
+     * numeric summary. The condition clause is omitted when the mob has been killed (a slay message
+     * follows instead).
+     *
+     * @param mob       the struck mob
+     * @param damage    the damage dealt this strike
+     * @param remaining the mob's HP after the strike
+     * @return the message text to show the attacker
+     */
+    private String playerStrikeMessage(MobInstance mob, int damage, int remaining) {
+        String mobName = mob.template().name();
+        if (damageVerbTable == null) {
+            return "You strike the " + mobName + " for " + damage + " damage. (" + remaining + " HP remaining)";
+        }
+        int maxHp = mob.template().maxHp();
+        DamageVerb verb = damageVerbTable.verbFor(Math.max(1, damage), maxHp);
+        StringBuilder text = new StringBuilder("You ")
+            .append(verb.secondPerson())
+            .append(" the ")
+            .append(mobName)
+            .append('!');
+        if (targetConditionTable != null && remaining > 0) {
+            text.append(" The ")
+                .append(mobName)
+                .append(' ')
+                .append(targetConditionTable.describe(remaining, maxHp))
+                .append('.');
+        }
+        return text.toString();
     }
 
     /**
@@ -509,9 +579,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
 
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource(
-            "You strike the " + mob.template().name() + " for " + damage + " damage. ("
-                + remaining + " HP remaining)"));
+        messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining)));
 
         if (!mob.isAlive()) {
             awardMobKill(mob, attacker, roomId, messages);
@@ -1720,7 +1788,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 messages.add(GameMessage.toSource(
                     "The " + mob.template().name() + " lunges at you!"));
             }
-            messages.add(GameMessage.toSource(hitMessage(mob, attack, useSpecial, damage)));
+            messages.add(GameMessage.toSource(
+                hitMessage(mob, attack, useSpecial, damage, damagedPlayer.getVitals().getMaxHp())));
             applyOnHitEffect(attack, damagedPlayer, targetUsername, candidates, messages);
             damagedPlayer = degradeEquippedGear(damagedPlayer, messages);
             saveOrLog(damagedPlayer);
@@ -1736,17 +1805,24 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      * is rendered and used instead of the generic damage line, so special-ability hits read
      * distinctly from normal attacks.
      *
-     * @param mob       the attacking mob
-     * @param attack    the attack definition that just landed a hit
-     * @param useSpecial whether this hit was the mob's special ability rather than its basic attack
-     * @param damage    the damage dealt, substituted into the {@code {damage}} placeholder
+     * @param mob         the attacking mob
+     * @param attack      the attack definition that just landed a hit
+     * @param useSpecial  whether this hit was the mob's special ability rather than its basic attack
+     * @param damage      the damage dealt, substituted into the {@code {damage}} placeholder
+     * @param targetMaxHp the victim's maximum HP, used to resolve the {@code {verb}} damage tier
      * @return the rendered message text to show the target player
      */
-    private String hitMessage(MobInstance mob, AttackDefinition attack, boolean useSpecial, int damage) {
+    private String hitMessage(
+        MobInstance mob, AttackDefinition attack, boolean useSpecial, int damage, int targetMaxHp) {
         for (MessageSpec spec : attack.messages()) {
             if (spec.phase() == MessagePhase.ATTACK_HIT && spec.channel() == MessageChannel.SELF) {
+                DamageVerb verb = damage > 0 && damageVerbTable != null
+                    ? damageVerbTable.verbFor(damage, targetMaxHp)
+                    : null;
                 MessageContext context = new MessageContext(
-                    null, null, mob.template().name(), null, null, null, attack.name(), damage);
+                    null, null, mob.template().name(), null, null, null, attack.name(), damage,
+                    verb == null ? null : verb.thirdPerson(),
+                    verb == null ? null : verb.secondPerson());
                 return messageRenderer.render(spec, context);
             }
         }
@@ -1875,9 +1951,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             int remaining = mob.takeDamage(damage);
 
             List<GameMessage> messages = new ArrayList<>();
-            messages.add(GameMessage.toSource(
-                "You strike the " + mob.template().name() + " for " + damage + " damage. ("
-                    + remaining + " HP remaining)"));
+            messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining)));
 
             if (!mob.isAlive()) {
                 // Shared post-kill rewards (loot distribution, party XP, gold, quest credit, etc.)

@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.LongSupplier;
 
+import io.taanielo.jmud.core.combat.flavor.DamageVerb;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
@@ -40,6 +42,7 @@ public class CombatEngine {
     private final CombatRandomProvider randomProvider;
     private final LongSupplier tickSupplier;
     private final EffectEngine effectEngine;
+    private final DamageVerbTable verbTable;
     private final MessageRenderer renderer = new MessageRenderer();
 
     // ── Legacy constructors (wrap a fixed CombatRandom; tick is always 0) ─────────
@@ -344,6 +347,60 @@ public class CombatEngine {
         LongSupplier tickSupplier,
         EffectEngine effectEngine
     ) {
+        this(
+            attackRepository,
+            modifierResolver,
+            armorBonusResolver,
+            attackBonusResolver,
+            classArmorBonusResolver,
+            equipmentArmorResolver,
+            shieldBlockResolver,
+            offhandAttackResolver,
+            attributeBonusResolver,
+            randomProvider,
+            tickSupplier,
+            effectEngine,
+            null
+        );
+    }
+
+    /**
+     * Fully-wired constructor used by the composition root. Adds a {@link DamageVerbTable} that turns
+     * a hit's damage (as a percentage of the target's maximum HP) into the classic-MUD worded verb
+     * substituted for {@code {verb}} in data-driven attack messages. A {@code null} table disables
+     * verb resolution (verbs render as an empty string), which is the behaviour of every legacy
+     * constructor above.
+     *
+     * @param attackRepository        source of attack definitions
+     * @param modifierResolver        resolves combat modifier chains from player effects
+     * @param armorBonusResolver      resolves race-based AC bonuses on the target
+     * @param attackBonusResolver     resolves race-based attack (hit-chance) bonuses on the attacker
+     * @param classArmorBonusResolver resolves class-based AC bonuses on the target
+     * @param equipmentArmorResolver  resolves equipment-based AC bonuses on the target
+     * @param shieldBlockResolver     resolves the target's off-hand shield block chance/reduction
+     * @param offhandAttackResolver   resolves the attacker's off-hand dual-wield weapon, if any
+     * @param attributeBonusResolver  resolves strength/agility combat bonuses from core attributes
+     * @param randomProvider          produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier            supplies the current world tick number
+     * @param effectEngine            applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                                {@code null} disables on-hit effect application
+     * @param verbTable               resolves worded-damage verbs; {@code null} disables verb rendering
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        ShieldBlockResolver shieldBlockResolver,
+        OffhandAttackResolver offhandAttackResolver,
+        CombatAttributeBonusResolver attributeBonusResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine,
+        DamageVerbTable verbTable
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
@@ -359,6 +416,7 @@ public class CombatEngine {
         this.randomProvider = Objects.requireNonNull(randomProvider, "Combat random provider is required");
         this.tickSupplier = Objects.requireNonNull(tickSupplier, "Tick supplier is required");
         this.effectEngine = effectEngine;
+        this.verbTable = verbTable;
     }
 
     /**
@@ -582,6 +640,9 @@ public class CombatEngine {
                 } else {
                     phase = MessagePhase.ATTACK_HIT;
                 }
+                DamageVerb verb = damage > 0 && verbTable != null
+                    ? verbTable.verbFor(damage, target.getVitals().getMaxHp())
+                    : null;
                 MessageContext context = new MessageContext(
                     attacker.getUsername(),
                     target.getUsername(),
@@ -590,7 +651,9 @@ public class CombatEngine {
                     null,
                     null,
                     attack.name(),
-                    damage
+                    damage,
+                    verb == null ? null : verb.thirdPerson(),
+                    verb == null ? null : verb.secondPerson()
                 );
                 for (MessageSpec spec : specs) {
                     if (spec.phase() != phase) {
