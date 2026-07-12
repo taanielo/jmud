@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "id": "skill.taunt",
+  "name": "taunt",
+  "type": "SKILL",
+  "level": 5,
+  "cost": {
+    "move": 8
+  },
+  "cooldown": {
+    "ticks": 15
+  },
+  "targeting": "NONE",
+  "aliases": ["challenge"],
+  "effects": [],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You bellow a challenge, drawing your foe's attention squarely onto you!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} bellows a challenge, drawing the enemy's fury!"
+    }
+  ]
+}

@@ -35,7 +35,8 @@ class ClassDefinitionStartingAbilitiesTest {
         assertTrue(ids.contains("skill.bash"), "Warrior must have skill.bash");
         assertTrue(ids.contains("skill.rend"), "Warrior must have skill.rend");
         assertTrue(ids.contains("skill.second-wind"), "Warrior must have skill.second-wind");
-        assertEquals(3, ids.size(), "Warrior should have exactly 3 starting abilities");
+        assertTrue(ids.contains("skill.taunt"), "Warrior must have skill.taunt");
+        assertEquals(4, ids.size(), "Warrior should have exactly 4 starting abilities");
     }
 
     @Test

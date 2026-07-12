@@ -129,6 +129,7 @@ public class SocketCommandRegistry {
         new AttackCommand(registry);
         new KillCommand(registry);
         new AssistCommand(registry);
+        new TauntCommand(registry);
         new RangedAttackCommand(registry);
         new ConsiderCommand(registry);
         new DuelCommand(registry);
