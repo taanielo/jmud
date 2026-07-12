@@ -7,6 +7,6 @@
   },
   "carry_bonus": 4,
   "ability_ids": ["spell.battle-hymn", "spell.discord"],
-  "trainable_ability_ids": ["spell.haste"],
+  "trainable_ability_ids": ["spell.haste", "spell.bless"],
   "description": "A support caster who turns the tide with song. Bards buff allies with battle hymn and weaken foes with discord, later learning haste; they shine in a group but are fragile on their own."
 }

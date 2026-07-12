@@ -7,6 +7,6 @@
   },
   "carry_bonus": 5,
   "ability_ids": ["spell.death-coil", "spell.summon", "spell.cure"],
-  "trainable_ability_ids": ["spell.stoneskin"],
+  "trainable_ability_ids": ["spell.stoneskin", "spell.haste"],
   "description": "A dark caster who drains life and commands minions. Necromancers wither foes with death coil, summon servants and mend with cure; their own regeneration is poor, so they lean on stolen life and pets."
 }

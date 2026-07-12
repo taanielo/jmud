@@ -7,6 +7,6 @@
   },
   "carry_bonus": 5,
   "ability_ids": ["spell.ancestral-ward", "spell.cure", "spell.lightning-bolt"],
-  "trainable_ability_ids": ["spell.haste"],
+  "trainable_ability_ids": ["spell.haste", "spell.regrowth"],
   "description": "A hybrid caster balancing protection, healing and elemental attack. Shamans shield with ancestral ward, mend with cure and blast with lightning bolt, making a self-sufficient spellcaster."
 }

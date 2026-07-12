@@ -26,6 +26,9 @@ import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
+import io.taanielo.jmud.core.ability.training.AbilityTrainingService;
+import io.taanielo.jmud.core.ability.training.TrainableAbilityStatus;
+import io.taanielo.jmud.core.ability.training.TrainingAttempt;
 import io.taanielo.jmud.core.achievement.Achievement;
 import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.achievement.AchievementService.AchievementStatus;
@@ -152,6 +155,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private final ClientPool clientPool;
     private final GameActionService gameActionService;
     private final AbilityRegistry abilityRegistry;
+    private final AbilityTrainingService abilityTrainingService;
     private final AbilityTargetResolver abilityTargetResolver;
     private final EncumbranceService encumbranceService;
     private final MovementCostService movementCostService;
@@ -192,6 +196,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         this.clientPool = Objects.requireNonNull(clientPool, "Client pool is required");
         this.dispatcher = Objects.requireNonNull(dispatcher, "Command dispatcher is required");
         this.abilityRegistry = Objects.requireNonNull(context.abilityRegistry(), "Ability registry is required");
+        this.abilityTrainingService = new AbilityTrainingService(this.abilityRegistry);
         this.abilityTargetResolver = Objects.requireNonNull(context.abilityTargetResolver(), "Ability target resolver is required");
         this.encumbranceService = Objects.requireNonNull(context.encumbranceService(), "Encumbrance service is required");
         this.movementCostService = new MovementCostService(encumbranceService);
@@ -2204,6 +2209,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Ability taunt = abilityRegistry.findById(TAUNT_ABILITY_ID).orElse(null);
         if (taunt == null) {
             writeLineWithPrompt("You cannot taunt right now.");
+            return;
+        }
+        // Level gate for a save-edited/legacy character that holds the skill below its level (#522).
+        if (taunt.level() > player.getLevel()) {
+            writeLineWithPrompt("You are not yet skilled enough to taunt (requires level "
+                + taunt.level() + ").");
             return;
         }
         var cooldowns = session.getCooldownTracker();
@@ -5227,13 +5238,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         connection.writeLine("Master Trainer — Trainable Abilities (Practice Points: " + player.getPracticePoints() + "):");
-        connection.writeLine(String.format("  %-24s %-8s %s", "Ability ID", "Cost", "Status"));
-        connection.writeLine("  " + "-".repeat(48));
-        for (AbilityId abilityId : classDef.trainableAbilityIds()) {
-            String displayId = abilityId.getValue();
-            boolean learned = player.getLearnedAbilities().contains(abilityId);
-            String status = learned ? "learned" : "unlearned";
-            connection.writeLine(String.format("  %-24s %-8s %s", displayId, "1 prac", status));
+        connection.writeLine(String.format("  %-24s %-4s %-8s %s", "Ability ID", "Lvl", "Cost", "Status"));
+        connection.writeLine("  " + "-".repeat(56));
+        for (TrainableAbilityStatus row : abilityTrainingService.listing(player, classDef.trainableAbilityIds())) {
+            Ability ability = row.ability();
+            String status = switch (row.status()) {
+                case LEARNED -> "learned";
+                case AVAILABLE -> player.getPracticePoints() > 0 ? "available" : "available (no points)";
+                case REQUIRES_LEVEL -> "requires level " + ability.level();
+            };
+            connection.writeLine(String.format(
+                "  %-24s %-4d %-8s %s", ability.id().getValue(), ability.level(), "1 prac", status));
         }
         sendPrompt();
     }
@@ -5260,35 +5275,29 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Trainer is unavailable.");
             return;
         }
-        // Find the ability by id (case-insensitive match within class trainable abilities)
-        String normalized = abilityInput.trim().toLowerCase(Locale.ROOT);
-        AbilityId targetId = classDef.trainableAbilityIds().stream()
-            .filter(id -> id.getValue().equalsIgnoreCase(normalized))
-            .findFirst()
-            .orElse(null);
-        if (targetId == null) {
-            writeLineWithPrompt("'" + abilityInput.trim() + "' is not trainable by your class. Use TRAIN LIST to see options.");
-            return;
+        // Resolve the training outcome via the domain service (pool membership, already-learned,
+        // level gate and practice-point checks), then apply and persist only on success. The spend
+        // happens here on the tick thread so nothing mutates player state off-thread (AGENTS.md §5).
+        TrainingAttempt attempt =
+            abilityTrainingService.resolve(player, classDef.trainableAbilityIds(), abilityInput);
+        switch (attempt) {
+            case TrainingAttempt.NotTrainable notTrainable -> writeLineWithPrompt(
+                "'" + notTrainable.input() + "' is not trainable by your class. Use TRAIN LIST to see options.");
+            case TrainingAttempt.AlreadyLearned alreadyLearned -> writeLineWithPrompt(
+                "You have already learned " + alreadyLearned.ability().name() + ".");
+            case TrainingAttempt.LevelTooLow levelTooLow -> writeLineWithPrompt(
+                "You must be level " + levelTooLow.requiredLevel() + " to train "
+                    + levelTooLow.ability().name() + ". (You are level " + levelTooLow.playerLevel() + ".)");
+            case TrainingAttempt.NoPracticePoints _ -> writeLineWithPrompt(
+                "You have no practice points. Practice points are earned by levelling up.");
+            case TrainingAttempt.Success success -> {
+                Player updated = success.updatedPlayer();
+                session.replacePlayer(updated);
+                saveOrWarn(updated);
+                writeLineWithPrompt("You have learned " + success.ability().name() + "! ("
+                    + updated.getPracticePoints() + " practice point(s) remaining)");
+            }
         }
-        if (player.getLearnedAbilities().contains(targetId)) {
-            writeLineWithPrompt("You have already learned " + targetId.getValue() + ".");
-            return;
-        }
-        if (player.getPracticePoints() <= 0) {
-            writeLineWithPrompt("You have no practice points. Practice points are earned by levelling up.");
-            return;
-        }
-        // Deduct one practice point, add the ability, and persist
-        List<AbilityId> newAbilities = new ArrayList<>(player.getLearnedAbilities());
-        newAbilities.add(targetId);
-        Player updated = player
-            .withPracticePoints(player.getPracticePoints() - 1)
-            .withLearnedAbilities(newAbilities);
-        session.replacePlayer(updated);
-        saveOrWarn(updated);
-        Ability ability = abilityRegistry.findById(targetId).orElse(null);
-        String abilityName = ability != null ? ability.name() : targetId.getValue();
-        writeLineWithPrompt("You have learned " + abilityName + "! (" + updated.getPracticePoints() + " practice point(s) remaining)");
     }
 
     private void handleQuestList(QuestRepository questRepo) {

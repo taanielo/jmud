@@ -880,6 +880,18 @@ public class GameActionService {
      * @return result with updated source/target and ability messages
      */
     public GameActionResult useAbility(Player source, String input) {
+        // Level gate: a save-edited or legacy character may hold an ability above its level. Refuse
+        // to use any learned ability whose required level exceeds the caster's, mirroring the gate
+        // enforced when learning it at the trainer (issue #522).
+        Optional<AbilityMatch> levelCheck = abilityRegistry.findBestMatch(input, source.getLearnedAbilities());
+        if (levelCheck.isPresent()) {
+            Ability ability = levelCheck.get().ability();
+            if (ability.level() > source.getLevel()) {
+                return GameActionResult.error("You are not yet skilled enough to use "
+                    + ability.name() + " (requires level " + ability.level() + ").");
+            }
+        }
+
         // The RESURRECTION spell targets a dead, locationless party member, so it cannot flow through
         // the generic effect pipeline (which resolves targets in the caster's room). Intercept it here
         // when the caster has learned it and route to the dedicated logic in resurrect() — mirroring

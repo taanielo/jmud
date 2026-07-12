@@ -7,6 +7,6 @@
   },
   "carry_bonus": 10,
   "ability_ids": ["skill.bash", "spell.heal"],
-  "trainable_ability_ids": ["skill.second-wind"],
+  "trainable_ability_ids": ["skill.second-wind", "spell.bless"],
   "description": "A forgiving jack-of-all-trades for new players. Adventurers mix a warrior's bash with a self-heal, so they can both fight and patch themselves up while learning the ropes."
 }
