@@ -75,6 +75,7 @@ import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.AliasResult;
 import io.taanielo.jmud.core.player.EncumbranceService;
+import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LightingService;
 import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.MovementCostService;
@@ -1363,6 +1364,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         ExplorationQuestService explorationSvc = new ExplorationQuestService(
             questRepo, context.questItemRewardService(), context.questReputationRewardService());
+        explorationSvc.setLevelUpService(new LevelUpService(context.classLevelGainsResolver()));
         explorationSvc.recordRoomVisit(player, destination.getId()).ifPresent(result -> {
             session.replacePlayer(result.player());
             dropQuestRewardOverflow(result.player(), result.droppedItems());
@@ -2082,6 +2084,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(questRepo);
+        npcDeliverySvc.setLevelUpService(new LevelUpService(context.classLevelGainsResolver()));
         DeliveryQuestResult result = npcDeliverySvc.grant(player, template, packageItem);
         if (result.success()) {
             session.replacePlayer(result.player());
@@ -5625,6 +5628,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         QuestKillService questKillSvc = new QuestKillService(
             questRepo, context.questItemRewardService(), context.questReputationRewardService());
         questKillSvc.setAchievementService(context.achievementService());
+        questKillSvc.setLevelUpService(new LevelUpService(context.classLevelGainsResolver()));
         QuestKillService.CompletionResult result = questKillSvc.grantCompletionReward(player, template);
         Player rewarded = result.player();
         session.replacePlayer(rewarded);
@@ -5690,6 +5694,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         QuestNpcDeliveryService npcDeliverySvc = new QuestNpcDeliveryService(
             questRepo, context.questItemRewardService(), context.questReputationRewardService());
         npcDeliverySvc.setAchievementService(context.achievementService());
+        npcDeliverySvc.setLevelUpService(new LevelUpService(context.classLevelGainsResolver()));
         DeliveryQuestResult result = npcDeliverySvc.deliver(player, roomId, receiverPresent);
         if (result.success()) {
             session.replacePlayer(result.player());

@@ -28,7 +28,7 @@ import io.taanielo.jmud.core.world.RoomId;
 public class ExplorationQuestService {
 
     private final QuestRepository questRepository;
-    private final LevelUpService levelUpService;
+    private LevelUpService levelUpService;
     private final QuestItemRewardService itemRewardService;
     private final QuestReputationRewardService reputationRewardService;
 
@@ -63,6 +63,17 @@ public class ExplorationQuestService {
         this.levelUpService = new LevelUpService();
         this.itemRewardService = itemRewardService;
         this.reputationRewardService = reputationRewardService;
+    }
+
+    /**
+     * Registers the level-up service used to award exploration-quest XP and apply
+     * class-differentiated vitals gains on completion. When not set, a service applying the legacy
+     * default gains to every class is used.
+     *
+     * @param levelUpService the level-up service; must not be null
+     */
+    public void setLevelUpService(LevelUpService levelUpService) {
+        this.levelUpService = Objects.requireNonNull(levelUpService, "levelUpService is required");
     }
 
     /**

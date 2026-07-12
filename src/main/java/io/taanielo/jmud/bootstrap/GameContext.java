@@ -41,6 +41,7 @@ import io.taanielo.jmud.core.bank.BankRepository;
 import io.taanielo.jmud.core.bank.BankRepositoryException;
 import io.taanielo.jmud.core.bank.BankService;
 import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
+import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
@@ -111,6 +112,7 @@ import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
+import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.OnlinePlayersSupplier;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -208,6 +210,7 @@ public record GameContext(
     SocketCommandRegistry commandRegistry,
     PlayerEventBus playerEventBus,
     MobRegistry mobRegistry,
+    ClassLevelGainsResolver classLevelGainsResolver,
     CharacterCreationService characterCreationService,
     NewbieKitService newbieKitService,
     ShopService shopService,
@@ -303,6 +306,11 @@ public record GameContext(
         ShieldBlockResolver shieldBlockResolver = new ShieldBlockResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
         ClassArmorBonusResolver classArmorBonusResolver = new ClassArmorBonusResolver(classRepository);
+        // Snapshot per-class level-up gains once from the (cache-warmed) class repository so
+        // level-ups on the tick thread resolve HP/mana/move gains from memory, never disk
+        // (AGENTS.md §5). One shared LevelUpService carries these gains into every XP-award path.
+        ClassLevelGainsResolver classLevelGainsResolver = createClassLevelGainsResolver(classRepository);
+        LevelUpService levelUpService = new LevelUpService(classLevelGainsResolver);
         RaceAttackBonusResolver raceAttackBonusResolver = new RaceAttackBonusResolver(raceRepository);
         // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
         // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
@@ -397,6 +405,7 @@ public record GameContext(
         MobRegistry mobRegistry = createMobRegistry(
                 playerEventBus, roomService, playerRepository, persistenceQueue, itemRepository, attackRepository, worldRandom);
         if (mobRegistry != null) {
+            mobRegistry.setLevelUpService(levelUpService);
             mobRegistry.setEffectEngine(effectEngine);
             mobRegistry.setWorldClock(worldClock);
             mobRegistry.setItemDurabilityService(itemDurabilityService);
@@ -440,13 +449,16 @@ public record GameContext(
             new QuestReputationRewardService(reputationService);
         DailyQuestService dailyQuestService =
             createDailyQuestService(questItemRewardService, questReputationRewardService);
+        dailyQuestService.setLevelUpService(levelUpService);
         // Daily quests reuse the single active-quest slot and the normal kill-progress path, so
         // expose them through a composite that resolves accepted daily variants by id while keeping
         // them out of the Guild Clerk's QUEST LIST (AGENTS.md §3.3 — reuse the canonical quest flow).
         QuestRepository questRepository =
             new CompositeQuestRepository(baseQuestRepository, dailyQuestService);
         if (mobRegistry != null) {
-            mobRegistry.setQuestKillService(new QuestKillService(questRepository));
+            QuestKillService questKillService = new QuestKillService(questRepository);
+            questKillService.setLevelUpService(levelUpService);
+            mobRegistry.setQuestKillService(questKillService);
         }
         tickRegistry.register(
             new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
@@ -522,6 +534,7 @@ public record GameContext(
             commandRegistry,
             playerEventBus,
             mobRegistry,
+            classLevelGainsResolver,
             characterCreationService,
             newbieKitService,
             shopService,
@@ -715,6 +728,14 @@ public record GameContext(
             return new JsonClassRepository();
         } catch (ClassRepositoryException e) {
             throw new IllegalStateException("Failed to initialize class repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static ClassLevelGainsResolver createClassLevelGainsResolver(JsonClassRepository classRepository) {
+        try {
+            return ClassLevelGainsResolver.fromDefinitions(classRepository.findAll());
+        } catch (ClassRepositoryException e) {
+            throw new IllegalStateException("Failed to load class level gains: " + e.getMessage(), e);
         }
     }
 

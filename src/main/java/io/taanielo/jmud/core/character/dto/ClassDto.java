@@ -11,6 +11,7 @@ public record ClassDto(
     int armorBonus,
     List<String> abilityIds,
     List<String> trainableAbilityIds,
-    String description
+    String description,
+    ClassLevelGainsDto levelGains
 ) {
 }

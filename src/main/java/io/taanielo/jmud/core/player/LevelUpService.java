@@ -1,5 +1,10 @@
 package io.taanielo.jmud.core.player;
 
+import java.util.Objects;
+
+import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
+import io.taanielo.jmud.core.character.LevelGains;
+
 /**
  * Domain service that awards XP to a player and triggers level-ups when the
  * XP threshold is reached.
@@ -7,12 +12,16 @@ package io.taanielo.jmud.core.player;
  * <p>Formula:
  * <ul>
  *   <li>XP required to advance from level {@code N} to {@code N+1}: {@code N * 100}</li>
- *   <li>Each level-up grants {@code +10} permanent max HP, {@code +5} permanent max mana,
- *       and {@code +3} permanent max move.</li>
+ *   <li>Each level-up grants permanent max HP, mana and move determined by the player's class
+ *       (see {@link ClassLevelGainsResolver}). Classes without configured gains, and unclassed
+ *       characters, fall back to {@link LevelGains#DEFAULT} ({@code +10} HP, {@code +5} mana,
+ *       {@code +3} move).</li>
  * </ul>
  *
  * <p>The service is stateless and thread-safe; callers are responsible for
- * persisting the returned {@link LevelUpResult}.
+ * persisting the returned {@link LevelUpResult}. Class gains are resolved from an in-memory
+ * snapshot captured at construction, so a level-up never touches the class repository or disk on
+ * the tick thread (AGENTS.md §5).
  */
 public class LevelUpService {
 
@@ -21,17 +30,39 @@ public class LevelUpService {
         return (long) level * 100;
     }
 
-    /** Max-HP gain applied per level-up. */
-    public static final int HP_GAIN_PER_LEVEL = 10;
+    /** Default max-HP gain applied per level-up when a class has no configured gains. */
+    public static final int HP_GAIN_PER_LEVEL = LevelGains.DEFAULT.hp();
 
-    /** Max-mana gain applied per level-up. */
-    public static final int MANA_GAIN_PER_LEVEL = 5;
+    /** Default max-mana gain applied per level-up when a class has no configured gains. */
+    public static final int MANA_GAIN_PER_LEVEL = LevelGains.DEFAULT.mana();
 
-    /** Max-move gain applied per level-up. */
-    public static final int MOVE_GAIN_PER_LEVEL = 3;
+    /** Default max-move gain applied per level-up when a class has no configured gains. */
+    public static final int MOVE_GAIN_PER_LEVEL = LevelGains.DEFAULT.move();
 
     /** Practice points awarded per level-up. */
     public static final int PRACTICE_POINTS_PER_LEVEL = 1;
+
+    private final ClassLevelGainsResolver levelGainsResolver;
+
+    /**
+     * Creates a service that applies the legacy default gains to every class.
+     *
+     * <p>Retained for tests and legacy callers; production code should inject a class-aware
+     * resolver via {@link #LevelUpService(ClassLevelGainsResolver)}.
+     */
+    public LevelUpService() {
+        this(ClassLevelGainsResolver.defaultGains());
+    }
+
+    /**
+     * Creates a service that resolves per-level gains from the given class-gains lookup.
+     *
+     * @param levelGainsResolver resolves a player's class to its per-level {@link LevelGains};
+     *                           must not be null
+     */
+    public LevelUpService(ClassLevelGainsResolver levelGainsResolver) {
+        this.levelGainsResolver = Objects.requireNonNull(levelGainsResolver, "levelGainsResolver must not be null");
+    }
 
     /**
      * Awards the given amount of XP to the player and resolves any resulting
@@ -52,13 +83,15 @@ public class LevelUpService {
         int newPracticePoints = player.getPracticePoints();
         boolean leveledUp = false;
 
+        LevelGains gains = levelGainsResolver.gainsFor(player.getClassId());
+
         // Resolve multiple level-ups in case the XP gain is large
         while (newXp >= xpForNextLevel(newLevel)) {
             newXp -= xpForNextLevel(newLevel);
             newLevel++;
-            int newMaxHp = newVitals.maxHp() + HP_GAIN_PER_LEVEL;
-            int newMaxMana = newVitals.maxMana() + MANA_GAIN_PER_LEVEL;
-            int newMaxMove = newVitals.maxMove() + MOVE_GAIN_PER_LEVEL;
+            int newMaxHp = newVitals.maxHp() + gains.hp();
+            int newMaxMana = newVitals.maxMana() + gains.mana();
+            int newMaxMove = newVitals.maxMove() + gains.move();
             // Restore player to full on level-up (classic MUD behaviour)
             newVitals = new PlayerVitals(
                 newMaxHp, newMaxHp, newMaxHp,

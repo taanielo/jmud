@@ -28,7 +28,7 @@ import io.taanielo.jmud.core.world.RoomId;
 public class QuestNpcDeliveryService {
 
     private final QuestRepository questRepository;
-    private final LevelUpService levelUpService;
+    private LevelUpService levelUpService;
     private final QuestItemRewardService itemRewardService;
     private final QuestReputationRewardService reputationRewardService;
     /** Optional achievement service that unlocks quest-milestone achievements on completion; may be null. */
@@ -75,6 +75,17 @@ public class QuestNpcDeliveryService {
      */
     public void setAchievementService(AchievementService achievementService) {
         this.achievementService = achievementService;
+    }
+
+    /**
+     * Registers the level-up service used to award delivery-quest XP and apply class-differentiated
+     * vitals gains on completion. When not set, a service applying the legacy default gains to every
+     * class is used.
+     *
+     * @param levelUpService the level-up service; must not be null
+     */
+    public void setLevelUpService(LevelUpService levelUpService) {
+        this.levelUpService = Objects.requireNonNull(levelUpService, "levelUpService is required");
     }
 
     /**

@@ -18,6 +18,7 @@ public class ClassDefinition {
     private final List<AbilityId> startingAbilityIds;
     private final List<AbilityId> trainableAbilityIds;
     private final String description;
+    private final LevelGains levelGains;
 
     /**
      * Constructs a class definition with an armour bonus, starting ability ids,
@@ -33,6 +34,8 @@ public class ClassDefinition {
      *                            (not granted automatically at creation)
      * @param description         short flavour text shown at character creation; {@code null}
      *                            is normalised to an empty string
+     * @param levelGains          per-level vitals growth for this class; {@code null} is normalised
+     *                            to {@link LevelGains#DEFAULT}
      */
     public ClassDefinition(
         ClassId id,
@@ -42,7 +45,8 @@ public class ClassDefinition {
         int armorBonus,
         List<AbilityId> startingAbilityIds,
         List<AbilityId> trainableAbilityIds,
-        String description
+        String description,
+        LevelGains levelGains
     ) {
         this.id = Objects.requireNonNull(id, "Class id is required");
         if (name == null || name.isBlank()) {
@@ -65,6 +69,34 @@ public class ClassDefinition {
             ? List.of()
             : List.copyOf(trainableAbilityIds);
         this.description = description == null ? "" : description;
+        this.levelGains = levelGains == null ? LevelGains.DEFAULT : levelGains;
+    }
+
+    /**
+     * Constructs a class definition with an armour bonus, starting ability ids, trainable ability
+     * ids and a creation description, using the default per-level gains.
+     *
+     * @param id                  the unique class identifier
+     * @param name                the display name of the class
+     * @param healingBaseModifier modifier applied to the base healing rate
+     * @param carryBonus          bonus carry capacity granted by this class
+     * @param armorBonus          natural armour class granted by the class's armour proficiency
+     * @param startingAbilityIds  ability ids granted to new players of this class
+     * @param trainableAbilityIds ability ids the Master Trainer can teach members of this class
+     * @param description         short flavour text shown at character creation
+     */
+    public ClassDefinition(
+        ClassId id,
+        String name,
+        int healingBaseModifier,
+        int carryBonus,
+        int armorBonus,
+        List<AbilityId> startingAbilityIds,
+        List<AbilityId> trainableAbilityIds,
+        String description
+    ) {
+        this(id, name, healingBaseModifier, carryBonus, armorBonus,
+            startingAbilityIds, trainableAbilityIds, description, LevelGains.DEFAULT);
     }
 
     /**
@@ -204,5 +236,18 @@ public class ClassDefinition {
      */
     public String description() {
         return description;
+    }
+
+    /**
+     * Returns the per-level vitals growth granted to a character of this class on level-up.
+     *
+     * <p>Classes lean this growth toward their archetype (HP for front-liners, mana for casters)
+     * while keeping the total roughly comparable. Defaults to {@link LevelGains#DEFAULT} for
+     * legacy data that predates the {@code level_gains} field.
+     *
+     * @return the per-level gains; never {@code null}
+     */
+    public LevelGains levelGains() {
+        return levelGains;
     }
 }

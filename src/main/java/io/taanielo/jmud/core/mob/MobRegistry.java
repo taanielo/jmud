@@ -88,7 +88,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private final PersistenceQueue persistenceQueue;
     private final PlayerEventBus playerEventBus;
     private final CombatRandom random;
-    private final LevelUpService levelUpService = new LevelUpService();
+    private LevelUpService levelUpService = new LevelUpService();
     private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
@@ -150,6 +150,17 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      */
     public void setQuestKillService(QuestKillService questKillService) {
         this.questKillService = questKillService;
+    }
+
+    /**
+     * Registers the level-up service used to award XP and apply class-differentiated vitals gains
+     * when a mob kill grants experience. When not set, a service applying the legacy default gains
+     * to every class is used.
+     *
+     * @param levelUpService the level-up service; must not be null
+     */
+    public void setLevelUpService(LevelUpService levelUpService) {
+        this.levelUpService = Objects.requireNonNull(levelUpService, "Level-up service is required");
     }
 
     /**

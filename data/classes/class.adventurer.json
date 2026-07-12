@@ -1,11 +1,12 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "adventurer",
   "name": "Adventurer",
   "healing": {
     "base_modifier": 0
   },
   "carry_bonus": 10,
+  "level_gains": { "hp": 10, "mana": 5, "move": 3 },
   "ability_ids": ["skill.bash", "spell.heal"],
   "trainable_ability_ids": ["skill.second-wind", "spell.bless"],
   "description": "A forgiving jack-of-all-trades for new players. Adventurers mix a warrior's bash with a self-heal, so they can both fight and patch themselves up while learning the ropes."

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.character.LevelGains;
 
 /**
  * Unit tests for {@link ClassMapper}, focusing on backward compatibility with legacy class JSON
@@ -31,6 +32,7 @@ class ClassMapperTest {
             0,
             List.of("skill.bash", "skill.rend"),
             null,
+            null,
             null
         );
 
@@ -42,6 +44,8 @@ class ClassMapperTest {
         assertTrue(def.trainableAbilityIds().isEmpty(),
             "Legacy class without trainable_ability_ids must fall back to an empty trainable pool");
         assertEquals("", def.description());
+        assertEquals(LevelGains.DEFAULT, def.levelGains(),
+            "Class without level_gains must fall back to the default flat gains");
     }
 
     @Test
@@ -55,7 +59,8 @@ class ClassMapperTest {
             0,
             List.of("skill.bash", "skill.rend"),
             List.of("skill.second-wind", "skill.taunt"),
-            "The archetypal front-line fighter."
+            "The archetypal front-line fighter.",
+            null
         );
 
         ClassDefinition def = mapper.toDomain(current);
@@ -64,5 +69,45 @@ class ClassMapperTest {
             def.startingAbilityIds());
         assertEquals(List.of(AbilityId.of("skill.second-wind"), AbilityId.of("skill.taunt")),
             def.trainableAbilityIds());
+    }
+
+    @Test
+    void classWithLevelGainsMapsThemToDomain() {
+        ClassDto withGains = new ClassDto(
+            ClassSchemaVersions.V6,
+            "warrior",
+            "Warrior",
+            new ClassHealingDto(3),
+            20,
+            0,
+            List.of("skill.bash", "skill.rend"),
+            List.of("skill.second-wind", "skill.taunt"),
+            "The archetypal front-line fighter.",
+            new ClassLevelGainsDto(13, 2, 3)
+        );
+
+        ClassDefinition def = mapper.toDomain(withGains);
+
+        assertEquals(new LevelGains(13, 2, 3), def.levelGains());
+    }
+
+    @Test
+    void classWithoutLevelGainsFallsBackToDefault() {
+        ClassDto withoutGains = new ClassDto(
+            ClassSchemaVersions.V6,
+            "warrior",
+            "Warrior",
+            new ClassHealingDto(3),
+            20,
+            0,
+            List.of("skill.bash"),
+            List.of(),
+            "desc",
+            null
+        );
+
+        ClassDefinition def = mapper.toDomain(withoutGains);
+
+        assertEquals(LevelGains.DEFAULT, def.levelGains());
     }
 }
