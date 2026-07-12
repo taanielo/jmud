@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.character.dto;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 public record ClassDto(
     int schemaVersion,
     String id,
@@ -12,6 +14,8 @@ public record ClassDto(
     List<String> abilityIds,
     List<String> trainableAbilityIds,
     String description,
-    ClassLevelGainsDto levelGains
+    ClassLevelGainsDto levelGains,
+    @Nullable AttributeBonusDto attributeBonuses,
+    @Nullable AttributeGainsDto attributeGains
 ) {
 }

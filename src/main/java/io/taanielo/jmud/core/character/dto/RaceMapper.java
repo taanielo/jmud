@@ -2,17 +2,21 @@ package io.taanielo.jmud.core.character.dto;
 
 import java.util.Objects;
 
+import io.taanielo.jmud.core.character.AttributeBonus;
 import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.RaceId;
 
 public class RaceMapper {
     public Race toDomain(RaceDto dto) {
         Objects.requireNonNull(dto, "Race DTO is required");
-        if (dto.schemaVersion() != RaceSchemaVersions.V2 && dto.schemaVersion() != RaceSchemaVersions.V3) {
+        if (dto.schemaVersion() != RaceSchemaVersions.V2
+            && dto.schemaVersion() != RaceSchemaVersions.V3
+            && dto.schemaVersion() != RaceSchemaVersions.V4) {
             throw new IllegalArgumentException("Unsupported race schema version " + dto.schemaVersion());
         }
         RaceHealingDto healingDto = Objects.requireNonNull(dto.healing(), "Race healing is required");
         String description = dto.description() == null ? "" : dto.description();
+        AttributeBonus attributeBonus = AttributeBonusMapper.toDomain(dto.attributes());
         return new Race(
             RaceId.of(dto.id()),
             dto.name(),
@@ -21,7 +25,8 @@ public class RaceMapper {
             dto.armorBonus(),
             dto.manaModifier(),
             dto.attackModifier(),
-            description
+            description,
+            attributeBonus
         );
     }
 }

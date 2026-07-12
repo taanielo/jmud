@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "shaman",
   "name": "Shaman",
   "healing": {
@@ -7,6 +7,8 @@
   },
   "carry_bonus": 5,
   "level_gains": { "hp": 8, "mana": 7, "move": 3 },
+  "attribute_bonuses": { "wis": 2, "int": 1 },
+  "attribute_gains": { "wis": "every_level", "int": "every_2_levels" },
   "ability_ids": ["spell.ancestral-ward", "spell.cure", "spell.lightning-bolt"],
   "trainable_ability_ids": ["spell.haste", "spell.regrowth"],
   "description": "A hybrid caster balancing protection, healing and elemental attack. Shamans shield with ancestral ward, mend with cure and blast with lightning bolt, making a self-sufficient spellcaster."

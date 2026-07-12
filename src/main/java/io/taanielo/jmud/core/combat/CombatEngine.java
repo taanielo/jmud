@@ -36,6 +36,7 @@ public class CombatEngine {
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final ShieldBlockResolver shieldBlockResolver;
     private final OffhandAttackResolver offhandAttackResolver;
+    private final CombatAttributeBonusResolver attributeBonusResolver;
     private final CombatRandomProvider randomProvider;
     private final LongSupplier tickSupplier;
     private final EffectEngine effectEngine;
@@ -265,8 +266,8 @@ public class CombatEngine {
     }
 
     /**
-     * Creates a combat engine that additionally resolves a dual-wield off-hand attack for the
-     * attacker. This is the fully-wired constructor used by the composition root.
+     * Creates a combat engine that resolves a dual-wield off-hand attack but no attribute-based
+     * combat bonuses (defaults to {@link CombatAttributeBonusResolver#noOp()}).
      *
      * @param attackRepository        source of attack definitions
      * @param modifierResolver        resolves combat modifier chains from player effects
@@ -294,6 +295,55 @@ public class CombatEngine {
         LongSupplier tickSupplier,
         EffectEngine effectEngine
     ) {
+        this(
+            attackRepository,
+            modifierResolver,
+            armorBonusResolver,
+            attackBonusResolver,
+            classArmorBonusResolver,
+            equipmentArmorResolver,
+            shieldBlockResolver,
+            offhandAttackResolver,
+            CombatAttributeBonusResolver.noOp(),
+            randomProvider,
+            tickSupplier,
+            effectEngine
+        );
+    }
+
+    /**
+     * Creates a combat engine that additionally resolves a dual-wield off-hand attack for the
+     * attacker and attribute-based combat bonuses. This is the fully-wired constructor used by the
+     * composition root.
+     *
+     * @param attackRepository        source of attack definitions
+     * @param modifierResolver        resolves combat modifier chains from player effects
+     * @param armorBonusResolver      resolves race-based AC bonuses on the target
+     * @param attackBonusResolver     resolves race-based attack (hit-chance) bonuses on the attacker
+     * @param classArmorBonusResolver resolves class-based AC bonuses on the target
+     * @param equipmentArmorResolver  resolves equipment-based AC bonuses on the target
+     * @param shieldBlockResolver     resolves the target's off-hand shield block chance/reduction
+     * @param offhandAttackResolver   resolves the attacker's off-hand dual-wield weapon, if any
+     * @param attributeBonusResolver  resolves strength/agility combat bonuses from core attributes
+     * @param randomProvider          produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier            supplies the current world tick number
+     * @param effectEngine            applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                                {@code null} disables on-hit effect application
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        ShieldBlockResolver shieldBlockResolver,
+        OffhandAttackResolver offhandAttackResolver,
+        CombatAttributeBonusResolver attributeBonusResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
@@ -304,6 +354,8 @@ public class CombatEngine {
         this.shieldBlockResolver = Objects.requireNonNull(shieldBlockResolver, "Shield block resolver is required");
         this.offhandAttackResolver =
             Objects.requireNonNull(offhandAttackResolver, "Offhand attack resolver is required");
+        this.attributeBonusResolver =
+            Objects.requireNonNull(attributeBonusResolver, "Attribute bonus resolver is required");
         this.randomProvider = Objects.requireNonNull(randomProvider, "Combat random provider is required");
         this.tickSupplier = Objects.requireNonNull(tickSupplier, "Tick supplier is required");
         this.effectEngine = effectEngine;
@@ -401,10 +453,16 @@ public class CombatEngine {
         String offhandWeaponName
     ) throws EffectRepositoryException {
         boolean offhand = offhandWeaponName != null;
+        // Attribute terms: attacker agility improves accuracy, defender agility (dodge) reduces it.
+        // Both are zero for all-baseline combatants, leaving legacy fights numerically unchanged.
+        int attackerAgilityHitBonus = attributeBonusResolver.hitChanceBonus(attacker);
+        int defenderDodge = attributeBonusResolver.dodgeBonus(target);
         int hitChanceBase = CombatSettings.baseHitChance()
             + attack.hitBonus()
             + attackerMods.attack().apply(0)
             + attackerRaceAttackBonus
+            + attackerAgilityHitBonus
+            - defenderDodge
             - targetMods.defense().apply(0)
             - targetArmorBonus;
         int hitChance = attackerMods.hitChance().apply(hitChanceBase);
@@ -415,7 +473,9 @@ public class CombatEngine {
         if (offhand) {
             hitChance -= CombatSettings.offhandHitPenaltyPercent();
         }
-        hitChance = clamp(hitChance, 0, 100);
+        // Clamp to [5, 95] so no fight is ever a certainty in either direction (attributes and gear
+        // can push the raw chance past these bounds).
+        hitChance = clamp(hitChance, CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
         int hitRoll = random.roll(1, 100);
         boolean hit = hitRoll <= hitChance;
 
@@ -424,7 +484,11 @@ public class CombatEngine {
         boolean blocked = false;
         if (hit) {
             int baseDamage = random.roll(attack.minDamage(), attack.maxDamage());
-            int adjusted = attackerMods.damage().apply(baseDamage + attack.damageBonus());
+            // Strength adds flat physical damage after the weapon roll (zero for all-baseline
+            // attackers, preserving legacy results). It participates in effect damage modifiers,
+            // variance and crit just like the weapon's own damage bonus.
+            int strengthDamageBonus = attributeBonusResolver.meleeDamageBonus(attacker);
+            int adjusted = attackerMods.damage().apply(baseDamage + attack.damageBonus() + strengthDamageBonus);
             int variance = CombatSettings.damageVariancePercent();
             if (variance > 0) {
                 int varianceRoll = random.roll(-variance, variance);
@@ -443,7 +507,8 @@ public class CombatEngine {
                 adjusted = (int) Math.round(adjusted * ((100 - reduction) / 100.0));
             } else {
                 int critChance = CombatSettings.baseCritChance()
-                    + attack.critBonus();
+                    + attack.critBonus()
+                    + attributeBonusResolver.critChanceBonus(attacker);
                 critChance = attackerMods.critChance().apply(critChance);
                 critChance = clamp(critChance, 0, 100);
                 int critRoll = random.roll(1, 100);
@@ -455,7 +520,9 @@ public class CombatEngine {
             if (offhand) {
                 adjusted = (int) Math.round(adjusted * (CombatSettings.offhandDamagePercent() / 100.0));
             }
-            damage = Math.max(0, adjusted);
+            // A landed hit always deals at least 1 damage; strength can only add to this floor, so
+            // all-baseline results (which already dealt >= 1 in practice) are unchanged.
+            damage = Math.max(1, adjusted);
         }
 
         Player updatedTarget = hit && damage > 0

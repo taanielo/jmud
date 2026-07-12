@@ -41,12 +41,14 @@ import io.taanielo.jmud.core.bank.BankRepository;
 import io.taanielo.jmud.core.bank.BankRepositoryException;
 import io.taanielo.jmud.core.bank.BankService;
 import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
+import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
+import io.taanielo.jmud.core.combat.CombatAttributeBonusResolver;
 import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
@@ -211,6 +213,7 @@ public record GameContext(
     PlayerEventBus playerEventBus,
     MobRegistry mobRegistry,
     ClassLevelGainsResolver classLevelGainsResolver,
+    CharacterAttributesResolver characterAttributesResolver,
     CharacterCreationService characterCreationService,
     NewbieKitService newbieKitService,
     ShopService shopService,
@@ -312,6 +315,12 @@ public record GameContext(
         ClassLevelGainsResolver classLevelGainsResolver = createClassLevelGainsResolver(classRepository);
         LevelUpService levelUpService = new LevelUpService(classLevelGainsResolver);
         RaceAttackBonusResolver raceAttackBonusResolver = new RaceAttackBonusResolver(raceRepository);
+        // Snapshot race/class attribute data once so combat, abilities and SCORE resolve a
+        // character's derived attributes from memory on the tick thread, never disk (AGENTS.md §5).
+        CharacterAttributesResolver characterAttributesResolver =
+            createCharacterAttributesResolver(raceRepository, classRepository);
+        CombatAttributeBonusResolver combatAttributeBonusResolver =
+            new CombatAttributeBonusResolver(characterAttributesResolver);
         // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
         // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
         // logged by SeededCombatRandomProvider; set jmud.world.seed to replay a specific session.
@@ -320,7 +329,7 @@ public record GameContext(
         CombatRandom worldRandom = seededRng ? new SeededCombatRandom(worldSeed) : new ThreadLocalCombatRandom();
         CombatEngine combatEngine = createCombatEngine(
                 effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, shieldBlockResolver, attackRepository,
+                equipmentArmorResolver, shieldBlockResolver, combatAttributeBonusResolver, attackRepository,
                 tickClock::currentTick, effectEngine, seededRng, worldSeed);
 
         // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
@@ -413,6 +422,7 @@ public record GameContext(
             mobRegistry.setAchievementService(achievementService);
             mobRegistry.setPartyService(partyService);
             mobRegistry.setEncumbranceService(encumbranceService);
+            mobRegistry.setCombatAttributeBonusResolver(combatAttributeBonusResolver);
             mobRegistry.setWorldBossAnnouncer(
                 new WorldBossAnnouncer(messageBroadcaster, roomService, guildService, partyService));
             mobRegistry.init();
@@ -432,7 +442,7 @@ public record GameContext(
 
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
-            equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
+            equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, characterAttributesResolver,
             playerRepository, roomService, tellService, messageBroadcaster, reputationService, weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);
@@ -535,6 +545,7 @@ public record GameContext(
             playerEventBus,
             mobRegistry,
             classLevelGainsResolver,
+            characterAttributesResolver,
             characterCreationService,
             newbieKitService,
             shopService,
@@ -668,6 +679,7 @@ public record GameContext(
         ClassArmorBonusResolver classArmorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
         ShieldBlockResolver shieldBlockResolver,
+        CombatAttributeBonusResolver attributeBonusResolver,
         JsonAttackRepository attackRepository,
         LongSupplier tickSupplier,
         EffectEngine effectEngine,
@@ -680,7 +692,7 @@ public record GameContext(
             CombatRandom threadLocalRandom = new ThreadLocalCombatRandom();
             return new CombatEngine(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver,
+                equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, attributeBonusResolver,
                 (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
@@ -688,7 +700,8 @@ public record GameContext(
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-            equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, provider, tickSupplier, effectEngine);
+            equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, attributeBonusResolver,
+            provider, tickSupplier, effectEngine);
     }
 
     private static ItemRepository createItemRepository() {
@@ -736,6 +749,18 @@ public record GameContext(
             return ClassLevelGainsResolver.fromDefinitions(classRepository.findAll());
         } catch (ClassRepositoryException e) {
             throw new IllegalStateException("Failed to load class level gains: " + e.getMessage(), e);
+        }
+    }
+
+    private static CharacterAttributesResolver createCharacterAttributesResolver(
+        JsonRaceRepository raceRepository,
+        JsonClassRepository classRepository
+    ) {
+        try {
+            return CharacterAttributesResolver.fromDefinitions(
+                raceRepository.findAll(), classRepository.findAll());
+        } catch (RaceRepositoryException | ClassRepositoryException e) {
+            throw new IllegalStateException("Failed to load character attributes: " + e.getMessage(), e);
         }
     }
 

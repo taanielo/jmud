@@ -195,6 +195,8 @@ expect "$T1" "onboarding hint shown at creation"  'WIELD IRON SWORD'
 expect "$T1" "onboarding points at the Guild Clerk" 'QUEST LIST at the Guild Clerk'
 expect "$T1" "SCORE header present"               '--- Score ---'
 expect "$T1" "SCORE shows Level"                  'Level : [0-9]+'
+# Core attributes (issue #524): SCORE lists the four derived attributes STR/INT/WIS/AGI.
+expect "$T1" "SCORE shows core attributes"        'Attrs : STR [0-9]+  INT [0-9]+  WIS [0-9]+  AGI [0-9]+'
 expect "$T1" "SCORE shows AC"                     'AC    : [0-9]+'
 # Newbie starting kit (issue #519): a fresh character receives a small gold purse plus
 # provisions (bread + waterskin) so they can eat, drink and buy a meal before their first

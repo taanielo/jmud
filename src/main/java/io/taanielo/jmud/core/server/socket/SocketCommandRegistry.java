@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
@@ -61,6 +62,7 @@ public class SocketCommandRegistry {
         EquipmentArmorResolver equipmentArmorResolver,
         RaceArmorBonusResolver raceArmorBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
+        CharacterAttributesResolver characterAttributesResolver,
         PlayerRepository playerRepository,
         RoomService roomService,
         TellService tellService,
@@ -78,6 +80,7 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
         Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
+        Objects.requireNonNull(characterAttributesResolver, "Character attributes resolver is required");
         Objects.requireNonNull(playerRepository, "Player repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(tellService, "Tell service is required");
@@ -121,7 +124,7 @@ public class SocketCommandRegistry {
         new RankCommand(registry, playerRepository);
         new ReputationCommand(registry, reputationService);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            roomService, weatherEngine);
+            characterAttributesResolver, roomService, weatherEngine);
         new AchievementsCommand(registry);
         new AbilityCommand(registry);
         new CastCommand(registry);

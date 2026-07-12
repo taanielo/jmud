@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 
+import io.taanielo.jmud.core.character.CharacterAttributes;
+import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
@@ -28,6 +30,7 @@ public class ScoreCommand extends RegistrableCommand {
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final RaceArmorBonusResolver raceArmorBonusResolver;
     private final ClassArmorBonusResolver classArmorBonusResolver;
+    private final CharacterAttributesResolver characterAttributesResolver;
     private final LightingService lightingService = new LightingService();
     private final @Nullable RoomService roomService;
     private final @Nullable WeatherEngine weatherEngine;
@@ -35,40 +38,47 @@ public class ScoreCommand extends RegistrableCommand {
     /**
      * Creates a ScoreCommand that computes AC from the given resolvers, with no weather line.
      *
-     * @param registry                the command registry to register with
-     * @param equipmentArmorResolver  resolver for AC contributed by equipped armour items
-     * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
-     * @param classArmorBonusResolver resolver for AC contributed by the player's class
-     */
-    public ScoreCommand(
-            SocketCommandRegistry registry,
-            EquipmentArmorResolver equipmentArmorResolver,
-            RaceArmorBonusResolver raceArmorBonusResolver,
-            ClassArmorBonusResolver classArmorBonusResolver) {
-        this(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, null, null);
-    }
-
-    /**
-     * Creates a ScoreCommand that also shows a weather visibility line for the player's room.
-     *
-     * @param registry                the command registry to register with
-     * @param equipmentArmorResolver  resolver for AC contributed by equipped armour items
-     * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
-     * @param classArmorBonusResolver resolver for AC contributed by the player's class
-     * @param roomService             service used to resolve the player's current room; may be null
-     * @param weatherEngine           weather source used for the visibility line; may be null
+     * @param registry                    the command registry to register with
+     * @param equipmentArmorResolver      resolver for AC contributed by equipped armour items
+     * @param raceArmorBonusResolver      resolver for AC contributed by the player's race
+     * @param classArmorBonusResolver     resolver for AC contributed by the player's class
+     * @param characterAttributesResolver resolver for the player's derived core attributes
      */
     public ScoreCommand(
             SocketCommandRegistry registry,
             EquipmentArmorResolver equipmentArmorResolver,
             RaceArmorBonusResolver raceArmorBonusResolver,
             ClassArmorBonusResolver classArmorBonusResolver,
+            CharacterAttributesResolver characterAttributesResolver) {
+        this(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
+            characterAttributesResolver, null, null);
+    }
+
+    /**
+     * Creates a ScoreCommand that also shows a weather visibility line for the player's room.
+     *
+     * @param registry                    the command registry to register with
+     * @param equipmentArmorResolver      resolver for AC contributed by equipped armour items
+     * @param raceArmorBonusResolver      resolver for AC contributed by the player's race
+     * @param classArmorBonusResolver     resolver for AC contributed by the player's class
+     * @param characterAttributesResolver resolver for the player's derived core attributes
+     * @param roomService                 service used to resolve the player's current room; may be null
+     * @param weatherEngine               weather source used for the visibility line; may be null
+     */
+    public ScoreCommand(
+            SocketCommandRegistry registry,
+            EquipmentArmorResolver equipmentArmorResolver,
+            RaceArmorBonusResolver raceArmorBonusResolver,
+            ClassArmorBonusResolver classArmorBonusResolver,
+            CharacterAttributesResolver characterAttributesResolver,
             @Nullable RoomService roomService,
             @Nullable WeatherEngine weatherEngine) {
         super(registry);
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "EquipmentArmorResolver is required");
         this.raceArmorBonusResolver = Objects.requireNonNull(raceArmorBonusResolver, "RaceArmorBonusResolver is required");
         this.classArmorBonusResolver = Objects.requireNonNull(classArmorBonusResolver, "ClassArmorBonusResolver is required");
+        this.characterAttributesResolver =
+            Objects.requireNonNull(characterAttributesResolver, "CharacterAttributesResolver is required");
         this.roomService = roomService;
         this.weatherEngine = weatherEngine;
     }
@@ -122,6 +132,10 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("HP    : %d / %d", vitals.hp(), vitals.maxHp()));
         context.writeLineSafe(String.format("Mana  : %d / %d", vitals.mana(), vitals.maxMana()));
         context.writeLineSafe(String.format("Move  : %d / %d", vitals.move(), vitals.maxMove()));
+        CharacterAttributes attributes =
+            characterAttributesResolver.resolve(player.getRace(), player.getClassId(), level);
+        context.writeLineSafe(String.format("Attrs : STR %d  INT %d  WIS %d  AGI %d",
+            attributes.strength(), attributes.intellect(), attributes.wisdom(), attributes.agility()));
         if (player.isMounted()) {
             context.writeLineSafe(String.format("Mount : riding %s (-%d move/step)",
                 player.mount().mountName(), player.mount().moveDiscount()));

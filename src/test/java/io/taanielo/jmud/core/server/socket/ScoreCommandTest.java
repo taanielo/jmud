@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
@@ -234,7 +235,8 @@ class ScoreCommandTest {
             EquipmentArmorResolver equipmentResolver,
             RaceArmorBonusResolver raceResolver,
             ClassArmorBonusResolver classResolver) {
-        return new ScoreCommand(new SocketCommandRegistry(), equipmentResolver, raceResolver, classResolver);
+        return new ScoreCommand(new SocketCommandRegistry(), equipmentResolver, raceResolver, classResolver,
+            CharacterAttributesResolver.baselineOnly());
     }
 
     private Player makePlayer(PlayerEquipment equipment) {

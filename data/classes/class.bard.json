@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "bard",
   "name": "Bard",
   "healing": {
@@ -7,6 +7,8 @@
   },
   "carry_bonus": 4,
   "level_gains": { "hp": 7, "mana": 8, "move": 3 },
+  "attribute_bonuses": { "agi": 1, "int": 1, "wis": 1 },
+  "attribute_gains": { "agi": "every_2_levels", "int": "every_3_levels" },
   "ability_ids": ["spell.battle-hymn", "spell.discord"],
   "trainable_ability_ids": ["spell.haste", "spell.bless"],
   "description": "A support caster who turns the tide with song. Bards buff allies with battle hymn and weaken foes with discord, later learning haste; they shine in a group but are fragile on their own."
