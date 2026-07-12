@@ -32,7 +32,7 @@ See also: `readme.md` for prerequisites and configuration key reference.
 ./gradlew run
 
 # Pass CLI args (port overrides, etc.)
-./gradlew run --args="--telnet-port 4444 --ssh-port 2222"
+./gradlew run --args="--telnet-port 4444 --ssh-port 2222 --ws-port 8080"
 
 # Pass JVM system-property overrides alongside Gradle run
 ./gradlew run -Djmud.tick.interval.ms=500
@@ -130,6 +130,20 @@ Configuration has three layers, applied in this precedence order (highest first)
 | Telnet enabled | `--telnet-enabled <bool>` | `JMUD_TELNET_ENABLED` | `true` |
 | SSH port | `--ssh-port <n>` | `JMUD_SSH_PORT` | `2222` |
 | SSH host | `--ssh-host <h>` | `JMUD_SSH_HOST` | `0.0.0.0` |
+| WebSocket port | `--ws-port <n>` | `JMUD_WS_PORT` | `8080` |
+| WebSocket host | `--ws-host <h>` | `JMUD_WS_HOST` | `127.0.0.1` |
+| WebSocket enabled | `--ws-enabled <bool>` | `JMUD_WS_ENABLED` | `true` |
+| WebSocket allowed origins | `--ws-allowed-origins <csv>` | `JMUD_WS_ALLOWED_ORIGINS` | *(unset → permissive)* |
+
+The WebSocket endpoint (issue #526) serves a browser client the same game, login
+flow and single-writer tick model as telnet — only the wire framing differs
+(RFC 6455 text frames; no telnet control bytes). It binds to loopback by default,
+exactly like telnet, and speaks plain `ws://`, which is **unencrypted**. For a
+public deployment, terminate TLS (`wss://`) at a reverse proxy (nginx/Caddy) in
+front of jmud and restrict the browser `Origin` with `--ws-allowed-origins`
+(comma-separated); leaving it unset is permissive and appropriate only for the
+loopback-bound default. Password masking is handled by the browser client, so the
+transport never emits telnet IAC echo-control bytes.
 
 ### `jmud.properties` keys (select important ones)
 
