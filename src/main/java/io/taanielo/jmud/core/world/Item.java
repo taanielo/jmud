@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 
 import lombok.Value;
@@ -107,7 +110,18 @@ public class Item {
      * {@link Durability}, {@link RarityProfile} and {@link Identification} value objects), while the
      * persistence layer ({@link io.taanielo.jmud.core.world.dto.ItemMapper}) maps the flat DTO fields
      * onto that builder. Keeping the flat layout here preserves the getter-based read API and keeps
-     * this domain type free of JSON-infrastructure annotations (AGENTS.md §3.2).
+     * this domain type's flat read API stable.
+     *
+     * <p>This constructor is also the Jackson {@link JsonCreator} used when an {@code Item} is
+     * embedded directly inside another aggregate's JSON — notably a {@link
+     * io.taanielo.jmud.core.player.Player Player}'s {@code inventory}/{@code equipment} and auction
+     * listings, both of which round-trip the whole {@code Item} rather than a {@code data/items/*}
+     * id reference. The {@link com.fasterxml.jackson.annotation.JsonProperty} names mirror the
+     * Lombok getter property names so serialization and deserialization are symmetric; the
+     * canonical {@link io.taanielo.jmud.core.world.dto.ItemMapper}/{@code ItemDto} path for
+     * {@code data/items/*.json} is unaffected (that uses a separate DTO type). Sibling value objects
+     * in this package (e.g. {@link ItemId}, {@code ItemAttributes}) already carry the same Jackson
+     * annotations.
      *
      * @param containerCapacity max slots when this item is a container, or {@code null} for a
      *                          normal item; must be positive when present
@@ -132,29 +146,30 @@ public class Item {
      * @param mountMoveDiscount the per-step move-point discount granted while ridden, or {@code null}
      *                          for a non-mount item; must be positive when present
      */
+    @JsonCreator
     private Item(
-        ItemId id,
-        String name,
-        String description,
-        ItemAttributes attributes,
-        List<ItemEffect> effects,
-        List<MessageSpec> messages,
-        EquipmentSlot equipSlot,
-        int weight,
-        int value,
-        AttackId attackRef,
-        AbilityId teachesAbilityRef,
-        Integer containerCapacity,
-        List<Item> containedItems,
-        @Nullable Integer lightRadius,
-        @Nullable Integer maxDurability,
-        @Nullable Integer durability,
-        @Nullable Rarity rarity,
-        @Nullable List<AffixId> affixes,
-        @Nullable Boolean identified,
-        @Nullable Boolean locked,
-        @Nullable Boolean twoHanded,
-        @Nullable Integer mountMoveDiscount
+        @JsonProperty("id") ItemId id,
+        @JsonProperty("name") String name,
+        @JsonProperty("description") String description,
+        @JsonProperty("attributes") ItemAttributes attributes,
+        @JsonProperty("effects") List<ItemEffect> effects,
+        @JsonProperty("messages") List<MessageSpec> messages,
+        @JsonProperty("equipSlot") EquipmentSlot equipSlot,
+        @JsonProperty("weight") int weight,
+        @JsonProperty("value") int value,
+        @JsonProperty("attackRef") AttackId attackRef,
+        @JsonProperty("teachesAbilityRef") AbilityId teachesAbilityRef,
+        @JsonProperty("containerCapacity") Integer containerCapacity,
+        @JsonProperty("containedItems") List<Item> containedItems,
+        @JsonProperty("lightRadius") @Nullable Integer lightRadius,
+        @JsonProperty("maxDurability") @Nullable Integer maxDurability,
+        @JsonProperty("durability") @Nullable Integer durability,
+        @JsonProperty("rarity") @Nullable Rarity rarity,
+        @JsonProperty("affixes") @Nullable List<AffixId> affixes,
+        @JsonProperty("identified") @Nullable Boolean identified,
+        @JsonProperty("locked") @Nullable Boolean locked,
+        @JsonProperty("twoHanded") @Nullable Boolean twoHanded,
+        @JsonProperty("mountMoveDiscount") @Nullable Integer mountMoveDiscount
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -410,6 +425,7 @@ public class Item {
     /**
      * Returns whether this item is a container that can hold other items.
      */
+    @JsonIgnore
     public boolean isContainer() {
         return containerCapacity != null;
     }
@@ -418,6 +434,7 @@ public class Item {
      * Returns whether this item emits light while carried (i.e. has a positive
      * {@link #lightRadius}), letting its carrier see in dark rooms.
      */
+    @JsonIgnore
     public boolean isLightSource() {
         return lightRadius != null && lightRadius > 0;
     }
@@ -448,6 +465,7 @@ public class Item {
     /**
      * Returns whether this container is full (always {@code false} for non-containers).
      */
+    @JsonIgnore
     public boolean isFull() {
         return isContainer() && containedItems.size() >= containerCapacity;
     }
@@ -513,6 +531,7 @@ public class Item {
      * Returns whether this item tracks durability (i.e. has a positive {@link #maxDurability}) and
      * can therefore wear down and break. Unbreakable items always return {@code false}.
      */
+    @JsonIgnore
     public boolean isBreakable() {
         return maxDurability != null;
     }
@@ -521,6 +540,7 @@ public class Item {
      * Returns whether this item is broken, i.e. it is breakable and its current {@link #durability}
      * has reached {@code 0}. Broken items are unusable in combat until repaired.
      */
+    @JsonIgnore
     public boolean isBroken() {
         return maxDurability != null && durability != null && durability <= 0;
     }
@@ -610,6 +630,7 @@ public class Item {
      *
      * @return {@code true} when the item has an equipment slot
      */
+    @JsonIgnore
     public boolean isEquippable() {
         return equipSlot != null;
     }
@@ -621,6 +642,7 @@ public class Item {
      *
      * @return {@code true} when the item is a mount
      */
+    @JsonIgnore
     public boolean isMount() {
         return mountMoveDiscount != null && mountMoveDiscount > 0;
     }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,10 @@ public class JsonPlayerRepository implements PlayerRepository {
     public JsonPlayerRepository(Path dataRoot) {
         this.objectMapper = new ObjectMapper();
         this.objectMapper.findAndRegisterModules();
+        // Tolerate unknown properties on read so that legacy saves — including ones written before
+        // Item's computed is*() helpers were @JsonIgnore'd, which serialized extra boolean fields
+        // (container, breakable, ...) into embedded inventory items — still load cleanly.
+        this.objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         this.playersDirPath = Objects.requireNonNull(dataRoot, "Data root is required").resolve(PLAYERS_DIR);
         if (!Files.exists(playersDirPath)) {
             try {

@@ -36,6 +36,7 @@ import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
+import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
 
 class JsonPlayerRepositoryTest {
 
@@ -365,10 +366,11 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
-    void savesBankedItemsToJsonFile() throws Exception {
-        // The player mapper cannot re-hydrate raw Item objects (Item has no Jackson creator — the
-        // same pre-existing limitation that applies to the "inventory" field), so we assert on the
-        // persisted write path: the vault is serialised alongside inventory under "bankedItems".
+    void savesAndLoadsBankedItems() throws Exception {
+        // Item is embedded directly (no ItemDto wrapper) in the player's bankedItems, so this
+        // exercises Item's @JsonCreator round-trip. Regression guard for issue #519: before Item
+        // gained a Jackson creator, a saved vault holding an item failed to reload and the whole
+        // player fell back to re-creation.
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("vaulter"), Password.hash("pw", 1));
         Item trophy = Item.builder(
@@ -384,6 +386,40 @@ class JsonPlayerRepositoryTest {
         JsonNode banked = root.get("bankedItems");
         assertTrue(banked.isArray() && banked.size() == 1, "vault should be persisted under bankedItems");
         assertEquals("a dragon trophy", banked.get(0).get("name").asText());
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+        assertTrue(loaded.isPresent());
+        assertEquals(1, loaded.get().getBankedItems().size(), "banked item should reload");
+        assertEquals("a dragon trophy", loaded.get().getBankedItems().getFirst().getName());
+    }
+
+    @Test
+    void savesAndLoadsNonEmptyInventory() throws Exception {
+        // Regression guard for issue #519: the newbie kit made every fresh character save with a
+        // non-empty inventory (bread + waterskin), which was the first codepath to round-trip real
+        // Item objects embedded in a Player. It failed to reload until Item gained a @JsonCreator.
+        // Uses the real bread/water item data so nested ItemAttributes/MessageSpec also round-trip.
+        JsonItemRepository items = new JsonItemRepository(Path.of("data"));
+        Item bread = items.findById(ItemId.of("bread")).orElseThrow();
+        Item water = items.findById(ItemId.of("water")).orElseThrow();
+
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("kitted"), Password.hash("pw", 1));
+        Player player = Player.of(user, "%hp> ").withGold(40).addItem(bread).addItem(water);
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent(), "a player with a non-empty inventory must reload, not fall back to re-creation");
+        assertEquals(40, loaded.get().getGold());
+        List<Item> inventory = loaded.get().getInventory();
+        assertEquals(2, inventory.size(), "both starter provisions must survive the round-trip");
+        assertTrue(inventory.stream().anyMatch(i -> i.getId().equals(ItemId.of("bread"))), "bread should reload");
+        assertTrue(inventory.stream().anyMatch(i -> i.getId().equals(ItemId.of("water"))), "water should reload");
+        Item reloadedBread = inventory.stream().filter(i -> i.getId().equals(ItemId.of("bread"))).findFirst().orElseThrow();
+        assertEquals(bread.getName(), reloadedBread.getName(), "item name should round-trip");
+        assertEquals(30, reloadedBread.getAttributes().getStats().getOrDefault("hunger", 0),
+            "nested item attributes should round-trip");
     }
 
     @Test
