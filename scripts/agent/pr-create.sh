@@ -29,7 +29,7 @@ BRANCH="$(git branch --show-current)"
 #    defensively anyway — runtime state must never be committed.
 #    TODO.md is included so the code-writer's "mark the TODO line done" edit
 #    ships inside the feature PR instead of lingering unstaged.
-for p in src data effects docs scripts build.gradle settings.gradle gradle TODO.md SETUP.md readme.md .claude/agents .claude/commands; do
+for p in src data effects docs scripts web build.gradle settings.gradle gradle TODO.md SETUP.md readme.md .claude/agents .claude/commands; do
     [ -e "$p" ] && run git add -- "$p"
 done
 git reset -q -- .orchestrator 2>/dev/null || true
