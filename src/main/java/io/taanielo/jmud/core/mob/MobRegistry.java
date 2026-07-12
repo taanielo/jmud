@@ -491,6 +491,73 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     }
 
     /**
+     * Processes an {@code ASSIST} command: engages the assisting player in combat against the mob the
+     * named target player is currently fighting, reusing the same per-tick auto-attack engagement as
+     * {@link #processPlayerAttack} (the assister begins striking the shared target on the next tick).
+     *
+     * <p>The target player is resolved by (case-insensitive) name among the players in {@code roomId};
+     * their active combat target is read from the existing {@code playerCombatTargets} map. The assist
+     * fails — with no state change — when the named player is not present in the room, is the assister
+     * themselves, or is not currently engaged with a live mob in that room (e.g. the mob already died).
+     * No new engagement state is introduced: this is a thin entry point onto the existing mechanism.
+     * Runs entirely on the tick thread via the assister's command queue (AGENTS.md §5).
+     *
+     * @param assister         the player joining the fight
+     * @param targetPlayerName the name of the player to assist (matched among players in the room)
+     * @param roomId           the assister's current room
+     * @return result with a confirmation message on success, or an error with no state change
+     */
+    public GameActionResult processPlayerAssist(Player assister, String targetPlayerName, RoomId roomId) {
+        Objects.requireNonNull(assister, "Assister is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (targetPlayerName == null || targetPlayerName.isBlank()) {
+            return GameActionResult.error("Assist whom?");
+        }
+        if (assister.isDead()) {
+            return GameActionResult.error("You cannot do that while dead.");
+        }
+        if (encumbranceService != null && encumbranceService.isOverburdened(assister)) {
+            return GameActionResult.error("You are carrying too much to do that.");
+        }
+        String trimmedName = targetPlayerName.trim();
+        Username target = findPlayerInRoom(trimmedName, roomId);
+        if (target == null) {
+            return GameActionResult.error("You don't see " + trimmedName + " here.");
+        }
+        if (target.equals(assister.getUsername())) {
+            return GameActionResult.error("You cannot assist yourself.");
+        }
+        UUID mobId = playerCombatTargets.get(target);
+        MobInstance mob = mobId == null ? null : instances.get(mobId);
+        if (mob == null || !mob.isAlive() || !mob.roomId().equals(roomId)) {
+            return GameActionResult.error(target.getValue() + " is not fighting anyone.");
+        }
+        mob.engage(assister.getUsername());
+        playerCombatTargets.put(assister.getUsername(), mob.instanceId());
+        return new GameActionResult(null, null, List.of(GameMessage.toSource(
+            "You join the fight against the " + mob.template().name() + "!")));
+    }
+
+    /**
+     * Finds the {@link Username} of a player currently in {@code roomId} whose name matches
+     * {@code name} case-insensitively (usernames compare case-insensitively), or {@code null} when no
+     * such player is present.
+     *
+     * @param name   the raw player-name input
+     * @param roomId the room to search
+     * @return the matching in-room username, or {@code null}
+     */
+    private Username findPlayerInRoom(String name, RoomId roomId) {
+        Username lookup = Username.of(name);
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(lookup)) {
+                return occupant;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Applies the shared post-kill rewards when a player's attack (melee or ranged) drops a mob:
      * loot drops, respawn scheduling, combat teardown, party-split XP, gold, quest-kill credit, and
      * level-up notifications. Appends the attacker-facing messages to {@code messages} and publishes
