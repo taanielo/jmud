@@ -2315,20 +2315,33 @@ public class GameActionService {
         }
         RoomService.LookResult look = roomService.look(target.getUsername());
         Room room = look.room();
-        int droppedGold = target.getGold();
-        Player deadTarget = target.withGold(0).die();
 
-        List<GameMessage> messages = buildDeathMessages(attacker, deadTarget);
-
-        if (room != null) {
-            roomService.spawnCorpse(deadTarget.getUsername(), room.getId(), droppedGold);
+        // Newbie death grace: low-level characters keep all gold and items instead of dropping a
+        // corpse, sparing them the corpse-run death spiral (see issue #520). At or above the grace
+        // level the classic corpse-drop behaviour applies.
+        boolean graceProtected = DeathSettings.isGraceProtected(target.getLevel());
+        boolean corpseSpawned = false;
+        Player deadTarget;
+        if (graceProtected) {
+            deadTarget = target.die();
+        } else {
+            int droppedGold = target.getGold();
+            deadTarget = target.withGold(0).die();
+            if (room != null) {
+                roomService.spawnCorpse(deadTarget.getUsername(), room.getId(), droppedGold);
+                corpseSpawned = true;
+            }
         }
+
+        List<GameMessage> messages = buildDeathMessages(attacker, deadTarget, graceProtected, corpseSpawned, room);
+
         roomService.clearPlayerLocation(deadTarget.getUsername());
 
         return new GameActionResult(null, deadTarget, messages);
     }
 
-    private List<GameMessage> buildDeathMessages(Player attacker, Player deadTarget) {
+    private List<GameMessage> buildDeathMessages(
+            Player attacker, Player deadTarget, boolean graceProtected, boolean corpseSpawned, Room room) {
         List<GameMessage> messages = new ArrayList<>();
         String targetName = deadTarget.getUsername().getValue();
 
@@ -2336,6 +2349,17 @@ public class GameActionService {
         messages.add(GameMessage.toPlayer(
             deadTarget.getUsername(),
             "You will awaken in the " + io.taanielo.jmud.core.player.DeathSettings.RESPAWN_ROOM_ID + "."));
+        if (graceProtected) {
+            messages.add(GameMessage.toPlayer(
+                deadTarget.getUsername(),
+                "You keep your belongings - for now."));
+        } else if (corpseSpawned) {
+            String where = room != null ? room.getName() : "where you fell";
+            messages.add(GameMessage.toPlayer(
+                deadTarget.getUsername(),
+                "Your corpse lies in " + where + ", holding your gold and items. "
+                    + "Return to loot it before it decays."));
+        }
 
         if (attacker == null) {
             messages.add(GameMessage.toRoom(
