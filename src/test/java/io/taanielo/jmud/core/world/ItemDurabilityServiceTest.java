@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Locale;
+
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Password;
@@ -165,5 +167,61 @@ class ItemDurabilityServiceTest {
         ItemDurabilityService.RepairOutcome outcome = service.repair(player, "iron sword");
         assertFalse(outcome.success());
         assertTrue(outcome.message().contains("not carrying"));
+    }
+
+    private static Item namedSword(String id, int value, int maxDurability, Integer durability) {
+        return Item.builder(ItemId.of(id), id, "A blade.", ItemAttributes.empty())
+            .equipSlot(EquipmentSlot.WEAPON)
+            .weight(5)
+            .value(value)
+            .durability(Durability.of(maxDurability, durability))
+            .build();
+    }
+
+    @Test
+    void repairAllRepairsEveryDamagedItemAndChargesSum() {
+        Player player = Player.of(
+            User.of(Username.of("hero"), Password.hash("pw", 1000)), "prompt")
+            .addItem(namedSword("sword-a", 100, 50, 25)) // cost 5
+            .addItem(namedSword("sword-b", 100, 50, 40)) // cost 2
+            .addItem(unbreakable())
+            .withGold(100);
+
+        ItemDurabilityService.RepairOutcome outcome = service.repairAll(player);
+
+        assertTrue(outcome.success());
+        assertEquals(93, outcome.updatedPlayer().getGold(), "charged 5 + 2 = 7 gold");
+        for (Item item : outcome.updatedPlayer().getInventory()) {
+            if (item.isBreakable()) {
+                assertEquals(item.getMaxDurability(), item.getDurability());
+            }
+        }
+    }
+
+    @Test
+    void repairAllRepairsCheapestFirstWhenGoldLimited() {
+        Player player = Player.of(
+            User.of(Username.of("hero"), Password.hash("pw", 1000)), "prompt")
+            .addItem(namedSword("sword-a", 100, 50, 25)) // cost 5
+            .addItem(namedSword("sword-b", 100, 50, 40)) // cost 2
+            .withGold(3);
+
+        ItemDurabilityService.RepairOutcome outcome = service.repairAll(player);
+
+        assertTrue(outcome.success());
+        assertEquals(1, outcome.updatedPlayer().getGold(), "only the 2-gold repair is affordable");
+        // Cheapest item (sword-b, index 1) is fully repaired; sword-a is untouched.
+        assertEquals(50, outcome.updatedPlayer().getInventory().get(1).getDurability());
+        assertEquals(25, outcome.updatedPlayer().getInventory().get(0).getDurability());
+        assertTrue(outcome.message().contains("sword-a"), "lists the item still needing repair");
+        assertTrue(outcome.message().contains("more gold"));
+    }
+
+    @Test
+    void repairAllReportsNothingToRepairAndChangesNothing() {
+        Player player = playerWithEquippedSword(sword(50, 50), 100);
+        ItemDurabilityService.RepairOutcome outcome = service.repairAll(player);
+        assertFalse(outcome.success());
+        assertTrue(outcome.message().toLowerCase(Locale.ROOT).contains("nothing"));
     }
 }

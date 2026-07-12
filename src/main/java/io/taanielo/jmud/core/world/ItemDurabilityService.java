@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.world;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -195,6 +196,89 @@ public class ItemDurabilityService {
                 + "You now have " + repaired.getGold() + " gold.",
             repaired);
     }
+
+    /**
+     * Repairs every breakable, damaged item the player is carrying in a single batch, charging the
+     * summed gold cost. Items are repaired cheapest-first; if the player cannot afford to fix
+     * everything, as many items as their gold allows are repaired (never partially into an item — an
+     * item is either fully repaired or untouched) and the outcome message lists the items still
+     * needing repair plus the additional gold required to finish them.
+     *
+     * <p>Like the rest of this service, this is a pure function over the immutable {@link Player} value
+     * — it returns a new player snapshot and never mutates in place. The caller applies the returned
+     * copy on the tick thread (AGENTS.md §5).
+     *
+     * @param player the player requesting a batch repair
+     * @return the outcome; a failure with an unchanged player when nothing needs repairing, otherwise
+     *         a success carrying the player with the affordable items repaired and gold deducted
+     */
+    public RepairOutcome repairAll(Player player) {
+        Objects.requireNonNull(player, "Player is required");
+        List<Item> inventory = player.getInventory();
+        List<Repairable> repairables = new ArrayList<>();
+        for (int i = 0; i < inventory.size(); i++) {
+            Item item = inventory.get(i);
+            if (!item.isBreakable()) {
+                continue;
+            }
+            int cost = calculateRepairCost(item);
+            if (cost <= 0) {
+                continue;
+            }
+            repairables.add(new Repairable(i, item, cost));
+        }
+        if (repairables.isEmpty()) {
+            return RepairOutcome.failure("You have nothing that needs repairing.");
+        }
+        repairables.sort(Comparator.comparingInt(Repairable::cost));
+
+        List<Item> updated = new ArrayList<>(inventory);
+        int gold = player.getGold();
+        int spent = 0;
+        List<String> repaired = new ArrayList<>();
+        List<String> unrepaired = new ArrayList<>();
+        int shortfall = 0;
+        for (Repairable r : repairables) {
+            if (spent + r.cost() <= gold) {
+                updated.set(r.index(), repair(r.item()));
+                spent += r.cost();
+                repaired.add(r.item().getName());
+            } else {
+                unrepaired.add(r.item().getName());
+                shortfall += r.cost();
+            }
+        }
+
+        Player repairedPlayer = player.withInventory(updated).addGold(-spent);
+        StringBuilder message = new StringBuilder();
+        message.append("The blacksmith repairs ")
+            .append(repaired.size())
+            .append(repaired.size() == 1 ? " item (" : " items (")
+            .append(String.join(", ", repaired))
+            .append(") for ")
+            .append(spent)
+            .append(" gold. ");
+        if (!unrepaired.isEmpty()) {
+            int extraNeeded = shortfall - (gold - spent);
+            message.append("You still need ")
+                .append(extraNeeded)
+                .append(" more gold to repair: ")
+                .append(String.join(", ", unrepaired))
+                .append(". ");
+        }
+        message.append("You now have ").append(repairedPlayer.getGold()).append(" gold.");
+        return RepairOutcome.success(message.toString(), repairedPlayer);
+    }
+
+    /**
+     * A carried, breakable, damaged item paired with its inventory position and repair cost, used to
+     * sort and process a batch {@link #repairAll(Player)} cheapest-first.
+     *
+     * @param index the item's position in the player's inventory list
+     * @param item  the damaged item
+     * @param cost  the gold cost to fully repair it
+     */
+    private record Repairable(int index, Item item, int cost) {}
 
     /**
      * Result of {@link #degradeEquipped(Player)}: the updated player and any player-facing messages.

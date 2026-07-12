@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.server.socket;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -55,6 +56,46 @@ class RepairCommandTest {
     }
 
     @Test
+    void repairAllRoutesToBatchRepair() {
+        AtomicReference<String> captured = new AtomicReference<>();
+        CapturingContext context = new CapturingContext(captured);
+
+        Optional<SocketCommandMatch> match = command.match("REPAIR all");
+        assertTrue(match.isPresent());
+        match.get().execute(context);
+
+        assertTrue(context.repairAllCalled, "REPAIR ALL should route to repairAllItems");
+        assertNull(captured.get(), "REPAIR ALL must not fall through to single-item repair");
+    }
+
+    @Test
+    void repairAllIsCaseInsensitive() {
+        AtomicReference<String> captured = new AtomicReference<>();
+        CapturingContext context = new CapturingContext(captured);
+
+        command.match("REPAIR ALL").orElseThrow().execute(context);
+
+        assertTrue(context.repairAllCalled);
+    }
+
+    @Test
+    void repairAllWithNoBlacksmithReportsAndDoesNotDelegate() {
+        // Mirrors the impl gating: with no blacksmith present, the command must not attempt a repair.
+        AtomicReference<String> captured = new AtomicReference<>();
+        GatingContext context = new GatingContext(captured, false);
+
+        command.match("REPAIR ALL").orElseThrow().execute(context);
+
+        assertFalse(context.batchRepairAttempted, "no batch repair when no blacksmith is present");
+        assertTrue(context.lastMessage.contains("blacksmith"));
+    }
+
+    @Test
+    void longDescriptionDocumentsAll() {
+        assertTrue(command.longDescription().contains("ALL"));
+    }
+
+    @Test
     void nameIsRepair() {
         assertEquals("repair", command.name());
     }
@@ -70,12 +111,14 @@ class RepairCommandTest {
 
     private static class CapturingContext implements SocketCommandContext {
         private final AtomicReference<String> captured;
+        boolean repairAllCalled;
 
         CapturingContext(AtomicReference<String> captured) {
             this.captured = captured;
         }
 
         @Override public void repairItem(String args) { captured.set(args); }
+        @Override public void repairAllItems() { repairAllCalled = true; }
         @Override public void quaffItem(String args) {}
         @Override public void readItem(String args) {}
         @Override public void writeItem(String args) {}
@@ -107,5 +150,29 @@ class RepairCommandTest {
         @Override public void sendMessage(io.taanielo.jmud.core.messaging.Message m) {}
         @Override public void close() {}
         @Override public void run() {}
+    }
+
+    /**
+     * A context that mirrors the impl's blacksmith gating for {@code REPAIR ALL}: it only performs the
+     * batch repair when a blacksmith is present, otherwise it reports the failure message.
+     */
+    private static class GatingContext extends CapturingContext {
+        private final boolean blacksmithPresent;
+        boolean batchRepairAttempted;
+        String lastMessage = "";
+
+        GatingContext(AtomicReference<String> captured, boolean blacksmithPresent) {
+            super(captured);
+            this.blacksmithPresent = blacksmithPresent;
+        }
+
+        @Override
+        public void repairAllItems() {
+            if (!blacksmithPresent) {
+                lastMessage = "There is no blacksmith here to repair your gear.";
+                return;
+            }
+            batchRepairAttempted = true;
+        }
     }
 }

@@ -2679,6 +2679,34 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void repairAllItems() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to repair items.");
+            return;
+        }
+        if (context.itemDurabilityService() == null) {
+            writeLineWithPrompt("There is no blacksmith here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isBlacksmithPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no blacksmith here to repair your gear.");
+            return;
+        }
+        ItemDurabilityService.RepairOutcome outcome =
+            context.itemDurabilityService().repairAll(player);
+        if (outcome.success()) {
+            session.replacePlayer(outcome.updatedPlayer());
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
     public void craft(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to craft items.");

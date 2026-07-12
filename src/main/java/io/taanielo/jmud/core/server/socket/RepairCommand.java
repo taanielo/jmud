@@ -26,9 +26,13 @@ public class RepairCommand extends RegistrableCommand {
     public String longDescription() {
         return """
                Usage: REPAIR <item name>
+                      REPAIR ALL
                  Asks the blacksmith in the current room to restore the named item to full
                  durability. The cost scales with the item's value and how damaged it is. You
-                 must be carrying the item and have enough gold.\
+                 must be carrying the item and have enough gold.
+                 REPAIR ALL fixes every damaged item you are carrying in one call, cheapest
+                 first; if you cannot afford them all it repairs as many as your gold allows and
+                 lists the rest.\
                """;
     }
 
@@ -39,6 +43,9 @@ public class RepairCommand extends RegistrableCommand {
             return Optional.empty();
         }
         String args = parts[1];
+        if ("ALL".equalsIgnoreCase(args.trim())) {
+            return Optional.of(new SocketCommandMatch(this, SocketCommandContext::repairAllItems));
+        }
         return Optional.of(new SocketCommandMatch(this, context -> context.repairItem(args)));
     }
 }
