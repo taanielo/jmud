@@ -1161,6 +1161,56 @@ class GameActionServiceTest {
         assertTrue(result.messages().isEmpty());
     }
 
+    @Test
+    void resolveDeathIfNeededSparesNewbieAndKeepsPossessions() {
+        // Level 1 is below the default grace level (5), so death keeps gold and items — no corpse.
+        Item sword = Item.builder(ItemId.of("newbie-sword"), "a sword", "A sword.", ItemAttributes.empty())
+            .weight(1).value(5).build();
+        Player newbie = deadPlayerWithLoot("target", 1, 50, sword);
+
+        GameActionResult result = service.resolveDeathIfNeeded(newbie, attacker);
+
+        Player dead = result.updatedTarget();
+        assertTrue(dead.isDead());
+        assertEquals(50, dead.getGold(), "newbie keeps gold on death");
+        assertEquals(1, dead.getInventory().size(), "newbie keeps items on death");
+        assertTrue(roomService.findCorpseByOwner("target").isEmpty(), "no corpse spawned for a newbie");
+        assertTrue(
+            result.messages().stream().anyMatch(m -> m.text().equals("You keep your belongings - for now.")),
+            "newbie sees the grace message");
+    }
+
+    @Test
+    void resolveDeathIfNeededDropsCorpseForVeteran() {
+        // Level 5 is at the default grace level, so classic corpse-drop behaviour applies.
+        Item sword = Item.builder(ItemId.of("vet-sword"), "a sword", "A sword.", ItemAttributes.empty())
+            .weight(1).value(5).build();
+        Player veteran = deadPlayerWithLoot("target", 5, 50, sword);
+
+        GameActionResult result = service.resolveDeathIfNeeded(veteran, attacker);
+
+        Player dead = result.updatedTarget();
+        assertTrue(dead.isDead());
+        assertEquals(0, dead.getGold(), "veteran drops gold into corpse");
+        Optional<io.taanielo.jmud.core.world.Corpse> corpse = roomService.findCorpseByOwner("target");
+        assertTrue(corpse.isPresent(), "corpse spawned for a veteran");
+        assertEquals(50, corpse.get().gold(), "corpse holds the dropped gold");
+        assertTrue(
+            result.messages().stream().anyMatch(m -> m.text().contains("Your corpse lies in")),
+            "veteran sees the corpse explanation message");
+    }
+
+    private Player deadPlayerWithLoot(String username, int level, int gold, Item item) {
+        PlayerVitals zeroHp = new PlayerVitals(0, 20, 20, 20, 20, 20);
+        return new Player(
+            User.of(Username.of(username), Password.hash("pw", 1000)),
+            level, 0L, zeroHp, List.of(), "prompt", false,
+            List.of(), null, null,
+            null, List.of(item), null, gold, null, null, null, null,
+            null, null, null, null, null
+        );
+    }
+
     // ── containers ───────────────────────────────────────────────────────
 
     @Nested
