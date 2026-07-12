@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "darkwood",
+  "name": "Darkwood Wilds",
+  "room_ids": [
+    "darkwood-trail",
+    "tangled-undergrowth",
+    "wolf-den",
+    "hunters-clearing",
+    "trolls-hollow",
+    "dark-burrow",
+    "muddy-hollow",
+    "north-dock"
+  ],
+  "connections": [
+    "town",
+    "ruins",
+    "catacombs",
+    "frozen-peaks",
+    "shrouded-isle"
+  ],
+  "ascii_map": [
+    "  ~ ~ ~ DARKWOOD WILDS ~ ~ ~",
+    "",
+    "     Frozen Peaks",
+    "          ^",
+    "          |",
+    " Ruins <-[Hunter's Clearing]-> [Troll's Hollow]",
+    "          |",
+    "  [Tangled Undergrowth]---[Wolf Den]",
+    "          |",
+    "   [Darkwood Trail]---[North Dock] ~~> Shrouded Isle",
+    "          |",
+    "     Town / [Dark Burrow]---[Muddy Hollow]",
+    "               |",
+    "          Catacombs",
+    "",
+    "   Root-choked trails under a black canopy."
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "world-atlas",
+  "name": "World Atlas",
+  "description": "A leather-bound atlas charting every known area of the realm and the roads between them.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 2,
+  "value": 60,
+  "map_area_id": "atlas"
+}

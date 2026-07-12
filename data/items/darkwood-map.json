@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "darkwood-map",
+  "name": "Map of the Darkwood Wilds",
+  "description": "A weathered trail-map of the Darkwood, its paths traced in charcoal between the great trees.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 12,
+  "map_area_id": "darkwood"
+}

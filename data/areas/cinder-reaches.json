@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "cinder-reaches",
+  "name": "Cinder Reaches",
+  "room_ids": [
+    "cinder-reaches-descent",
+    "cinder-reaches-ashfall-chasm",
+    "cinder-reaches-cinder-drifts",
+    "cinder-reaches-slag-galleries",
+    "cinder-reaches-collapsed-foundry",
+    "cinder-reaches-cinder-throne"
+  ],
+  "connections": [
+    "emberdeep"
+  ],
+  "ascii_map": [
+    "   ,.,. CINDER REACHES .,.,",
+    "",
+    "        Emberdeep",
+    "           ^",
+    "           |",
+    "       [Descent]",
+    "           |",
+    "     [Ashfall Chasm]",
+    "           |",
+    "     [Cinder Drifts]---[Slag Galleries]",
+    "           |",
+    "   [Collapsed Foundry]",
+    "           |",
+    "     [Cinder Throne]",
+    "",
+    "   Drifting ash over a dead forge-kingdom,",
+    "   ruled from a throne of slag."
+  ]
+}

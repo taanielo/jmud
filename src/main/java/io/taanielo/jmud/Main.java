@@ -244,14 +244,36 @@ public class Main {
         }
 
         System.out.printf("%n");
-        if (report.clean()) {
-            System.out.printf("Data validation PASSED: %d file(s) across %d domain(s)%n",
-                report.totalFiles(), report.domains().size());
-            return 0;
-        } else {
+        if (!report.clean()) {
             System.out.printf("Data validation FAILED: %d error(s) in %d file(s) scanned%n",
                 report.totalErrors(), report.totalFiles());
             return 1;
         }
+
+        List<String> areaProblems = runAreaConsistencyCheck();
+        if (!areaProblems.isEmpty()) {
+            System.out.printf("  [FAIL] %-12s  %d problem(s)%n", "areas", areaProblems.size());
+            for (String problem : areaProblems) {
+                System.out.printf("         -> %s%n", problem);
+            }
+            System.out.printf("%nData validation FAILED: %d area consistency problem(s)%n", areaProblems.size());
+            return 1;
+        }
+        System.out.printf("  [OK]   %-12s  world areas consistent%n", "areas");
+        System.out.printf("%nData validation PASSED: %d file(s) across %d domain(s)%n",
+            report.totalFiles(), report.domains().size());
+        return 0;
+    }
+
+    /**
+     * Runs the whole-world area consistency check (issue #529): every room assigned to exactly one
+     * area, connections realized by real exits, and every area covered by an obtainable map item.
+     *
+     * @return the list of consistency problems (empty when the world is consistent)
+     */
+    private static List<String> runAreaConsistencyCheck() {
+        ClientPool clientPool = new DefaultClientPool();
+        GameContext context = GameContext.create(clientPool);
+        return context.areaConsistencyChecker().check();
     }
 }

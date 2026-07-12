@@ -24,6 +24,14 @@
     {
       "item_id": "demoncore-cinder",
       "drop_chance": 1.0
+    },
+    {
+      "item_id": "cinder-reaches-map",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
     }
   ],
   "gold_drop": {

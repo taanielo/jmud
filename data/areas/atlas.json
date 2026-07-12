@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "atlas",
+  "name": "The World Atlas",
+  "ascii_map": [
+    "  .=========================================.",
+    "  |            THE KNOWN WORLD             |",
+    "  '========================================='",
+    "",
+    "                        [Frozen Peaks]",
+    "                              |",
+    "                              |",
+    "   [Ruins]---[Darkwood]---[Town]",
+    "               |    |",
+    "               |    '----[Shrouded Isle]",
+    "               |",
+    "          [Catacombs]",
+    "               |",
+    "           [Sewers]",
+    "",
+    "                        [Frozen Peaks]",
+    "                              |",
+    "                        [Emberdeep]",
+    "                              |",
+    "                       [Cinder Reaches]",
+    "",
+    "   Lines mark the roads and passages between",
+    "   the great areas of the realm."
+  ]
+}

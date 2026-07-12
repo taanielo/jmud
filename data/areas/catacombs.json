@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "id": "catacombs",
+  "name": "Sunless Catacombs",
+  "room_ids": [
+    "catacombs-entrance",
+    "ossuary-hall",
+    "burial-alcove",
+    "crypt-corridor",
+    "warden-chamber"
+  ],
+  "connections": [
+    "darkwood",
+    "sewers"
+  ],
+  "ascii_map": [
+    "   +--- SUNLESS CATACOMBS ---+",
+    "",
+    "        Darkwood",
+    "           ^",
+    "           |",
+    "   [Catacombs Entrance]",
+    "           |",
+    "      [Ossuary Hall]---[Burial Alcove]",
+    "           |",
+    "     [Crypt Corridor]",
+    "           |",
+    "     [Warden Chamber]",
+    "           |",
+    "           v",
+    "         Sewers",
+    "",
+    "   Bone-lined halls that swallow every torch."
+  ]
+}

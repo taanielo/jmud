@@ -15,7 +15,7 @@ import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 
-public class InMemoryRoomRepository implements RoomRepository {
+public class InMemoryRoomRepository implements RoomRepository, RoomCatalog {
 
     private final Map<RoomId, Room> rooms;
 
@@ -142,5 +142,10 @@ public class InMemoryRoomRepository implements RoomRepository {
             throw new RepositoryException("Room id is required");
         }
         return Optional.ofNullable(rooms.get(id));
+    }
+
+    @Override
+    public List<Room> findAll() throws RepositoryException {
+        return List.copyOf(rooms.values());
     }
 }

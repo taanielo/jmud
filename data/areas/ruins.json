@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "ruins",
+  "name": "Broken Ruins",
+  "room_ids": [
+    "ruins-gate",
+    "crumbling-courtyard",
+    "collapsed-tower",
+    "bandit-captains-den"
+  ],
+  "connections": [
+    "darkwood"
+  ],
+  "ascii_map": [
+    "   #=#=#  BROKEN RUINS  #=#=#",
+    "",
+    "   Darkwood",
+    "      ^",
+    "      |",
+    "  [Ruins Gate]===[Crumbling Courtyard]",
+    "                    |          \\",
+    "            [Collapsed Tower]  [Bandit Captain's Den]",
+    "",
+    "   Toppled walls where bandits nest in the",
+    "   bones of an old keep."
+  ]
+}

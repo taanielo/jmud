@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "shrouded-isle",
+  "name": "Shrouded Isle",
+  "room_ids": [
+    "coastal-ferry-deck",
+    "south-dock",
+    "shrouded-isle-shore",
+    "shrouded-isle-driftwood-path",
+    "shrouded-isle-cove",
+    "shrouded-isle-shipwreck",
+    "shrouded-isle-lighthouse",
+    "shrouded-isle-lighthouse-summit"
+  ],
+  "connections": [
+    "darkwood"
+  ],
+  "ascii_map": [
+    "   ~~~~ SHROUDED ISLE ~~~~",
+    "",
+    "   Darkwood ~~> [Ferry Deck]",
+    "                     |",
+    "                [South Dock]",
+    "                     |",
+    "                  [Shore]",
+    "                     |",
+    "            [Driftwood Path]---[Cove]",
+    "                     |",
+    "               [Shipwreck]---[Lighthouse]",
+    "                                  |",
+    "                          [Lighthouse Summit]",
+    "",
+    "   A fog-wrapped island of wreck and salt,",
+    "   its old lighthouse still burning."
+  ]
+}

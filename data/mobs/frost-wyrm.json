@@ -16,6 +16,10 @@
     {
       "item_id": "runed-longsword",
       "drop_chance": 0.5
+    },
+    {
+      "item_id": "frozen-peaks-map",
+      "drop_chance": 0.5
     }
   ],
   "gold_drop": {

@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "emberdeep-map",
+  "name": "Map of the Emberdeep",
+  "description": "A soot-smeared map of the Emberdeep's molten shaft, its edges singed black.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 30,
+  "map_area_id": "emberdeep"
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "town-map",
+  "name": "Map of Greystone Town",
+  "description": "A rough sketch of Greystone Town's streets and drill grounds, inked by a local hand.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 10,
+  "map_area_id": "town"
+}

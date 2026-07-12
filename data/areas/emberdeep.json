@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "emberdeep",
+  "name": "The Emberdeep",
+  "room_ids": [
+    "emberdeep-fissure",
+    "emberdeep-obsidian-passage",
+    "emberdeep-magma-flow",
+    "emberdeep-ember-nest",
+    "emberdeep-forge-heart"
+  ],
+  "connections": [
+    "frozen-peaks",
+    "cinder-reaches"
+  ],
+  "ascii_map": [
+    "   *** THE EMBERDEEP ***",
+    "",
+    "        Frozen Peaks",
+    "            ^",
+    "            |",
+    "      [Fissure]",
+    "            |",
+    "   [Obsidian Passage]",
+    "            |",
+    "      [Magma Flow]",
+    "            |",
+    "      [Ember Nest]",
+    "            |",
+    "     [Forge Heart]",
+    "            |",
+    "            v",
+    "       Cinder Reaches",
+    "",
+    "   A molten shaft plunging into the mountain's",
+    "   burning heart."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "sewers",
+  "name": "Undercity Sewers",
+  "room_ids": [
+    "sewers-entrance",
+    "sewers-tunnel",
+    "sewers-cistern"
+  ],
+  "connections": [
+    "catacombs"
+  ],
+  "ascii_map": [
+    "   ===== UNDERCITY SEWERS =====",
+    "",
+    "        Catacombs",
+    "           ^",
+    "           |",
+    "   [Sewers Entrance]===[Sewers Tunnel]",
+    "                             |",
+    "                      [Sewers Cistern]",
+    "",
+    "   Dripping brick tunnels awash with filth,",
+    "   home to rats and worse."
+  ]
+}

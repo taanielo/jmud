@@ -177,9 +177,14 @@ import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.WorldClock;
 import io.taanielo.jmud.core.world.WorldClockSettings;
+import io.taanielo.jmud.core.world.area.AreaConsistencyChecker;
+import io.taanielo.jmud.core.world.area.AreaMapService;
+import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
+import io.taanielo.jmud.core.world.repository.RoomCatalog;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonAffixRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
@@ -248,6 +253,8 @@ public record GameContext(
     DuelService duelService,
     NotesService notesService,
     PlayerSessionRegistry playerSessionRegistry,
+    AreaMapService areaMapService,
+    AreaConsistencyChecker areaConsistencyChecker,
     ShutdownHandle shutdownHandle
 ) {
 
@@ -282,6 +289,10 @@ public record GameContext(
         RoomService roomService = new RoomService(
             playerLocationService, roomItemService, new RoomRenderer(), roomRepository);
         MapService mapService = new MapService(roomRepository);
+        AreaRepository areaRepository = createAreaRepository();
+        AreaMapService areaMapService = new AreaMapService(areaRepository);
+        AreaConsistencyChecker areaConsistencyChecker =
+            createAreaConsistencyChecker(areaRepository, roomRepository, itemRepository);
         MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
 
         TickRegistry tickRegistry = new TickRegistry();
@@ -587,6 +598,8 @@ public record GameContext(
             duelService,
             notesService,
             playerSessionRegistry,
+            areaMapService,
+            areaConsistencyChecker,
             shutdownHandle
         );
     }
@@ -644,6 +657,29 @@ public record GameContext(
             return new JsonRoomRepository(itemRepository);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize room repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static AreaRepository createAreaRepository() {
+        try {
+            return new JsonAreaRepository();
+        } catch (RepositoryException e) {
+            throw new IllegalStateException("Failed to initialize area repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static AreaConsistencyChecker createAreaConsistencyChecker(
+        AreaRepository areaRepository, RoomRepository roomRepository, ItemRepository itemRepository) {
+        try {
+            return new AreaConsistencyChecker(
+                areaRepository,
+                (RoomCatalog) roomRepository,
+                new JsonShopRepository(),
+                new JsonMobTemplateRepository(),
+                itemRepository);
+        } catch (ShopRepositoryException | RepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize area consistency checker: " + e.getMessage(), e);
         }
     }
 

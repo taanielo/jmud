@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "frozen-peaks-map",
+  "name": "Map of the Frozen Peaks",
+  "description": "A climber's map of the Frozen Peaks, the ice-passes drawn in a shaking hand.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 25,
+  "map_area_id": "frozen-peaks"
+}

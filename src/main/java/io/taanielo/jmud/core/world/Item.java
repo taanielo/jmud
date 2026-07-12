@@ -15,6 +15,7 @@ import lombok.Value;
 import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.world.area.AreaId;
 
 @Value
 public class Item {
@@ -102,6 +103,14 @@ public class Item {
      * data (which has no mount_move_discount field) keep working exactly as before.
      */
     @Nullable Integer mountMoveDiscount;
+    /**
+     * Id of the world area whose hand-drawn ASCII map this item renders when READ, or null when the
+     * item is not a map. A map item shows fixed, authored cartography (an area's paths, or the World
+     * Atlas overview) and never the reader's position; see isMap(). Rendering is handled by
+     * AreaMapService. Only non-consumable map items carry this; defaults to null so ordinary items
+     * and legacy item data (which has no map area id field) keep working exactly as before.
+     */
+    @Nullable AreaId mapAreaId;
 
     /**
      * Constructs an item from its flattened field set. This is the single, private canonical
@@ -169,7 +178,8 @@ public class Item {
         @JsonProperty("identified") @Nullable Boolean identified,
         @JsonProperty("locked") @Nullable Boolean locked,
         @JsonProperty("twoHanded") @Nullable Boolean twoHanded,
-        @JsonProperty("mountMoveDiscount") @Nullable Integer mountMoveDiscount
+        @JsonProperty("mountMoveDiscount") @Nullable Integer mountMoveDiscount,
+        @JsonProperty("mapAreaId") @Nullable AreaId mapAreaId
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -245,6 +255,7 @@ public class Item {
             throw new IllegalArgumentException("Mount move discount must be positive");
         }
         this.mountMoveDiscount = mountMoveDiscount;
+        this.mapAreaId = mapAreaId;
     }
 
     /**
@@ -293,6 +304,8 @@ public class Item {
         private boolean twoHanded;
         @Nullable
         private Integer mountMoveDiscount;
+        @Nullable
+        private AreaId mapAreaId;
 
         private Builder(ItemId id, String name, String description, ItemAttributes attributes) {
             this.id = id;
@@ -389,6 +402,15 @@ public class Item {
         }
 
         /**
+         * Binds this item to the area whose ASCII map it renders when READ, or marks it a non-map
+         * item when {@code null} (defaults to non-map).
+         */
+        public Builder mapAreaId(@Nullable AreaId mapAreaId) {
+            this.mapAreaId = mapAreaId;
+            return this;
+        }
+
+        /**
          * Assembles the item, validating every facet's invariants through {@link Item}'s canonical
          * constructor.
          *
@@ -417,7 +439,8 @@ public class Item {
                 identification.identified(),
                 container.locked(),
                 twoHanded,
-                mountMoveDiscount
+                mountMoveDiscount,
+                mapAreaId
             );
         }
     }
@@ -524,7 +547,7 @@ public class Item {
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount);
+            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId);
     }
 
     /**
@@ -560,7 +583,7 @@ public class Item {
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
-            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount);
+            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId);
     }
 
     /**
@@ -578,7 +601,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, newIdentified, locked, twoHanded, mountMoveDiscount);
+            rarity, affixes, newIdentified, locked, twoHanded, mountMoveDiscount, mapAreaId);
     }
 
     /**
@@ -600,7 +623,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, newLocked, twoHanded, mountMoveDiscount);
+            rarity, affixes, identified, newLocked, twoHanded, mountMoveDiscount, mapAreaId);
     }
 
     /**
@@ -620,7 +643,7 @@ public class Item {
         nextAffixes.add(affixId);
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, nextAffixes, identified, locked, twoHanded, mountMoveDiscount);
+            rarity, nextAffixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId);
     }
 
     /**
@@ -645,6 +668,18 @@ public class Item {
     @JsonIgnore
     public boolean isMount() {
         return mountMoveDiscount != null && mountMoveDiscount > 0;
+    }
+
+    /**
+     * Returns whether this item is a map (i.e. it carries a {@link #mapAreaId}). READing a map
+     * renders the bound area's hand-drawn ASCII cartography without ever showing the reader's
+     * position.
+     *
+     * @return {@code true} when the item is a map
+     */
+    @JsonIgnore
+    public boolean isMap() {
+        return mapAreaId != null;
     }
 
     /**

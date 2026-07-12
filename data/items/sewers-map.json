@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "sewers-map",
+  "name": "Map of the Undercity Sewers",
+  "description": "A stained maintenance chart of the sewer tunnels, salvaged from the muck.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 15,
+  "map_area_id": "sewers"
+}
