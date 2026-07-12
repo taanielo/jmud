@@ -1,0 +1,33 @@
+{
+  "schema_version": 4,
+  "id": "cinder-tyrant",
+  "name": "Vhalgrimm, the Cinder Tyrant",
+  "max_hp": 620,
+  "attack_id": "attack.cinder-tyrant",
+  "special_attack_id": "attack.cinder-tyrant-scourge",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["demon", "fire", "boss", "cinder-reaches"],
+  "spawn_room_id": "cinder-reaches-cinder-throne",
+  "max_count": 1,
+  "respawn_ticks": 320,
+  "xp_reward": 1250,
+  "loot": [
+    {
+      "item_id": "cinder-tyrants-warblade",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "scarplate-of-embers",
+      "drop_chance": 0.4
+    },
+    {
+      "item_id": "demoncore-cinder",
+      "drop_chance": 1.0
+    }
+  ],
+  "gold_drop": {
+    "min": 300,
+    "max": 520
+  }
+}

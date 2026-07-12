@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "cinder-reaches-slag-galleries",
+  "name": "The Slag Galleries",
+  "description": "This side gallery was carved not by water or fire but by something that clawed the living rock away in long parallel grooves, leaving walls ribbed like the inside of a throat. Rivulets of hardened slag hang frozen down them in grey-black ropes, and the floor is a treacherous crust of the same, thin enough in places to show a sullen red glow beneath. The heat here is close and stifling, and the ribbed walls throw back every sound doubled, so that a single dripping seems to come from all around at once.",
+  "item_ids": [],
+  "exits": {
+    "west": "cinder-reaches-cinder-drifts"
+  },
+  "min_level": 28,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A rope of hardened slag creaks and sheds a rain of grit that patters across the crusted floor.",
+    "Somewhere in the ribbed dark a single heavy drop falls, and the walls throw the sound back from every side at once.",
+    "The crust underfoot ticks and shifts, and a seam of red glow briefly widens before the slag settles shut again."
+  ]
+}

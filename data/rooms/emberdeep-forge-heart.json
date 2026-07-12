@@ -5,7 +5,8 @@
   "description": "At the very bottom of the Emberdeep lies a cathedral of fire, a domed chamber ringed by falls of liquid rock that pour endlessly into a central well of blinding molten light. The heat is a physical wall, and the roar of the flames swallows all other sound. This is the furnace at the root of the mountain, and it is not empty: something vast and burning has made its throne upon the forge-heart itself.",
   "item_ids": [],
   "exits": {
-    "up": "emberdeep-ember-nest"
+    "up": "emberdeep-ember-nest",
+    "down": "cinder-reaches-descent"
   },
   "min_level": 24,
   "is_outdoor": false,

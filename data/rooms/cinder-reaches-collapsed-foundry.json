@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "cinder-reaches-collapsed-foundry",
+  "name": "The Collapsed Foundry",
+  "description": "A cathedral-vaulted hall opens here, the ruin of some ancient foundry that predates even the Emberdeep's delvers. Toppled casting-pits and shattered crucibles the size of wagons lie half-melted and refrozen, and a colonnade of buckled iron pillars sags under a ceiling that has partly fallen in, leaving a jagged wound of blackness overhead. Everything is scarred the same way: not merely burned but flensed, as though a heat far crueller than any forge swept through and left its signature on the very bones of the place. A pit of unbroken dark descends at the hall's far end.",
+  "item_ids": [],
+  "exits": {
+    "up": "cinder-reaches-cinder-drifts",
+    "down": "cinder-reaches-cinder-throne"
+  },
+  "min_level": 29,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A buckled iron pillar groans under its ruined ceiling, shedding a slow trickle of dust and cinder.",
+    "Deep in a shattered crucible the refrozen slag pings as unseen heat works through it.",
+    "A cold, sulphurous draught wells up from the pit at the hall's end, and the scarred pillars seem to lean toward it."
+  ]
+}

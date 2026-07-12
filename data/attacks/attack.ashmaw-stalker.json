@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.ashmaw-stalker",
+  "name": "raking claws",
+  "min_damage": 20,
+  "max_damage": 32,
+  "hit_bonus": 5,
+  "crit_bonus": 3,
+  "damage_bonus": 6,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The ashmaw stalker lunges from the drifts and rakes you with smouldering claws for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The ashmaw stalker slashes at you and vanishes back into the cinders, claws closing on ash."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The ashmaw stalker bears you down and rakes you open with all four smouldering claws for {damage}!"
+    }
+  ]
+}

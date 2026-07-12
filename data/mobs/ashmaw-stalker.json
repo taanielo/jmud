@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "ashmaw-stalker",
+  "name": "an ashmaw stalker",
+  "max_hp": 220,
+  "attack_id": "attack.ashmaw-stalker",
+  "aggressive": true,
+  "tags": ["demon", "beast", "cinder-reaches"],
+  "spawn_room_id": "cinder-reaches-cinder-drifts",
+  "max_count": 3,
+  "respawn_ticks": 50,
+  "xp_reward": 235,
+  "loot": [
+    {
+      "item_id": "demoncore-cinder",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 40,
+    "max": 70
+  }
+}

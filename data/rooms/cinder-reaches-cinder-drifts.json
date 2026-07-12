@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "id": "cinder-reaches-cinder-drifts",
+  "name": "The Cinder Drifts",
+  "description": "The chasm floor opens into a low, sprawling gallery buried under drifts of cooling cinders that still glow a dull rose deep within, so that the whole cavern is lit from below like coals banked for the night. Heat rises in lazy, uneven waves, and every step sinks ankle-deep into brittle black clinker that crunches and shifts. Tracks wind through the drifts in every direction, too broad and too clawed to belong to anything that should have survived down here. A side passage breaks away to the east, and the ground slopes down and away into deeper dark.",
+  "item_ids": [],
+  "exits": {
+    "up": "cinder-reaches-ashfall-chasm",
+    "east": "cinder-reaches-slag-galleries",
+    "down": "cinder-reaches-collapsed-foundry"
+  },
+  "min_level": 28,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A drift of cinders settles with a papery crackle, and a breath of stored heat rolls across your shins.",
+    "Deep in the banked coals something buried flares briefly brighter, then dims back to sullen rose.",
+    "A clawed track in the clinker fills slowly as the cinders slump, as though the thing that made it passed only moments ago."
+  ]
+}

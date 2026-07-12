@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "slagborn-brute",
+  "name": "a slagborn brute",
+  "max_hp": 260,
+  "attack_id": "attack.slagborn-brute",
+  "aggressive": true,
+  "tags": ["demon", "construct", "cinder-reaches"],
+  "spawn_room_id": "cinder-reaches-slag-galleries",
+  "max_count": 2,
+  "respawn_ticks": 55,
+  "xp_reward": 255,
+  "loot": [
+    {
+      "item_id": "demoncore-cinder",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 45,
+    "max": 80
+  }
+}

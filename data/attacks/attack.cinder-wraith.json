@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.cinder-wraith",
+  "name": "draining touch",
+  "min_damage": 17,
+  "max_damage": 28,
+  "hit_bonus": 4,
+  "crit_bonus": 3,
+  "damage_bonus": 5,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The cinder wraith lays a hand of grey ash against you, and a deathly chill drains the warmth from you for {damage}."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The cinder wraith reaches through you and dissolves into a swirl of ash before its touch can land."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The cinder wraith closes both ashen hands over your heart and the cold of the grave floods through you for {damage}!"
+    }
+  ]
+}

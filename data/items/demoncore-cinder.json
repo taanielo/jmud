@@ -1,0 +1,14 @@
+{
+  "schema_version": 11,
+  "id": "demoncore-cinder",
+  "name": "a demoncore cinder",
+  "description": "A lump of scorched glass no larger than a walnut, black and mirror-smooth on the outside but cradling a mote of restless red-gold light that never stills and never cools. Gathered from the demonic residue left in the Cinder Reaches, it is heavier than it looks and faintly wrong to hold, as though something inside it is still trying to burn. Smiths and enchanters covet such cinders for the ruinous heat locked within.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 90,
+  "rarity": "uncommon"
+}
