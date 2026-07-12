@@ -1,0 +1,17 @@
+{
+  "schema_version": 13,
+  "id": "copper-ring",
+  "name": "Copper Ring",
+  "description": "A plain band of hammered copper. Cheap, but a modestly enchanted trinket favoured by traveling adventurers.",
+  "attributes": {
+    "stats": {
+      "ac": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 25,
+  "attack_ref": null
+}

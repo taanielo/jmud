@@ -16,6 +16,7 @@
     {"item_id": "leather-cap"},
     {"item_id": "leather-chest", "min_reputation": 15},
     {"item_id": "leather-legs"},
+    {"item_id": "copper-ring"},
     {"item_id": "health-potion"},
     {"item_id": "mana-potion"},
     {"item_id": "bread"},

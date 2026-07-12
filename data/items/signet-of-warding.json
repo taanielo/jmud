@@ -1,0 +1,18 @@
+{
+  "schema_version": 13,
+  "id": "signet-of-warding",
+  "name": "Signet of Warding",
+  "description": "An iron signet ring etched with a protective sigil, forged to turn aside a blow meant for its wearer.",
+  "attributes": {
+    "stats": {
+      "ac": 2
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 90,
+  "rarity": "uncommon",
+  "attack_ref": null
+}

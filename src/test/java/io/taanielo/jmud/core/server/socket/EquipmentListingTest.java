@@ -95,6 +95,39 @@ class EquipmentListingTest {
     }
 
     @Test
+    void neckAndFingerSlotsAreRenderedAlongsideTheOriginalSeven() {
+        ItemId amuletId = ItemId.of("amulet");
+        ItemId ringId = ItemId.of("ring");
+        Item amulet = item("amulet", "Traveler's Amulet", EquipmentSlot.NECK);
+        Item ring = item("ring", "Copper Ring", EquipmentSlot.FINGER);
+
+        Map<EquipmentSlot, ItemId> slots = Map.of(
+            EquipmentSlot.NECK, amuletId,
+            EquipmentSlot.FINGER, ringId
+        );
+        List<String> lines = EquipmentListing.format(slots, id -> {
+            if (id.equals(amuletId)) return amulet;
+            if (id.equals(ringId)) return ring;
+            return null;
+        });
+
+        String neckLine = lines.stream().filter(l -> l.contains("Neck")).findFirst().orElseThrow();
+        String fingerLine = lines.stream().filter(l -> l.contains("Finger")).findFirst().orElseThrow();
+        assertTrue(neckLine.contains("Traveler's Amulet"), "Neck slot should show item name: " + neckLine);
+        assertTrue(fingerLine.contains("Copper Ring"), "Finger slot should show item name: " + fingerLine);
+    }
+
+    @Test
+    void emptyNeckAndFingerSlotsShowEmptyState() {
+        List<String> lines = EquipmentListing.format(Map.of(), id -> null);
+
+        assertTrue(lines.stream().anyMatch(l -> l.contains("Neck") && l.contains("(empty)")),
+            "Empty neck slot must render");
+        assertTrue(lines.stream().anyMatch(l -> l.contains("Finger") && l.contains("(empty)")),
+            "Empty finger slot must render");
+    }
+
+    @Test
     void uncommonItemNameIsColoredUnderAnsiStyler() {
         ItemId swordId = ItemId.of("sword");
         Item sword = Item.builder(swordId, "Keen Sword", "A keen sword.", ItemAttributes.empty())
