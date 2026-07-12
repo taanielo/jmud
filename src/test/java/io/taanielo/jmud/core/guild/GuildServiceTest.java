@@ -13,12 +13,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
 
 class GuildServiceTest {
 
     private static final Username ALICE = Username.of("Alice");
     private static final Username BOB = Username.of("Bob");
     private static final Username CAROL = Username.of("Carol");
+
+    private static Item item(String id, String name) {
+        return Item.builder(ItemId.of(id), name, "A test item.", ItemAttributes.empty()).build();
+    }
 
     private FakeGuildRepository repository;
     private GuildService service;
@@ -380,6 +387,91 @@ class GuildServiceTest {
     void guildlessPlayerCannotDepositOrWithdraw() {
         assertFalse(service.deposit(ALICE, 10).success());
         assertFalse(service.withdraw(ALICE, 10).success());
+    }
+
+    // ── Item vault ────────────────────────────────────────────────────
+
+    @Test
+    void anyMemberCanStoreItemInVault() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+
+        GuildResult result = service.storeItem(BOB, item("sword", "a longsword"));
+
+        assertTrue(result.success());
+        assertEquals(1, result.guild().vaultedItems().size());
+        assertEquals(BOB, result.guild().vaultedItems().get(0).depositor());
+        assertEquals(1, service.guildOf(ALICE).orElseThrow().vaultedItems().size());
+        assertEquals(1, repository.saved.get(result.guild().id()).vaultedItems().size());
+    }
+
+    @Test
+    void officerOrLeaderCanClaimStoredItem() {
+        service.create(ALICE, "Ironclad");
+        service.storeItem(ALICE, item("sword", "a longsword"));
+
+        GuildVaultResult claim = service.claimItem(ALICE, "longsword", 0, 100);
+
+        assertTrue(claim.success());
+        assertEquals("a longsword", claim.item().getName());
+        assertTrue(claim.guild().vaultedItems().isEmpty());
+        assertTrue(service.guildOf(ALICE).orElseThrow().vaultedItems().isEmpty());
+    }
+
+    @Test
+    void plainMemberCannotClaimFromVault() {
+        service.create(ALICE, "Ironclad");
+        service.invite(ALICE, BOB, true);
+        service.accept(BOB);
+        service.storeItem(BOB, item("sword", "a longsword"));
+
+        GuildVaultResult claim = service.claimItem(BOB, "longsword", 0, 100);
+
+        assertFalse(claim.success());
+        assertEquals(1, service.guildOf(ALICE).orElseThrow().vaultedItems().size());
+
+        service.promote(ALICE, BOB);
+        assertTrue(service.claimItem(BOB, "longsword", 0, 100).success());
+    }
+
+    @Test
+    void storeRejectedWhenVaultFull() {
+        service.create(ALICE, "Ironclad");
+        for (int i = 0; i < GuildService.VAULT_CAPACITY; i++) {
+            assertTrue(service.storeItem(ALICE, item("item-" + i, "trinket " + i)).success());
+        }
+
+        GuildResult overflow = service.storeItem(ALICE, item("extra", "one too many"));
+
+        assertFalse(overflow.success());
+        assertEquals(GuildService.VAULT_CAPACITY,
+            service.guildOf(ALICE).orElseThrow().vaultedItems().size());
+    }
+
+    @Test
+    void guildlessPlayerCannotStoreOrClaim() {
+        assertFalse(service.storeItem(CAROL, item("sword", "a longsword")).success());
+        assertFalse(service.claimItem(CAROL, "sword", 0, 100).success());
+    }
+
+    @Test
+    void claimRejectedWhenCallerCannotCarryItem() {
+        service.create(ALICE, "Ironclad");
+        service.storeItem(ALICE, Item.builder(
+            ItemId.of("anvil"), "a heavy anvil", "Very heavy.", ItemAttributes.empty()).weight(50).build());
+
+        GuildVaultResult claim = service.claimItem(ALICE, "anvil", 90, 100);
+
+        assertFalse(claim.success());
+        assertEquals(1, service.guildOf(ALICE).orElseThrow().vaultedItems().size());
+    }
+
+    @Test
+    void claimRejectedWhenNoMatchingItem() {
+        service.create(ALICE, "Ironclad");
+
+        assertFalse(service.claimItem(ALICE, "phantom", 0, 100).success());
     }
 
     /** In-memory {@link GuildRepository} that mirrors the write-behind repository synchronously. */

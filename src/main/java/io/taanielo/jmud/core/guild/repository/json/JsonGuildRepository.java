@@ -28,6 +28,8 @@ import io.taanielo.jmud.core.guild.GuildMember;
 import io.taanielo.jmud.core.guild.GuildRank;
 import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
+import io.taanielo.jmud.core.guild.VaultedItem;
+import io.taanielo.jmud.core.world.dto.ItemMapper;
 
 /**
  * Loads and persists guilds as {@code data/guilds/<guild-id>.json} files.
@@ -41,11 +43,15 @@ import io.taanielo.jmud.core.guild.GuildRepositoryException;
 @Slf4j
 public class JsonGuildRepository implements GuildRepository, AutoCloseable {
 
-    private static final int SCHEMA_VERSION = 1;
+    /** Latest schema written. Version 2 adds the additive shared item vault ({@code vaultedItems}). */
+    private static final int SCHEMA_VERSION = 2;
+    /** Oldest schema still readable; v1 files (pre-vault) load with an empty vault. */
+    private static final int MIN_SCHEMA_VERSION = 1;
     private static final String GUILDS_DIR = "guilds";
     private static final long IDLE_POLL_MILLIS = 25;
 
     private final ObjectMapper objectMapper;
+    private final ItemMapper itemMapper = new ItemMapper();
     private final Path guildsDirPath;
 
     /** Latest snapshot pending write for each dirty guild; a {@code null} value means "delete". */
@@ -140,7 +146,7 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
 
     private Guild readGuild(Path path) throws GuildRepositoryException {
         GuildDto dto = readDto(path);
-        if (dto.schemaVersion() != SCHEMA_VERSION) {
+        if (dto.schemaVersion() < MIN_SCHEMA_VERSION || dto.schemaVersion() > SCHEMA_VERSION) {
             throw new GuildRepositoryException(
                 "Unsupported guild schema version " + dto.schemaVersion() + " in " + path);
         }
@@ -155,12 +161,21 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                     parseRank(m.rank()),
                     m.joinOrder()));
             }
+            @Nullable List<GuildDto.VaultedItemDto> declaredVault = dto.vaultedItems();
+            List<GuildDto.VaultedItemDto> rawVault = declaredVault == null ? List.of() : declaredVault;
+            List<VaultedItem> vaultedItems = new ArrayList<>();
+            for (GuildDto.VaultedItemDto v : rawVault) {
+                vaultedItems.add(new VaultedItem(
+                    itemMapper.toDomain(Objects.requireNonNull(v.item(), "Vaulted item is required")),
+                    Username.of(Objects.requireNonNull(v.depositor(), "Vaulted item depositor is required"))));
+            }
             return new Guild(
                 GuildId.of(Objects.requireNonNull(dto.id(), "Guild id is required")),
                 Objects.requireNonNull(dto.name(), "Guild name is required"),
                 Username.of(Objects.requireNonNull(dto.leaderId(), "Guild leaderId is required")),
                 members,
-                Math.max(0, dto.treasuryGold()));
+                Math.max(0, dto.treasuryGold()),
+                vaultedItems);
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new GuildRepositoryException("Invalid guild data in " + path + ": " + e.getMessage(), e);
         }
@@ -225,9 +240,13 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 .map(m -> new GuildDto.GuildMemberDto(
                     m.username().getValue(), m.rank().name(), m.joinOrder()))
                 .toList();
+            List<GuildDto.VaultedItemDto> vaultDtos = guild.vaultedItems().stream()
+                .map(v -> new GuildDto.VaultedItemDto(
+                    itemMapper.toDto(v.item()), v.depositor().getValue()))
+                .toList();
             GuildDto dto = new GuildDto(
                 SCHEMA_VERSION, guild.id().value(), guild.name(), guild.leaderId().getValue(),
-                memberDtos, guild.treasuryGold());
+                memberDtos, guild.treasuryGold(), vaultDtos);
             objectMapper.writeValue(tmp.toFile(), dto);
             Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {

@@ -57,6 +57,8 @@ import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildMember;
 import io.taanielo.jmud.core.guild.GuildResult;
 import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.GuildVaultResult;
+import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.notes.NoteDeletionResult;
@@ -74,6 +76,7 @@ import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.MovementCostService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerFriendList;
 import io.taanielo.jmud.core.player.PlayerGuildMembership;
 import io.taanielo.jmud.core.player.PlayerIgnoreList;
@@ -3402,6 +3405,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "BANK" -> handleGuildBank(guildService);
             case "DEPOSIT" -> handleGuildDeposit(guildService, subArgs);
             case "WITHDRAW" -> handleGuildWithdraw(guildService, subArgs);
+            case "VAULT" -> handleGuildVault(guildService);
+            case "STORE" -> handleGuildStore(guildService, subArgs);
+            case "CLAIM" -> handleGuildClaim(guildService, subArgs);
             case "" -> handleGuildStatus(guildService);
             default -> guildChat(args);
         }
@@ -3614,6 +3620,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
                         result.guild().name() + " has been disbanded by its leader.");
                 }
             }
+            String vaultSummary = returnVaultToLeader(result.guild());
+            if (vaultSummary != null) {
+                connection.writeLine(vaultSummary);
+            }
         }
         writeLineWithPrompt(result.message());
     }
@@ -3690,6 +3700,132 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 player.getUsername().getValue() + " withdrew " + amount + " gold from the guild bank.");
         }
         writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildVault(GuildService guildService) {
+        Player player = session.getPlayer();
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        List<VaultedItem> items = guild.vaultedItems();
+        if (items.isEmpty()) {
+            writeLineWithPrompt("The " + guild.name() + " vault is empty.");
+            return;
+        }
+        connection.writeLine(guild.name() + " vault (" + items.size() + "/"
+            + GuildService.VAULT_CAPACITY + "):");
+        for (VaultedItem vaulted : items) {
+            connection.writeLine("  " + vaulted.item().getName()
+                + " (deposited by " + vaulted.depositor().getValue() + ")");
+        }
+        sendPrompt();
+    }
+
+    private void handleGuildStore(GuildService guildService, String itemName) {
+        Player player = session.getPlayer();
+        if (itemName == null || itemName.isBlank()) {
+            writeLineWithPrompt("Store what? Usage: GUILD STORE <item name>");
+            return;
+        }
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        Item item = matchItemByName(player.getInventory(), itemName);
+        if (item == null) {
+            writeLineWithPrompt("You aren't carrying '" + itemName.trim() + "'.");
+            return;
+        }
+        GuildResult result = guildService.storeItem(player.getUsername(), item);
+        if (result.success() && result.guild() != null) {
+            PlayerEquipment equipment = player.getEquipment();
+            if (equipment.isEquipped(item.getId())) {
+                EquipmentSlot slot = equipment.equippedSlot(item.getId());
+                if (slot != null) {
+                    equipment = equipment.unequip(slot);
+                }
+            }
+            Player updated = player.removeItem(item).withEquipment(equipment);
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            broadcastToGuild(result.guild(), player.getUsername(),
+                player.getUsername().getValue() + " stored " + item.getName() + " in the guild vault.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void handleGuildClaim(GuildService guildService, String itemName) {
+        Player player = session.getPlayer();
+        if (itemName == null || itemName.isBlank()) {
+            writeLineWithPrompt("Claim what? Usage: GUILD CLAIM <item name>");
+            return;
+        }
+        int maxCarry = encumbranceService.maxCarry(player);
+        int carried = 0;
+        for (Item carriedItem : player.getInventory()) {
+            carried += carriedItem.getWeight();
+        }
+        GuildVaultResult result = guildService.claimItem(player.getUsername(), itemName, carried, maxCarry);
+        if (result.success() && result.guild() != null && result.item() != null) {
+            Player updated = player.addItem(result.item());
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            broadcastToGuild(result.guild(), player.getUsername(),
+                player.getUsername().getValue() + " claimed " + result.item().getName()
+                    + " from the guild vault.");
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    /**
+     * Returns every item still in the disbanded guild's vault to the leader (the disbanding caller):
+     * as much as they can carry goes into inventory, the rest is dropped at their feet. Mutates and
+     * persists the leader; returns a summary line for the player, or {@code null} when the vault was
+     * empty. Runs on the tick thread; the room drop is an in-memory mutation (AGENTS.md §5).
+     */
+    @Nullable
+    private String returnVaultToLeader(Guild disbanded) {
+        List<VaultedItem> items = disbanded.vaultedItems();
+        if (items.isEmpty()) {
+            return null;
+        }
+        Player leader = session.getPlayer();
+        int maxCarry = encumbranceService.maxCarry(leader);
+        int carried = 0;
+        for (Item carriedItem : leader.getInventory()) {
+            carried += carriedItem.getWeight();
+        }
+        Player updated = leader;
+        List<Item> overflow = new ArrayList<>();
+        for (VaultedItem vaulted : items) {
+            Item item = vaulted.item();
+            if (carried + item.getWeight() <= maxCarry) {
+                updated = updated.addItem(item);
+                carried += item.getWeight();
+            } else {
+                overflow.add(item);
+            }
+        }
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        if (!overflow.isEmpty()) {
+            roomService.findPlayerLocation(leader.getUsername()).ifPresent(roomId -> {
+                for (Item item : overflow) {
+                    roomService.addItem(roomId, item);
+                }
+            });
+        }
+        String summary = items.size() + " item" + (items.size() == 1 ? "" : "s")
+            + " from the guild vault "
+            + (items.size() == 1 ? "is" : "are") + " returned to you.";
+        if (!overflow.isEmpty()) {
+            summary += " " + overflow.size() + " could not be carried and "
+                + (overflow.size() == 1 ? "is" : "are") + " dropped at your feet.";
+        }
+        return summary;
     }
 
     /**

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:guild:v2",
+  "title": "Guild (v2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "leader_id",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Persisted guild schema version. Version 2 adds the additive shared item vault (vaulted_items); v1 files load unchanged with an empty vault.",
+      "minimum": 1,
+      "maximum": 2
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque, stable guild id (a UUID). Independent of the display name and used as the file name."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "description": "Unique (case-insensitive) display name shown as the WHO tag."
+    },
+    "leader_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Username of the current guild leader; must also appear in members with rank LEADER."
+    },
+    "members": {
+      "type": "array",
+      "description": "The guild roster, in no particular order; ordering for display is derived from join_order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "rank",
+          "join_order"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rank": {
+            "type": "string",
+            "enum": ["LEADER", "OFFICER", "MEMBER"]
+          },
+          "join_order": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonically increasing sequence number; lower means longer-tenured. Used to pick a successor leader when the leader departs."
+          }
+        }
+      }
+    },
+    "treasury_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Shared guild treasury balance. Optional and additive: files written before this field existed load with a treasury of 0. Members deposit via GUILD DEPOSIT; only the leader withdraws via GUILD WITHDRAW."
+    },
+    "vaulted_items": {
+      "type": "array",
+      "default": [],
+      "description": "Shared guild item vault. Optional and additive: files written before this field existed (schema_version 1) load with an empty vault. Any member deposits via GUILD STORE; only the leader or an officer claims via GUILD CLAIM. Items are moved, never copied. Capped at GuildService.VAULT_CAPACITY entries.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "depositor"
+        ],
+        "properties": {
+          "item": {
+            "type": "object",
+            "description": "The stored item in its persisted DTO form (see the item schema, e.g. docs/schemas/item.v11.json)."
+          },
+          "depositor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Username of the member who deposited the item."
+          }
+        }
+      }
+    }
+  }
+}

@@ -18,8 +18,20 @@ import io.taanielo.jmud.core.authentication.Username;
  * by the leader. It is always non-negative and never created or destroyed by treasury operations —
  * every deposit/withdraw is matched by an equal, opposite change to a player's personal balance by
  * the caller.
+ *
+ * <p>{@code vaultedItems} is the guild's shared item vault: gear, materials and quest items pooled by
+ * members. Like the treasury, items are moved rather than copied — every store/claim is matched by the
+ * caller adding or removing the same item from a player's inventory, so no item is ever duplicated or
+ * destroyed.
  */
-public record Guild(GuildId id, String name, Username leaderId, List<GuildMember> members, int treasuryGold) {
+public record Guild(
+    GuildId id,
+    String name,
+    Username leaderId,
+    List<GuildMember> members,
+    int treasuryGold,
+    List<VaultedItem> vaultedItems
+) {
 
     public Guild {
         Objects.requireNonNull(id, "Guild id is required");
@@ -29,10 +41,12 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         if (treasuryGold < 0) {
             throw new IllegalArgumentException("Guild treasuryGold must not be negative");
         }
+        vaultedItems = List.copyOf(Objects.requireNonNull(vaultedItems, "Guild vaultedItems are required"));
     }
 
     /**
-     * Founds a new guild with {@code leader} as its sole member and leader and an empty treasury.
+     * Founds a new guild with {@code leader} as its sole member and leader and an empty treasury and
+     * vault.
      *
      * @param id     the new guild's id
      * @param name   the guild's display name
@@ -40,7 +54,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
      * @return the newly created guild
      */
     public static Guild found(GuildId id, String name, Username leader) {
-        return new Guild(id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0);
+        return new Guild(id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of());
     }
 
     /** Returns {@code true} when the given player is the guild leader. */
@@ -92,7 +106,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         int nextOrder = members.stream().mapToInt(GuildMember::joinOrder).max().orElse(-1) + 1;
         List<GuildMember> next = new ArrayList<>(members);
         next.add(new GuildMember(username, GuildRank.MEMBER, nextOrder));
-        return new Guild(id, name, leaderId, next, treasuryGold);
+        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems);
     }
 
     /**
@@ -112,7 +126,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
             .filter(m -> !m.username().equals(username))
             .toList());
         if (remaining.isEmpty()) {
-            return new Guild(id, name, leaderId, List.of(), treasuryGold);
+            return new Guild(id, name, leaderId, List.of(), treasuryGold, vaultedItems);
         }
         Username newLeader = leaderId;
         if (leaderId.equals(username)) {
@@ -124,7 +138,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
                 .map(m -> m.username().equals(successor.username()) ? m.withRank(GuildRank.LEADER) : m)
                 .toList();
         }
-        return new Guild(id, name, newLeader, remaining, treasuryGold);
+        return new Guild(id, name, newLeader, remaining, treasuryGold, vaultedItems);
     }
 
     /**
@@ -145,7 +159,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         List<GuildMember> next = members.stream()
             .map(m -> m.username().equals(username) ? m.withRank(newRank) : m)
             .toList();
-        return new Guild(id, name, leaderId, next, treasuryGold);
+        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems);
     }
 
     /**
@@ -159,7 +173,7 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         if (amount < 0) {
             throw new IllegalArgumentException("Deposit amount must not be negative");
         }
-        return new Guild(id, name, leaderId, members, treasuryGold + amount);
+        return new Guild(id, name, leaderId, members, treasuryGold + amount, vaultedItems);
     }
 
     /**
@@ -176,6 +190,37 @@ public record Guild(GuildId id, String name, Username leaderId, List<GuildMember
         if (amount > treasuryGold) {
             throw new IllegalArgumentException("Withdraw amount exceeds treasury balance");
         }
-        return new Guild(id, name, leaderId, members, treasuryGold - amount);
+        return new Guild(id, name, leaderId, members, treasuryGold - amount, vaultedItems);
+    }
+
+    /**
+     * Returns a copy of this guild with {@code vaulted} appended to the shared item vault.
+     *
+     * @param vaulted the item (with its depositor) to add to the vault
+     * @return the updated guild
+     */
+    public Guild withVaultedItem(VaultedItem vaulted) {
+        Objects.requireNonNull(vaulted, "vaulted is required");
+        List<VaultedItem> next = new ArrayList<>(vaultedItems);
+        next.add(vaulted);
+        return new Guild(id, name, leaderId, members, treasuryGold, next);
+    }
+
+    /**
+     * Returns a copy of this guild with the first vault entry equal to {@code vaulted} removed, or this
+     * instance unchanged when no such entry is present.
+     *
+     * @param vaulted the vault entry to remove
+     * @return the updated guild
+     */
+    public Guild withoutVaultedItem(VaultedItem vaulted) {
+        Objects.requireNonNull(vaulted, "vaulted is required");
+        int index = vaultedItems.indexOf(vaulted);
+        if (index < 0) {
+            return this;
+        }
+        List<VaultedItem> next = new ArrayList<>(vaultedItems);
+        next.remove(index);
+        return new Guild(id, name, leaderId, members, treasuryGold, next);
     }
 }

@@ -22,6 +22,9 @@ import java.util.Optional;
  *   <li>{@code GUILD BANK}           — show the guild's shared treasury balance</li>
  *   <li>{@code GUILD DEPOSIT <amt>}  — deposit gold from your balance into the treasury</li>
  *   <li>{@code GUILD WITHDRAW <amt>} — withdraw gold from the treasury (leader only)</li>
+ *   <li>{@code GUILD VAULT}          — list the items in the guild's shared item vault</li>
+ *   <li>{@code GUILD STORE <item>}   — deposit an item into the guild vault (any member)</li>
+ *   <li>{@code GUILD CLAIM <item>}   — take an item from the guild vault (leader or officer)</li>
  *   <li>{@code GUILD <message>}      — send a message to online guildmates (also {@code GC})</li>
  * </ul>
  */
@@ -64,6 +67,9 @@ public class GuildCommand extends RegistrableCommand {
              + "  GUILD BANK             — show the guild treasury balance\n"
              + "  GUILD DEPOSIT <amount> — deposit gold into the guild treasury\n"
              + "  GUILD WITHDRAW <amount>— withdraw gold from the treasury (leader only)\n"
+             + "  GUILD VAULT            — list items in the guild's shared item vault\n"
+             + "  GUILD STORE <item>     — deposit an item into the guild vault (any member)\n"
+             + "  GUILD CLAIM <item>     — take an item from the guild vault (leader or officer)\n"
              + "  GUILD <message>        — chat to online guildmates (or use GC <message>)";
     }
 

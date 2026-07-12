@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.guild;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -12,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.Item;
 
 /**
  * Application service owning all persistent guild state.
@@ -31,6 +33,12 @@ public class GuildService {
 
     /** Gold charged to found a guild, mirroring existing gold sinks (bank, repair, identify). */
     public static final int CREATION_COST_GOLD = 100;
+
+    /**
+     * Maximum number of items a guild's shared vault may hold. Larger than a personal bank vault since
+     * it is pooled across the whole roster.
+     */
+    public static final int VAULT_CAPACITY = 40;
 
     /** Minimum guild name length, in characters. */
     public static final int MIN_NAME_LENGTH = 3;
@@ -393,6 +401,104 @@ public class GuildService {
         repository.save(updated);
         return GuildResult.success(
             "You withdraw " + amount + " gold from the " + guild.name() + " treasury.", updated);
+    }
+
+    // ── Vault operations ──────────────────────────────────────────────
+
+    /**
+     * Stores {@code item} from a member into their guild's shared item vault. Validates that the caller
+     * is in a guild and that the vault is not already at {@link #VAULT_CAPACITY} capacity, then persists
+     * the updated guild.
+     *
+     * <p>This service only mutates the vault; the caller is responsible for removing the same item from
+     * the acting player's inventory (unequipping it first if worn) in the same command so the item is
+     * moved rather than duplicated.
+     *
+     * @param member the storing player (any member may deposit)
+     * @param item   the item to move into the vault
+     * @return the result; on success carries the updated guild snapshot
+     */
+    public synchronized GuildResult storeItem(Username member, Item item) {
+        Objects.requireNonNull(member, "member is required");
+        Objects.requireNonNull(item, "item is required");
+        @Nullable Guild guild = guildOf(member).orElse(null);
+        if (guild == null) {
+            return GuildResult.failure("You are not in a guild.");
+        }
+        if (guild.vaultedItems().size() >= VAULT_CAPACITY) {
+            return GuildResult.failure("The " + guild.name() + " vault is full.");
+        }
+        Guild updated = guild.withVaultedItem(new VaultedItem(item, member));
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+        return GuildResult.success(
+            "You store " + item.getName() + " in the " + guild.name() + " vault.", updated);
+    }
+
+    /**
+     * Claims an item matching {@code itemName} from the guild's shared item vault into the caller's
+     * hands. Restricted to the guild leader or an officer (the same trust tier as kick/promote), so a
+     * junior member cannot drain shared gear. The caller must be able to carry the item.
+     *
+     * <p>This service only mutates the vault; the caller is responsible for adding the returned item to
+     * the acting player's inventory in the same command so the item is moved rather than duplicated.
+     *
+     * @param member               the claiming player (must be leader or officer)
+     * @param itemName             the name or id of the item to claim
+     * @param currentCarriedWeight the total weight the player is already carrying
+     * @param maxCarry             the player's maximum carry weight
+     * @return the result; on success carries the updated guild snapshot and the claimed item
+     */
+    public synchronized GuildVaultResult claimItem(
+        Username member, String itemName, int currentCarriedWeight, int maxCarry) {
+        Objects.requireNonNull(member, "member is required");
+        @Nullable Guild guild = guildOf(member).orElse(null);
+        if (guild == null) {
+            return GuildVaultResult.failure("You are not in a guild.");
+        }
+        if (!guild.canModerate(member)) {
+            return GuildVaultResult.failure(
+                "Only the guild leader or an officer can claim items from the vault.");
+        }
+        String normalized = itemName == null ? "" : itemName.trim();
+        if (normalized.isEmpty()) {
+            return GuildVaultResult.failure("Claim what? Usage: GUILD CLAIM <item name>");
+        }
+        @Nullable VaultedItem match = matchVaulted(guild.vaultedItems(), normalized);
+        if (match == null) {
+            return GuildVaultResult.failure(
+                "The " + guild.name() + " vault has no '" + normalized + "'.");
+        }
+        if (currentCarriedWeight + match.item().getWeight() > maxCarry) {
+            return GuildVaultResult.failure(
+                "You can't carry " + match.item().getName() + " right now. Lighten your load first.");
+        }
+        Guild updated = guild.withoutVaultedItem(match);
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+        return GuildVaultResult.success(
+            "You claim " + match.item().getName() + " from the " + guild.name() + " vault.",
+            updated, match.item());
+    }
+
+    /**
+     * Finds the first vault entry whose item name or id equals or is prefixed by {@code input}
+     * (case-insensitive), or {@code null} when none match.
+     */
+    @Nullable
+    private static VaultedItem matchVaulted(List<VaultedItem> items, String input) {
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+        for (VaultedItem vaulted : items) {
+            String name = vaulted.item().getName().toLowerCase(Locale.ROOT);
+            if (name.equals(normalized) || name.startsWith(normalized)) {
+                return vaulted;
+            }
+            String id = vaulted.item().getId().getValue().toLowerCase(Locale.ROOT);
+            if (id.equals(normalized) || id.startsWith(normalized)) {
+                return vaulted;
+            }
+        }
+        return null;
     }
 
     // ── Queries ───────────────────────────────────────────────────────

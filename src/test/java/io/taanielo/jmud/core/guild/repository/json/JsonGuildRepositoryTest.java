@@ -16,6 +16,10 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildId;
 import io.taanielo.jmud.core.guild.GuildRank;
+import io.taanielo.jmud.core.guild.VaultedItem;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
 
 class JsonGuildRepositoryTest {
 
@@ -63,6 +67,68 @@ class JsonGuildRepositoryTest {
             repository.delete(GuildId.of("g-2"));
             waitForFile(file, false);
             assertFalse(Files.exists(file));
+        } finally {
+            repository.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsGuildVaultItems(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-3.json");
+        Item sword = Item.builder(ItemId.of("sword"), "a runed longsword", "A sharp blade.",
+            ItemAttributes.empty()).weight(7).build();
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild guild = Guild.found(GuildId.of("g-3"), "Ironclad", ALICE)
+                .withMember(BOB)
+                .withVaultedItem(new VaultedItem(sword, BOB));
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            List<Guild> loaded = reopened.loadAll();
+            assertEquals(1, loaded.size());
+            Guild g = loaded.get(0);
+            assertEquals(1, g.vaultedItems().size());
+            VaultedItem vaulted = g.vaultedItems().get(0);
+            assertEquals("a runed longsword", vaulted.item().getName());
+            assertEquals(7, vaulted.item().getWeight());
+            assertEquals(BOB, vaulted.depositor());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void loadsLegacyV1GuildFileWithEmptyVault(@TempDir Path dataRoot) throws Exception {
+        Path guildsDir = dataRoot.resolve("guilds");
+        Files.createDirectories(guildsDir);
+        String legacy = """
+            {
+              "schema_version": 1,
+              "id": "g-legacy",
+              "name": "Oldguard",
+              "leader_id": "Alice",
+              "members": [
+                { "username": "Alice", "rank": "LEADER", "join_order": 0 }
+              ],
+              "treasury_gold": 40
+            }
+            """;
+        Files.writeString(guildsDir.resolve("g-legacy.json"), legacy);
+
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            List<Guild> loaded = repository.loadAll();
+            assertEquals(1, loaded.size());
+            Guild g = loaded.get(0);
+            assertEquals("Oldguard", g.name());
+            assertEquals(40, g.treasuryGold());
+            assertTrue(g.vaultedItems().isEmpty());
         } finally {
             repository.close();
         }
