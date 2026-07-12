@@ -494,7 +494,7 @@ expect "$T2F" "NOTE DELETE removes the note"        'has been removed from the b
 log "Phase 2g: buy and READ a hand-drawn area map"
 T2G="$OUT_DIR/phase2g-map.txt"
 run_session "$T2G" "$TEST_USER" "$TEST_PASS" \
-    "north" "buy map of greystone" "read town-map" "quit"
+    "north" "buy map of greystone" "read town-map" "south" "quit"
 
 expect "$T2G" "starter map can be purchased"        'You buy a Map of Greystone Town'
 expect "$T2G" "READ renders the area title"         'Greystone Town'
