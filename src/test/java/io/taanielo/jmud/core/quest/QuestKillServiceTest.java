@@ -179,7 +179,7 @@ class QuestKillServiceTest {
             oneTime.id(), oneTime.name(), oneTime.description(), oneTime.targetMobId(),
             oneTime.requiredKills(), oneTime.goldReward(), oneTime.xpReward(),
             null, 0, null, null, null, null, null, List.of(), null, null, 0,
-            "bandits", -40, false, "bandit-hunter");
+            "bandits", -40, false, "bandit-hunter", 0);
         Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(nonRepeatable.id(), 0));
 
         QuestKillService.CompletionResult result = service.grantCompletionReward(withQuest, nonRepeatable);
@@ -228,7 +228,7 @@ class QuestKillServiceTest {
         return new QuestTemplate(
             QuestId.of("bandit-captain-fall"), "The Captain's Fall", "Finish the captain.",
             "bandit-captain", 1, 200, 500,
-            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0, false, null);
+            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0, false, null, 0);
     }
 
     private static AchievementService questMilestoneService() throws AchievementRepositoryException {

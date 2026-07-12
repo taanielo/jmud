@@ -195,7 +195,7 @@ class QuestNpcDeliveryServiceTest {
             QuestId.of("deliver-relic"), "The Sealed Relic", "Carry the relic to Ranger Sella.",
             null, 0, 30, 90, null, 0, null,
             "quartermaster", "forest-ranger", "hunters-clearing", "sealed-dispatch",
-            List.of(), null, null, 0, null, 0, false, null);
+            List.of(), null, null, 0, null, 0, false, null, 0);
     }
 
     private static AchievementService questMilestoneService() throws AchievementRepositoryException {

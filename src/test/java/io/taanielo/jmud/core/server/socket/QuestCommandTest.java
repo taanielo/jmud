@@ -237,7 +237,8 @@ class QuestCommandTest {
             "bandits",
             -40,
             false,
-            "bandit-hunter");
+            "bandit-hunter",
+            0);
     }
 
     @Test

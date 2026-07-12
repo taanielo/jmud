@@ -67,9 +67,9 @@ game-designer should propose closing.
 |---|---|---|
 | Leveling & XP | ✅ | practice-point sink 🔨 #522 · class gains 🔨 #523 · combat scaling 🔨 #524 |
 | Combat core | ✅ | worded damage + condition display 🔨 #525 · attributes 🔨 #524 |
-| New-player funnel | ✅ #516 | starter weapon/hints 🔨 #517 · starter quest 🔨 #518 · starting resources 🔨 #519 · death grace 🔨 #520 · creation info 🔨 #521 |
+| New-player funnel | ✅ #516 | starter weapon/hints 🔨 #517 · starter quest ✅ #518 · starting resources 🔨 #519 · death grace 🔨 #520 · creation info 🔨 #521 |
 | Cartography | ✅ (MAP, retiring) | area maps as items 🔨 #529 |
-| Quests (kill/explore/delivery/daily) | ✅ | level hints 🔨 #518 |
+| Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |
 | Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap 🔨 #519 |
 | Professions (craft/cook/brew/gather/salvage/enchant) | ✅ | none known |
 | Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | none known |

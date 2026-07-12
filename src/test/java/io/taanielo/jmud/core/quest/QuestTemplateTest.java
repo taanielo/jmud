@@ -99,10 +99,47 @@ class QuestTemplateTest {
             "bandits",
             -40,
             false,
-            "bandit-hunter");
+            "bandit-hunter",
+            8);
 
         assertFalse(quest.isRepeatable());
         assertTrue(quest.hasPrerequisite());
         assertEquals("bandit-hunter", quest.prerequisiteQuestId());
+        assertTrue(quest.hasRecommendedLevel());
+        assertEquals(8, quest.recommendedLevel());
+    }
+
+    @Test
+    void hasNoRecommendedLevelByDefault() {
+        assertFalse(KILL_QUEST.hasRecommendedLevel());
+        assertEquals(0, KILL_QUEST.recommendedLevel());
+    }
+
+    @Test
+    void rejectsNegativeRecommendedLevel() {
+        assertThrows(IllegalArgumentException.class, () -> new QuestTemplate(
+            QuestId.of("bad-level"),
+            "Bad Level",
+            "Kill rats.",
+            "rat",
+            5,
+            30,
+            75,
+            null,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            java.util.List.of(),
+            null,
+            null,
+            0,
+            null,
+            0,
+            true,
+            null,
+            -1));
     }
 }

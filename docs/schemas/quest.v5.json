@@ -101,6 +101,11 @@
           "reputation_reward_delta": {
             "type": "integer",
             "description": "Signed, non-zero change applied to the player's standing with reputation_reward_faction_id on completion (positive raises standing, negative lowers it). Must be omitted (or 0) when reputation_reward_faction_id is absent, and non-zero when it is present."
+          },
+          "recommended_level": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional character level this variant is balanced for. Rendered as a difficulty hint and used to sort contracts easiest-first. Omit (or set 0) when the quest carries no level recommendation."
           }
         }
       }

@@ -175,18 +175,28 @@ expect() {
 
 # ── phase 1: new-user creation, SCORE, QUIT ─────────────────────────────────
 # Creation flow expects race/class NAMES (see data/races, data/classes).
-log "Phase 1: create user '$TEST_USER', run SCORE"
+log "Phase 1: create user '$TEST_USER', run SCORE and accept the starter quest"
 T1="$OUT_DIR/phase1-new-user.txt"
-run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" "score" "quit"
+# A brand-new character should be able to discover, accept and track the level-1
+# starter quest (issue #518). QUEST LIST/ACCEPT/STATUS resolve at the Guild Clerk
+# but do not require standing in the Courtyard to inspect the contract board.
+run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
+    "score" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" "quit"
 
 # Note: the prompt is written without a trailing newline, so command output
 # can share a line with it — don't anchor patterns with ^ unless the line is
 # known to start fresh.
 expect "$T1" "prompt rendered after login"        '\[[0-9]+/[0-9]+hp .*\]'
 expect "$T1" "onboarding hint shown at creation"  'WIELD IRON SWORD'
+expect "$T1" "onboarding points at the Guild Clerk" 'QUEST LIST at the Guild Clerk'
 expect "$T1" "SCORE header present"               '--- Score ---'
 expect "$T1" "SCORE shows Level"                  'Level : [0-9]+'
 expect "$T1" "SCORE shows AC"                     'AC    : [0-9]+'
+expect "$T1" "QUEST LIST shows the contract board" 'Available Contracts'
+expect "$T1" "QUEST LIST shows a recommended level column" 'Lvl'
+expect "$T1" "QUEST LIST offers the starter quest"  'rat-catcher'
+expect "$T1" "starter quest can be accepted"        'Contract accepted: Rat Catcher'
+expect "$T1" "QUEST STATUS tracks the starter quest" 'Rat Catcher: 0/5 kills'
 if [ -f "data/users/$TEST_USER.json" ]; then
     pass "user file persisted (data/users/$TEST_USER.json)"
 else

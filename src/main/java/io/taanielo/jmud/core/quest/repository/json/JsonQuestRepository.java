@@ -114,7 +114,9 @@ public class JsonQuestRepository implements QuestRepository {
                 dto.reputationRewardDelta(),
                 // repeatable defaults to true when the field is absent, preserving legacy behaviour.
                 dto.repeatable() == null || dto.repeatable(),
-                dto.prerequisiteQuestId()
+                dto.prerequisiteQuestId(),
+                // recommended_level defaults to 0 (no recommendation) when the field is absent.
+                dto.recommendedLevel()
             );
         } catch (IllegalArgumentException e) {
             throw new QuestRepositoryException("Invalid quest data in " + source + ": " + e.getMessage(), e);

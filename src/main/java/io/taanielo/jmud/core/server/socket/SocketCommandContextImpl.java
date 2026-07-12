@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.server.socket;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -5304,10 +5305,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
-        connection.writeLine("Guild Clerk — Available Contracts:");
-        connection.writeLine(String.format("  %-20s %-36s %s", "ID", "Description", "Reward"));
+        // Present contracts easiest-first: by recommended level ascending (quests without a
+        // recommendation sort last), breaking ties on id for a stable, deterministic listing.
+        List<QuestTemplate> ordered = templates.stream()
+            .sorted(Comparator
+                .comparingInt((QuestTemplate t) ->
+                    t.hasRecommendedLevel() ? t.recommendedLevel() : Integer.MAX_VALUE)
+                .thenComparing(t -> t.id().getValue()))
+            .toList();
+        connection.writeLine("Guild Clerk — Available Contracts (easiest first):");
+        connection.writeLine(String.format("  %-20s %-4s %-30s %s", "ID", "Lvl", "Description", "Reward"));
         connection.writeLine("  " + "-".repeat(72));
-        for (QuestTemplate t : templates) {
+        for (QuestTemplate t : ordered) {
             // NPC-delivery errands are handed out in conversation, not by the Guild Clerk.
             if (t.isNpcDeliveryQuest()) {
                 continue;
@@ -5317,12 +5326,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
                     && !player.completedQuests().hasCompleted(QuestId.of(t.prerequisiteQuestId()))) {
                 continue;
             }
-            String desc = t.description().length() > 35
-                ? t.description().substring(0, 32) + "..."
+            String desc = t.description().length() > 29
+                ? t.description().substring(0, 26) + "..."
                 : t.description();
+            String level = t.hasRecommendedLevel() ? String.valueOf(t.recommendedLevel()) : "-";
             connection.writeLine(String.format(
-                "  %-20s %-36s %s",
-                t.id().getValue(), desc, formatQuestReward(t)));
+                "  %-20s %-4s %-30s %s",
+                t.id().getValue(), level, desc, formatQuestReward(t)));
         }
         sendPrompt();
     }

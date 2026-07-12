@@ -8,5 +8,8 @@
   "gold_reward": 80,
   "xp_reward": 200,
   "reputation_reward_faction_id": "militia",
-  "reputation_reward_delta": 5
+  "reputation_reward_delta": 5,
+  "recommended_level": 3,
+  "repeatable": false,
+  "prerequisite_quest_id": "goblin-thrasher"
 }
