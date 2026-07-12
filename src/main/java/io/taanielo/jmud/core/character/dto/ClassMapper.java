@@ -12,7 +12,8 @@ public class ClassMapper {
         Objects.requireNonNull(dto, "Class DTO is required");
         if (dto.schemaVersion() != ClassSchemaVersions.V2
             && dto.schemaVersion() != ClassSchemaVersions.V3
-            && dto.schemaVersion() != ClassSchemaVersions.V4) {
+            && dto.schemaVersion() != ClassSchemaVersions.V4
+            && dto.schemaVersion() != ClassSchemaVersions.V5) {
             throw new IllegalArgumentException("Unsupported class schema version " + dto.schemaVersion());
         }
         ClassHealingDto healingDto = Objects.requireNonNull(dto.healing(), "Class healing is required");
@@ -22,6 +23,7 @@ public class ClassMapper {
         List<AbilityId> trainableAbilityIds = dto.trainableAbilityIds() == null
             ? List.of()
             : dto.trainableAbilityIds().stream().map(AbilityId::of).toList();
+        String description = dto.description() == null ? "" : dto.description();
         return new ClassDefinition(
             ClassId.of(dto.id()),
             dto.name(),
@@ -29,7 +31,8 @@ public class ClassMapper {
             dto.carryBonus(),
             dto.armorBonus(),
             startingAbilityIds,
-            trainableAbilityIds
+            trainableAbilityIds,
+            description
         );
     }
 }

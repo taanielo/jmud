@@ -8,10 +8,11 @@ import io.taanielo.jmud.core.character.RaceId;
 public class RaceMapper {
     public Race toDomain(RaceDto dto) {
         Objects.requireNonNull(dto, "Race DTO is required");
-        if (dto.schemaVersion() != RaceSchemaVersions.V2) {
+        if (dto.schemaVersion() != RaceSchemaVersions.V2 && dto.schemaVersion() != RaceSchemaVersions.V3) {
             throw new IllegalArgumentException("Unsupported race schema version " + dto.schemaVersion());
         }
         RaceHealingDto healingDto = Objects.requireNonNull(dto.healing(), "Race healing is required");
+        String description = dto.description() == null ? "" : dto.description();
         return new Race(
             RaceId.of(dto.id()),
             dto.name(),
@@ -19,7 +20,8 @@ public class RaceMapper {
             dto.carryBase(),
             dto.armorBonus(),
             dto.manaModifier(),
-            dto.attackModifier()
+            dto.attackModifier(),
+            description
         );
     }
 }

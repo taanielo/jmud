@@ -17,10 +17,11 @@ public class ClassDefinition {
     private final int armorBonus;
     private final List<AbilityId> startingAbilityIds;
     private final List<AbilityId> trainableAbilityIds;
+    private final String description;
 
     /**
-     * Constructs a class definition with an armour bonus, starting ability ids and
-     * trainable ability ids.
+     * Constructs a class definition with an armour bonus, starting ability ids,
+     * trainable ability ids and a creation description.
      *
      * @param id                  the unique class identifier
      * @param name                the display name of the class
@@ -30,6 +31,8 @@ public class ClassDefinition {
      * @param startingAbilityIds  ability ids granted to new players of this class
      * @param trainableAbilityIds ability ids the Master Trainer can teach members of this class
      *                            (not granted automatically at creation)
+     * @param description         short flavour text shown at character creation; {@code null}
+     *                            is normalised to an empty string
      */
     public ClassDefinition(
         ClassId id,
@@ -38,7 +41,8 @@ public class ClassDefinition {
         int carryBonus,
         int armorBonus,
         List<AbilityId> startingAbilityIds,
-        List<AbilityId> trainableAbilityIds
+        List<AbilityId> trainableAbilityIds,
+        String description
     ) {
         this.id = Objects.requireNonNull(id, "Class id is required");
         if (name == null || name.isBlank()) {
@@ -60,6 +64,33 @@ public class ClassDefinition {
         this.trainableAbilityIds = trainableAbilityIds == null
             ? List.of()
             : List.copyOf(trainableAbilityIds);
+        this.description = description == null ? "" : description;
+    }
+
+    /**
+     * Constructs a class definition with an armour bonus, starting ability ids and
+     * trainable ability ids, with no creation description.
+     *
+     * @param id                  the unique class identifier
+     * @param name                the display name of the class
+     * @param healingBaseModifier modifier applied to the base healing rate
+     * @param carryBonus          bonus carry capacity granted by this class
+     * @param armorBonus          natural armour class granted by the class's armour proficiency
+     * @param startingAbilityIds  ability ids granted to new players of this class
+     * @param trainableAbilityIds ability ids the Master Trainer can teach members of this class
+     *                            (not granted automatically at creation)
+     */
+    public ClassDefinition(
+        ClassId id,
+        String name,
+        int healingBaseModifier,
+        int carryBonus,
+        int armorBonus,
+        List<AbilityId> startingAbilityIds,
+        List<AbilityId> trainableAbilityIds
+    ) {
+        this(id, name, healingBaseModifier, carryBonus, armorBonus,
+            startingAbilityIds, trainableAbilityIds, "");
     }
 
     /**
@@ -162,5 +193,16 @@ public class ClassDefinition {
      */
     public List<AbilityId> trainableAbilityIds() {
         return trainableAbilityIds;
+    }
+
+    /**
+     * Returns the short flavour description shown at character creation, covering the class's
+     * playstyle, benefits and signature abilities. May be an empty string for legacy data that
+     * predates the description field, but never {@code null}.
+     *
+     * @return the creation description; never {@code null}
+     */
+    public String description() {
+        return description;
     }
 }

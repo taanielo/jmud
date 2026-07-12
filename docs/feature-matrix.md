@@ -18,27 +18,27 @@ _Last full audit: 2026-07-12 (seeded by hand)._
 
 | Class | L1 offense | Trainable pool | Level gains | Attributes | Creation description | HELP entry | Balance pass |
 |---|---|---|---|---|---|---|---|
-| adventurer | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| bard | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| cleric | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| druid | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| mage | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| necromancer | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| paladin | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| ranger | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| rogue | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| shaman | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
-| warrior | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | 🔨 #521 | ❌ | ❌ |
+| adventurer | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| bard | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| cleric | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| druid | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| mage | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| necromancer | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| paladin | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| ranger | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| rogue | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| shaman | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
+| warrior | ✅ (#516) | 🔨 #522 | 🔨 #523 | 🔨 #524 | ✅ #521 | ❌ | ❌ |
 
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |
 |---|---|---|---|---|
-| dwarf | ✅ | 🔨 #521 | 🔨 #524 | ❌ |
-| elf | ✅ | 🔨 #521 | 🔨 #524 | ❌ |
-| human | ✅ | 🔨 #521 | 🔨 #524 | ❌ |
-| orc | ✅ | 🔨 #521 | 🔨 #524 | ❌ |
-| troll | ✅ | 🔨 #521 | 🔨 #524 | ❌ |
+| dwarf | ✅ | ✅ #521 | 🔨 #524 | ❌ |
+| elf | ✅ | ✅ #521 | 🔨 #524 | ❌ |
+| human | ✅ | ✅ #521 | 🔨 #524 | ❌ |
+| orc | ✅ | ✅ #521 | 🔨 #524 | ❌ |
+| troll | ✅ | ✅ #521 | 🔨 #524 | ❌ |
 
 ## Areas
 
@@ -67,7 +67,7 @@ game-designer should propose closing.
 |---|---|---|
 | Leveling & XP | ✅ | practice-point sink 🔨 #522 · class gains 🔨 #523 · combat scaling 🔨 #524 |
 | Combat core | ✅ | worded damage + condition display 🔨 #525 · attributes 🔨 #524 |
-| New-player funnel | ✅ #516 | starter weapon/hints 🔨 #517 · starter quest ✅ #518 · starting resources ✅ #519 · death grace ✅ #520 · creation info 🔨 #521 |
+| New-player funnel | ✅ #516 | starter weapon/hints 🔨 #517 · starter quest ✅ #518 · starting resources ✅ #519 · death grace ✅ #520 · creation info ✅ #521 |
 | Cartography | ✅ (MAP, retiring) | area maps as items 🔨 #529 |
 | Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |
 | Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519 |

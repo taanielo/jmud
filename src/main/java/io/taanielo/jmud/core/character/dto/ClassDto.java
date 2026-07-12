@@ -10,6 +10,7 @@ public record ClassDto(
     int carryBonus,
     int armorBonus,
     List<String> abilityIds,
-    List<String> trainableAbilityIds
+    List<String> trainableAbilityIds,
+    String description
 ) {
 }

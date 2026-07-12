@@ -10,6 +10,7 @@ public class Race {
     private final int armorBonus;
     private final int manaModifier;
     private final int attackModifier;
+    private final String description;
 
     public Race(RaceId id, String name, int healingBaseModifier, int carryBase) {
         this(id, name, healingBaseModifier, carryBase, 0);
@@ -28,6 +29,19 @@ public class Race {
         int manaModifier,
         int attackModifier
     ) {
+        this(id, name, healingBaseModifier, carryBase, armorBonus, manaModifier, attackModifier, "");
+    }
+
+    public Race(
+        RaceId id,
+        String name,
+        int healingBaseModifier,
+        int carryBase,
+        int armorBonus,
+        int manaModifier,
+        int attackModifier,
+        String description
+    ) {
         this.id = Objects.requireNonNull(id, "Race id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Race name must not be blank");
@@ -44,6 +58,7 @@ public class Race {
         this.armorBonus = armorBonus;
         this.manaModifier = manaModifier;
         this.attackModifier = attackModifier;
+        this.description = description == null ? "" : description;
     }
 
     public RaceId id() {
@@ -81,5 +96,14 @@ public class Race {
      */
     public int attackModifier() {
         return attackModifier;
+    }
+
+    /**
+     * Returns the short flavour description shown at character creation, covering the race's
+     * playstyle, benefits and signature traits. May be an empty string for legacy data that
+     * predates the description field, but never {@code null}.
+     */
+    public String description() {
+        return description;
     }
 }

@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:class:v5",
+  "title": "Class (v5)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "healing",
+    "carry_bonus"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 5
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "healing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_modifier"
+      ],
+      "properties": {
+        "base_modifier": {
+          "type": "integer"
+        }
+      }
+    },
+    "carry_bonus": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "armor_bonus": {
+      "type": "integer",
+      "default": 0,
+      "minimum": 0,
+      "description": "Natural armour class granted by the class's armour proficiency (e.g. a Paladin's heavy armour training). Added to the character's total AC alongside racial and equipment bonuses, reducing an attacker's effective hit chance."
+    },
+    "ability_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9._-]+$"
+      },
+      "default": [],
+      "description": "Ability ids auto-granted to new characters of this class at creation."
+    },
+    "trainable_ability_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9._-]+$"
+      },
+      "default": [],
+      "description": "Ability ids the Master Trainer can teach members of this class; not granted automatically at creation."
+    },
+    "description": {
+      "type": "string",
+      "default": "",
+      "description": "One to two sentences of flavour shown at character creation, covering the class's playstyle, benefits and signature abilities. Optional for backward compatibility; defaults to an empty string."
+    }
+  }
+}

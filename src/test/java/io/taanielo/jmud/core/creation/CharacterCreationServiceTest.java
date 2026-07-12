@@ -12,7 +12,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityCooldown;
+import io.taanielo.jmud.core.ability.AbilityCost;
+import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.ability.AbilityRegistry;
+import io.taanielo.jmud.core.ability.AbilityTargeting;
+import io.taanielo.jmud.core.ability.AbilityType;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -22,6 +29,7 @@ import io.taanielo.jmud.core.character.Race;
 import io.taanielo.jmud.core.character.RaceId;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
+import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
 
@@ -184,6 +192,63 @@ class CharacterCreationServiceTest {
         assertThrows(CharacterCreationException.class, emptyService::buildClassPrompt);
     }
 
+    // ── description & starting-ability rendering ───────────────────────
+
+    @Test
+    void buildRacePrompt_rendersDescription() throws CharacterCreationException {
+        Race describedElf = new Race(RaceId.of("elf"), "Elf", -2, 40, 0, 10, -1,
+            "Graceful and arcane-attuned spellcasters.");
+        CharacterCreationService svc = new CharacterCreationService(
+            new SingleRaceRepository(describedElf), new StubClassRepository());
+
+        String prompt = svc.buildRacePrompt();
+
+        assertTrue(prompt.contains("Graceful and arcane-attuned spellcasters."),
+            "Race prompt must render the race description");
+    }
+
+    @Test
+    void buildClassPrompt_rendersDescriptionAndStartingAbilityNames() throws CharacterCreationException {
+        ClassDefinition paladin = new ClassDefinition(
+            ClassId.of("paladin"), "Paladin", 1, 8, 5,
+            List.of(AbilityId.of("spell.lay.on.hands"), AbilityId.of("spell.smite")),
+            List.of(AbilityId.of("spell.bless")),
+            "A durable holy knight; smite only strikes undead."
+        );
+        AbilityRegistry registry = new AbilityRegistry(List.of(
+            stubAbility("spell.lay.on.hands", "lay on hands"),
+            stubAbility("spell.smite", "smite")
+        ));
+        CharacterCreationService svc = new CharacterCreationService(
+            new StubRaceRepository(), new SingleClassRepository(paladin), registry);
+
+        String prompt = svc.buildClassPrompt();
+
+        assertTrue(prompt.contains("A durable holy knight; smite only strikes undead."),
+            "Class prompt must render the class description");
+        assertTrue(prompt.contains("lay on hands"),
+            "Class prompt must render starting-ability display names");
+        assertTrue(prompt.contains("smite"),
+            "Class prompt must render starting-ability display names");
+    }
+
+    @Test
+    void buildClassPrompt_fallsBackToAbilityIdWhenNameUnknown() throws CharacterCreationException {
+        ClassDefinition paladin = new ClassDefinition(
+            ClassId.of("paladin"), "Paladin", 1, 8, 5,
+            List.of(AbilityId.of("spell.smite")),
+            List.of(),
+            "A durable holy knight."
+        );
+        CharacterCreationService svc = new CharacterCreationService(
+            new StubRaceRepository(), new SingleClassRepository(paladin));
+
+        String prompt = svc.buildClassPrompt();
+
+        assertTrue(prompt.contains("spell.smite"),
+            "Unknown abilities fall back to their id value when no registry name is available");
+    }
+
     // ── applyRaceStartingStats ─────────────────────────────────────────
 
     @Test
@@ -271,7 +336,67 @@ class CharacterCreationServiceTest {
         return new CharacterCreationService(repo, new StubClassRepository());
     }
 
+    private static Ability stubAbility(String id, String name) {
+        return new Ability() {
+            @Override public AbilityId id() { return AbilityId.of(id); }
+
+            @Override public String name() { return name; }
+
+            @Override public AbilityType type() { return AbilityType.SPELL; }
+
+            @Override public int level() { return 1; }
+
+            @Override public AbilityCost cost() { return new AbilityCost(0, 0); }
+
+            @Override public AbilityCooldown cooldown() { return new AbilityCooldown(0); }
+
+            @Override public AbilityTargeting targeting() { return AbilityTargeting.HARMFUL; }
+
+            @Override public List<String> aliases() { return List.of(); }
+
+            @Override public List<AbilityEffect> effects() { return List.of(); }
+
+            @Override public List<MessageSpec> messages() { return List.of(); }
+        };
+    }
+
     // ── stub repositories ──────────────────────────────────────────────
+
+    private static class SingleRaceRepository implements RaceRepository {
+        private final Race race;
+
+        SingleRaceRepository(Race race) {
+            this.race = race;
+        }
+
+        @Override
+        public Optional<Race> findById(RaceId id) {
+            return race.id().equals(id) ? Optional.of(race) : Optional.empty();
+        }
+
+        @Override
+        public List<Race> findAll() {
+            return List.of(race);
+        }
+    }
+
+    private static class SingleClassRepository implements ClassRepository {
+        private final ClassDefinition classDefinition;
+
+        SingleClassRepository(ClassDefinition classDefinition) {
+            this.classDefinition = classDefinition;
+        }
+
+        @Override
+        public Optional<ClassDefinition> findById(ClassId id) {
+            return classDefinition.id().equals(id) ? Optional.of(classDefinition) : Optional.empty();
+        }
+
+        @Override
+        public List<ClassDefinition> findAll() {
+            return List.of(classDefinition);
+        }
+    }
 
     private static class StubRaceRepository implements RaceRepository {
         private final List<Race> races = List.of(HUMAN, ELF, TROLL);

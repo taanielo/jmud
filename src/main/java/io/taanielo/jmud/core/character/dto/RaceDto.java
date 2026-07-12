@@ -8,6 +8,7 @@ public record RaceDto(
     int carryBase,
     int armorBonus,
     int manaModifier,
-    int attackModifier
+    int attackModifier,
+    String description
 ) {
 }
