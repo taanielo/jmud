@@ -18,8 +18,9 @@ import io.taanielo.jmud.core.world.RoomService;
  * any concrete transport type. Constructed only by the composition root (AGENTS.md §3.3).
  *
  * <p>Safe to call from both reader threads (e.g. during login) and the tick thread: the backing
- * {@link ClientPool#clients()} snapshot is an immutable {@link java.util.List} copy, so no locking
- * is required here (AGENTS.md §5).
+ * {@link ClientPool#inWorld()} snapshot is an immutable {@link java.util.List} copy, so no locking
+ * is required here (AGENTS.md §5). Connections that have not entered the world (login prompt,
+ * mid character-creation) are excluded by pool membership, not by per-call filtering (issue #514).
  */
 public class MessageBroadcasterImpl implements MessageBroadcaster {
 
@@ -62,10 +63,7 @@ public class MessageBroadcasterImpl implements MessageBroadcaster {
     public void broadcastGlobal(Message message, Set<Username> exclude) {
         Objects.requireNonNull(message, "Message is required");
         Set<Username> excluded = exclude == null ? Set.of() : exclude;
-        for (Client client : clientPool.clients()) {
-            if (!client.isInWorld()) {
-                continue;
-            }
+        for (Client client : clientPool.inWorld()) {
             client.currentPlayer()
                 .map(Player::getUsername)
                 .filter(username -> !excluded.contains(username))
@@ -74,8 +72,7 @@ public class MessageBroadcasterImpl implements MessageBroadcaster {
     }
 
     private Optional<Client> findClient(Username username) {
-        return clientPool.clients().stream()
-            .filter(Client::isInWorld)
+        return clientPool.inWorld().stream()
             .filter(client -> client.currentPlayer()
                 .map(player -> player.getUsername().equals(username))
                 .orElse(false))

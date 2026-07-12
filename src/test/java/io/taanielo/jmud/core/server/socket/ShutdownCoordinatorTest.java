@@ -231,12 +231,22 @@ class ShutdownCoordinatorTest {
         }
 
         @Override
+        public void promoteToWorld(Client client) {
+        }
+
+        @Override
         public int getNextId() {
             return 0;
         }
 
         @Override
-        public List<Client> clients() {
+        public List<Client> allConnections() {
+            return clients;
+        }
+
+        // Every fixture client is treated as already in-world.
+        @Override
+        public List<Client> inWorld() {
             return clients;
         }
     }

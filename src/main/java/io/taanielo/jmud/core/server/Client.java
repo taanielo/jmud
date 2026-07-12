@@ -22,18 +22,4 @@ public interface Client extends Runnable {
     default Optional<Player> currentPlayer() {
         return Optional.empty();
     }
-
-    /**
-     * Returns whether this connection currently has a player fully in the game world and
-     * eligible to receive game broadcasts (room, GOSSIP, and similar channels).
-     *
-     * <p>A connection that is authenticated but still mid character-creation (race/class
-     * selection) has {@link #currentPlayer()} populated but must not receive broadcasts
-     * until creation completes and it enters the world. Defaults to mirroring
-     * {@link #currentPlayer()} presence so implementations without a creation flow are
-     * unaffected.
-     */
-    default boolean isInWorld() {
-        return currentPlayer().isPresent();
-    }
 }

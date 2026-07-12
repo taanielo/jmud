@@ -112,7 +112,7 @@ public class SocketClient implements Client {
             connection.writeLine("Warning: Telnet is unencrypted. Use SSH for secure access.");
         }
         session.startTicks();
-        int onlineCount = Math.max(0, clientPool.clients().size() - 1);
+        int onlineCount = Math.max(0, clientPool.allConnections().size() - 1);
         if (preAuthenticatedUser != null) {
             sendMessage(WelcomeBannerMessage.of(session.getTextStyler(), onlineCount));
             completeAuthentication(preAuthenticatedUser, preAuthenticatedNewUser);
@@ -167,11 +167,6 @@ public class SocketClient implements Client {
     @Override
     public Optional<Player> currentPlayer() {
         return session.isAuthenticated() ? Optional.ofNullable(session.getPlayer()) : Optional.empty();
-    }
-
-    @Override
-    public boolean isInWorld() {
-        return creationState == null && currentPlayer().isPresent();
     }
 
     @Override
@@ -245,7 +240,8 @@ public class SocketClient implements Client {
                 Map.of("reason", reason));
             // A player who disconnected mid character-creation never entered the world, so
             // friends were never told they arrived — don't announce a departure (issue #512).
-            if (isInWorld()) {
+            // World membership lives in the pool; this runs before clientPool.remove(this) below.
+            if (clientPool.inWorld().contains(this)) {
                 commandContext.notifyFriendsOfLogout(player);
             }
         }
@@ -366,7 +362,7 @@ public class SocketClient implements Client {
     // correct way to find the other client that still owns the exact linkdead session.
     @SuppressWarnings("ReferenceEquality")
     private void detachOldClient(PlayerSession existing) {
-        for (Client c : clientPool.clients()) {
+        for (Client c : clientPool.allConnections()) {
             if (c instanceof SocketClient sc && sc != this && sc.session() == existing) {
                 sc.detachForReattach();
                 return;

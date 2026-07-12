@@ -256,20 +256,19 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     @Override
     public List<Client> clients() {
-        return clientPool.clients();
+        return clientPool.allConnections();
     }
 
     @Override
     public List<Username> onlinePlayerNames() {
-        return clientPool.clients().stream()
+        // The in-world pool view already excludes connections at the login or race/class prompts
+        // (issues #512/#514), so WHO/TELL/WHISPER/GIVE can never target a mid-creation player.
+        return clientPool.inWorld().stream()
             .filter(SocketClient.class::isInstance)
             .map(SocketClient.class::cast)
             // Linkdead players are still in the world (attackable, occupying their room) but are
             // unresponsive, so they are omitted from the WHO roster (issue #343).
             .filter(sc -> !sc.session().isLinkdead())
-            // Players still answering the race/class prompts have not entered the world yet and
-            // must not be visible to WHO or targetable by TELL/WHISPER/GIVE (issue #512).
-            .filter(Client::isInWorld)
             .map(SocketClient::authenticatedUsername)
             .flatMap(Optional::stream)
             .toList();
@@ -390,7 +389,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     private void updateTarget(Player updatedTarget) {
         saveOrWarn(updatedTarget);
-        for (Client c : clientPool.clients()) {
+        for (Client c : clientPool.allConnections()) {
             if (c instanceof SocketClient socketClient) {
                 if (socketClient.isAuthenticatedUser(updatedTarget.getUsername())) {
                     socketClient.applyExternalPlayerUpdate(updatedTarget);
@@ -703,7 +702,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * @return {@code "hp/maxHp"} string
      */
     private String findMemberCurrentHp(Username username) {
-        for (Client c : clientPool.clients()) {
+        for (Client c : clientPool.allConnections()) {
             if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
                 Player p = sc.session().getPlayer();
                 if (p != null) {
@@ -1309,7 +1308,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * when no such client is connected.
      */
     private @Nullable SocketClient findSocketClient(Username username) {
-        for (Client c : clientPool.clients()) {
+        for (Client c : clientPool.allConnections()) {
             if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
                 return sc;
             }
@@ -1724,7 +1723,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * @return the connected player, or {@code null} if no client is authenticated as that user
      */
     private @Nullable Player findOnlinePlayer(Username username) {
-        for (Client c : clientPool.clients()) {
+        for (Client c : clientPool.allConnections()) {
             if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
                 return sc.session().getPlayer();
             }
@@ -4828,7 +4827,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * @param username the username to resolve
      */
     private @Nullable Player resolvePlayerByUsername(Username username) {
-        for (Client c : clientPool.clients()) {
+        for (Client c : clientPool.allConnections()) {
             if (c instanceof SocketClient sc && sc.isAuthenticatedUser(username)) {
                 Player p = sc.session().getPlayer();
                 if (p != null) {
@@ -5826,14 +5825,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     /**
      * Registers everything that makes this connection a live participant in the game world:
-     * the player-event-bus listener (mob-initiated combat results), effect and healing/sustenance
-     * tick callbacks, the death-state check, tamed-pet respawn, and the friend login notice.
+     * promotion into the pool's in-world view (issue #514), the player-event-bus listener
+     * (mob-initiated combat results), effect and healing/sustenance tick callbacks, the
+     * death-state check, tamed-pet respawn, and the friend login notice.
      * Must only run once the player is actually in-world (issue #512).
      *
      * @param isReattach {@code true} when adopting a linkdead session — the player never left,
      *                   so friends are not re-notified of a login
      */
     private void wireWorldPresence(boolean isReattach) {
+        // Promote into the pool's in-world view: from here on this client is eligible for
+        // broadcasts, WHO, and targeted delivery (issue #514).
+        clientPool.promoteToWorld(client);
         // Register player-event-bus listener for mob-initiated combat results
         if (context.playerEventBus() != null && session.getPlayer() != null) {
             context.playerEventBus().register(session.getPlayer().getUsername(), result ->
