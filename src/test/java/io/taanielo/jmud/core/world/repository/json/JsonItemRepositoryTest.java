@@ -121,6 +121,30 @@ class JsonItemRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsMountItem() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository repository = new JsonItemRepository(dataRoot);
+
+        Item warhorse = Item.builder(
+            ItemId.of("swift-warhorse"), "a swift warhorse", "A tall, deep-chested warhorse.",
+            ItemAttributes.empty())
+            .weight(0)
+            .value(600)
+            .mountMoveDiscount(2)
+            .build();
+        repository.save(warhorse);
+
+        // Fresh repository (no cache) so the mount discount comes back off disk.
+        Optional<Item> loaded = new JsonItemRepository(dataRoot).findById(ItemId.of("swift-warhorse"));
+
+        assertTrue(loaded.isPresent());
+        Item reloaded = loaded.get();
+        assertTrue(reloaded.isMount());
+        assertEquals(2, reloaded.getMountMoveDiscount());
+        assertEquals(warhorse, reloaded);
+    }
+
+    @Test
     void savesAndLoadsRareItemWithAffixes() throws Exception {
         Path dataRoot = tempDir.resolve("data");
         JsonItemRepository repository = new JsonItemRepository(dataRoot);

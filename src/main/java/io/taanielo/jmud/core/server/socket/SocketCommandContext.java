@@ -635,6 +635,29 @@ public interface SocketCommandContext extends Client {
     default void sneak(String args) {}
 
     /**
+     * Saddles the current player up on a rideable mount they own, reducing their per-step travel cost
+     * while ridden.
+     *
+     * <p>The mount must be a carried mount item, the player must not already be mounted, and mounts
+     * may only be summoned outdoors. The ridden state is transient (never persisted) and is broken
+     * automatically on entering combat or moving indoors.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the name (or a fragment) of the mount to ride
+     */
+    default void mount(String args) {}
+
+    /**
+     * Dismounts the current player, returning them to normal per-step travel cost.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args unused command arguments
+     */
+    default void dismount(String args) {}
+
+    /**
      * Attempts the rogue STEAL skill to pickpocket gold from a target NPC in the current room.
      *
      * <p>Only rogues may steal. A success roll scaling with rogue level either transfers gold from

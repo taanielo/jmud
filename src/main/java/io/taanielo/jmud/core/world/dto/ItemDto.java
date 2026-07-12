@@ -26,6 +26,7 @@ public record ItemDto(
     List<String> affixes,
     Boolean identified,
     Boolean locked,
-    Boolean twoHanded
+    Boolean twoHanded,
+    Integer mountMoveDiscount
 ) {
 }

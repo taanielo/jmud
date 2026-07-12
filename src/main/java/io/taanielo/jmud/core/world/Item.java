@@ -91,6 +91,14 @@ public class Item {
      * two_handed field) keep working exactly as before. See isTwoHanded().
      */
     boolean twoHanded;
+    /**
+     * Per-step move-point discount this item grants while ridden as a mount, or null when the item is
+     * not a mount. A positive value marks the item as a rideable mount (a pony, a warhorse, ...) that
+     * a player can MOUNT to reduce travel cost; see isMount() and mountMoveDiscount(). Only carried,
+     * non-equippable mount items are ever ridden; defaults to null so ordinary items and legacy item
+     * data (which has no mount_move_discount field) keep working exactly as before.
+     */
+    @Nullable Integer mountMoveDiscount;
 
     /**
      * Constructs an item from its flattened field set. This is the single, private canonical
@@ -121,6 +129,8 @@ public class Item {
      *                          non-container items
      * @param twoHanded         whether this weapon requires both hands, or {@code null} to default to
      *                          {@code false} (one-handed)
+     * @param mountMoveDiscount the per-step move-point discount granted while ridden, or {@code null}
+     *                          for a non-mount item; must be positive when present
      */
     private Item(
         ItemId id,
@@ -143,7 +153,8 @@ public class Item {
         @Nullable List<AffixId> affixes,
         @Nullable Boolean identified,
         @Nullable Boolean locked,
-        @Nullable Boolean twoHanded
+        @Nullable Boolean twoHanded,
+        @Nullable Integer mountMoveDiscount
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -215,6 +226,10 @@ public class Item {
         }
         this.locked = isLocked;
         this.twoHanded = twoHanded != null && twoHanded;
+        if (mountMoveDiscount != null && mountMoveDiscount <= 0) {
+            throw new IllegalArgumentException("Mount move discount must be positive");
+        }
+        this.mountMoveDiscount = mountMoveDiscount;
     }
 
     /**
@@ -261,6 +276,8 @@ public class Item {
         private RarityProfile rarity = RarityProfile.common();
         private Identification identification = Identification.known();
         private boolean twoHanded;
+        @Nullable
+        private Integer mountMoveDiscount;
 
         private Builder(ItemId id, String name, String description, ItemAttributes attributes) {
             this.id = id;
@@ -348,6 +365,15 @@ public class Item {
         }
 
         /**
+         * Marks this item as a rideable mount granting the given per-step move-point discount, or a
+         * non-mount item when {@code null} (defaults to non-mount).
+         */
+        public Builder mountMoveDiscount(@Nullable Integer mountMoveDiscount) {
+            this.mountMoveDiscount = mountMoveDiscount;
+            return this;
+        }
+
+        /**
          * Assembles the item, validating every facet's invariants through {@link Item}'s canonical
          * constructor.
          *
@@ -375,7 +401,8 @@ public class Item {
                 rarity.affixes(),
                 identification.identified(),
                 container.locked(),
-                twoHanded
+                twoHanded,
+                mountMoveDiscount
             );
         }
     }
@@ -479,7 +506,7 @@ public class Item {
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, locked, twoHanded);
+            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount);
     }
 
     /**
@@ -513,7 +540,7 @@ public class Item {
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
-            rarity, affixes, identified, locked, twoHanded);
+            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount);
     }
 
     /**
@@ -531,7 +558,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, newIdentified, locked, twoHanded);
+            rarity, affixes, newIdentified, locked, twoHanded, mountMoveDiscount);
     }
 
     /**
@@ -553,7 +580,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, newLocked, twoHanded);
+            rarity, affixes, identified, newLocked, twoHanded, mountMoveDiscount);
     }
 
     /**
@@ -573,7 +600,7 @@ public class Item {
         nextAffixes.add(affixId);
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, nextAffixes, identified, locked, twoHanded);
+            rarity, nextAffixes, identified, locked, twoHanded, mountMoveDiscount);
     }
 
     /**
@@ -585,6 +612,17 @@ public class Item {
      */
     public boolean isEquippable() {
         return equipSlot != null;
+    }
+
+    /**
+     * Returns whether this item is a rideable mount (i.e. it carries a positive
+     * {@link #mountMoveDiscount}). A player may MOUNT such an item from their inventory to reduce
+     * their per-step travel cost.
+     *
+     * @return {@code true} when the item is a mount
+     */
+    public boolean isMount() {
+        return mountMoveDiscount != null && mountMoveDiscount > 0;
     }
 
     /**

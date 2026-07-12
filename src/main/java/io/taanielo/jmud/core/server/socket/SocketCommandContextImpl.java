@@ -81,6 +81,7 @@ import io.taanielo.jmud.core.player.PlayerFriendList;
 import io.taanielo.jmud.core.player.PlayerGuildMembership;
 import io.taanielo.jmud.core.player.PlayerIgnoreList;
 import io.taanielo.jmud.core.player.PlayerMailService;
+import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.RestSettings;
 import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.prompt.PromptRenderer;
@@ -988,6 +989,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         emitMoveAudit(player, direction, fromRoom, result);
         if (result.moved()) {
             player = spendMovePoints(player);
+            player = dismountIfNotOutdoors(player, result.room());
         }
         renderMoveOutcome(player, direction, oldRoom, result, null);
         if (result.moved()) {
@@ -1008,6 +1010,26 @@ class SocketCommandContextImpl implements SocketCommandContext {
         session.replacePlayer(spent);
         saveOrWarn(spent);
         return spent;
+    }
+
+    /**
+     * Auto-dismounts a rider who has just entered an indoor or underground room, since mounts may
+     * only be ridden outdoors. Replaces the session snapshot and notifies the player. Runs on the
+     * tick thread as part of command execution (AGENTS.md §5).
+     *
+     * @param player the player who just entered {@code room}
+     * @param room   the room the player moved into (may be {@code null} when unresolved)
+     * @return the updated (possibly dismounted) player snapshot
+     */
+    private Player dismountIfNotOutdoors(Player player, @Nullable Room room) {
+        if (!player.isMounted() || room == null || room.isOutdoor()) {
+            return player;
+        }
+        String mountName = player.mount().mountName();
+        Player dismounted = player.withMount(PlayerMount.dismounted());
+        session.replacePlayer(dismounted);
+        connection.writeLine("You cannot ride " + mountName + " here and swing down from the saddle.");
+        return dismounted;
     }
 
     /** Emits the {@code player.move} audit event for a move attempt (successful or blocked). */
@@ -1697,6 +1719,30 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         cancelRestIfActive();
         GameActionResult result = gameActionService.sneakToggle(session.getPlayer());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void mount(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to mount.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.mount(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void dismount(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to dismount.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.dismount(session.getPlayer());
         deliverResult(result);
         sendPrompt();
     }

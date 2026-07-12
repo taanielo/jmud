@@ -64,6 +64,7 @@ import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageSpec;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.ContainerLockingService;
@@ -195,6 +196,94 @@ class GameActionServiceTest {
         assertTrue(result.updatedTarget().isDead());
         assertEquals(0, result.updatedTarget().getVitals().hp());
         assertTrue(result.messages().stream().anyMatch(m -> m.type() == GameMessage.Type.SOURCE));
+    }
+
+    @Test
+    void mountFailsIndoors() {
+        // The shared setUp room (ROOM_A) is indoor; mounts may only be summoned outdoors.
+        Player rider = attacker.withInventory(List.of(mountItem("pony", "a sturdy pony", 1)));
+
+        GameActionResult result = service.mount(rider, "pony");
+
+        assertNull(result.updatedSource());
+        assertEquals("You cannot ride a mount indoors or underground.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void mountFailsWithoutOwnership() {
+        GameActionService outdoors = outdoorService((s, i) -> Optional.empty(), attacker.getUsername());
+
+        GameActionResult result = outdoors.mount(attacker, "pony");
+
+        assertNull(result.updatedSource());
+        assertTrue(result.messages().getFirst().text().contains("do not own a mount"));
+    }
+
+    @Test
+    void mountFailsWhenItemIsNotAMount() {
+        Item torch = Item.builder(ItemId.of("torch"), "a torch", "A warm torch.", ItemAttributes.empty())
+            .weight(1).value(1).build();
+        Player rider = attacker.withInventory(List.of(torch));
+        GameActionService outdoors = outdoorService((s, i) -> Optional.empty(), rider.getUsername());
+
+        GameActionResult result = outdoors.mount(rider, "torch");
+
+        assertEquals("You cannot ride that.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void mountFailsWhenAlreadyMounted() {
+        Player rider = attacker.withInventory(List.of(mountItem("pony", "a sturdy pony", 1)))
+            .withMount(PlayerMount.riding("a sturdy pony", 1));
+        GameActionService outdoors = outdoorService((s, i) -> Optional.empty(), rider.getUsername());
+
+        GameActionResult result = outdoors.mount(rider, "pony");
+
+        assertNull(result.updatedSource());
+        assertTrue(result.messages().getFirst().text().contains("already mounted"));
+    }
+
+    @Test
+    void mountSucceedsOutdoorsAndRecordsDiscount() {
+        Player rider = attacker.withInventory(List.of(mountItem("pony", "a sturdy pony", 1)));
+        GameActionService outdoors = outdoorService((s, i) -> Optional.empty(), rider.getUsername());
+
+        GameActionResult result = outdoors.mount(rider, "pony");
+
+        assertNotNull(result.updatedSource());
+        assertTrue(result.updatedSource().isMounted());
+        assertEquals("a sturdy pony", result.updatedSource().mount().mountName());
+        assertEquals(1, result.updatedSource().mount().moveDiscount());
+        assertTrue(result.messages().stream().anyMatch(m -> m.type() == GameMessage.Type.ROOM));
+    }
+
+    @Test
+    void dismountFailsWhenNotMounted() {
+        GameActionResult result = service.dismount(attacker);
+
+        assertNull(result.updatedSource());
+        assertEquals("You are not riding anything.", result.messages().getFirst().text());
+    }
+
+    @Test
+    void dismountReturnsPlayerToNormalTravel() {
+        Player rider = attacker.withMount(PlayerMount.riding("a sturdy pony", 1));
+
+        GameActionResult result = service.dismount(rider);
+
+        assertNotNull(result.updatedSource());
+        assertFalse(result.updatedSource().isMounted());
+    }
+
+    @Test
+    void attackWhileMountedAutoDismounts() {
+        Player rider = attacker.withMount(PlayerMount.riding("a sturdy pony", 1));
+
+        GameActionResult result = service.attack(rider, "target");
+
+        assertNotNull(result.updatedSource());
+        assertFalse(result.updatedSource().isMounted());
+        assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("fight on foot")));
     }
 
     @Test
@@ -2042,6 +2131,34 @@ class GameActionServiceTest {
 
     private Player player(String username) {
         return Player.of(User.of(Username.of(username), Password.hash("pw", 1000)), "prompt", false);
+    }
+
+    private static Item mountItem(String id, String name, int discount) {
+        return Item.builder(ItemId.of(id), name, "A fine mount.", ItemAttributes.empty())
+            .weight(0).value(100).mountMoveDiscount(discount).build();
+    }
+
+    /**
+     * Builds a GameActionService whose single room ({@link #ROOM_A}) is outdoors, so mounting is
+     * permitted. Each given username is placed in that room.
+     */
+    private GameActionService outdoorService(AbilityTargetResolver resolver, Username... located) {
+        Room field = new Room(ROOM_A, "Open Field", "A wide open field.", Map.of(), List.of(), List.of(),
+            Map.of(), null, null, null, true);
+        RoomService outdoorRooms = new RoomService(new TestRoomRepository(Map.of(ROOM_A, field)), ROOM_A);
+        for (Username username : located) {
+            outdoorRooms.ensurePlayerLocation(username);
+        }
+        AttackId defaultAttack = CombatSettings.defaultAttackId();
+        AttackDefinition attack = new AttackDefinition(defaultAttack, "punch", 2, 4, 0, 0, 0, List.of());
+        CombatEngine combatEngine = new CombatEngine(
+            new StubAttackRepository(Map.of(defaultAttack, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            new FixedCombatRandom(10, 3, 100));
+        EffectEngine effectEngine = new EffectEngine(new StubEffectRepository(Map.of()));
+        return new GameActionService(
+            testAbilityRegistry(), new BasicAbilityCostResolver(), effectEngine, combatEngine,
+            outdoorRooms, resolver, new TestCooldowns(), testEncumbranceService());
     }
 
     private static EncumbranceService testEncumbranceService() {

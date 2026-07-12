@@ -767,6 +767,39 @@ public class Player implements EffectTarget, Combatant {
         return combatState.stealthActive();
     }
 
+    /**
+     * Returns the player's transient ridden-mount state.
+     *
+     * <p>This state is in-memory only and is never persisted to JSON, so a reconnecting player is
+     * always {@linkplain PlayerMount#dismounted() dismounted} even though the mount item itself
+     * remains in their inventory.
+     */
+    @JsonIgnore
+    public PlayerMount mount() {
+        return combatState.mount();
+    }
+
+    /**
+     * Returns {@code true} while the player is currently riding a mount. In-memory only, never
+     * persisted.
+     */
+    @JsonIgnore
+    public boolean isMounted() {
+        return combatState.mount().isMounted();
+    }
+
+    /**
+     * Returns a copy of this player with the given ridden-mount state.
+     *
+     * <p>The mount state is in-memory only and is never persisted.
+     *
+     * @param newMount the new mount state; must not be null (use {@link PlayerMount#dismounted()} to
+     *                 dismount)
+     */
+    public Player withMount(PlayerMount newMount) {
+        return new Player(identity, combatState.withMount(newMount), preferences, abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
+    }
+
     @Override
     public List<EffectInstance> effects() {
         return combatState.effects();

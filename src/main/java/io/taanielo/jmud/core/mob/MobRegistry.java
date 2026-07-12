@@ -52,6 +52,7 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.reload.MobContentReloader;
@@ -1505,6 +1506,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             handleMobKill(mob, damagedPlayer, candidates);
         } else {
             List<GameMessage> messages = new ArrayList<>();
+            // Being drawn into combat throws a rider off their mount, mirroring how attacking does.
+            if (damagedPlayer.isMounted()) {
+                String mountName = damagedPlayer.mount().mountName();
+                damagedPlayer = damagedPlayer.withMount(PlayerMount.dismounted());
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
+            }
             if (firstEngagement && !useSpecial) {
                 messages.add(GameMessage.toSource(
                     "The " + mob.template().name() + " lunges at you!"));

@@ -38,8 +38,11 @@ public class ItemMapper {
         boolean unidentified = !item.isIdentified();
         boolean locked = item.isLocked();
         boolean twoHanded = item.isTwoHanded();
+        boolean mount = item.isMount();
         int version;
-        if (twoHanded) {
+        if (mount) {
+            version = SchemaVersions.V12;
+        } else if (twoHanded) {
             version = SchemaVersions.V11;
         } else if (locked) {
             version = SchemaVersions.V10;
@@ -79,7 +82,8 @@ public class ItemMapper {
             affixIds,
             unidentified ? Boolean.FALSE : null,
             locked ? Boolean.TRUE : null,
-            twoHanded ? Boolean.TRUE : null
+            twoHanded ? Boolean.TRUE : null,
+            mount ? item.getMountMoveDiscount() : null
         );
     }
 
@@ -113,6 +117,7 @@ public class ItemMapper {
         boolean identified = dto.identified() == null || dto.identified();
         boolean twoHanded = dto.twoHanded() != null && dto.twoHanded();
         return Item.builder(ItemId.of(dto.id()), dto.name(), dto.description(), attributes)
+            .mountMoveDiscount(dto.mountMoveDiscount())
             .effects(effects)
             .messages(messages)
             .equipSlot(slot)
