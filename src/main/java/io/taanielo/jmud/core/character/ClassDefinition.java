@@ -16,16 +16,20 @@ public class ClassDefinition {
     private final int carryBonus;
     private final int armorBonus;
     private final List<AbilityId> startingAbilityIds;
+    private final List<AbilityId> trainableAbilityIds;
 
     /**
-     * Constructs a class definition with an armour bonus and starting ability ids.
+     * Constructs a class definition with an armour bonus, starting ability ids and
+     * trainable ability ids.
      *
-     * @param id                 the unique class identifier
-     * @param name               the display name of the class
+     * @param id                  the unique class identifier
+     * @param name                the display name of the class
      * @param healingBaseModifier modifier applied to the base healing rate
-     * @param carryBonus         bonus carry capacity granted by this class
-     * @param armorBonus         natural armour class granted by the class's armour proficiency
-     * @param startingAbilityIds ability ids granted to new players of this class
+     * @param carryBonus          bonus carry capacity granted by this class
+     * @param armorBonus          natural armour class granted by the class's armour proficiency
+     * @param startingAbilityIds  ability ids granted to new players of this class
+     * @param trainableAbilityIds ability ids the Master Trainer can teach members of this class
+     *                            (not granted automatically at creation)
      */
     public ClassDefinition(
         ClassId id,
@@ -33,7 +37,8 @@ public class ClassDefinition {
         int healingBaseModifier,
         int carryBonus,
         int armorBonus,
-        List<AbilityId> startingAbilityIds
+        List<AbilityId> startingAbilityIds,
+        List<AbilityId> trainableAbilityIds
     ) {
         this.id = Objects.requireNonNull(id, "Class id is required");
         if (name == null || name.isBlank()) {
@@ -52,6 +57,31 @@ public class ClassDefinition {
         this.startingAbilityIds = startingAbilityIds == null
             ? List.of()
             : List.copyOf(startingAbilityIds);
+        this.trainableAbilityIds = trainableAbilityIds == null
+            ? List.of()
+            : List.copyOf(trainableAbilityIds);
+    }
+
+    /**
+     * Constructs a class definition with an armour bonus and starting ability ids
+     * and no trainable abilities.
+     *
+     * @param id                 the unique class identifier
+     * @param name               the display name of the class
+     * @param healingBaseModifier modifier applied to the base healing rate
+     * @param carryBonus         bonus carry capacity granted by this class
+     * @param armorBonus         natural armour class granted by the class's armour proficiency
+     * @param startingAbilityIds ability ids granted to new players of this class
+     */
+    public ClassDefinition(
+        ClassId id,
+        String name,
+        int healingBaseModifier,
+        int carryBonus,
+        int armorBonus,
+        List<AbilityId> startingAbilityIds
+    ) {
+        this(id, name, healingBaseModifier, carryBonus, armorBonus, startingAbilityIds, List.of());
     }
 
     /**
@@ -119,5 +149,18 @@ public class ClassDefinition {
      */
     public List<AbilityId> startingAbilityIds() {
         return startingAbilityIds;
+    }
+
+    /**
+     * Returns the ability ids that the Master Trainer can teach a member of this class.
+     *
+     * <p>These abilities are <em>not</em> granted automatically at character creation; a
+     * player learns them by spending practice points at the trainer (see {@code TRAIN}).
+     * This is the advanced kit that gives a new character something to train on day one.
+     *
+     * @return unmodifiable list of trainable ability ids; never null
+     */
+    public List<AbilityId> trainableAbilityIds() {
+        return trainableAbilityIds;
     }
 }

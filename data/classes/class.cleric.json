@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "cleric",
   "name": "Cleric",
   "healing": {
     "base_modifier": 2
   },
   "carry_bonus": 10,
-  "ability_ids": ["spell.heal.group", "spell.turn.undead", "spell.bless", "spell.resurrection"]
+  "ability_ids": ["spell.heal.group", "spell.turn.undead", "spell.smite", "spell.resurrection"],
+  "trainable_ability_ids": ["spell.bless"]
 }

@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "adventurer",
   "name": "Adventurer",
   "healing": {
     "base_modifier": 0
   },
   "carry_bonus": 10,
-  "ability_ids": ["skill.bash", "spell.heal"]
+  "ability_ids": ["skill.bash", "spell.heal"],
+  "trainable_ability_ids": ["skill.second-wind"]
 }

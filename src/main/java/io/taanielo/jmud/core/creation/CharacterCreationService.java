@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
@@ -33,6 +34,13 @@ import io.taanielo.jmud.core.player.PlayerVitals;
  * across all connected clients.
  */
 public class CharacterCreationService {
+
+    /**
+     * Practice points granted to a brand-new character so the Master Trainer is usable
+     * on day one. Practice points are otherwise only earned by levelling up, which left
+     * a fresh character unable to TRAIN anything until after surviving the early fights.
+     */
+    public static final int STARTING_PRACTICE_POINTS = 2;
 
     private final RaceRepository raceRepository;
     private final ClassRepository classRepository;
@@ -179,6 +187,33 @@ public class CharacterCreationService {
             adjusted = adjusted.restoreMana(newMaxMana - adjusted.mana());
         }
         return player.withVitals(adjusted);
+    }
+
+    /**
+     * Applies the chosen class's starting state to a freshly created player: it grants the
+     * class's starting (auto-learned) abilities and seeds {@link #STARTING_PRACTICE_POINTS}
+     * practice points so the player can immediately TRAIN advanced abilities at the Master
+     * Trainer.
+     *
+     * <p>The class's {@link ClassDefinition#trainableAbilityIds() trainable abilities} are
+     * deliberately <em>not</em> learned here — they are the day-one training options.
+     *
+     * @param player   the newly created player whose class state should be applied
+     * @param classDef the class chosen during character creation; {@code null} leaves the player unchanged
+     * @return the player with starting abilities learned and starting practice points granted,
+     *         or the original player when {@code classDef} is {@code null}
+     */
+    public Player applyClassStartingState(Player player, ClassDefinition classDef) {
+        Objects.requireNonNull(player, "Player is required");
+        if (classDef == null) {
+            return player;
+        }
+        Player result = player;
+        List<AbilityId> startingAbilities = classDef.startingAbilityIds();
+        if (!startingAbilities.isEmpty()) {
+            result = result.withLearnedAbilities(startingAbilities);
+        }
+        return result.withPracticePoints(STARTING_PRACTICE_POINTS);
     }
 
     // ── private helpers ────────────────────────────────────────────────

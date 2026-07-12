@@ -1,40 +1,40 @@
 {
   "schema_version": 2,
-  "id": "spell.smite",
-  "name": "smite",
+  "id": "spell.lightning-bolt",
+  "name": "lightning bolt",
   "type": "SPELL",
   "level": 1,
   "cost": {
-    "mana": 6
+    "mana": 4
   },
   "cooldown": {
     "ticks": 3
   },
   "targeting": "HARMFUL",
-  "aliases": [],
+  "aliases": ["bolt"],
   "effects": [
     {
       "kind": "VITALS",
       "stat": "HP",
       "operation": "DECREASE",
-      "amount": 10
+      "amount": 6
     }
   ],
   "messages": [
     {
       "phase": "use",
       "channel": "self",
-      "text": "You call down holy fire to smite {target}, searing it with righteous flame!"
+      "text": "You hurl a crackling bolt of lightning at {target}."
     },
     {
       "phase": "use",
       "channel": "target",
-      "text": "{source} smites you with holy fire!"
+      "text": "{source} blasts you with a crackling bolt of lightning!"
     },
     {
       "phase": "use",
       "channel": "room",
-      "text": "{source} smites {target} with a pillar of holy fire!"
+      "text": "{source} looses a bolt of lightning at {target}."
     }
   ]
 }

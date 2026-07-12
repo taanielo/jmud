@@ -426,9 +426,7 @@ public class SocketClient implements Client {
         }
         if (classDef != null) {
             player = player.withIdentity(player.identity().withClassId(classDef.id()));
-            if (!classDef.startingAbilityIds().isEmpty()) {
-                player = player.withLearnedAbilities(classDef.startingAbilityIds());
-            }
+            player = context.characterCreationService().applyClassStartingState(player, classDef);
         }
         session.setPlayer(player);
         context.persistenceQueue().enqueueSave(player);

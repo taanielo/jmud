@@ -2,7 +2,7 @@
   "schema_version": 4,
   "id": "goblin",
   "name": "Goblin",
-  "max_hp": 15,
+  "max_hp": 12,
   "attack_id": "attack.goblin",
   "aggressive": false,
   "spawn_room_id": "sparring-pit",

@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
-  "id": "spell.smite",
-  "name": "smite",
+  "id": "spell.discord",
+  "name": "discord",
   "type": "SPELL",
   "level": 1,
   "cost": {
-    "mana": 6
+    "mana": 4
   },
   "cooldown": {
     "ticks": 3
@@ -17,24 +17,24 @@
       "kind": "VITALS",
       "stat": "HP",
       "operation": "DECREASE",
-      "amount": 10
+      "amount": 5
     }
   ],
   "messages": [
     {
       "phase": "use",
       "channel": "self",
-      "text": "You call down holy fire to smite {target}, searing it with righteous flame!"
+      "text": "You unleash a jarring chord of dissonance that rattles {target}."
     },
     {
       "phase": "use",
       "channel": "target",
-      "text": "{source} smites you with holy fire!"
+      "text": "{source} unleashes a jarring chord of dissonance that rattles your very bones!"
     },
     {
       "phase": "use",
       "channel": "room",
-      "text": "{source} smites {target} with a pillar of holy fire!"
+      "text": "{source} plays a jarring chord of dissonance at {target}."
     }
   ]
 }

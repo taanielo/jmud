@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "ranger",
   "name": "Ranger",
   "healing": {
     "base_modifier": 0
   },
   "carry_bonus": 6,
-  "ability_ids": ["skill.track", "skill.aimed-shot"]
+  "ability_ids": ["skill.track", "skill.aimed-shot"],
+  "trainable_ability_ids": ["skill.second-wind"]
 }
