@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "skill.second-wind",
+  "name": "second wind",
+  "type": "SKILL",
+  "level": 3,
+  "cost": {
+    "move": 10
+  },
+  "cooldown": {
+    "ticks": 20
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["rally", "secondwind"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "INCREASE",
+      "amount": 25
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You dig deep, catch a second wind, and shrug off your wounds."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} digs deep and shrugs off their wounds."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} grits their teeth, catches a second wind, and stands taller."
+    }
+  ]
+}
