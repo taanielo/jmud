@@ -103,7 +103,7 @@ public class ShutdownCoordinator {
     }
 
     private void saveOnlinePlayers() {
-        for (Client client : clientPool.clients()) {
+        for (Client client : clientPool.allConnections()) {
             client.currentPlayer().ifPresent(this::enqueueSave);
         }
         boolean flushed = persistenceQueue.flush(PERSISTENCE_FLUSH_TIMEOUT);
@@ -131,7 +131,7 @@ public class ShutdownCoordinator {
 
     private void notifyClientsOfShutdown() {
         SystemNoticeMessage notice = new SystemNoticeMessage("Server is shutting down.");
-        for (Client client : clientPool.clients()) {
+        for (Client client : clientPool.allConnections()) {
             try {
                 client.sendMessage(notice);
             } catch (RuntimeException e) {

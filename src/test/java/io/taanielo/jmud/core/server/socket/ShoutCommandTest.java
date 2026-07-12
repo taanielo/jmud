@@ -225,12 +225,22 @@ class ShoutCommandTest {
         }
 
         @Override
+        public void promoteToWorld(Client client) {
+        }
+
+        @Override
         public int getNextId() {
             return clients.size();
         }
 
         @Override
-        public List<Client> clients() {
+        public List<Client> allConnections() {
+            return List.copyOf(clients);
+        }
+
+        // Every fixture client is treated as already in-world.
+        @Override
+        public List<Client> inWorld() {
             return List.copyOf(clients);
         }
     }

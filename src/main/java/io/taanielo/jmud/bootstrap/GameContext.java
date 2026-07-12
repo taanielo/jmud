@@ -450,8 +450,7 @@ public record GameContext(
         // The Arena drafts random online players into announced consensual duels on a fixed tick
         // interval. It reads the live client snapshot only to enumerate online usernames; all state
         // mutation (challenge issue, spectator notices) runs on the tick thread (AGENTS.md §5).
-        OnlinePlayersSupplier onlinePlayers = () -> clientPool.clients().stream()
-            .filter(client -> client.isInWorld())
+        OnlinePlayersSupplier onlinePlayers = () -> clientPool.inWorld().stream()
             .flatMap(client -> client.currentPlayer().stream())
             .map(player -> player.getUsername())
             .toList();
@@ -568,8 +567,7 @@ public record GameContext(
         @Nullable MobRegistry mobRegistry,
         DuelService duelService
     ) {
-        @Nullable Player player = clientPool.clients().stream()
-            .filter(client -> client.isInWorld())
+        @Nullable Player player = clientPool.inWorld().stream()
             .flatMap(client -> client.currentPlayer().stream())
             .filter(candidate -> candidate.getUsername().equals(username))
             .findFirst()

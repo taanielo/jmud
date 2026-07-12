@@ -97,7 +97,7 @@ public final class GameMetrics {
         Objects.requireNonNull(tickRegistry, "Tick registry is required");
         Objects.requireNonNull(clientPool, "Client pool is required");
 
-        Gauge.builder("jmud.players.online", clientPool, pool -> pool.clients().size())
+        Gauge.builder("jmud.players.online", clientPool, pool -> pool.allConnections().size())
             .description("Number of currently connected players")
             .register(registry);
 

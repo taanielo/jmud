@@ -112,8 +112,7 @@ class MessageBroadcasterImplTest {
     void broadcastGlobalSkipsConnectionsStillInCharacterCreation() {
         FakeClient bob = fakeClient("Bob");
         FakeClient dave = fakeClient("Dave");
-        dave.inWorld = false;
-        MessageBroadcaster broadcaster = broadcaster(List.of(bob, dave), twoRoomService());
+        MessageBroadcaster broadcaster = broadcaster(List.of(bob), List.of(dave), twoRoomService());
 
         Message message = new PlainTextMessage("gossip: hi everyone");
         broadcaster.broadcastGlobal(message, Set.of());
@@ -128,10 +127,9 @@ class MessageBroadcasterImplTest {
         RoomService roomService = twoRoomService();
         FakeClient alice = fakeClient("Alice");
         FakeClient dave = fakeClient("Dave");
-        dave.inWorld = false;
         roomService.ensurePlayerLocation(alice.player.getUsername());
         roomService.ensurePlayerLocation(dave.player.getUsername());
-        MessageBroadcaster broadcaster = broadcaster(List.of(alice, dave), roomService);
+        MessageBroadcaster broadcaster = broadcaster(List.of(alice), List.of(dave), roomService);
 
         Message message = new PlainTextMessage("Alice says hi");
         broadcaster.broadcastToRoom(ROOM_ONE, message, Set.of());
@@ -144,7 +142,22 @@ class MessageBroadcasterImplTest {
     // --- helpers ---
 
     private static MessageBroadcaster broadcaster(List<Client> clients, RoomService roomService) {
-        ClientPool pool = new FakeClientPool(clients);
+        return broadcaster(clients, List.of(), roomService);
+    }
+
+    /**
+     * Builds a broadcaster over a pool where {@code inWorldClients} have completed world entry and
+     * {@code pendingClients} are connected but still pre-world (login prompt / character creation).
+     */
+    private static MessageBroadcaster broadcaster(
+        List<Client> inWorldClients, List<Client> pendingClients, RoomService roomService
+    ) {
+        FakeClientPool pool = new FakeClientPool();
+        inWorldClients.forEach(client -> {
+            pool.add(client);
+            pool.promoteToWorld(client);
+        });
+        pendingClients.forEach(pool::add);
         return new MessageBroadcasterImpl(pool, roomService);
     }
 
@@ -179,7 +192,6 @@ class MessageBroadcasterImplTest {
     private static final class FakeClient implements Client {
         private final Player player;
         private final List<Message> received = new ArrayList<>();
-        private boolean inWorld = true;
 
         private FakeClient(Player player) {
             this.player = player;
@@ -200,21 +212,13 @@ class MessageBroadcasterImplTest {
         }
 
         @Override
-        public boolean isInWorld() {
-            return inWorld;
-        }
-
-        @Override
         public void run() {
         }
     }
 
     private static final class FakeClientPool implements ClientPool {
-        private final List<Client> clients;
-
-        private FakeClientPool(List<Client> clients) {
-            this.clients = new CopyOnWriteArrayList<>(clients);
-        }
+        private final List<Client> clients = new CopyOnWriteArrayList<>();
+        private final List<Client> inWorld = new CopyOnWriteArrayList<>();
 
         @Override
         public void add(Client client) {
@@ -223,7 +227,15 @@ class MessageBroadcasterImplTest {
 
         @Override
         public void remove(Client client) {
+            inWorld.remove(client);
             clients.remove(client);
+        }
+
+        @Override
+        public void promoteToWorld(Client client) {
+            if (clients.contains(client) && !inWorld.contains(client)) {
+                inWorld.add(client);
+            }
         }
 
         @Override
@@ -232,8 +244,13 @@ class MessageBroadcasterImplTest {
         }
 
         @Override
-        public List<Client> clients() {
+        public List<Client> allConnections() {
             return List.copyOf(clients);
+        }
+
+        @Override
+        public List<Client> inWorld() {
+            return List.copyOf(inWorld);
         }
     }
 
