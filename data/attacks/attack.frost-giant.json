@@ -16,7 +16,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The frost giant swings its glacial maul and crushes you for {damage}."
+      "text": "The frost giant swings its glacial maul and crushes you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -26,7 +26,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The frost giant's maul lands with bone-shattering force for {damage}!"
+      "text": "The frost giant's maul lands with bone-shattering force! The blow {verb} you!"
     }
   ]
 }

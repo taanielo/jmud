@@ -11,7 +11,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The wolf snaps its jaws and bites you for {damage}."
+      "text": "The wolf snaps its jaws and bites you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -21,7 +21,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The wolf lunges and sinks its teeth deep into you for {damage}!"
+      "text": "The wolf lunges and sinks its teeth deep into you! The blow {verb} you!"
     }
   ]
 }

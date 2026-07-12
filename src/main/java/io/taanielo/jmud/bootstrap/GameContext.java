@@ -60,6 +60,9 @@ import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
 import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
+import io.taanielo.jmud.core.combat.flavor.CombatFlavor;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
+import io.taanielo.jmud.core.combat.flavor.repository.json.JsonCombatFlavorRepository;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
@@ -327,10 +330,15 @@ public record GameContext(
         boolean seededRng = !"threadlocal".equalsIgnoreCase(config.getString("jmud.combat.rng", "seeded"));
         long worldSeed = seededRng ? config.getLong("jmud.world.seed", ThreadLocalRandom.current().nextLong()) : 0L;
         CombatRandom worldRandom = seededRng ? new SeededCombatRandom(worldSeed) : new ThreadLocalCombatRandom();
+        // Worded-damage flavor tables (issue #525), shared by player-vs-player duels (CombatEngine)
+        // and player/mob combat (MobRegistry) so both surface the same classic-MUD damage tiers and
+        // condition wording.
+        CombatFlavor combatFlavor = createCombatFlavor();
+        DamageVerbTable damageVerbTable = combatFlavor.damageVerbs();
         CombatEngine combatEngine = createCombatEngine(
                 effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
                 equipmentArmorResolver, shieldBlockResolver, combatAttributeBonusResolver, attackRepository,
-                tickClock::currentTick, effectEngine, seededRng, worldSeed);
+                tickClock::currentTick, effectEngine, seededRng, worldSeed, damageVerbTable);
 
         // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
         // deterministic and replayable alongside combat/mob rolls (AGENTS.md §5). Only outdoor rooms
@@ -423,6 +431,8 @@ public record GameContext(
             mobRegistry.setPartyService(partyService);
             mobRegistry.setEncumbranceService(encumbranceService);
             mobRegistry.setCombatAttributeBonusResolver(combatAttributeBonusResolver);
+            mobRegistry.setDamageVerbTable(damageVerbTable);
+            mobRegistry.setTargetConditionTable(combatFlavor.conditions());
             mobRegistry.setWorldBossAnnouncer(
                 new WorldBossAnnouncer(messageBroadcaster, roomService, guildService, partyService));
             mobRegistry.init();
@@ -684,7 +694,8 @@ public record GameContext(
         LongSupplier tickSupplier,
         EffectEngine effectEngine,
         boolean seeded,
-        long worldSeed
+        long worldSeed,
+        DamageVerbTable verbTable
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
         OffhandAttackResolver offhandAttackResolver = new OffhandAttackResolver();
@@ -693,7 +704,7 @@ public record GameContext(
             return new CombatEngine(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
                 equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, attributeBonusResolver,
-                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine);
+                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine, verbTable);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
@@ -701,7 +712,15 @@ public record GameContext(
         return new CombatEngine(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
             equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, attributeBonusResolver,
-            provider, tickSupplier, effectEngine);
+            provider, tickSupplier, effectEngine, verbTable);
+    }
+
+    private static CombatFlavor createCombatFlavor() {
+        try {
+            return new JsonCombatFlavorRepository().load();
+        } catch (RepositoryException e) {
+            throw new IllegalStateException("Failed to load combat flavor tables: " + e.getMessage(), e);
+        }
     }
 
     private static ItemRepository createItemRepository() {

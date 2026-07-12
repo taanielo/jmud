@@ -11,7 +11,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The forest troll smashes you with its massive club for {damage}."
+      "text": "The forest troll smashes you with its massive club. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -21,7 +21,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The forest troll delivers a crushing club smash for {damage}!"
+      "text": "The forest troll delivers a crushing club smash! The blow {verb} you!"
     }
   ]
 }

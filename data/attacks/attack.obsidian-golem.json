@@ -12,7 +12,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The obsidian golem swings a glassy fist and hammers you for {damage}."
+      "text": "The obsidian golem swings a glassy fist and hammers you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -22,7 +22,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The obsidian golem's fist connects with a crunch of shattering rock and crushes you for {damage}!"
+      "text": "The obsidian golem's fist connects with a crunch of shattering rock and crushes you! The blow {verb} you!"
     }
   ]
 }

@@ -16,7 +16,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The cinder wraith lays a hand of grey ash against you, and a deathly chill drains the warmth from you for {damage}."
+      "text": "The cinder wraith lays a hand of grey ash against you, and a deathly chill drains the warmth from you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -26,7 +26,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The cinder wraith closes both ashen hands over your heart and the cold of the grave floods through you for {damage}!"
+      "text": "The cinder wraith closes both ashen hands over your heart and the cold of the grave floods through you! The blow {verb} you!"
     }
   ]
 }

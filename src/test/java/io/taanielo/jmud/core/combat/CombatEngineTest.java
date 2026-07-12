@@ -16,6 +16,9 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.combat.flavor.DamageVerb;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
+import io.taanielo.jmud.core.combat.flavor.DamageVerbTier;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
@@ -793,6 +796,44 @@ class CombatEngineTest {
     private Player playerWithOffhand(String username, ItemId offhandId) {
         return player(username, List.of())
             .withEquipment(PlayerEquipment.empty().equip(EquipmentSlot.OFFHAND, offhandId));
+    }
+
+    @Test
+    void rendersWordedDamageVerbInAttackMessages() throws Exception {
+        AttackId attackId = AttackId.of("attack.slash");
+        // A 6-damage hit against the 20-HP default target is 30% of max HP -> the "mauls" tier.
+        AttackDefinition attack = new AttackDefinition(attackId, "slash", 6, 6, 0, 0, 0, List.of(
+            new MessageSpec(MessagePhase.ATTACK_HIT, MessageChannel.SELF,
+                "You slash {target}. Your strike {verb} them!"),
+            new MessageSpec(MessagePhase.ATTACK_HIT, MessageChannel.TARGET,
+                "{source} slashes you. The blows {verb} you!")));
+        CombatEngine engine = new CombatEngine(
+            new StubAttackRepository(Map.of(attackId, attack)),
+            new CombatModifierResolver(new StubEffectRepository(Map.of())),
+            RaceArmorBonusResolver.noOp(),
+            RaceAttackBonusResolver.noOp(),
+            ClassArmorBonusResolver.noOp(),
+            EquipmentArmorResolver.noOp(),
+            ShieldBlockResolver.noOp(),
+            OffhandAttackResolver.disabled(),
+            CombatAttributeBonusResolver.noOp(),
+            (tick, actorId) -> new FixedCombatRandom(10, 6, 100),
+            () -> 0L,
+            null,
+            maulTable());
+
+        CombatResult result = engine.resolve(player("attacker", List.of()), player("target", List.of()), attackId);
+
+        assertEquals(6, result.damage());
+        assertEquals("You slash target. Your strike mauls them!", result.sourceMessage());
+        assertEquals("attacker slashes you. The blows MAUL you!", result.targetMessage());
+    }
+
+    private static DamageVerbTable maulTable() {
+        return new DamageVerbTable(List.of(
+            new DamageVerbTier(1, 24, new DamageVerb("scratches", "scratch")),
+            new DamageVerbTier(25, 34, new DamageVerb("mauls", "MAUL")),
+            new DamageVerbTier(35, null, new DamageVerb("MASSACRES", "MASSACRE"))));
     }
 
     private Player player(String username, List<EffectInstance> effects) {

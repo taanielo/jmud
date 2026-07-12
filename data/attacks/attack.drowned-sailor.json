@@ -12,7 +12,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The drowned sailor drags its rusted cutlass across you for {damage}."
+      "text": "The drowned sailor drags its rusted cutlass across you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -22,7 +22,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The drowned sailor buries its rusted cutlass in your side for {damage}!"
+      "text": "The drowned sailor buries its rusted cutlass in your side! The blow {verb} you!"
     }
   ]
 }

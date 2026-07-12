@@ -12,12 +12,12 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "You slash {target} with your iron sword for {damage}."
+      "text": "You slash {target} with your iron sword. Your strike {verb} them!"
     },
     {
       "phase": "attack_hit",
       "channel": "target",
-      "text": "{source} slashes you with an iron sword for {damage}."
+      "text": "{source} slashes you with an iron sword. The blows {verb} you!"
     },
     {
       "phase": "attack_hit",
@@ -42,12 +42,12 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "You land a devastating blow on {target} with your iron sword for {damage}!"
+      "text": "You land a devastating blow on {target} with your iron sword! Your strike {verb} them!"
     },
     {
       "phase": "attack_crit",
       "channel": "target",
-      "text": "{source} lands a devastating blow on you with an iron sword for {damage}!"
+      "text": "{source} lands a devastating blow on you with an iron sword! The blows {verb} you!"
     },
     {
       "phase": "attack_crit",

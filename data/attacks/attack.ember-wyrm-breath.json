@@ -16,7 +16,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "Pyraxis rears back and looses a roaring gout of cinder breath that engulfs you for {damage}."
+      "text": "Pyraxis rears back and looses a roaring gout of cinder breath that engulfs you. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -26,7 +26,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "Pyraxis's cinder breath swallows you whole in a blast of white flame for {damage}!"
+      "text": "Pyraxis's cinder breath swallows you whole in a blast of white flame! The blow {verb} you!"
     }
   ]
 }

@@ -16,7 +16,7 @@
     {
       "phase": "attack_hit",
       "channel": "self",
-      "text": "The ashmaw stalker lunges from the drifts and rakes you with smouldering claws for {damage}."
+      "text": "The ashmaw stalker lunges from the drifts and rakes you with smouldering claws. The blow {verb} you!"
     },
     {
       "phase": "attack_miss",
@@ -26,7 +26,7 @@
     {
       "phase": "attack_crit",
       "channel": "self",
-      "text": "The ashmaw stalker bears you down and rakes you open with all four smouldering claws for {damage}!"
+      "text": "The ashmaw stalker bears you down and rakes you open with all four smouldering claws! The blow {verb} you!"
     }
   ]
 }
