@@ -21,6 +21,8 @@ public record ProfessionId(String value) {
     public static final ProfessionId ALCHEMY = new ProfessionId("alchemy");
     /** The cooking profession backing the {@code COOK} command. */
     public static final ProfessionId COOKING = new ProfessionId("cooking");
+    /** The enchanting profession backing the {@code ENCHANT} command. */
+    public static final ProfessionId ENCHANTING = new ProfessionId("enchanting");
 
     public ProfessionId {
         Objects.requireNonNull(value, "Profession id is required");

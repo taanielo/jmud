@@ -101,7 +101,10 @@ public class JsonEnchantRecipeRepository implements EnchantRecipeRepository {
         List<RecipeMaterial> materials = materialDtos.stream()
             .map(m -> toMaterial(id, m))
             .toList();
-        return new EnchantRecipe(id, AffixId.of(affix), goldCost, materials);
+        int minSkill = dto.minSkill() == null ? 0 : dto.minSkill();
+        int proficiencyGain = dto.proficiencyGain() == null
+            ? EnchantRecipe.DEFAULT_PROFICIENCY_GAIN : dto.proficiencyGain();
+        return new EnchantRecipe(id, AffixId.of(affix), goldCost, materials, minSkill, proficiencyGain);
     }
 
     private RecipeMaterial toMaterial(String recipeId, RecipeMaterialDto dto) {

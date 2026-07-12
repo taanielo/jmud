@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.craft.PlayerProficiencies;
+import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.craft.RecipeMaterial;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.AffixId;
@@ -224,5 +226,71 @@ class EnchantingServiceTest {
         assertTrue(body.contains("strength +2"), body);
         assertTrue(body.contains("have 1 / need 2"), body);
         assertTrue(body.contains("40 gold"), body);
+    }
+
+    @Test
+    void successfulEnchantGrantsProficiencyPoints() {
+        Player player = withDust(player(100), 2).addItem(sword(List.of()));
+
+        EnchantOutcome outcome = service.enchant(player, "iron sword of the bear");
+
+        assertTrue(outcome.success(), outcome.message());
+        Player updated = outcome.updatedPlayer();
+        assertNotNull(updated);
+        assertEquals(EnchantRecipe.DEFAULT_PROFICIENCY_GAIN,
+            updated.proficiencies().points(ProfessionId.ENCHANTING),
+            "default proficiency gain awarded");
+        assertEquals(0, updated.proficiencies().level(ProfessionId.ENCHANTING),
+            "25 points is not yet a full level");
+        assertFalse(outcome.message().contains("proficiency rises"), outcome.message());
+    }
+
+    @Test
+    void crossingPointThresholdLevelsUpWithMessage() {
+        EnchantRecipe fastRecipe = new EnchantRecipe(
+            "enchant-of-the-bear", BEAR.id(), 40,
+            List.of(new RecipeMaterial(ARCANE_DUST, 2)), 0, PlayerProficiencies.POINTS_PER_LEVEL);
+        EnchantingService fast = new EnchantingService(
+            List.of(fastRecipe), itemRepository, affixRepository, itemAffixService);
+        Player player = withDust(player(100), 2).addItem(sword(List.of()));
+
+        EnchantOutcome outcome = fast.enchant(player, "iron sword of the bear");
+
+        assertTrue(outcome.success(), outcome.message());
+        assertEquals(1, outcome.updatedPlayer().proficiencies().level(ProfessionId.ENCHANTING),
+            "100 points is exactly one level");
+        assertTrue(outcome.message().contains("enchanting proficiency rises to level 1"),
+            outcome.message());
+    }
+
+    @Test
+    void lockedRecipeFailsWithoutConsumingMaterialsOrGold() {
+        EnchantRecipe lockedRecipe = new EnchantRecipe(
+            "enchant-of-the-bear", BEAR.id(), 40,
+            List.of(new RecipeMaterial(ARCANE_DUST, 2)), 2, 25);
+        EnchantingService gated = new EnchantingService(
+            List.of(lockedRecipe), itemRepository, affixRepository, itemAffixService);
+        Player player = withDust(player(100), 2).addItem(sword(List.of()));
+
+        EnchantOutcome outcome = gated.enchant(player, "iron sword of the bear");
+
+        assertFalse(outcome.success());
+        assertNull(outcome.updatedPlayer(), "no player change, so nothing consumed");
+        assertTrue(outcome.message().contains("level 2"), outcome.message());
+        assertTrue(outcome.message().contains("level 0"), outcome.message());
+    }
+
+    @Test
+    void formatRecipesShowsEnchantingLevelAndFlagsLockedRecipes() {
+        EnchantRecipe lockedRecipe = new EnchantRecipe(
+            "enchant-of-the-bear", BEAR.id(), 40,
+            List.of(new RecipeMaterial(ARCANE_DUST, 2)), 3, 25);
+        EnchantingService gated = new EnchantingService(
+            List.of(lockedRecipe), itemRepository, affixRepository, itemAffixService);
+
+        String body = String.join("\n", gated.formatRecipes(withDust(player(100), 1)));
+
+        assertTrue(body.contains("enchanting level: 0"), body);
+        assertTrue(body.contains("[requires enchanting 3]"), body);
     }
 }

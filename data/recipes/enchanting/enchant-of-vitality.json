@@ -3,6 +3,7 @@
   "id": "enchant-of-vitality",
   "affix": "of-vitality",
   "gold_cost": 75,
+  "min_skill": 1,
   "materials": [
     { "item": "arcane-dust", "quantity": 4 }
   ]

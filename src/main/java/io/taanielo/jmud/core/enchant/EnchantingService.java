@@ -9,6 +9,8 @@ import java.util.Optional;
 
 import org.jspecify.annotations.Nullable;
 
+import io.taanielo.jmud.core.craft.PlayerProficiencies;
+import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.craft.RecipeMaterial;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.world.AffixId;
@@ -89,8 +91,10 @@ public class EnchantingService {
             lines.add("The enchanter has no enchantments to offer.");
             return lines;
         }
+        int playerLevel = player.proficiencies().level(ProfessionId.ENCHANTING);
         lines.add("The enchanter can imbue the following "
-            + "(ENCHANT <item> <enchantment> to apply one):");
+            + "(ENCHANT <item> <enchantment> to apply one) [your "
+            + ProfessionId.ENCHANTING.value() + " level: " + playerLevel + "]:");
         for (EnchantRecipe recipe : recipes) {
             List<String> parts = new ArrayList<>();
             for (RecipeMaterial material : recipe.materials()) {
@@ -98,9 +102,12 @@ public class EnchantingService {
                 parts.add(String.format("%s (have %d / need %d)",
                     itemName(material.itemId()), have, material.quantity()));
             }
-            lines.add(String.format("  %s (%s) — %s; %d gold",
+            String lockTag = recipe.minSkill() > playerLevel
+                ? " [requires " + ProfessionId.ENCHANTING.value() + " " + recipe.minSkill() + "]"
+                : "";
+            lines.add(String.format("  %s (%s) — %s; %d gold%s",
                 affixLabel(recipe.affixId()), affixBonusSummary(recipe.affixId()),
-                String.join(", ", parts), recipe.goldCost()));
+                String.join(", ", parts), recipe.goldCost(), lockTag));
         }
         return lines;
     }
@@ -143,6 +150,15 @@ public class EnchantingService {
         if (matchedRecipe == null || matchedSuffix == null) {
             return EnchantOutcome.failure("The enchanter knows no enchantment matching '" + trimmed
                 + "'. Type ENCHANT to list enchantments.");
+        }
+
+        int playerLevel = player.proficiencies().level(ProfessionId.ENCHANTING);
+        if (matchedRecipe.minSkill() > playerLevel) {
+            return EnchantOutcome.failure(
+                "Your " + ProfessionId.ENCHANTING.value() + " skill is too low to apply "
+                    + affixLabel(matchedRecipe.affixId()) + ". It requires "
+                    + ProfessionId.ENCHANTING.value() + " level " + matchedRecipe.minSkill()
+                    + ", but you are only level " + playerLevel + ".");
         }
         String itemName = trimmed.substring(0, trimmed.length() - matchedSuffix.length()).trim();
         if (itemName.isEmpty()) {
@@ -200,13 +216,21 @@ public class EnchantingService {
         for (RecipeMaterial material : matchedRecipe.materials()) {
             consume(inventory, material.itemId(), material.quantity());
         }
-        Player updated = player.withInventory(inventory).addGold(-matchedRecipe.goldCost());
+        PlayerProficiencies grown =
+            player.proficiencies().gain(ProfessionId.ENCHANTING, matchedRecipe.proficiencyGain());
+        int newLevel = grown.level(ProfessionId.ENCHANTING);
+        Player updated = player.withInventory(inventory)
+            .addGold(-matchedRecipe.goldCost())
+            .withProficiencies(grown);
 
-        return EnchantOutcome.success(
-            "The enchanter imbues " + item.getName() + " with " + affix.label() + " for "
-                + matchedRecipe.goldCost() + " gold. It now grants: "
-                + effectiveStatsSummary(enchanted) + ".",
-            updated);
+        StringBuilder message = new StringBuilder("The enchanter imbues ").append(item.getName())
+            .append(" with ").append(affix.label()).append(" for ").append(matchedRecipe.goldCost())
+            .append(" gold. It now grants: ").append(effectiveStatsSummary(enchanted)).append('.');
+        if (newLevel > playerLevel) {
+            message.append(" Your ").append(ProfessionId.ENCHANTING.value())
+                .append(" proficiency rises to level ").append(newLevel).append('!');
+        }
+        return EnchantOutcome.success(message.toString(), updated);
     }
 
     private List<String> affixTokens(EnchantRecipe recipe) {
