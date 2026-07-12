@@ -18,6 +18,10 @@
     {
       "item_id": "tide-worn-trinket",
       "drop_chance": 0.6
+    },
+    {
+      "item_id": "shrouded-isle-map",
+      "drop_chance": 0.5
     }
   ],
   "xp_reward": 260,

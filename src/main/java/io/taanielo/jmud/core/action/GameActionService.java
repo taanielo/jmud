@@ -71,6 +71,7 @@ import io.taanielo.jmud.core.world.ItemIdentificationService;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
@@ -158,6 +159,12 @@ public class GameActionService {
      * heals apply their base amounts unchanged.
      */
     private @Nullable CharacterAttributesResolver characterAttributesResolver;
+    /**
+     * Optional renderer of hand-drawn area/atlas cartography, used when a player READs a map item.
+     * {@code null} until the composition root wires it via {@link #setAreaMapService(AreaMapService)};
+     * while absent, reading a map reports that its markings cannot be made out.
+     */
+    private @Nullable AreaMapService areaMapService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -453,6 +460,19 @@ public class GameActionService {
     public void setCharacterAttributesResolver(CharacterAttributesResolver characterAttributesResolver) {
         this.characterAttributesResolver =
             Objects.requireNonNull(characterAttributesResolver, "Character attributes resolver is required");
+    }
+
+    /**
+     * Injects the service that renders hand-drawn area and atlas cartography so that READing a map
+     * item shows its authored ASCII art.
+     *
+     * <p>Called once by the composition root. When absent, reading a map reports that its markings
+     * cannot be made out (as before the cartography system existed).
+     *
+     * @param areaMapService the shared area map renderer
+     */
+    public void setAreaMapService(AreaMapService areaMapService) {
+        this.areaMapService = Objects.requireNonNull(areaMapService, "Area map service is required");
     }
 
     /**
@@ -2033,6 +2053,9 @@ public class GameActionService {
         if (RECALL_SCROLL_ID.equals(item.getId())) {
             return readRecallScroll(source, item);
         }
+        if (item.isMap()) {
+            return readMapItem(source, item);
+        }
         AbilityId abilityId = item.getTeachesAbilityRef();
         if (abilityId == null) {
             return GameActionResult.error("There is nothing to learn from that.");
@@ -2071,6 +2094,38 @@ public class GameActionService {
             messages.addAll(emitted);
         }
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Renders a map item's hand-drawn cartography to the reader without consuming it.
+     *
+     * <p>A map shows fixed authored ASCII art — an area's paths or the World Atlas overview — and
+     * never the reader's position (issue #529). The map is reusable, so it stays in the inventory;
+     * onlookers merely see the reader studying it. Fails gracefully when the cartography subsystem
+     * is not wired or the item's area has no art.
+     *
+     * @param source the player reading the map
+     * @param item   the resolved map item from the player's inventory
+     * @return a result whose messages carry the framed map art, with the item retained
+     */
+    private GameActionResult readMapItem(Player source, Item item) {
+        if (areaMapService == null) {
+            return GameActionResult.error("You can't make out the markings on " + item.getName() + ".");
+        }
+        Optional<List<String>> art = areaMapService.render(item.getMapAreaId());
+        if (art.isEmpty()) {
+            return GameActionResult.error("The markings on " + item.getName() + " are too faded to read.");
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        for (String line : art.get()) {
+            messages.add(GameMessage.toSource(line));
+        }
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " studies " + item.getName() + "."
+        ));
+        return new GameActionResult(source, null, messages);
     }
 
     /**

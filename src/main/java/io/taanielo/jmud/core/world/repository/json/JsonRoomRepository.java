@@ -28,10 +28,11 @@ import io.taanielo.jmud.core.world.dto.RoomMapper;
 import io.taanielo.jmud.core.world.dto.SchemaVersions;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
+import io.taanielo.jmud.core.world.repository.RoomCatalog;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 @Slf4j
-public class JsonRoomRepository implements RoomRepository, RoomContentReloader {
+public class JsonRoomRepository implements RoomRepository, RoomCatalog, RoomContentReloader {
 
     private static final String ROOMS_DIR = "rooms";
 
@@ -85,6 +86,11 @@ public class JsonRoomRepository implements RoomRepository, RoomContentReloader {
         }
         cache.put(room.getId(), room);
         return Optional.of(room);
+    }
+
+    @Override
+    public List<Room> findAll() throws RepositoryException {
+        return List.copyOf(readAllRooms(itemRepository::findById).values());
     }
 
     /**

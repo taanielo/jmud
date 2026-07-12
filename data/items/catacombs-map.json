@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "catacombs-map",
+  "name": "Map of the Sunless Catacombs",
+  "description": "A brittle vellum map of the catacombs, its ink flaking like old bone.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 18,
+  "map_area_id": "catacombs"
+}

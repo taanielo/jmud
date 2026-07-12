@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "shrouded-isle-map",
+  "name": "Map of the Shrouded Isle",
+  "description": "A water-warped sea-chart of the Shrouded Isle, its fog-bound coves marked in faded ink.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 25,
+  "map_area_id": "shrouded-isle"
+}

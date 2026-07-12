@@ -97,7 +97,6 @@ public class SocketCommandRegistry {
         new ExamineCommand(registry);
         new CompareCommand(registry);
         new MoveCommand(registry);
-        new MapCommand(registry);
         new GetCommand(registry);
         new GetFromCommand(registry);
         new PutCommand(registry);

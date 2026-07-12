@@ -26,7 +26,10 @@
     {"item_id": "ale"},
     {"item_id": "torch"},
     {"item_id": "lantern"},
-    {"item_id": "scroll-of-recall"}
+    {"item_id": "scroll-of-recall"},
+    {"item_id": "town-map"},
+    {"item_id": "darkwood-map"},
+    {"item_id": "world-atlas"}
   ],
   "sell_ratio": 0.5
 }

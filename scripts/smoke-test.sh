@@ -485,20 +485,26 @@ expect "$T2F" "NOTE POST is confirmed"              'note has been posted'
 expect "$T2F" "posted note appears on the board"    'Smoke test note'
 expect "$T2F" "NOTE DELETE removes the note"        'has been removed from the board'
 
-# ── phase 2g: explored-room minimap (MAP) ────────────────────────────────────
-# New players spawn in the training-yard (exits: north→armory, east→courtyard,
-# south→sparring-pit). We walk to a few adjacent rooms so they enter the player's
-# explored set, return to the yard, then run MAP. Explored neighbours render as
-# '#', the current room as '@', and unexplored exits as '.'.
-log "Phase 2g: MAP minimap of explored rooms"
+# ── phase 2g: buy and READ a hand-drawn area map (issue #529) ────────────────
+# The MAP command was retired: cartography is now map ITEMS bought from shops or
+# found as loot, showing an area's hand-drawn paths and NEVER the player's
+# position. New players spawn in the training-yard; the armory (north) stocks the
+# starter town map. We walk north, buy it, and READ it, then assert the area art
+# renders with no player-position marker present anywhere in the transcript.
+log "Phase 2g: buy and READ a hand-drawn area map"
 T2G="$OUT_DIR/phase2g-map.txt"
 run_session "$T2G" "$TEST_USER" "$TEST_PASS" \
-    "north" "south" "east" "west" "map" "quit"
+    "north" "buy map of greystone" "read town-map" "south" "quit"
 
-expect "$T2G" "MAP renders a header"                'Map of your surroundings:'
-expect "$T2G" "MAP marks the current room"          '@'
-expect "$T2G" "MAP marks an explored neighbour"     '#'
-expect "$T2G" "MAP shows a legend"                  'Legend:'
+expect "$T2G" "starter map can be purchased"        'You buy a Map of Greystone Town'
+expect "$T2G" "READ renders the area title"         'Greystone Town'
+expect "$T2G" "READ renders hand-drawn paths"       'Training Yard'
+# Map items show fixed cartography, never the reader's position (issue #529).
+if grep -q '@' "$T2G"; then
+    fail "map art must not contain a player-position marker"
+else
+    pass "map art contains no position marker"
+fi
 
 # ── phase 2h: ignore list (IGNORE) ───────────────────────────────────────────
 # A full cross-player TELL mute needs two simultaneous connections (like duels),

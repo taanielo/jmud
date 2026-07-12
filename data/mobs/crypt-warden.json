@@ -13,6 +13,10 @@
     {
       "item_id": "crypt-key",
       "drop_chance": 0.8
+    },
+    {
+      "item_id": "catacombs-map",
+      "drop_chance": 0.5
     }
   ],
   "gold_drop": {

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:area:v1",
+  "title": "Area (v1)",
+  "description": "A named region of the world: an explicit set of rooms, the areas it borders, and hand-drawn ASCII map art rendered when a player READs a matching map item. Every room must belong to exactly one area; connections must be realized by real room exits; and every area must have an obtainable map item. Enforced by --validate-data (issue #529). The World Atlas overview lives in a separate atlas.v1 document (data/areas/atlas.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "room_ids",
+    "connections",
+    "ascii_map"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "room_ids": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ids of every room that belongs to this area. Each room must be listed by exactly one area.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "connections": {
+      "type": "array",
+      "description": "Ids of the areas directly reachable from this one, used to draw the World Atlas. Each connection must be realized by at least one room exit crossing the border between the two areas.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "ascii_map": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Hand-authored map art, one string per line. Draws the area's paths and landmarks; must never contain a player-position marker (no '@').",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

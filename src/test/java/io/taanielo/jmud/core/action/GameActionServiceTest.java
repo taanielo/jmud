@@ -76,6 +76,11 @@ import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.Area;
+import io.taanielo.jmud.core.world.area.AreaId;
+import io.taanielo.jmud.core.world.area.AreaMapService;
+import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.WorldAtlas;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
@@ -2247,6 +2252,72 @@ class GameActionServiceTest {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    @Test
+    void readingMapItemRendersAreaArtWithoutConsumingIt() {
+        service.setAreaMapService(mapServiceForTown());
+        Item map = Item.builder(ItemId.of("town-map"), "Map of Town", "A rough map.", ItemAttributes.empty())
+            .weight(1).value(10).mapAreaId(AreaId.of("town")).build();
+        Player withMap = attacker.addItem(map);
+
+        GameActionResult result = service.readItem(withMap, "town-map");
+
+        assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("PATHS OF TOWN")),
+            "map READ should render the area's hand-drawn art");
+        assertTrue(result.messages().stream().noneMatch(m -> m.text().contains("@")),
+            "map art must never contain a position marker");
+        assertTrue(result.updatedSource().getInventory().stream()
+                .anyMatch(i -> i.getId().equals(ItemId.of("town-map"))),
+            "a map is reusable and must not be consumed on READ");
+    }
+
+    @Test
+    void readingWorldAtlasRendersAtlasOverview() {
+        service.setAreaMapService(mapServiceForTown());
+        Item atlas = Item.builder(ItemId.of("world-atlas"), "World Atlas", "A bound atlas.", ItemAttributes.empty())
+            .weight(2).value(60).mapAreaId(AreaId.of("atlas")).build();
+        Player withAtlas = attacker.addItem(atlas);
+
+        GameActionResult result = service.readItem(withAtlas, "world-atlas");
+
+        assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("WORLD OVERVIEW")),
+            "atlas READ should render the world-overview art");
+    }
+
+    @Test
+    void readingMapWithoutWiredCartographyFailsGracefully() {
+        Item map = Item.builder(ItemId.of("town-map"), "Map of Town", "A rough map.", ItemAttributes.empty())
+            .weight(1).value(10).mapAreaId(AreaId.of("town")).build();
+        Player withMap = attacker.addItem(map);
+
+        GameActionResult result = service.readItem(withMap, "town-map");
+
+        assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("can't make out")),
+            "reading a map with no cartography wired must fail with a friendly message");
+    }
+
+    private static AreaMapService mapServiceForTown() {
+        Area town = new Area(AreaId.of("town"), "Town",
+            List.of(RoomId.of("training-yard")), List.of(), List.of("PATHS OF TOWN"));
+        WorldAtlas atlas = new WorldAtlas("atlas", "World Atlas", List.of("WORLD OVERVIEW"));
+        AreaRepository areas = new AreaRepository() {
+            @Override
+            public List<Area> findAll() {
+                return List.of(town);
+            }
+
+            @Override
+            public Optional<Area> findById(AreaId id) {
+                return town.id().equals(id) ? Optional.of(town) : Optional.empty();
+            }
+
+            @Override
+            public Optional<WorldAtlas> findAtlas() {
+                return Optional.of(atlas);
+            }
+        };
+        return new AreaMapService(areas);
+    }
 
     private Player player(String username) {
         return Player.of(User.of(Username.of(username), Password.hash("pw", 1000)), "prompt", false);

@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "ruins-map",
+  "name": "Bandit's Map of the Ruins",
+  "description": "A grubby map of the broken ruins, marked with a bandit's crude notes on where to hide.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 15,
+  "map_area_id": "ruins"
+}

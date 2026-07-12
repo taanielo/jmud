@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "cinder-reaches-map",
+  "name": "Map of the Cinder Reaches",
+  "description": "An ash-dusted map of the Cinder Reaches, drawn on a scrap of scorched leather.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 35,
+  "map_area_id": "cinder-reaches"
+}

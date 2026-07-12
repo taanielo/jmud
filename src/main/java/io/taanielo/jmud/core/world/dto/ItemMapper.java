@@ -21,6 +21,7 @@ import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.LightSource;
 import io.taanielo.jmud.core.world.Rarity;
 import io.taanielo.jmud.core.world.RarityProfile;
+import io.taanielo.jmud.core.world.area.AreaId;
 
 public class ItemMapper {
 
@@ -39,8 +40,11 @@ public class ItemMapper {
         boolean locked = item.isLocked();
         boolean twoHanded = item.isTwoHanded();
         boolean mount = item.isMount();
+        boolean map = item.isMap();
         int version;
-        if (mount) {
+        if (map) {
+            version = SchemaVersions.V14;
+        } else if (mount) {
             version = SchemaVersions.V12;
         } else if (twoHanded) {
             version = SchemaVersions.V11;
@@ -83,7 +87,8 @@ public class ItemMapper {
             unidentified ? Boolean.FALSE : null,
             locked ? Boolean.TRUE : null,
             twoHanded ? Boolean.TRUE : null,
-            mount ? item.getMountMoveDiscount() : null
+            mount ? item.getMountMoveDiscount() : null,
+            map ? item.getMapAreaId().getValue() : null
         );
     }
 
@@ -116,8 +121,10 @@ public class ItemMapper {
         ContainerState container = new ContainerState(dto.containerCapacity(), contents, locked);
         boolean identified = dto.identified() == null || dto.identified();
         boolean twoHanded = dto.twoHanded() != null && dto.twoHanded();
+        AreaId mapAreaId = dto.mapAreaId() != null ? AreaId.of(dto.mapAreaId()) : null;
         return Item.builder(ItemId.of(dto.id()), dto.name(), dto.description(), attributes)
             .mountMoveDiscount(dto.mountMoveDiscount())
+            .mapAreaId(mapAreaId)
             .effects(effects)
             .messages(messages)
             .equipSlot(slot)

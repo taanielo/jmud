@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "town",
+  "name": "Greystone Town",
+  "room_ids": [
+    "training-yard",
+    "armory",
+    "arena-entrance",
+    "arena-pit",
+    "arena-stands",
+    "sparring-pit",
+    "courtyard",
+    "rocky-alcove"
+  ],
+  "connections": [
+    "darkwood"
+  ],
+  "ascii_map": [
+    "  .-----------------------------.",
+    "  |        GREYSTONE TOWN        |",
+    "  '-----------------------------'",
+    "              [Armory]",
+    "                 |",
+    "   [Arena]===[Training Yard]===[Courtyard]--> Darkwood",
+    "    /  \\           |                |",
+    " [Pit][Stands] [Sparring Pit]  [Rocky Alcove]",
+    "",
+    "   Cobbled streets, drill grounds and the",
+    "   fighting pits where every recruit begins."
+  ]
+}

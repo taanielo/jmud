@@ -248,6 +248,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.characterAttributesResolver() != null) {
             this.gameActionService.setCharacterAttributesResolver(context.characterAttributesResolver());
         }
+        if (context.areaMapService() != null) {
+            this.gameActionService.setAreaMapService(context.areaMapService());
+        }
         this.gameActionService.setOnlinePlayerLookup(
             username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
     }
@@ -1026,26 +1029,6 @@ class SocketCommandContextImpl implements SocketCommandContext {
         for (String line : context.resourceGatheringService().describeAvailableNodes(room.getId())) {
             connection.writeLine(line);
         }
-    }
-
-    @Override
-    public void sendMap() {
-        if (!session.isAuthenticated() || session.getPlayer() == null) {
-            writeLineWithPrompt("You must be logged in to view the map.");
-            return;
-        }
-        Player player = session.getPlayer();
-        String roomId = resolveRoomId(player);
-        if (roomId == null) {
-            writeLineWithPrompt("You are nowhere. The world feels unfinished.");
-            return;
-        }
-        RoomId currentRoom = RoomId.of(roomId);
-        markRoomExplored(currentRoom);
-        player = session.getPlayer();
-        String map = context.mapService().renderMap(player, currentRoom);
-        context.messageBroadcaster().sendToPlayer(player.getUsername(), new PlainTextMessage(map));
-        sendPrompt();
     }
 
     @Override

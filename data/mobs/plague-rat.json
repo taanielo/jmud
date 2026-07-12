@@ -10,7 +10,8 @@
   "respawn_ticks": 30,
   "loot": [
     { "item_id": "poisonous-potion", "drop_chance": 0.35 },
-    { "item_id": "mana-potion", "drop_chance": 0.2 }
+    { "item_id": "mana-potion", "drop_chance": 0.2 },
+    { "item_id": "sewers-map", "drop_chance": 0.5 }
   ],
   "gold_drop": {
     "min": 8,

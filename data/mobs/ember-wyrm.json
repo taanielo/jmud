@@ -20,6 +20,10 @@
     {
       "item_id": "molten-core-shard",
       "drop_chance": 1.0
+    },
+    {
+      "item_id": "emberdeep-map",
+      "drop_chance": 0.5
     }
   ],
   "gold_drop": {
