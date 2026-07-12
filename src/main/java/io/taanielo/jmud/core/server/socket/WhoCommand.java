@@ -60,8 +60,12 @@ public class WhoCommand extends RegistrableCommand {
 
     @Override
     public String longDescription() {
-        return "Usage: WHO\n"
-             + "  Displays a list of every authenticated player connected to the server.";
+        return """
+               Usage: WHO
+                 Displays a list of every authenticated player connected to the server.
+                 Each entry shows the player's level and class, e.g. Sparky [12 Warrior], plus any
+                 guild tag, title, [AFK] marker, and [LFG] looking-for-group tag (see HELP LFG).\
+               """;
     }
 
     @Override
@@ -80,7 +84,8 @@ public class WhoCommand extends RegistrableCommand {
         }
         List<Username> onlineNames = context.onlinePlayerNames();
         for (String line : WhoListing.format(
-                onlineNames, context::guildTag, context::activeTitle, context::isFriend, context::isPlayerAway)) {
+                onlineNames, context::guildTag, context::activeTitle, context::isFriend,
+                context::isPlayerAway, context::levelClassTag, context::lfgTag)) {
             context.writeLineSafe(line);
         }
         Player player = context.getPlayer();

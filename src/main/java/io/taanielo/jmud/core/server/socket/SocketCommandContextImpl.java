@@ -499,6 +499,79 @@ class SocketCommandContextImpl implements SocketCommandContext {
         return Optional.of(AfkStatus.recipientNotice(username, target.awayMessage()));
     }
 
+    // ── LFG / looking-for-group status (issue #510) ─────────────────────
+
+    @Override
+    public void toggleLfg(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to look for a group.");
+            return;
+        }
+        if (LfgStatus.isStatusQuery(args)) {
+            writeLineWithPrompt(LfgStatus.status(session.isLfg(), session.lfgMessage()));
+            return;
+        }
+        LfgStatus.ToggleResult result = LfgStatus.toggle(session.isLfg(), args);
+        if (result.lfg()) {
+            session.setLfg(result.message());
+        } else {
+            session.clearLfg();
+        }
+        writeLineWithPrompt(result.confirmation());
+    }
+
+    @Override
+    public boolean isPlayerLfg(Username username) {
+        PlayerSession target = findSession(username);
+        return target != null && target.isLfg();
+    }
+
+    @Override
+    public String lfgTag(Username username) {
+        PlayerSession target = findSession(username);
+        if (target == null || !target.isLfg()) {
+            return "";
+        }
+        return LfgStatus.rosterTag(true, target.lfgMessage());
+    }
+
+    @Override
+    public String levelClassTag(Username username) {
+        Player player = findOnlinePlayer(username);
+        if (player == null) {
+            return "";
+        }
+        return " [" + player.getLevel() + " " + resolveClassDisplayName(player) + "]";
+    }
+
+    /**
+     * Resolves the display name of the given player's class from the class registry (the same source
+     * the trainer and character sheet use), falling back to the raw class id when the definition
+     * cannot be loaded or the player has no class yet.
+     *
+     * @param player the player whose class display name to resolve
+     * @return the class display name, never blank
+     */
+    private String resolveClassDisplayName(Player player) {
+        if (player.getClassId() == null) {
+            return "Adventurer";
+        }
+        String classIdValue = player.getClassId().getValue();
+        CharacterCreationService ccs = context.characterCreationService();
+        if (ccs == null) {
+            return classIdValue;
+        }
+        try {
+            return ccs.resolveClassDefinition(classIdValue)
+                .map(ClassDefinition::name)
+                .orElse(classIdValue);
+        } catch (CharacterCreationException e) {
+            log.warn("Failed to resolve class display name for WHO: {}", e.getMessage());
+            return classIdValue;
+        }
+    }
+
     /**
      * Resolves the live {@link PlayerSession} for the given online username, or {@code null} when no
      * such client is currently connected. Used to inspect another player's transient AFK state.

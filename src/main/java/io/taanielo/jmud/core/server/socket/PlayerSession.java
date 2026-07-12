@@ -121,6 +121,18 @@ public class PlayerSession {
     private @Nullable String awayMessage;
 
     /**
+     * Transient "looking for group" state (issue #510). Turned on by the {@code LFG} command and
+     * shown in the {@code WHO} roster; a non-null {@code lfgMessage} holds an optional note (e.g.
+     * {@code "tank for Catacombs"}). Like the AFK state above this is per-session only — never written
+     * to the persisted {@link Player} record, so there is no save-schema change — and it is dropped on
+     * logout and on reconnect. Unlike AFK it is <em>not</em> auto-cleared by the next command: it stays
+     * on until the player toggles it off. Both fields are read and written on the tick thread (LFG
+     * command execution and WHO rendering all run there), so they need no synchronization (AGENTS.md §5).
+     */
+    private boolean lfg;
+    private @Nullable String lfgMessage;
+
+    /**
      * A player's current position within an NPC dialogue tree.
      *
      * @param tree     the dialogue tree being traversed
@@ -330,6 +342,46 @@ public class PlayerSession {
      */
     public @Nullable String awayMessage() {
         return awayMessage;
+    }
+
+    // ── LFG / looking-for-group status (issue #510) ─────────────────────
+
+    /**
+     * Marks this session as looking for a group, optionally with a custom note. A blank or
+     * {@code null} message clears any previous custom note, leaving the session flagged with the
+     * default (note-less) LFG marker.
+     *
+     * @param message the custom LFG note, or {@code null}/blank for the default
+     */
+    public void setLfg(@Nullable String message) {
+        this.lfg = true;
+        this.lfgMessage = (message == null || message.isBlank()) ? null : message.trim();
+    }
+
+    /**
+     * Clears any looking-for-group status, so the player is no longer flagged LFG.
+     */
+    public void clearLfg() {
+        this.lfg = false;
+        this.lfgMessage = null;
+    }
+
+    /**
+     * Returns whether this session is currently flagged as looking for a group.
+     *
+     * @return {@code true} while the player is LFG
+     */
+    public boolean isLfg() {
+        return lfg;
+    }
+
+    /**
+     * Returns the custom LFG note, or {@code null} when the player is not LFG or set no custom note.
+     *
+     * @return the LFG note, or {@code null}
+     */
+    public @Nullable String lfgMessage() {
+        return lfgMessage;
     }
 
     public AbilityCooldownTracker getCooldownTracker() {
@@ -592,6 +644,7 @@ public class PlayerSession {
         this.linkdeadTicksRemaining = 0;
         clearDialogue();
         clearAway();
+        clearLfg();
     }
 
     /**
