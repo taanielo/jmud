@@ -34,7 +34,7 @@ public class DailyQuestService {
     private final Map<String, DailyQuestPool> poolsById = new LinkedHashMap<>();
     private final Map<QuestId, QuestTemplate> questsById = new LinkedHashMap<>();
     private final AtomicLong rotationCounter = new AtomicLong();
-    private final LevelUpService levelUpService = new LevelUpService();
+    private LevelUpService levelUpService = new LevelUpService();
     private final QuestItemRewardService itemRewardService;
     private final QuestReputationRewardService reputationRewardService;
 
@@ -84,6 +84,17 @@ public class DailyQuestService {
                 }
             }
         }
+    }
+
+    /**
+     * Registers the level-up service used to award daily-quest XP and apply class-differentiated
+     * vitals gains on completion. When not set, a service applying the legacy default gains to every
+     * class is used.
+     *
+     * @param levelUpService the level-up service; must not be null
+     */
+    public void setLevelUpService(LevelUpService levelUpService) {
+        this.levelUpService = Objects.requireNonNull(levelUpService, "levelUpService is required");
     }
 
     /**

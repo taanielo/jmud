@@ -1,11 +1,12 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "mage",
   "name": "Mage",
   "healing": {
     "base_modifier": -1
   },
   "carry_bonus": 5,
+  "level_gains": { "hp": 6, "mana": 9, "move": 3 },
   "ability_ids": ["spell.fireball", "spell.heal", "spell.summon", "spell.chain-lightning"],
   "trainable_ability_ids": ["spell.stoneskin", "spell.haste"],
   "description": "A glass-cannon spellcaster with unmatched ranged firepower. Mages open with fireball and chain lightning, patch themselves with heal, and summon allies; frail in melee, they rely on mana over muscle."

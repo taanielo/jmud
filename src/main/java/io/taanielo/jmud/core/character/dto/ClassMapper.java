@@ -6,6 +6,7 @@ import java.util.Objects;
 import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
+import io.taanielo.jmud.core.character.LevelGains;
 
 public class ClassMapper {
     public ClassDefinition toDomain(ClassDto dto) {
@@ -13,7 +14,8 @@ public class ClassMapper {
         if (dto.schemaVersion() != ClassSchemaVersions.V2
             && dto.schemaVersion() != ClassSchemaVersions.V3
             && dto.schemaVersion() != ClassSchemaVersions.V4
-            && dto.schemaVersion() != ClassSchemaVersions.V5) {
+            && dto.schemaVersion() != ClassSchemaVersions.V5
+            && dto.schemaVersion() != ClassSchemaVersions.V6) {
             throw new IllegalArgumentException("Unsupported class schema version " + dto.schemaVersion());
         }
         ClassHealingDto healingDto = Objects.requireNonNull(dto.healing(), "Class healing is required");
@@ -24,6 +26,9 @@ public class ClassMapper {
             ? List.of()
             : dto.trainableAbilityIds().stream().map(AbilityId::of).toList();
         String description = dto.description() == null ? "" : dto.description();
+        LevelGains levelGains = dto.levelGains() == null
+            ? LevelGains.DEFAULT
+            : new LevelGains(dto.levelGains().hp(), dto.levelGains().mana(), dto.levelGains().move());
         return new ClassDefinition(
             ClassId.of(dto.id()),
             dto.name(),
@@ -32,7 +37,8 @@ public class ClassMapper {
             dto.armorBonus(),
             startingAbilityIds,
             trainableAbilityIds,
-            description
+            description,
+            levelGains
         );
     }
 }

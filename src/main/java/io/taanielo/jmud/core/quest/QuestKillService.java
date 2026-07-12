@@ -32,6 +32,8 @@ public class QuestKillService {
     private final QuestReputationRewardService reputationRewardService;
     /** Optional achievement service that unlocks quest-milestone achievements on completion; may be null. */
     private AchievementService achievementService;
+    /** Awards quest XP and applies class-differentiated level-up gains; defaults to legacy flat gains. */
+    private LevelUpService levelUpService = new LevelUpService();
 
     public QuestKillService(QuestRepository questRepository) {
         this(questRepository, null, null);
@@ -73,6 +75,17 @@ public class QuestKillService {
      */
     public void setAchievementService(AchievementService achievementService) {
         this.achievementService = achievementService;
+    }
+
+    /**
+     * Registers the level-up service used to award quest XP and apply class-differentiated vitals
+     * gains on completion. When not set, a service applying the legacy default gains to every class
+     * is used.
+     *
+     * @param levelUpService the level-up service; must not be null
+     */
+    public void setLevelUpService(LevelUpService levelUpService) {
+        this.levelUpService = Objects.requireNonNull(levelUpService, "levelUpService is required");
     }
 
     /**
@@ -151,7 +164,6 @@ public class QuestKillService {
         Objects.requireNonNull(template, "template is required");
 
         Player rewarded = player.withActiveQuest(null).addGold(template.goldReward());
-        LevelUpService levelUpService = new LevelUpService();
         LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(rewarded, template.xpReward());
         rewarded = lvResult.player();
 

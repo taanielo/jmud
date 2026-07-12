@@ -57,6 +57,36 @@ class JsonClassRepositoryFindAllTest {
     }
 
     @Test
+    void findAll_loadsTunedPerClassLevelGains() throws ClassRepositoryException {
+        JsonClassRepository repo = new JsonClassRepository(Path.of("data"));
+
+        ClassDefinition warrior = repo.findById(ClassId.of("warrior")).orElseThrow();
+        ClassDefinition mage = repo.findById(ClassId.of("mage")).orElseThrow();
+
+        // Warrior leans HP-heavy, mage leans mana-heavy — visibly different vitals profiles.
+        assertEquals(new LevelGains(13, 2, 3), warrior.levelGains());
+        assertEquals(new LevelGains(6, 9, 3), mage.levelGains());
+        assertTrue(warrior.levelGains().hp() > mage.levelGains().hp(),
+            "Warrior should gain more HP per level than a mage");
+        assertTrue(mage.levelGains().mana() > warrior.levelGains().mana(),
+            "Mage should gain more mana per level than a warrior");
+    }
+
+    @Test
+    void findAll_everyClassHasComparableTotalLevelGains() throws ClassRepositoryException {
+        JsonClassRepository repo = new JsonClassRepository(Path.of("data"));
+
+        for (ClassDefinition classDefinition : repo.findAll()) {
+            LevelGains gains = classDefinition.levelGains();
+            int total = gains.hp() + gains.mana() + gains.move();
+            // All classes are tuned to the same total power budget as the legacy default (10+5+3),
+            // so no class is strictly stronger — only the distribution differs by archetype.
+            assertEquals(18, total,
+                "Class '" + classDefinition.id().getValue() + "' level-gain total should equal 18");
+        }
+    }
+
+    @Test
     void findAll_returnsEmptyForEmptyDir(@TempDir Path tempDir) throws ClassRepositoryException {
         // A fresh temp subdirectory guarantees the path has no class files on every
         // machine and in CI, and keeps the repository working tree free of

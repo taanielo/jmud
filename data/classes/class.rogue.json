@@ -1,11 +1,12 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "rogue",
   "name": "Rogue",
   "healing": {
     "base_modifier": 1
   },
   "carry_bonus": 8,
+  "level_gains": { "hp": 10, "mana": 4, "move": 4 },
   "ability_ids": ["skill.backstab", "skill.envenom", "skill.pick", "skill.sneak"],
   "trainable_ability_ids": ["skill.second-wind", "spell.haste"],
   "description": "A stealthy skirmisher built around burst damage and utility. Rogues open with a devastating backstab, envenom their blades, sneak past danger and are the only class able to pick locked chests and doors."

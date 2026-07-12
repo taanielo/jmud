@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "paladin",
   "name": "Paladin",
   "healing": {
@@ -7,6 +7,7 @@
   },
   "carry_bonus": 8,
   "armor_bonus": 5,
+  "level_gains": { "hp": 11, "mana": 4, "move": 3 },
   "ability_ids": ["spell.lay.on.hands", "spell.smite", "spell.divine-shield"],
   "trainable_ability_ids": ["spell.bless", "skill.second-wind"],
   "description": "A durable holy knight who fights and heals in equal measure. Paladins mend with lay on hands, guard with divine shield and smite the undead; note that smite only strikes undead, so rely on your weapon against the living."
