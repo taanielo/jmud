@@ -542,6 +542,29 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
     }
 
+    /**
+     * Throws the player off any mount they are riding when they enter combat, emitting the spook
+     * messages to the player and their room. Used by combat-initiating paths (e.g. ASSIST) where
+     * dismounting is a same-tick side effect rather than the action's own result, mirroring how
+     * {@code GameActionService} breaks the mount on the ATTACK path.
+     */
+    private void breakMountIfActive() {
+        Player player = session.getPlayer();
+        if (player != null && player.isMounted()) {
+            String name = player.mount().mountName();
+            deliverResult(new GameActionResult(
+                player.withMount(PlayerMount.dismounted()),
+                null,
+                List.of(
+                    GameMessage.toSource(
+                        "The clash of combat spooks " + name + " and you drop down to fight on foot!"),
+                    GameMessage.toRoom(
+                        player.getUsername(), null,
+                        player.getUsername().getValue() + " leaps down from " + name
+                            + " as battle is joined."))));
+        }
+    }
+
     @Override
     public void writeLineWithPrompt(String message) {
         connection.writeLine(message);
@@ -2058,6 +2081,31 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         GameActionResult result = context.mobRegistry()
             .processPlayerAttack(player, args, roomIdOpt.get());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void executeAssist(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to assist.");
+            return;
+        }
+        cancelRestIfActive();
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("There is no one to assist here.");
+            return;
+        }
+        breakStealthIfActive();
+        breakMountIfActive();
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        GameActionResult result = context.mobRegistry()
+            .processPlayerAssist(player, args, roomIdOpt.get());
         deliverResult(result);
         sendPrompt();
     }

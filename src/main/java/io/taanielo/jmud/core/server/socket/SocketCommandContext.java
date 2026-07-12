@@ -272,6 +272,21 @@ public interface SocketCommandContext extends Client {
     void killMob(String args);
 
     /**
+     * Executes an ASSIST command: engages the caller in combat against the mob that the named player
+     * in the same room is currently fighting, using the same per-tick auto-attack engagement as
+     * {@link #killMob(String)}.
+     *
+     * <p>Breaks stealth and dismounts as a side effect, consistent with initiating combat via
+     * {@code KILL}. Fails with a clear message when the named player is not present in the room or is
+     * not currently engaged with a live mob.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the name of the player to assist
+     */
+    default void executeAssist(String args) {}
+
+    /**
      * Executes a SHOOT command: fires a ranged weapon at a mob in an adjacent room.
      *
      * <p>Parses {@code args} as {@code <target> <direction>}, verifies the player wields a ranged
