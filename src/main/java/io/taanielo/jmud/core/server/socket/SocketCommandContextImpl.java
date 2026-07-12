@@ -2141,12 +2141,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         breakStealthIfActive();
-        breakMountIfActive();
         var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
         if (roomIdOpt.isEmpty()) {
             writeLineWithPrompt("You are nowhere.");
             return;
         }
+        // The mount break is folded into processPlayerTaunt's returned source so it only sticks on a
+        // successful taunt (and a failed taunt never spuriously dismounts) — mirroring the ATTACK path.
         GameActionResult result = context.mobRegistry()
             .processPlayerTaunt(player, args, taunt, roomIdOpt.get());
         if (result.updatedSource() != null && taunt.cooldown().ticks() > 0) {
