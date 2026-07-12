@@ -31,6 +31,9 @@ public class WsClientConnection implements ClientConnection {
     private final Socket socket;
     private final WsOriginPolicy originPolicy;
     private final Object writeLock = new Object();
+    private final @Nullable InputStream preReadInput;
+    private final @Nullable OutputStream preReadOutput;
+    private final WebSocketHandshake.@Nullable Request preReadRequest;
 
     private @Nullable InputStream input;
     private @Nullable OutputStream output;
@@ -39,13 +42,38 @@ public class WsClientConnection implements ClientConnection {
     public WsClientConnection(Socket socket, WsOriginPolicy originPolicy) {
         this.socket = Objects.requireNonNull(socket, "Socket is required");
         this.originPolicy = Objects.requireNonNull(originPolicy, "Origin policy is required");
+        this.preReadInput = null;
+        this.preReadOutput = null;
+        this.preReadRequest = null;
+    }
+
+    /**
+     * Creates a connection whose opening handshake request and streams were already read upstream by
+     * the {@link WebSocketServer} routing layer (so it can distinguish a WebSocket upgrade from a
+     * plain static-file GET). {@link #open()} then only validates the origin and writes the {@code
+     * 101 Switching Protocols} response, without re-reading the request.
+     */
+    public WsClientConnection(
+        Socket socket,
+        InputStream input,
+        OutputStream output,
+        WebSocketHandshake.Request request,
+        WsOriginPolicy originPolicy
+    ) {
+        this.socket = Objects.requireNonNull(socket, "Socket is required");
+        this.originPolicy = Objects.requireNonNull(originPolicy, "Origin policy is required");
+        this.preReadInput = Objects.requireNonNull(input, "Input stream is required");
+        this.preReadOutput = Objects.requireNonNull(output, "Output stream is required");
+        this.preReadRequest = Objects.requireNonNull(request, "Request is required");
     }
 
     @Override
     public void open() throws IOException {
-        InputStream in = new BufferedInputStream(socket.getInputStream());
-        OutputStream out = new BufferedOutputStream(socket.getOutputStream());
-        WebSocketHandshake.Request request = WebSocketHandshake.readRequest(in);
+        InputStream in = preReadInput != null ? preReadInput : new BufferedInputStream(socket.getInputStream());
+        OutputStream out = preReadOutput != null ? preReadOutput : new BufferedOutputStream(socket.getOutputStream());
+        WebSocketHandshake.Request request = preReadRequest != null
+            ? preReadRequest
+            : WebSocketHandshake.readRequest(in);
         if (request == null || !request.isWebSocketUpgrade()) {
             reject(out, 400, "Bad Request", "Not a WebSocket upgrade request");
             throw new IOException("Invalid WebSocket handshake request");

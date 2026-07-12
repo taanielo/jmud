@@ -134,6 +134,7 @@ Configuration has three layers, applied in this precedence order (highest first)
 | WebSocket host | `--ws-host <h>` | `JMUD_WS_HOST` | `127.0.0.1` |
 | WebSocket enabled | `--ws-enabled <bool>` | `JMUD_WS_ENABLED` | `true` |
 | WebSocket allowed origins | `--ws-allowed-origins <csv>` | `JMUD_WS_ALLOWED_ORIGINS` | *(unset → permissive)* |
+| Web client root | `--ws-web-root <dir>` | `JMUD_WS_WEB_ROOT` | `web` |
 
 The WebSocket endpoint (issue #526) serves a browser client the same game, login
 flow and single-writer tick model as telnet — only the wire framing differs
@@ -144,6 +145,17 @@ front of jmud and restrict the browser `Origin` with `--ws-allowed-origins`
 (comma-separated); leaving it unset is permissive and appropriate only for the
 loopback-bound default. Password masking is handled by the browser client, so the
 transport never emits telnet IAC echo-control bytes.
+
+The same port also serves the static browser client (issue #527): a plain
+`GET /` returns the single-page terminal from the `web/` directory (override with
+`--ws-web-root`), while `GET /ws` (the WebSocket upgrade) is the game stream. So
+`--ws-port 8080` on the default loopback bind gives a complete, playable URL at
+`http://127.0.0.1:8080/`. The client is dependency-free (no build step, no CDN):
+it renders ANSI colors, keeps the input line below the scrollback, masks password
+prompts, remembers command history, and offers one-click reconnect (which resumes
+via the linkdead path, issue #343) without an auto-reconnect loop. The page has a
+WebSocket-URL field, so the same `web/` assets can also be hosted from any static
+host and pointed at a remote `wss://…/ws` endpoint.
 
 ### `jmud.properties` keys (select important ones)
 
