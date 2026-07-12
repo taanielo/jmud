@@ -4552,6 +4552,44 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void notifyFriendsOfLogin(Player player) {
+        notifyFriends(player, FriendNotifier.loginMessage(player));
+    }
+
+    @Override
+    public void notifyFriendsOfLogout(Player player) {
+        notifyFriends(player, FriendNotifier.logoutMessage(player));
+    }
+
+    /**
+     * Delivers {@code message} to every currently-online player (other than {@code player} itself)
+     * whose {@code FRIEND} list contains {@code player}, via the canonical
+     * {@link io.taanielo.jmud.core.messaging.MessageBroadcaster#sendToPlayer} delivery path
+     * (AGENTS.md &sect;3.3). The recipient decision lives in {@link FriendNotifier#recipients} so it
+     * stays unit-testable without a running {@code GameContext}; the relationship is one-directional,
+     * so only players who friended {@code player} are notified, and offline friends have no session
+     * and are skipped naturally.
+     *
+     * @param player  the player whose login/logout is being announced
+     * @param message the fully-rendered notice line to deliver to each notified friend
+     */
+    private void notifyFriends(Player player, String message) {
+        if (player == null) {
+            return;
+        }
+        List<FriendNotifier.OnlinePlayer> online = new ArrayList<>();
+        for (Username username : onlinePlayerNames()) {
+            Player onlinePlayer = findOnlinePlayer(username);
+            if (onlinePlayer != null) {
+                online.add(new FriendNotifier.OnlinePlayer(username, onlinePlayer.friendList()));
+            }
+        }
+        for (Username recipient : FriendNotifier.recipients(player.getUsername(), online)) {
+            context.messageBroadcaster().sendToPlayer(recipient, new PlainTextMessage(message));
+        }
+    }
+
+    @Override
     public void manageMail(String args) {
         Player player = session.getPlayer();
         if (!session.isAuthenticated() || player == null) {
@@ -5678,7 +5716,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
      *
      * @param isNew {@code true} when this is the player's very first login (new character)
      */
-    void registerPostLoginCallbacks(boolean isNew) {
+    void registerPostLoginCallbacks(boolean isNew, boolean isReattach) {
         // Register player-event-bus listener for mob-initiated combat results
         if (context.playerEventBus() != null && session.getPlayer() != null) {
             context.playerEventBus().register(session.getPlayer().getUsername(), result ->
@@ -5731,6 +5769,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
         sendGossipHistory();
         // Notify of any unread mail waiting in the player's mailbox.
         sendMailNotice();
+        // On a genuine login (never a linkdead reattach — that player was already online), tell every
+        // online player who has this player friended that they have entered the game.
+        if (!isReattach && session.getPlayer() != null) {
+            notifyFriendsOfLogin(session.getPlayer());
+        }
         // Start character creation for brand-new players; dispatch look for returning ones
         if (isNew && context.characterCreationService() != null) {
             client.beginCharacterCreation();

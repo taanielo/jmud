@@ -850,8 +850,9 @@ public interface SocketCommandContext extends Client {
      * {@code args} is blank (or {@code LIST}), adds a player with {@code ADD <name>}, removes one
      * with {@code REMOVE <name>}, or clears the whole list with {@code CLEAR}.
      *
-     * <p>The friend relationship is one-directional and requires no consent; the befriended player
-     * is never notified. Friends are persisted per player and highlighted in {@code WHO}.
+     * <p>The friend relationship is one-directional and requires no consent. Friends are persisted
+     * per player, highlighted in {@code WHO}, and the friending player is notified when a friend
+     * enters or leaves the game.
      *
      * <p>The default implementation is a no-op so that existing test stubs do not need to be
      * updated.
@@ -873,6 +874,37 @@ public interface SocketCommandContext extends Client {
     default boolean isFriend(Username username) {
         return false;
     }
+
+    /**
+     * Notifies every other currently-online player who has {@code player} on their {@code FRIEND}
+     * list that {@code player} has just entered the game, delivering
+     * {@code "Your friend <Name> has entered the game."} to each of them.
+     *
+     * <p>The relationship is one-directional (only players who friended {@code player} are notified),
+     * the player is never notified about themselves, and offline friends receive nothing. Fired once
+     * on a genuine login, never on a linkdead reattach.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param player the player who has just logged in
+     */
+    default void notifyFriendsOfLogin(Player player) {}
+
+    /**
+     * Notifies every other currently-online player who has {@code player} on their {@code FRIEND}
+     * list that {@code player} has just left the game, delivering
+     * {@code "Your friend <Name> has left the game."} to each of them.
+     *
+     * <p>The relationship is one-directional (only players who friended {@code player} are notified),
+     * the player is never notified about themselves, and offline friends receive nothing. Fired once
+     * on a genuine logout (quit, disconnect, or linkdead-timeout expiry), never on a linkdead
+     * reattach.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param player the player who has just left the game
+     */
+    default void notifyFriendsOfLogout(Player player) {}
 
     /**
      * Executes a MAIL sub-command: lists the player's mail when {@code args} is blank,

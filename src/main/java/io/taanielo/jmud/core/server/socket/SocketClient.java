@@ -243,6 +243,7 @@ public class SocketClient implements Client {
             commandContext.emitAudit(eventType, AuditSubject.player(player.getUsername()),
                 null, commandContext.resolveRoomId(player), "success",
                 Map.of("reason", reason));
+            commandContext.notifyFriendsOfLogout(player);
         }
         if (sessionRegistry != null && player != null) {
             sessionRegistry.removeIf(player.getUsername(), session);
@@ -307,7 +308,7 @@ public class SocketClient implements Client {
         }
         commandContext.emitAudit("player.login", AuditSubject.player(player.getUsername()),
             null, commandContext.resolveRoomId(player), "success", Map.of("newPlayer", created.get()));
-        commandContext.registerPostLoginCallbacks(created.get());
+        commandContext.registerPostLoginCallbacks(created.get(), false);
     }
 
     /**
@@ -345,7 +346,7 @@ public class SocketClient implements Client {
         commandContext.emitAudit("player.reattach", AuditSubject.player(username),
             null, commandContext.resolveRoomId(livePlayer), "success", Map.of());
         log.info("Player {} reattached to linkdead session.", username.getValue());
-        commandContext.registerPostLoginCallbacks(false);
+        commandContext.registerPostLoginCallbacks(false, true);
     }
 
     /**

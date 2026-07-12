@@ -15,9 +15,10 @@ import java.util.Optional;
  *   <li>{@code FRIEND CLEAR}          — clears the entire friends list.</li>
  * </ul>
  *
- * <p>The friend relationship is one-directional and silent: the befriended player receives no
- * notification. Logic lives in {@link SocketCommandContext#manageFriends} so it stays
- * unit-testable without sockets (AGENTS.md §10).
+ * <p>The friend relationship is one-directional and requires no consent. You are notified when a
+ * player on your friends list enters or leaves the game. Logic lives in
+ * {@link SocketCommandContext#manageFriends} so it stays unit-testable without sockets
+ * (AGENTS.md §10).
  */
 public class FriendCommand extends RegistrableCommand {
 
@@ -47,7 +48,8 @@ public class FriendCommand extends RegistrableCommand {
                  FRIEND               \u2014 list your friends and who is online.
                  FRIEND ADD <name>    \u2014 add the named player to your friends list.
                  FRIEND REMOVE <name> \u2014 remove the named player from your friends list.
-                 FRIEND CLEAR         \u2014 clear your entire friends list.\
+                 FRIEND CLEAR         \u2014 clear your entire friends list.
+               You are notified when a friend enters or leaves the game.\
                """;
     }
 
