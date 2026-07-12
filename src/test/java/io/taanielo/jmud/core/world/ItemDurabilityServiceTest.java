@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Locale;
+
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Password;
@@ -220,6 +222,6 @@ class ItemDurabilityServiceTest {
         Player player = playerWithEquippedSword(sword(50, 50), 100);
         ItemDurabilityService.RepairOutcome outcome = service.repairAll(player);
         assertFalse(outcome.success());
-        assertTrue(outcome.message().toLowerCase().contains("nothing"));
+        assertTrue(outcome.message().toLowerCase(Locale.ROOT).contains("nothing"));
     }
 }
