@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import io.taanielo.jmud.core.world.dto.ItemDto;
+
 /**
  * JSON transfer object for a single guild file ({@code guilds/<id>.json}).
  */
@@ -13,7 +15,8 @@ record GuildDto(
     @Nullable String name,
     @Nullable String leaderId,
     @Nullable List<GuildMemberDto> members,
-    int treasuryGold
+    int treasuryGold,
+    @Nullable List<VaultedItemDto> vaultedItems
 ) {
 
     /** JSON transfer object for one roster entry. */
@@ -21,6 +24,13 @@ record GuildDto(
         @Nullable String username,
         @Nullable String rank,
         int joinOrder
+    ) {
+    }
+
+    /** JSON transfer object for one shared-vault entry: the stored item and its depositor. */
+    record VaultedItemDto(
+        @Nullable ItemDto item,
+        @Nullable String depositor
     ) {
     }
 }

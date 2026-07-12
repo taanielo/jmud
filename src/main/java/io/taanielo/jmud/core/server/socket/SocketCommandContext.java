@@ -920,9 +920,9 @@ public interface SocketCommandContext extends Client {
     default void acceptDuel() {}
 
     /**
-     * Executes a GUILD sub-command (CREATE, INVITE, ACCEPT, DECLINE, LEAVE, KICK, DISBAND, WHO), or,
-     * when the first token is not a recognised sub-command, treats the whole argument string as a
-     * guild-chat message to the caller's guild.
+     * Executes a GUILD sub-command (CREATE, INVITE, ACCEPT, DECLINE, LEAVE, KICK, DISBAND, WHO, BANK,
+     * DEPOSIT, WITHDRAW, VAULT, STORE, CLAIM), or, when the first token is not a recognised
+     * sub-command, treats the whole argument string as a guild-chat message to the caller's guild.
      *
      * <p>Manages persistent player guilds: founding, membership, leadership transfer, disbanding, and
      * the guild-only chat channel. The default implementation is a no-op so existing test stubs do not

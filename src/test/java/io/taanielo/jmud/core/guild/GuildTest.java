@@ -9,12 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
 
 class GuildTest {
 
     private static final Username ALICE = Username.of("Alice");
     private static final Username BOB = Username.of("Bob");
     private static final Username CAROL = Username.of("Carol");
+
+    private static Item item(String id, String name) {
+        return Item.builder(ItemId.of(id), name, "A test item.", ItemAttributes.empty()).build();
+    }
 
     @Test
     void foundedGuildHasLeaderAsSoleMember() {
@@ -127,5 +134,55 @@ class GuildTest {
         Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
 
         assertThrows(IllegalArgumentException.class, () -> guild.depositTreasury(-1));
+    }
+
+    @Test
+    void foundedGuildHasEmptyVault() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertTrue(guild.vaultedItems().isEmpty());
+    }
+
+    @Test
+    void withVaultedItemAppendsEntry() {
+        VaultedItem sword = new VaultedItem(item("sword", "a longsword"), ALICE);
+
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).withVaultedItem(sword);
+
+        assertEquals(1, guild.vaultedItems().size());
+        assertEquals(sword, guild.vaultedItems().get(0));
+        assertEquals(ALICE, guild.vaultedItems().get(0).depositor());
+    }
+
+    @Test
+    void withoutVaultedItemRemovesFirstMatch() {
+        VaultedItem sword = new VaultedItem(item("sword", "a longsword"), ALICE);
+        VaultedItem shield = new VaultedItem(item("shield", "a round shield"), BOB);
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .withVaultedItem(sword)
+            .withVaultedItem(shield);
+
+        Guild after = guild.withoutVaultedItem(sword);
+
+        assertEquals(1, after.vaultedItems().size());
+        assertEquals(shield, after.vaultedItems().get(0));
+    }
+
+    @Test
+    void withoutVaultedItemForAbsentEntryReturnsSameInstance() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertSame(guild, guild.withoutVaultedItem(new VaultedItem(item("sword", "a longsword"), ALICE)));
+    }
+
+    @Test
+    void vaultSurvivesRosterChanges() {
+        VaultedItem sword = new VaultedItem(item("sword", "a longsword"), ALICE);
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .withVaultedItem(sword)
+            .withMember(BOB);
+
+        assertEquals(1, guild.vaultedItems().size());
+        assertEquals(1, guild.withoutMember(BOB).vaultedItems().size());
     }
 }
