@@ -1,5 +1,7 @@
 package io.taanielo.jmud.core.character.dto;
 
+import org.jspecify.annotations.Nullable;
+
 public record RaceDto(
     int schemaVersion,
     String id,
@@ -9,6 +11,7 @@ public record RaceDto(
     int armorBonus,
     int manaModifier,
     int attackModifier,
-    String description
+    String description,
+    @Nullable AttributeBonusDto attributes
 ) {
 }

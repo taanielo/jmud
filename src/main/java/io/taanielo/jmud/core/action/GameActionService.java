@@ -34,6 +34,7 @@ import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityUseResult;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatAction;
 import io.taanielo.jmud.core.combat.CombatEngine;
@@ -150,6 +151,13 @@ public class GameActionService {
      * composition root wires the shared engine via {@link #setWeatherEngine(WeatherEngine)}.
      */
     private @Nullable WeatherEngine weatherEngine;
+    /**
+     * Optional resolver of a caster's derived core attributes, used to scale harmful spell damage by
+     * intellect and healing by wisdom. {@code null} until the composition root wires it via
+     * {@link #setCharacterAttributesResolver(CharacterAttributesResolver)}; while absent, spells and
+     * heals apply their base amounts unchanged.
+     */
+    private @Nullable CharacterAttributesResolver characterAttributesResolver;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -431,6 +439,20 @@ public class GameActionService {
      */
     public void setWeatherEngine(WeatherEngine weatherEngine) {
         this.weatherEngine = Objects.requireNonNull(weatherEngine, "Weather engine is required");
+    }
+
+    /**
+     * Injects the resolver of a caster's derived core attributes so that harmful spells scale with the
+     * caster's intellect and heals scale with wisdom.
+     *
+     * <p>Called once by the composition root. When absent, spell and heal amounts are applied
+     * unchanged (as they were before the attribute system existed).
+     *
+     * @param characterAttributesResolver the shared character attributes resolver
+     */
+    public void setCharacterAttributesResolver(CharacterAttributesResolver characterAttributesResolver) {
+        this.characterAttributesResolver =
+            Objects.requireNonNull(characterAttributesResolver, "Character attributes resolver is required");
     }
 
     /**
@@ -905,7 +927,7 @@ public class GameActionService {
 
         CollectingAbilityMessageSink sink = new CollectingAbilityMessageSink();
         DefaultAbilityEffectResolver resolver = new DefaultAbilityEffectResolver(
-            abilityEffectEngine, sink, AbilityEffectListener.noop()
+            abilityEffectEngine, sink, AbilityEffectListener.noop(), characterAttributesResolver
         );
         AbilityEngine engine = new AbilityEngine(abilityRegistry, abilityCostResolver, resolver, sink);
 

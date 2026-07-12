@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "ranger",
   "name": "Ranger",
   "healing": {
@@ -7,6 +7,8 @@
   },
   "carry_bonus": 6,
   "level_gains": { "hp": 9, "mana": 5, "move": 4 },
+  "attribute_bonuses": { "agi": 2, "str": 1 },
+  "attribute_gains": { "agi": "every_level", "str": "every_3_levels" },
   "ability_ids": ["skill.track", "skill.aimed-shot"],
   "trainable_ability_ids": ["skill.second-wind", "spell.haste"],
   "description": "A wilderness hunter who strikes from range and reads the land. Rangers track quarry across rooms and land a powerful aimed shot, later training second wind to keep going on long hunts."

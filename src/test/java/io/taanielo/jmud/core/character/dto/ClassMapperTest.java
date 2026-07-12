@@ -33,6 +33,8 @@ class ClassMapperTest {
             List.of("skill.bash", "skill.rend"),
             null,
             null,
+            null,
+            null,
             null
         );
 
@@ -60,6 +62,8 @@ class ClassMapperTest {
             List.of("skill.bash", "skill.rend"),
             List.of("skill.second-wind", "skill.taunt"),
             "The archetypal front-line fighter.",
+            null,
+            null,
             null
         );
 
@@ -83,7 +87,9 @@ class ClassMapperTest {
             List.of("skill.bash", "skill.rend"),
             List.of("skill.second-wind", "skill.taunt"),
             "The archetypal front-line fighter.",
-            new ClassLevelGainsDto(13, 2, 3)
+            new ClassLevelGainsDto(13, 2, 3),
+            null,
+            null
         );
 
         ClassDefinition def = mapper.toDomain(withGains);
@@ -103,6 +109,8 @@ class ClassMapperTest {
             List.of("skill.bash"),
             List.of(),
             "desc",
+            null,
+            null,
             null
         );
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "necromancer",
   "name": "Necromancer",
   "healing": {
@@ -7,6 +7,8 @@
   },
   "carry_bonus": 5,
   "level_gains": { "hp": 6, "mana": 9, "move": 3 },
+  "attribute_bonuses": { "int": 3 },
+  "attribute_gains": { "int": "every_level", "wis": "every_3_levels" },
   "ability_ids": ["spell.death-coil", "spell.summon", "spell.cure"],
   "trainable_ability_ids": ["spell.stoneskin", "spell.haste"],
   "description": "A dark caster who drains life and commands minions. Necromancers wither foes with death coil, summon servants and mend with cure; their own regeneration is poor, so they lean on stolen life and pets."

@@ -19,10 +19,12 @@ public class ClassDefinition {
     private final List<AbilityId> trainableAbilityIds;
     private final String description;
     private final LevelGains levelGains;
+    private final AttributeBonus attributeBonus;
+    private final AttributeGainSchedule attributeGains;
 
     /**
      * Constructs a class definition with an armour bonus, starting ability ids,
-     * trainable ability ids and a creation description.
+     * trainable ability ids and a creation description, using no attribute bonuses or gains.
      *
      * @param id                  the unique class identifier
      * @param name                the display name of the class
@@ -48,6 +50,45 @@ public class ClassDefinition {
         String description,
         LevelGains levelGains
     ) {
+        this(id, name, healingBaseModifier, carryBonus, armorBonus, startingAbilityIds,
+            trainableAbilityIds, description, levelGains, AttributeBonus.NONE, AttributeGainSchedule.NONE);
+    }
+
+    /**
+     * Constructs a class definition with an armour bonus, starting ability ids, trainable ability
+     * ids, a creation description, per-level vitals growth, creation attribute bonuses and a
+     * per-level attribute gain schedule.
+     *
+     * @param id                  the unique class identifier
+     * @param name                the display name of the class
+     * @param healingBaseModifier modifier applied to the base healing rate
+     * @param carryBonus          bonus carry capacity granted by this class
+     * @param armorBonus          natural armour class granted by the class's armour proficiency
+     * @param startingAbilityIds  ability ids granted to new players of this class
+     * @param trainableAbilityIds ability ids the Master Trainer can teach members of this class
+     *                            (not granted automatically at creation)
+     * @param description         short flavour text shown at character creation; {@code null}
+     *                            is normalised to an empty string
+     * @param levelGains          per-level vitals growth for this class; {@code null} is normalised
+     *                            to {@link LevelGains#DEFAULT}
+     * @param attributeBonus      signed core-attribute bonuses applied at character creation;
+     *                            {@code null} is normalised to {@link AttributeBonus#NONE}
+     * @param attributeGains      per-level core-attribute growth schedule; {@code null} is normalised
+     *                            to {@link AttributeGainSchedule#NONE}
+     */
+    public ClassDefinition(
+        ClassId id,
+        String name,
+        int healingBaseModifier,
+        int carryBonus,
+        int armorBonus,
+        List<AbilityId> startingAbilityIds,
+        List<AbilityId> trainableAbilityIds,
+        String description,
+        LevelGains levelGains,
+        AttributeBonus attributeBonus,
+        AttributeGainSchedule attributeGains
+    ) {
         this.id = Objects.requireNonNull(id, "Class id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Class name must not be blank");
@@ -70,6 +111,8 @@ public class ClassDefinition {
             : List.copyOf(trainableAbilityIds);
         this.description = description == null ? "" : description;
         this.levelGains = levelGains == null ? LevelGains.DEFAULT : levelGains;
+        this.attributeBonus = attributeBonus == null ? AttributeBonus.NONE : attributeBonus;
+        this.attributeGains = attributeGains == null ? AttributeGainSchedule.NONE : attributeGains;
     }
 
     /**
@@ -249,5 +292,27 @@ public class ClassDefinition {
      */
     public LevelGains levelGains() {
         return levelGains;
+    }
+
+    /**
+     * Returns the signed core-attribute bonuses granted to a new character of this class at creation
+     * (e.g. mage {@code +3 INT}, paladin {@code +2 STR +1 WIS}). Defaults to
+     * {@link AttributeBonus#NONE} for legacy data that predates the attributes fields.
+     *
+     * @return the creation attribute bonus; never {@code null}
+     */
+    public AttributeBonus attributeBonus() {
+        return attributeBonus;
+    }
+
+    /**
+     * Returns the deterministic per-level schedule by which this class grows its core attributes as
+     * characters level up (e.g. warrior strength every level, agility every three levels). Defaults
+     * to {@link AttributeGainSchedule#NONE} for legacy data that predates the attributes fields.
+     *
+     * @return the per-level attribute gain schedule; never {@code null}
+     */
+    public AttributeGainSchedule attributeGains() {
+        return attributeGains;
     }
 }

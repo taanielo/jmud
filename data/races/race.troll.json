@@ -1,10 +1,14 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "troll",
   "name": "Troll",
   "healing": {
     "base_modifier": 2
   },
   "carry_base": 80,
+  "attributes": {
+    "str": 3,
+    "int": -3
+  },
   "description": "Hulking brutes famed for rapid regeneration. Trolls heal faster than anyone, letting them outlast drawn-out fights while carrying a hefty load."
 }

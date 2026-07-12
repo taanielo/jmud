@@ -13,6 +13,18 @@ public final class CombatSettings {
     public static final String DEFAULT_ATTACK_ID = "attack.unarmed";
     public static final int DEFAULT_ATTACK_CADENCE_TICKS = 1;
 
+    /**
+     * Lower bound applied to a resolved hit chance, so even a heavily out-matched attacker retains a
+     * slim chance to land a blow.
+     */
+    public static final int MIN_HIT_CHANCE = 5;
+
+    /**
+     * Upper bound applied to a resolved hit chance, so even a dominant attacker can still miss and no
+     * fight is ever a certainty.
+     */
+    public static final int MAX_HIT_CHANCE = 95;
+
     private static final GameConfig CONFIG = GameConfig.load();
 
     private CombatSettings() {

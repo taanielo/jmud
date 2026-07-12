@@ -245,6 +245,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.partyService() != null) {
             this.gameActionService.setPartyService(context.partyService());
         }
+        if (context.characterAttributesResolver() != null) {
+            this.gameActionService.setCharacterAttributesResolver(context.characterAttributesResolver());
+        }
         this.gameActionService.setOnlinePlayerLookup(
             username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
     }

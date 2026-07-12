@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "orc",
   "name": "Orc",
   "healing": {
@@ -8,5 +8,9 @@
   "carry_base": 90,
   "attack_modifier": 5,
   "mana_modifier": -5,
+  "attributes": {
+    "str": 3,
+    "int": -2
+  },
   "description": "Savage warriors who hit harder than any other race and haul heavy gear. Orcs trade a shallow mana pool and slow healing for raw offensive power, best paired with a weapon class."
 }

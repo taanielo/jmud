@@ -30,6 +30,7 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatAttributeBonusResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.RangeType;
@@ -108,6 +109,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private AchievementService achievementService;
     /** Optional world-boss announcer that broadcasts boss spawn/death server-wide; may be null. */
     private WorldBossAnnouncer worldBossAnnouncer;
+    /**
+     * Resolves a player attacker's strength-based bonus damage against mobs. Defaults to a no-op so
+     * mob combat is unchanged until the composition root injects the real resolver.
+     */
+    private CombatAttributeBonusResolver attributeBonusResolver = CombatAttributeBonusResolver.noOp();
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -171,6 +177,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      */
     public void setEffectEngine(EffectEngine effectEngine) {
         this.effectEngine = effectEngine;
+    }
+
+    /**
+     * Registers the resolver that adds a player attacker's strength-based bonus damage when striking
+     * a mob, so core attributes matter in player-vs-mob combat exactly as they do in player-vs-player
+     * combat. When not set, a no-op resolver leaves mob damage unchanged.
+     *
+     * @param attributeBonusResolver the combat attribute bonus resolver; must not be null
+     */
+    public void setCombatAttributeBonusResolver(CombatAttributeBonusResolver attributeBonusResolver) {
+        this.attributeBonusResolver =
+            Objects.requireNonNull(attributeBonusResolver, "Attribute bonus resolver is required");
     }
 
     /**
@@ -484,7 +502,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         if (attack == null) {
             return GameActionResult.error("Combat error: attack definition not found.");
         }
-        int damage = rollDamage(attack);
+        int damage = rollDamage(attack, attacker);
         int remaining = mob.takeDamage(damage);
 
         mob.engage(attacker.getUsername());
@@ -993,7 +1011,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         if (mob.template().hasTag("npc")) {
             return GameActionResult.error("You cannot attack that.");
         }
-        int damage = rollDamage(attack);
+        int damage = rollDamage(attack, attacker);
         int remaining = mob.takeDamage(damage);
 
         List<GameMessage> messages = new ArrayList<>();
@@ -1853,7 +1871,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             if (attack == null) {
                 continue;
             }
-            int damage = rollDamage(attack);
+            int damage = rollDamage(attack, player);
             int remaining = mob.takeDamage(damage);
 
             List<GameMessage> messages = new ArrayList<>();
@@ -2048,6 +2066,24 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             ? attack.minDamage() + random.roll(0, range)
             : attack.minDamage();
         return Math.max(1, base + attack.damageBonus());
+    }
+
+    /**
+     * Rolls damage for an attack made by the given player attacker, adding their strength-based
+     * physical bonus damage on top of the weapon roll so core attributes carry into player-vs-mob
+     * combat. Final damage is never below 1.
+     *
+     * @param attack   the attack definition being rolled
+     * @param attacker the player making the attack
+     * @return the damage dealt, at least 1
+     */
+    private int rollDamage(AttackDefinition attack, Player attacker) {
+        int range = attack.maxDamage() - attack.minDamage();
+        int base = range > 0
+            ? attack.minDamage() + random.roll(0, range)
+            : attack.minDamage();
+        int strengthBonus = attributeBonusResolver.meleeDamageBonus(attacker);
+        return Math.max(1, base + attack.damageBonus() + strengthBonus);
     }
 
     /**
