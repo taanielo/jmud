@@ -273,7 +273,9 @@ class GameActionServicePlayerDuelTest {
 
     @Test
     void nonDuelPvpDeathStillSpawnsCorpseAndClearsLocation() {
-        Player lowHpTarget = playerWithHp("target", 2);
+        // Level 5 is at/above the newbie death-grace threshold, so this exercises the normal
+        // (non-graced) corpse-dropping death path rather than the grace path (see issue #520).
+        Player lowHpTarget = playerWithHp("target", 2, 5);
         GameActionService service = service(defaultCombat(), resolver(lowHpTarget), _ -> false);
 
         GameActionResult result = service.attack(attacker, "target");
@@ -355,10 +357,14 @@ class GameActionServicePlayerDuelTest {
     }
 
     private Player playerWithHp(String username, int hp) {
+        return playerWithHp(username, hp, 1);
+    }
+
+    private Player playerWithHp(String username, int hp, int level) {
         PlayerVitals vitals = new PlayerVitals(hp, 20, 20, 20, 20, 20);
         return new Player(
             User.of(Username.of(username), Password.hash("pw", 1000)),
-            1, 0, vitals, List.of(), "prompt", false,
+            level, 0, vitals, List.of(), "prompt", false,
             List.of(), null, null
         );
     }
