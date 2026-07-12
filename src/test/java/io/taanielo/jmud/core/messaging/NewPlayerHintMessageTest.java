@@ -30,6 +30,16 @@ class NewPlayerHintMessageTest {
     }
 
     @Test
+    void pointsNewPlayerAtTheGuildClerkForAFirstQuest() throws IOException {
+        NewPlayerHintMessage.of(new PlainTextStyler()).send(writer);
+
+        String output = String.join("", written);
+        assertContains(output, "Courtyard");
+        assertContains(output, "QUEST LIST");
+        assertContains(output, "Guild Clerk");
+    }
+
+    @Test
     void mentionsEachTipExactlyOnce() throws IOException {
         NewPlayerHintMessage.of(new PlainTextStyler()).send(writer);
 

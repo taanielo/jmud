@@ -9,5 +9,8 @@
   "xp_reward": 150,
   "title_reward": "Goblin Crusher",
   "reputation_reward_faction_id": "militia",
-  "reputation_reward_delta": 5
+  "reputation_reward_delta": 5,
+  "recommended_level": 2,
+  "repeatable": false,
+  "prerequisite_quest_id": "rat-catcher"
 }

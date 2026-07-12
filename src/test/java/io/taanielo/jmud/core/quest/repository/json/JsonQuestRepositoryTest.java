@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.quest.repository.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -124,5 +125,52 @@ class JsonQuestRepositoryTest {
 
         assertEquals("health-potion", template.itemReward());
         assertEquals(5, template.itemRewardQuantity());
+    }
+
+    @Test
+    void loadsRecommendedLevelWhenPresent(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
+        Path questsDir = Files.createDirectories(dataRoot.resolve("quests"));
+        Files.writeString(questsDir.resolve("quest.rat-catcher.json"), """
+            {
+              "schema_version": 1,
+              "id": "rat-catcher",
+              "name": "Rat Catcher",
+              "description": "Clear the hollow of rats.",
+              "target_mob_id": "rat",
+              "required_kills": 5,
+              "gold_reward": 30,
+              "xp_reward": 75,
+              "recommended_level": 1
+            }
+            """);
+
+        JsonQuestRepository repository = new JsonQuestRepository(dataRoot);
+        QuestTemplate template = repository.findById(QuestId.of("rat-catcher")).orElseThrow();
+
+        assertTrue(template.hasRecommendedLevel());
+        assertEquals(1, template.recommendedLevel());
+    }
+
+    @Test
+    void defaultsRecommendedLevelToZeroWhenAbsent(@TempDir Path dataRoot) throws IOException, QuestRepositoryException {
+        Path questsDir = Files.createDirectories(dataRoot.resolve("quests"));
+        Files.writeString(questsDir.resolve("quest.no-level.json"), """
+            {
+              "schema_version": 1,
+              "id": "no-level",
+              "name": "No Level",
+              "description": "Slay rats.",
+              "target_mob_id": "rat",
+              "required_kills": 3,
+              "gold_reward": 10,
+              "xp_reward": 20
+            }
+            """);
+
+        JsonQuestRepository repository = new JsonQuestRepository(dataRoot);
+        QuestTemplate template = repository.findById(QuestId.of("no-level")).orElseThrow();
+
+        assertFalse(template.hasRecommendedLevel());
+        assertEquals(0, template.recommendedLevel());
     }
 }

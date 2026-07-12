@@ -87,6 +87,11 @@
       "type": "string",
       "pattern": "^[a-z0-9-]+$",
       "description": "Optional id of a quest the player must have completed before this contract can be accepted. Until the prerequisite is completed, QUEST ACCEPT rejects this quest and QUEST LIST omits it. Applies to any quest type."
+    },
+    "recommended_level": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional character level this contract is balanced for. Rendered as a difficulty hint in QUEST LIST and used to sort contracts easiest-first (contracts without a recommendation sort last). Omit (or set 0) when the quest carries no level recommendation. Applies to any quest type."
     }
   },
   "examples": [

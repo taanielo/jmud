@@ -9,5 +9,7 @@
   "xp_reward": 75,
   "title_reward": "Rat Slayer",
   "reputation_reward_faction_id": "militia",
-  "reputation_reward_delta": 3
+  "reputation_reward_delta": 3,
+  "recommended_level": 1,
+  "repeatable": false
 }

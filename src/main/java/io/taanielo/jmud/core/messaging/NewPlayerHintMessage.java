@@ -10,7 +10,9 @@ import io.taanielo.jmud.core.output.TextStyler;
  * A short, one-time onboarding hint shown to a brand-new character immediately after character
  * creation completes (issue #517). It points the player at the tools that keep them alive in the
  * early game — the iron sword on the training-yard floor, the CONSIDER command, and the Master
- * Trainer — none of which are otherwise discoverable at level 1.
+ * Trainer — none of which are otherwise discoverable at level 1. It also gives the brand-new
+ * character a concrete first goal (issue #518): the Guild Clerk one room east in the Courtyard,
+ * whose easiest contract (the Rat Catcher) is the intended level-1 starter quest.
  *
  * <p>The text is intentionally static and self-contained: a new player must learn how to arm and
  * orient themselves without relying on any other channel (MOTD, docs, help files).
@@ -24,6 +26,7 @@ public class NewPlayerHintMessage implements Message {
         "  - Grab the iron sword on the floor: GET IRON SWORD, then WIELD IRON SWORD.",
         "  - CONSIDER a monster before you attack it to gauge the danger.",
         "  - Type TRAIN LIST at the Master Trainer to learn abilities.",
+        "  - Your first job: go EAST to the Courtyard, then QUEST LIST at the Guild Clerk.",
         "  - Type HELP at any time for the full list of commands."
     };
 

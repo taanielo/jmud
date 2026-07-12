@@ -52,6 +52,9 @@ import java.util.Objects;
  *                          contracts that a player may complete just once
  * @param prerequisiteQuestId id of a quest the player must have completed before this contract can be
  *                          accepted, or {@code null} when the quest has no prerequisite
+ * @param recommendedLevel  the character level this contract is balanced for, shown as a difficulty
+ *                          hint in {@code QUEST LIST} and used to sort contracts easiest-first; a
+ *                          value of {@code 0} means the quest carries no level recommendation
  */
 public record QuestTemplate(
     QuestId id,
@@ -75,7 +78,8 @@ public record QuestTemplate(
     String reputationRewardFactionId,
     int reputationRewardDelta,
     boolean repeatable,
-    String prerequisiteQuestId
+    String prerequisiteQuestId,
+    int recommendedLevel
 ) {
     public QuestTemplate {
         Objects.requireNonNull(id, "Quest id is required");
@@ -118,6 +122,9 @@ public record QuestTemplate(
             throw new IllegalArgumentException(
                 "reputationRewardDelta must be zero when reputationRewardFactionId is not set");
         }
+        if (recommendedLevel < 0) {
+            throw new IllegalArgumentException("recommendedLevel must be non-negative");
+        }
     }
 
     /**
@@ -141,7 +148,7 @@ public record QuestTemplate(
         int xpReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0, true, null);
+            null, 0, null, null, null, null, null, List.of(), null, null, 0, null, 0, true, null, 0);
     }
 
     /**
@@ -171,7 +178,7 @@ public record QuestTemplate(
         String titleReward
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0, null, 0, true, null);
+            dropItemId, requiredDropCount, titleReward, null, null, null, null, List.of(), null, null, 0, null, 0, true, null, 0);
     }
 
     /**
@@ -210,7 +217,7 @@ public record QuestTemplate(
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId,
-            receiverRoomId, packageItemId, List.of(), null, null, 0, null, 0, true, null);
+            receiverRoomId, packageItemId, List.of(), null, null, 0, null, 0, true, null, 0);
     }
 
     /**
@@ -234,7 +241,7 @@ public record QuestTemplate(
         List<String> requiredRoomIds
     ) {
         this(id, name, description, null, 0, goldReward, xpReward,
-            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0, null, 0, true, null);
+            null, 0, titleReward, null, null, null, null, requiredRoomIds, null, null, 0, null, 0, true, null, 0);
     }
 
     /**
@@ -260,7 +267,7 @@ public record QuestTemplate(
         String dailyPoolId
     ) {
         this(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
-            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0, null, 0, true, null);
+            null, 0, null, null, null, null, null, List.of(), dailyPoolId, null, 0, null, 0, true, null, 0);
     }
 
     /**
@@ -275,7 +282,7 @@ public record QuestTemplate(
         return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
             packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity,
-            reputationRewardFactionId, reputationRewardDelta, repeatable, prerequisiteQuestId);
+            reputationRewardFactionId, reputationRewardDelta, repeatable, prerequisiteQuestId, recommendedLevel);
     }
 
     /**
@@ -291,7 +298,7 @@ public record QuestTemplate(
         return new QuestTemplate(id, name, description, targetMobId, requiredKills, goldReward, xpReward,
             dropItemId, requiredDropCount, titleReward, giverNpcId, receiverNpcId, receiverRoomId,
             packageItemId, requiredRoomIds, dailyPoolId, itemReward, itemRewardQuantity,
-            reputationRewardFactionId, reputationRewardDelta, repeatable, prerequisiteQuestId);
+            reputationRewardFactionId, reputationRewardDelta, repeatable, prerequisiteQuestId, recommendedLevel);
     }
 
     /**
@@ -321,6 +328,15 @@ public record QuestTemplate(
      */
     public boolean hasPrerequisite() {
         return prerequisiteQuestId != null;
+    }
+
+    /**
+     * Returns {@code true} when this quest carries a recommended character level, i.e. a non-zero
+     * {@link #recommendedLevel()} used as a difficulty hint and easiest-first sort key in
+     * {@code QUEST LIST}.
+     */
+    public boolean hasRecommendedLevel() {
+        return recommendedLevel > 0;
     }
 
     /**

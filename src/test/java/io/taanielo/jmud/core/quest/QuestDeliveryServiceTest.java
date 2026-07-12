@@ -303,7 +303,7 @@ class QuestDeliveryServiceTest {
         return new QuestTemplate(
             QuestId.of("rare-relic-collector"), "Rare Relic Collector", "Bring 5 rat tails once.",
             null, 0, 40, 100, "rat-tail", 5, null,
-            null, null, null, null, List.of(), null, null, 0, null, 0, false, null);
+            null, null, null, null, List.of(), null, null, 0, null, 0, false, null, 0);
     }
 
     private static AchievementService questMilestoneService() throws AchievementRepositoryException {

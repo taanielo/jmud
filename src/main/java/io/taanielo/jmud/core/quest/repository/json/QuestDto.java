@@ -32,6 +32,11 @@ import java.util.List;
  * quest becomes a one-time-only contract a player may complete just once. {@code prerequisiteQuestId}
  * is optional: when set, the quest can only be accepted after the player has completed the named
  * prerequisite quest.
+ *
+ * <p>{@code recommendedLevel} is optional and applies to any quest type: when set to a positive
+ * value it names the character level the contract is balanced for, shown as a difficulty hint in
+ * {@code QUEST LIST} and used to sort contracts easiest-first. Jackson leaves the primitive at
+ * {@code 0} when the field is absent, meaning the quest carries no level recommendation.
  */
 record QuestDto(
     int schemaVersion,
@@ -56,6 +61,7 @@ record QuestDto(
     String reputationRewardFactionId,
     int reputationRewardDelta,
     Boolean repeatable,
-    String prerequisiteQuestId
+    String prerequisiteQuestId,
+    int recommendedLevel
 ) {
 }
