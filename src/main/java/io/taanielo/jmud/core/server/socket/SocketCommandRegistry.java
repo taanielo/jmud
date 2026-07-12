@@ -168,6 +168,8 @@ public class SocketCommandRegistry {
         new UnlockCommand(registry);
         new PickCommand(registry);
         new SneakCommand(registry);
+        new MountCommand(registry);
+        new DismountCommand(registry);
         new StealCommand(registry);
         new TrackCommand(registry);
         new SummonCommand(registry);

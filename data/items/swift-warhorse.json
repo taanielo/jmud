@@ -1,0 +1,14 @@
+{
+  "schema_version": 12,
+  "id": "swift-warhorse",
+  "name": "a swift warhorse",
+  "description": "A tall, deep-chested warhorse bred for stamina and speed, its coat glossy and its stride ground-eating. Barding rings hang from a fine saddle. It devours the miles, letting a rider cross even the widest wilderness with move points to spare.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 0,
+  "value": 600,
+  "mount_move_discount": 2
+}

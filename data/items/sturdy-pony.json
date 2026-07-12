@@ -1,0 +1,14 @@
+{
+  "schema_version": 12,
+  "id": "sturdy-pony",
+  "name": "a sturdy pony",
+  "description": "A shaggy, short-legged pony with a placid temperament and a saddle worn soft by years of trail work. It is no racer, but it will carry you tirelessly across open country, sparing your legs on long treks between towns.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 0,
+  "value": 150,
+  "mount_move_discount": 1
+}

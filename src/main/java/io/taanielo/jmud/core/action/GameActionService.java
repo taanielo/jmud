@@ -53,6 +53,7 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.OnlinePlayerLookup;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
+import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.weather.Weather;
 import io.taanielo.jmud.core.weather.WeatherEngine;
@@ -857,6 +858,11 @@ public class GameActionService {
                     source.getUsername(), target.getUsername(),
                     source.getUsername().getValue() + " emerges from the shadows!"));
             }
+            // Entering combat also throws the attacker off any mount they were riding.
+            Player mountBase = updatedSource != null ? updatedSource : source;
+            if (mountBase.isMounted()) {
+                updatedSource = breakMountOnCombat(mountBase, messages);
+            }
             Map<String, Object> meta = result.rngSeed() != 0L
                 ? Map.of("rngSeed", result.rngSeed())
                 : Map.of();
@@ -923,6 +929,11 @@ public class GameActionService {
             messages.add(GameMessage.toRoom(
                 source.getUsername(), updatedTarget.getUsername(),
                 source.getUsername().getValue() + " emerges from the shadows!"));
+        }
+
+        // A hostile ability landed on a distinct target throws the caster off any mount they rode.
+        if (updatedSource.isMounted() && hitDistinctTarget) {
+            updatedSource = breakMountOnCombat(updatedSource, messages);
         }
 
         boolean duelKill = updatedTarget.getVitals().hp() <= 0
@@ -1363,6 +1374,111 @@ public class GameActionService {
                 source.getUsername().getValue() + " steps out of the shadows."));
         }
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Saddles the player up on a rideable mount they own, reducing their per-step travel cost while
+     * ridden.
+     *
+     * <p>The named mount must be a {@linkplain Item#isMount() mount item} the player is carrying, the
+     * player must not already be mounted, and mounts may only be summoned in an
+     * {@linkplain Room#isOutdoor() outdoor} room (never indoors or underground). The ridden state is
+     * transient — it lives on the {@link Player} aggregate, is never persisted, and is broken
+     * automatically the moment the rider enters combat (see {@link #attack} and {@link #useAbility})
+     * or moves indoors. Mutated only on the tick thread (AGENTS.md §5).
+     *
+     * @param source    the player mounting up
+     * @param mountName the name (or a fragment of it) of the mount item to ride
+     * @return result with the updated (mounted) player and outcome messages, or an error
+     */
+    public GameActionResult mount(Player source, String mountName) {
+        if (source.isDead()) {
+            return GameActionResult.error("You cannot do that right now.");
+        }
+        if (source.isMounted()) {
+            return GameActionResult.error("You are already mounted on " + source.mount().mountName() + ".");
+        }
+        String query = mountName == null ? "" : mountName.trim();
+        if (query.isEmpty()) {
+            return GameActionResult.error("Usage: MOUNT <mount>");
+        }
+        RoomService.LookResult look = roomService.look(source.getUsername());
+        Room room = look.room();
+        if (room != null && !room.isOutdoor()) {
+            return GameActionResult.error("You cannot ride a mount indoors or underground.");
+        }
+        String lowered = query.toLowerCase(Locale.ROOT);
+        Item mountItem = null;
+        boolean ownsMatchingItem = false;
+        for (Item item : source.getInventory()) {
+            if (!item.getName().toLowerCase(Locale.ROOT).contains(lowered)) {
+                continue;
+            }
+            ownsMatchingItem = true;
+            if (item.isMount()) {
+                mountItem = item;
+                break;
+            }
+        }
+        if (mountItem == null) {
+            if (ownsMatchingItem) {
+                return GameActionResult.error("You cannot ride that.");
+            }
+            return GameActionResult.error("You do not own a mount called \"" + query + "\".");
+        }
+        Integer discount = mountItem.getMountMoveDiscount();
+        PlayerMount ridden = PlayerMount.riding(mountItem.getName(), discount == null ? 0 : discount);
+        Player updated = source.withMount(ridden);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You climb onto " + mountItem.getName() + ". Your travel is swifter now (reduced move cost)."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(), null,
+            source.getUsername().getValue() + " mounts " + mountItem.getName() + "."));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Puts away the player's current mount, returning them to normal per-step travel cost.
+     *
+     * @param source the player dismounting
+     * @return result with the updated (dismounted) player and outcome messages, or an error when the
+     *         player is not riding anything
+     */
+    public GameActionResult dismount(Player source) {
+        if (!source.isMounted()) {
+            return GameActionResult.error("You are not riding anything.");
+        }
+        String name = source.mount().mountName();
+        Player updated = source.withMount(PlayerMount.dismounted());
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You dismount " + name + ". Your travel returns to normal."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(), null,
+            source.getUsername().getValue() + " dismounts " + name + "."));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Auto-dismounts a rider the instant they enter combat, appending the self/room messages to the
+     * supplied list, mirroring how attacking breaks stealth. Returns the player unchanged (and adds
+     * no messages) when they are not currently mounted.
+     *
+     * @param player   the combatant who may be mounted
+     * @param messages the running message list to append the dismount lines to
+     * @return the dismounted player, or the same instance when they were already on foot
+     */
+    private Player breakMountOnCombat(Player player, List<GameMessage> messages) {
+        if (!player.isMounted()) {
+            return player;
+        }
+        String name = player.mount().mountName();
+        messages.add(GameMessage.toSource(
+            "The clash of combat spooks " + name + " and you drop down to fight on foot!"));
+        messages.add(GameMessage.toRoom(
+            player.getUsername(), null,
+            player.getUsername().getValue() + " leaps down from " + name + " as battle is joined."));
+        return player.withMount(PlayerMount.dismounted());
     }
 
     /**

@@ -15,26 +15,33 @@ import io.taanielo.jmud.core.effects.EffectInstance;
  * {@link #addEffect(EffectInstance)} and {@link #removeEffect(EffectInstance)},
  * which — like all game-state mutation — must run on the tick thread (AGENTS.md §5).
  *
- * <p>The {@link #stealthActive()} flag is in-memory only and is never serialised; it
- * defaults to {@code false} for players loaded from persistence and is cleared on death
- * and respawn.
+ * <p>The {@link #stealthActive()} flag and the {@link #mount()} ridden-state are in-memory only and
+ * never serialised; they default to "off"/"dismounted" for players loaded from persistence and are
+ * cleared on death and respawn.
  */
 public class PlayerCombatState {
     private final PlayerVitals vitals;
     private final List<EffectInstance> effects;
     private final boolean dead;
     private final boolean stealthActive;
+    private final PlayerMount mount;
 
     public PlayerCombatState(PlayerVitals vitals, List<EffectInstance> effects, Boolean dead) {
         this(vitals, effects, dead, false);
     }
 
     public PlayerCombatState(PlayerVitals vitals, List<EffectInstance> effects, Boolean dead, boolean stealthActive) {
+        this(vitals, effects, dead, stealthActive, PlayerMount.dismounted());
+    }
+
+    public PlayerCombatState(PlayerVitals vitals, List<EffectInstance> effects, Boolean dead, boolean stealthActive,
+                             PlayerMount mount) {
         this.vitals = Objects.requireNonNull(vitals, "Vitals are required");
         this.effects = new ArrayList<>(Objects.requireNonNullElse(effects, List.of()));
         boolean resolvedDead = Objects.requireNonNullElse(dead, false) || vitals.hp() <= 0;
         this.dead = resolvedDead;
         this.stealthActive = stealthActive;
+        this.mount = Objects.requireNonNullElse(mount, PlayerMount.dismounted());
     }
 
     public PlayerVitals vitals() {
@@ -85,29 +92,36 @@ public class PlayerCombatState {
         return stealthActive;
     }
 
+    /**
+     * Returns the player's transient ridden-mount state. In-memory only, never persisted.
+     */
+    public PlayerMount mount() {
+        return mount;
+    }
+
     public PlayerCombatState die() {
-        if (dead && vitals.hp() <= 0 && effects.isEmpty() && !stealthActive) {
+        if (dead && vitals.hp() <= 0 && effects.isEmpty() && !stealthActive && !mount.isMounted()) {
             return this;
         }
         PlayerVitals deadVitals = vitals.damage(vitals.hp());
-        return new PlayerCombatState(deadVitals, List.of(), true, false);
+        return new PlayerCombatState(deadVitals, List.of(), true, false, PlayerMount.dismounted());
     }
 
     public PlayerCombatState respawn() {
         PlayerVitals restored = vitals.respawnHalf();
-        return new PlayerCombatState(restored, List.of(), false, false);
+        return new PlayerCombatState(restored, List.of(), false, false, PlayerMount.dismounted());
     }
 
     public PlayerCombatState withoutEffects() {
-        return new PlayerCombatState(vitals, List.of(), dead, stealthActive);
+        return new PlayerCombatState(vitals, List.of(), dead, stealthActive, mount);
     }
 
     public PlayerCombatState withVitals(PlayerVitals updatedVitals) {
-        return new PlayerCombatState(updatedVitals, effects, dead, stealthActive);
+        return new PlayerCombatState(updatedVitals, effects, dead, stealthActive, mount);
     }
 
     public PlayerCombatState withDead(boolean nextDead) {
-        return new PlayerCombatState(vitals, effects, nextDead, stealthActive);
+        return new PlayerCombatState(vitals, effects, nextDead, stealthActive, mount);
     }
 
     /**
@@ -119,6 +133,20 @@ public class PlayerCombatState {
         if (this.stealthActive == active) {
             return this;
         }
-        return new PlayerCombatState(vitals, effects, dead, active);
+        return new PlayerCombatState(vitals, effects, dead, active, mount);
+    }
+
+    /**
+     * Returns a copy of this combat state with the ridden-mount state set to the given value.
+     *
+     * @param newMount the new mount state; must not be null (use {@link PlayerMount#dismounted()} to
+     *                 clear)
+     */
+    public PlayerCombatState withMount(PlayerMount newMount) {
+        Objects.requireNonNull(newMount, "Mount is required");
+        if (this.mount.equals(newMount)) {
+            return this;
+        }
+        return new PlayerCombatState(vitals, effects, dead, stealthActive, newMount);
     }
 }

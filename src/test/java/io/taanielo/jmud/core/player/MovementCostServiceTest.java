@@ -66,6 +66,54 @@ class MovementCostServiceTest {
     }
 
     @Test
+    void mountedMoveReducesStepCostByDiscount() {
+        // A higher base cost so the mount discount is visible without flooring at zero.
+        MovementCostService pricey = new MovementCostService(encumbranceService(), 4, SURCHARGE);
+        Player onFoot = player(withMove(10), List.of());
+        Player mounted = onFoot.withMount(PlayerMount.riding("a swift warhorse", 2));
+
+        assertEquals(4, pricey.stepCost(onFoot));
+        assertEquals(2, pricey.stepCost(mounted));
+        assertEquals(8, pricey.spend(mounted).getVitals().move());
+    }
+
+    @Test
+    void distinctMountsGrantDistinctDiscounts() {
+        MovementCostService pricey = new MovementCostService(encumbranceService(), 4, SURCHARGE);
+        Player pony = player(withMove(10), List.of()).withMount(PlayerMount.riding("a sturdy pony", 1));
+        Player warhorse = player(withMove(10), List.of()).withMount(PlayerMount.riding("a swift warhorse", 2));
+
+        assertEquals(3, pricey.stepCost(pony));
+        assertEquals(2, pricey.stepCost(warhorse));
+    }
+
+    @Test
+    void mountDiscountFloorsStepCostAtZero() {
+        // Base cost 1, discount 2: the step is free, never negative.
+        Player mounted = player(withMove(5), List.of()).withMount(PlayerMount.riding("a swift warhorse", 2));
+
+        assertEquals(0, service.stepCost(mounted));
+        assertEquals(5, service.spend(mounted).getVitals().move());
+    }
+
+    @Test
+    void mountDiscountOffsetsOverburdenSurcharge() {
+        // Overburdened base+surcharge = 2, warhorse discount 2 → free steps while overloaded.
+        Player mounted = player(withMove(5), List.of(heavyRock()))
+            .withMount(PlayerMount.riding("a swift warhorse", 2));
+
+        assertEquals(0, service.stepCost(mounted));
+    }
+
+    @Test
+    void dismountedPlayerPaysFullCost() {
+        Player mounted = player(withMove(10), List.of()).withMount(PlayerMount.riding("a sturdy pony", 1));
+        Player dismounted = mounted.withMount(PlayerMount.dismounted());
+
+        assertEquals(BASE_COST, service.stepCost(dismounted));
+    }
+
+    @Test
     void restingRegenComposesWithSpend() {
         Player player = player(withMove(10), List.of());
 

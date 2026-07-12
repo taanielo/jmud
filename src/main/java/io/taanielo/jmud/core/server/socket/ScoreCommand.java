@@ -122,6 +122,10 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("HP    : %d / %d", vitals.hp(), vitals.maxHp()));
         context.writeLineSafe(String.format("Mana  : %d / %d", vitals.mana(), vitals.maxMana()));
         context.writeLineSafe(String.format("Move  : %d / %d", vitals.move(), vitals.maxMove()));
+        if (player.isMounted()) {
+            context.writeLineSafe(String.format("Mount : riding %s (-%d move/step)",
+                player.mount().mountName(), player.mount().moveDiscount()));
+        }
         context.writeLineSafe(String.format("Hunger: %d / %d", player.getSustenance().hunger(), PlayerSustenance.MAX));
         context.writeLineSafe(String.format("Thirst: %d / %d", player.getSustenance().thirst(), PlayerSustenance.MAX));
         context.writeLineSafe(String.format("Gold  : %d", player.getGold()));

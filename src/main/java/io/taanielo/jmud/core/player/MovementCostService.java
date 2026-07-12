@@ -57,7 +57,12 @@ public class MovementCostService {
 
     /**
      * Returns the move-point cost of the player's next step, including the overburden surcharge when
-     * the player is currently carrying too much.
+     * the player is currently carrying too much, and reduced by the discount of the mount the player
+     * is currently {@linkplain Player#isMounted() riding} (floored at zero).
+     *
+     * <p>The mount discount is applied last, so it offsets both the base cost and any overburden
+     * surcharge: a rider on a fast mount can cover more ground before needing to {@code REST}. A
+     * player on foot sees the exact same cost as before mounts existed.
      *
      * @param player the player about to move
      * @return the move points the step will consume
@@ -67,6 +72,9 @@ public class MovementCostService {
         int cost = baseCost;
         if (encumbranceService.isOverburdened(player)) {
             cost += overburdenedSurcharge;
+        }
+        if (player.isMounted()) {
+            cost = Math.max(0, cost - player.mount().moveDiscount());
         }
         return cost;
     }
