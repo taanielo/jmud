@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "rogue",
   "name": "Rogue",
   "healing": {
     "base_modifier": 1
   },
   "carry_bonus": 8,
-  "ability_ids": ["skill.backstab", "skill.envenom", "skill.pick", "skill.sneak"]
+  "ability_ids": ["skill.backstab", "skill.envenom", "skill.pick", "skill.sneak"],
+  "trainable_ability_ids": ["skill.second-wind"]
 }

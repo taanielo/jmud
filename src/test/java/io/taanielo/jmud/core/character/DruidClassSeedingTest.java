@@ -17,8 +17,9 @@ import io.taanielo.jmud.core.player.Player;
 
 /**
  * Verifies that the real {@code data/classes/class.druid.json} definition loads correctly and that a
- * new player seeded from the Druid class receives {@code spell.regrowth}, {@code spell.cure} and
- * {@code spell.stoneskin}.
+ * new player seeded from the Druid class receives its offensive {@code spell.moonfire} plus
+ * {@code spell.cure}, while {@code spell.regrowth} and {@code spell.stoneskin} are trained later
+ * (issue #516).
  */
 class DruidClassSeedingTest {
 
@@ -26,6 +27,7 @@ class DruidClassSeedingTest {
     private static final AbilityId REGROWTH = AbilityId.of("spell.regrowth");
     private static final AbilityId CURE = AbilityId.of("spell.cure");
     private static final AbilityId STONESKIN = AbilityId.of("spell.stoneskin");
+    private static final AbilityId MOONFIRE = AbilityId.of("spell.moonfire");
 
     @Test
     void druidClassJsonLoadsCorrectly() throws Exception {
@@ -36,7 +38,8 @@ class DruidClassSeedingTest {
 
         assertEquals("druid", druid.id().getValue());
         assertEquals("Druid", druid.name());
-        assertEquals(List.of(REGROWTH, CURE, STONESKIN), druid.startingAbilityIds());
+        assertEquals(List.of(CURE, MOONFIRE), druid.startingAbilityIds());
+        assertEquals(List.of(REGROWTH, STONESKIN), druid.trainableAbilityIds());
     }
 
     @Test
@@ -72,9 +75,8 @@ class DruidClassSeedingTest {
             .withLearnedAbilities(druid.startingAbilityIds());
 
         List<AbilityId> learned = player.getLearnedAbilities();
-        assertEquals(3, learned.size());
-        assertTrue(learned.contains(REGROWTH), "Druid starting abilities must include spell.regrowth");
+        assertEquals(2, learned.size());
         assertTrue(learned.contains(CURE), "Druid starting abilities must include spell.cure");
-        assertTrue(learned.contains(STONESKIN), "Druid starting abilities must include spell.stoneskin");
+        assertTrue(learned.contains(MOONFIRE), "Druid starting abilities must include spell.moonfire");
     }
 }

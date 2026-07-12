@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "necromancer",
   "name": "Necromancer",
   "healing": {
     "base_modifier": -2
   },
   "carry_bonus": 5,
-  "ability_ids": ["spell.death-coil", "spell.summon", "spell.cure"]
+  "ability_ids": ["spell.death-coil", "spell.summon", "spell.cure"],
+  "trainable_ability_ids": ["spell.stoneskin"]
 }

@@ -18,7 +18,8 @@ import io.taanielo.jmud.core.player.Player;
 /**
  * Verifies that the real {@code data/classes/class.shaman.json} definition loads correctly and that
  * a new player seeded from the Shaman class receives {@code spell.ancestral-ward}, {@code spell.cure}
- * and {@code spell.haste}.
+ * and the offensive {@code spell.lightning-bolt}, while {@code spell.haste} is trained later
+ * (issue #516).
  */
 class ShamanClassSeedingTest {
 
@@ -26,6 +27,7 @@ class ShamanClassSeedingTest {
     private static final AbilityId ANCESTRAL_WARD = AbilityId.of("spell.ancestral-ward");
     private static final AbilityId CURE = AbilityId.of("spell.cure");
     private static final AbilityId HASTE = AbilityId.of("spell.haste");
+    private static final AbilityId LIGHTNING_BOLT = AbilityId.of("spell.lightning-bolt");
 
     @Test
     void shamanClassJsonLoadsCorrectly() throws Exception {
@@ -36,7 +38,8 @@ class ShamanClassSeedingTest {
 
         assertEquals("shaman", shaman.id().getValue());
         assertEquals("Shaman", shaman.name());
-        assertEquals(List.of(ANCESTRAL_WARD, CURE, HASTE), shaman.startingAbilityIds());
+        assertEquals(List.of(ANCESTRAL_WARD, CURE, LIGHTNING_BOLT), shaman.startingAbilityIds());
+        assertEquals(List.of(HASTE), shaman.trainableAbilityIds());
     }
 
     @Test
@@ -75,6 +78,6 @@ class ShamanClassSeedingTest {
         assertEquals(3, learned.size());
         assertTrue(learned.contains(ANCESTRAL_WARD), "Shaman starting abilities must include spell.ancestral-ward");
         assertTrue(learned.contains(CURE), "Shaman starting abilities must include spell.cure");
-        assertTrue(learned.contains(HASTE), "Shaman starting abilities must include spell.haste");
+        assertTrue(learned.contains(LIGHTNING_BOLT), "Shaman starting abilities must include spell.lightning-bolt");
     }
 }

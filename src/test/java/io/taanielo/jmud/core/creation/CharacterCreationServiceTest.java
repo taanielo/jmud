@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
@@ -211,6 +212,32 @@ class CharacterCreationServiceTest {
     void applyRaceStartingStats_nullRace_returnsSamePlayer() throws CharacterCreationException {
         Player player = newPlayer();
         assertEquals(player, service.applyRaceStartingStats(player, null));
+    }
+
+    // ── applyClassStartingState ────────────────────────────────────────
+
+    @Test
+    void applyClassStartingState_grantsStartingAbilitiesAndPracticePoints() {
+        ClassDefinition warrior = new ClassDefinition(
+            ClassId.of("warrior"), "Warrior", 3, 20, 0,
+            List.of(AbilityId.of("skill.bash"), AbilityId.of("skill.rend")),
+            List.of(AbilityId.of("skill.taunt"))
+        );
+
+        Player result = service.applyClassStartingState(newPlayer(), warrior);
+
+        assertEquals(CharacterCreationService.STARTING_PRACTICE_POINTS, result.getPracticePoints(),
+            "A new character must receive starting practice points so TRAIN works on day one");
+        assertTrue(result.getLearnedAbilities().contains(AbilityId.of("skill.bash")));
+        assertTrue(result.getLearnedAbilities().contains(AbilityId.of("skill.rend")));
+        assertFalse(result.getLearnedAbilities().contains(AbilityId.of("skill.taunt")),
+            "Trainable abilities must not be auto-granted at creation");
+    }
+
+    @Test
+    void applyClassStartingState_nullClass_returnsSamePlayer() {
+        Player player = newPlayer();
+        assertEquals(player, service.applyClassStartingState(player, null));
     }
 
     private static Player newPlayer() {

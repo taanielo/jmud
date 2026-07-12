@@ -5221,14 +5221,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Trainer is unavailable.");
             return;
         }
-        if (classDef == null || classDef.startingAbilityIds().isEmpty()) {
+        if (classDef == null || classDef.trainableAbilityIds().isEmpty()) {
             writeLineWithPrompt("No trainable abilities found for your class.");
             return;
         }
         connection.writeLine("Master Trainer — Trainable Abilities (Practice Points: " + player.getPracticePoints() + "):");
         connection.writeLine(String.format("  %-24s %-8s %s", "Ability ID", "Cost", "Status"));
         connection.writeLine("  " + "-".repeat(48));
-        for (AbilityId abilityId : classDef.startingAbilityIds()) {
+        for (AbilityId abilityId : classDef.trainableAbilityIds()) {
             String displayId = abilityId.getValue();
             boolean learned = player.getLearnedAbilities().contains(abilityId);
             String status = learned ? "learned" : "unlearned";
@@ -5259,9 +5259,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Trainer is unavailable.");
             return;
         }
-        // Find the ability by id (case-insensitive match within class abilities)
+        // Find the ability by id (case-insensitive match within class trainable abilities)
         String normalized = abilityInput.trim().toLowerCase(Locale.ROOT);
-        AbilityId targetId = classDef.startingAbilityIds().stream()
+        AbilityId targetId = classDef.trainableAbilityIds().stream()
             .filter(id -> id.getValue().equalsIgnoreCase(normalized))
             .findFirst()
             .orElse(null);

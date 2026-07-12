@@ -68,13 +68,15 @@ class SecondWindSkillTest {
     }
 
     @Test
-    void warriorClassGrantsSecondWind() throws Exception {
+    void warriorClassTrainsSecondWind() throws Exception {
         JsonClassRepository classRepository = new JsonClassRepository(DATA_ROOT);
         var warrior = classRepository.findById(ClassId.of("warrior"))
             .orElseThrow(() -> new AssertionError("warrior class must be found"));
 
-        assertTrue(warrior.startingAbilityIds().contains(SECOND_WIND),
-            "Warrior ability_ids must include skill.second-wind");
+        // Second wind (level 3) is an advanced skill trained at the Master Trainer rather than
+        // granted at creation (issue #516).
+        assertTrue(warrior.trainableAbilityIds().contains(SECOND_WIND),
+            "Warrior trainable_ability_ids must include skill.second-wind");
     }
 
     @Test

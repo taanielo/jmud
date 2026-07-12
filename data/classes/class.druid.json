@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "druid",
   "name": "Druid",
   "healing": {
     "base_modifier": 1
   },
   "carry_bonus": 7,
-  "ability_ids": ["spell.regrowth", "spell.cure", "spell.stoneskin"]
+  "ability_ids": ["spell.cure", "spell.moonfire"],
+  "trainable_ability_ids": ["spell.regrowth", "spell.stoneskin"]
 }

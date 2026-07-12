@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "shaman",
   "name": "Shaman",
   "healing": {
     "base_modifier": 1
   },
   "carry_bonus": 5,
-  "ability_ids": ["spell.ancestral-ward", "spell.cure", "spell.haste"]
+  "ability_ids": ["spell.ancestral-ward", "spell.cure", "spell.lightning-bolt"],
+  "trainable_ability_ids": ["spell.haste"]
 }

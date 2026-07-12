@@ -34,9 +34,13 @@ class ClassDefinitionStartingAbilitiesTest {
 
         assertTrue(ids.contains("skill.bash"), "Warrior must have skill.bash");
         assertTrue(ids.contains("skill.rend"), "Warrior must have skill.rend");
-        assertTrue(ids.contains("skill.second-wind"), "Warrior must have skill.second-wind");
-        assertTrue(ids.contains("skill.taunt"), "Warrior must have skill.taunt");
-        assertEquals(4, ids.size(), "Warrior should have exactly 4 starting abilities");
+        assertEquals(2, ids.size(), "Warrior should have exactly 2 starting abilities");
+
+        // The higher-level combat skills are advanced options taught by the trainer, not
+        // auto-granted at creation (issue #516).
+        List<String> trainable = abilityIdValues(warrior.trainableAbilityIds());
+        assertTrue(trainable.contains("skill.second-wind"), "Warrior must be able to train skill.second-wind");
+        assertTrue(trainable.contains("skill.taunt"), "Warrior must be able to train skill.taunt");
     }
 
     @Test
@@ -49,11 +53,14 @@ class ClassDefinitionStartingAbilitiesTest {
 
         assertTrue(ids.contains("spell.fireball"), "Mage must have spell.fireball");
         assertTrue(ids.contains("spell.heal"), "Mage must have spell.heal");
-        assertTrue(ids.contains("spell.stoneskin"), "Mage must have spell.stoneskin");
-        assertTrue(ids.contains("spell.haste"), "Mage must have spell.haste");
         assertTrue(ids.contains("spell.summon"), "Mage must have spell.summon");
         assertTrue(ids.contains("spell.chain-lightning"), "Mage must have spell.chain-lightning");
-        assertEquals(6, ids.size(), "Mage should have exactly 6 starting abilities");
+        assertEquals(4, ids.size(), "Mage should have exactly 4 starting abilities");
+
+        // The utility buffs are trained at the Master Trainer, not granted at creation (issue #516).
+        List<String> trainable = abilityIdValues(mage.trainableAbilityIds());
+        assertTrue(trainable.contains("spell.stoneskin"), "Mage must be able to train spell.stoneskin");
+        assertTrue(trainable.contains("spell.haste"), "Mage must be able to train spell.haste");
     }
 
     @Test

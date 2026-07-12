@@ -1,10 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "id": "bard",
   "name": "Bard",
   "healing": {
     "base_modifier": 1
   },
   "carry_bonus": 4,
-  "ability_ids": ["spell.battle-hymn", "spell.haste"]
+  "ability_ids": ["spell.battle-hymn", "spell.discord"],
+  "trainable_ability_ids": ["spell.haste"]
 }
