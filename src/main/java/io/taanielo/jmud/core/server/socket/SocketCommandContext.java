@@ -451,6 +451,17 @@ public interface SocketCommandContext extends Client {
     default void repairItem(String args) {}
 
     /**
+     * Repairs every breakable, damaged item the player is carrying in one call, provided a blacksmith
+     * is present in the current room (the {@code REPAIR ALL} form). Items are repaired cheapest-first;
+     * when the player cannot afford to fix everything, as many items as their gold allows are repaired
+     * and the response lists the items still needing repair plus the extra gold required.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void repairAllItems() {}
+
+    /**
      * Executes the {@code CRAFT} command. With blank arguments it lists the recipes a blacksmith can
      * make, with live {@code have/need} material counts; with an item name it attempts to craft it,
      * consuming the required materials and gold. Requires a blacksmith in the current room.
