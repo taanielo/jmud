@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.messaging;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,13 +21,12 @@ class NewPlayerHintMessageTest {
         NewPlayerHintMessage.of(new PlainTextStyler()).send(writer);
 
         String output = String.join("", written);
-        assertThat(output)
-            .contains("Getting Started")
-            .contains("GET IRON SWORD")
-            .contains("WIELD IRON SWORD")
-            .contains("CONSIDER")
-            .contains("TRAIN LIST")
-            .contains("HELP");
+        assertContains(output, "Getting Started");
+        assertContains(output, "GET IRON SWORD");
+        assertContains(output, "WIELD IRON SWORD");
+        assertContains(output, "CONSIDER");
+        assertContains(output, "TRAIN LIST");
+        assertContains(output, "HELP");
     }
 
     @Test
@@ -34,8 +34,12 @@ class NewPlayerHintMessageTest {
         NewPlayerHintMessage.of(new PlainTextStyler()).send(writer);
 
         String output = String.join("", written);
-        assertThat(countOccurrences(output, "WIELD IRON SWORD")).isEqualTo(1);
-        assertThat(countOccurrences(output, "TRAIN LIST")).isEqualTo(1);
+        assertEquals(1, countOccurrences(output, "WIELD IRON SWORD"));
+        assertEquals(1, countOccurrences(output, "TRAIN LIST"));
+    }
+
+    private static void assertContains(String haystack, String needle) {
+        assertTrue(haystack.contains(needle), () -> "Expected output to contain: " + needle);
     }
 
     private static int countOccurrences(String haystack, String needle) {
