@@ -41,6 +41,22 @@
         "hp": 5
       },
       "allowed_rarities": ["rare"]
+    },
+    {
+      "id": "of-embers",
+      "label": "of Embers",
+      "stats": {
+        "fire_resist": 15
+      },
+      "allowed_rarities": ["uncommon", "rare"]
+    },
+    {
+      "id": "of-rime",
+      "label": "of Rime",
+      "stats": {
+        "cold_resist": 15
+      },
+      "allowed_rarities": ["uncommon", "rare"]
     }
   ]
 }

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "enchant-of-rime",
+  "affix": "of-rime",
+  "gold_cost": 75,
+  "min_skill": 1,
+  "materials": [
+    { "item": "rime-shard", "quantity": 1 },
+    { "item": "arcane-dust", "quantity": 3 }
+  ]
+}

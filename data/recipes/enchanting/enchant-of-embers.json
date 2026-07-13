@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "enchant-of-embers",
+  "affix": "of-embers",
+  "gold_cost": 75,
+  "min_skill": 1,
+  "materials": [
+    { "item": "molten-core-shard", "quantity": 1 },
+    { "item": "arcane-dust", "quantity": 3 }
+  ]
+}
