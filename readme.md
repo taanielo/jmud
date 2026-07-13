@@ -77,6 +77,8 @@ Available keys:
 - `jmud.output.ansi.enabled` (default ANSI colors for new players)
 - `jmud.movement.step_cost` (move points spent per room step)
 - `jmud.movement.overburdened_surcharge` (extra move points per step while overburdened)
+- `jmud.combat.mob_flee_hp_percent` (HP threshold, as a percent of max HP, at/below which a wounded mob may flee; default 20)
+- `jmud.combat.mob_flee_chance` (per-AI-tick percent chance a below-threshold mob flees instead of attacking; default 50, set 0 to disable). World bosses and `fearless`-tagged mobs never flee.
 
 Players can toggle ANSI output in-game with `ANSI on|off|toggle|status`.
 

@@ -6,7 +6,7 @@
   "xp_reward": 20,
   "attack_id": "attack.skeleton",
   "aggressive": true,
-  "tags": ["undead"],
+  "tags": ["undead", "fearless"],
   "spawn_room_id": "ossuary-hall",
   "max_count": 3,
   "respawn_ticks": 25,

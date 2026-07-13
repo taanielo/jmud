@@ -138,6 +138,21 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      * Null falls back to the legacy numeric "(N HP remaining)" line.
      */
     private TargetConditionTable targetConditionTable;
+    /**
+     * HP threshold, as a percentage of a mob's maximum HP, at or below which a wounded mob may try to
+     * flee (see {@link #tryMobFlee}). Seeded from {@link CombatSettings#mobFleeHpPercent()} and
+     * overridable via {@link #setMobFleeSettings(int, int)} for deterministic tests.
+     */
+    private int mobFleeHpPercent = CombatSettings.mobFleeHpPercent();
+    /**
+     * Per-AI-tick percent chance a below-threshold mob breaks off and flees instead of attacking.
+     * Seeded from {@link CombatSettings#mobFleeChancePercent()} and overridable via
+     * {@link #setMobFleeSettings(int, int)} for deterministic tests.
+     */
+    private int mobFleeChancePercent = CombatSettings.mobFleeChancePercent();
+
+    /** Data tag marking a mob that never flees regardless of how badly wounded it is. */
+    private static final String FEARLESS_TAG = "fearless";
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -247,6 +262,28 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      */
     public void setTargetConditionTable(TargetConditionTable targetConditionTable) {
         this.targetConditionTable = targetConditionTable;
+    }
+
+    /**
+     * Overrides the mob-flee tunables that decide when and how often a badly wounded mob breaks off
+     * combat to flee (see {@link #tryMobFlee}). Both values are percentages in {@code [0, 100]}. The
+     * registry is seeded from {@link CombatSettings} at construction; this setter exists mainly so
+     * tests can force a deterministic flee (100% chance) or suppress it (0% chance) without depending
+     * on the world configuration.
+     *
+     * @param hpPercent     HP threshold as a percentage of max HP at or below which a mob may flee
+     * @param chancePercent per-AI-tick percent chance a below-threshold mob flees instead of attacking
+     * @throws IllegalArgumentException when either value is outside {@code [0, 100]}
+     */
+    public void setMobFleeSettings(int hpPercent, int chancePercent) {
+        if (hpPercent < 0 || hpPercent > 100) {
+            throw new IllegalArgumentException("Mob flee HP percent must be in [0, 100]");
+        }
+        if (chancePercent < 0 || chancePercent > 100) {
+            throw new IllegalArgumentException("Mob flee chance must be in [0, 100]");
+        }
+        this.mobFleeHpPercent = hpPercent;
+        this.mobFleeChancePercent = chancePercent;
     }
 
     /**
@@ -1722,6 +1759,98 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     // ── Mob AI ────────────────────────────────────────────────────────
 
     /**
+     * Gives a badly wounded mob a chance to break off combat and flee to a random adjacent room
+     * instead of attacking this AI decision, mirroring the player {@code FLEE} mechanic
+     * ({@link io.taanielo.jmud.core.action.GameActionService#flee}): the exit is chosen through the
+     * seeded world-random port and a mob in a dead-end room (no exits) cannot flee and fights on.
+     *
+     * <p>The mob only flees when it is engaged in combat and its HP is at or below
+     * {@link #mobFleeHpPercent} percent of its maximum, and only on a successful
+     * {@link #mobFleeChancePercent} roll. Pets, world bosses, and {@code fearless} mobs never flee
+     * (see {@link #canFlee(MobInstance)}). Fleeing disengages every player currently fighting the mob
+     * (the same teardown as {@link #endCombatForMob}) and moves it to the chosen room at its current
+     * (low) HP — it is not a defeat, so no loot, XP, gold, or respawn timer is produced and the mob
+     * may wander and be re-engaged normally afterward. Departure- and arrival-room players are
+     * notified in the tone of the wander-phase messages. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the acting mob
+     * @return {@code true} when the mob fled (the caller must skip its attack), {@code false} otherwise
+     */
+    private boolean tryMobFlee(MobInstance mob) {
+        if (!canFlee(mob)) {
+            return false;
+        }
+        // Only a mob actually in combat "breaks off" — this also avoids reacting to a stealthed
+        // player the mob has not engaged (stealth-avoidance first-engagement rules).
+        if (mob.engagedPlayers().isEmpty()) {
+            return false;
+        }
+        int maxHp = mob.template().maxHp();
+        int threshold = (int) Math.floor(maxHp * (mobFleeHpPercent / 100.0));
+        if (mob.currentHp() > threshold) {
+            return false;
+        }
+        if (random.roll(1, 100) > mobFleeChancePercent) {
+            return false;
+        }
+        RoomId fromRoomId = mob.roomId();
+        Map<Direction, RoomId> exits = roomService.getExits(fromRoomId);
+        if (exits.isEmpty()) {
+            return false;
+        }
+        List<Map.Entry<Direction, RoomId>> exitList = List.copyOf(exits.entrySet());
+        Map.Entry<Direction, RoomId> chosen = exitList.get(random.roll(0, exitList.size() - 1));
+        Direction dir = chosen.getKey();
+        RoomId toRoomId = chosen.getValue();
+
+        // Disengage every player currently fighting this mob before it leaves, so no one keeps
+        // auto-attacking a mob that is no longer present (mirrors the player FLEE teardown).
+        List<Username> formerlyEngaged = List.copyOf(mob.engagedPlayers());
+        endCombatForMob(mob);
+        for (Username engaged : formerlyEngaged) {
+            mob.disengage(engaged);
+        }
+
+        String mobName = mob.template().name();
+        String departMsg = "The " + mobName + ", badly wounded, turns and flees to the " + dir.label() + "!";
+        for (Username occupant : roomService.getPlayersInRoom(fromRoomId)) {
+            playerEventBus.publish(occupant,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(departMsg))));
+        }
+
+        mob.moveTo(toRoomId);
+
+        String arriveMsg = "A " + mobName
+            + ", badly wounded, flees in from the " + dir.opposite().label() + ".";
+        for (Username occupant : roomService.getPlayersInRoom(toRoomId)) {
+            playerEventBus.publish(occupant,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(arriveMsg))));
+        }
+
+        log.debug("Mob {} fled from {} to {} ({}) at {} HP",
+            mobName, fromRoomId, toRoomId, dir.label(), mob.currentHp());
+        return true;
+    }
+
+    /**
+     * Returns whether the given mob is ever allowed to flee. Pets/summons never flee (they fight
+     * alongside their master), world bosses fight to the death, and mobs tagged {@code fearless}
+     * (mindless or undead creatures with no self-preservation instinct) never break off.
+     *
+     * @param mob the mob to test
+     * @return {@code true} when this mob may attempt to flee when badly wounded
+     */
+    private boolean canFlee(MobInstance mob) {
+        if (mob.isPet()) {
+            return false;
+        }
+        if (mob.template().worldBoss()) {
+            return false;
+        }
+        return !mob.template().hasTag(FEARLESS_TAG);
+    }
+
+    /**
      * Chooses which engaged player a mob attacks this AI decision. When an active Warrior TAUNT is in
      * force ({@link MobInstance#activeTaunter()}) and the taunter is still a live candidate — present
      * in the room and engaged — the mob is forced onto the taunter and one taunt decision is consumed.
@@ -1755,6 +1884,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             candidates = roomService.getPlayersInRoom(mob.roomId());
         }
         if (candidates.isEmpty()) {
+            return;
+        }
+        // Before committing to an attack (and before TAUNT target selection, so an active taunter
+        // cannot pin a cornered mob), give a badly wounded mob a chance to break off and flee.
+        if (tryMobFlee(mob)) {
             return;
         }
         Username targetUsername = selectAiTarget(mob, candidates);

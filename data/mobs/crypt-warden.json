@@ -6,7 +6,7 @@
   "xp_reward": 40,
   "attack_id": "attack.crypt-warden",
   "aggressive": true,
-  "tags": ["undead"],
+  "tags": ["undead", "fearless"],
   "spawn_room_id": "warden-chamber",
   "max_count": 1,
   "respawn_ticks": 60,

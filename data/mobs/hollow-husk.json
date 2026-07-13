@@ -5,7 +5,7 @@
   "max_hp": 280,
   "attack_id": "attack.hollow-husk",
   "aggressive": true,
-  "tags": ["void", "undead", "voidscar"],
+  "tags": ["void", "undead", "voidscar", "fearless"],
   "spawn_room_id": "voidscar-silent-galleries",
   "max_count": 3,
   "respawn_ticks": 55,
