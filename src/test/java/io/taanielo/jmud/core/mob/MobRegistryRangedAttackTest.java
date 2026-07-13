@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,6 +20,7 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.WeaponType;
@@ -74,6 +77,11 @@ class MobRegistryRangedAttackTest {
     }
 
     private MobRegistry buildRegistry(Player shooter, int mobHp) {
+        return buildRegistry(shooter, mobHp, MobRegistryTestSupport.random(), ATTACKS);
+    }
+
+    private MobRegistry buildRegistry(
+        Player shooter, int mobHp, CombatRandom random, Map<AttackId, AttackDefinition> attacks) {
         MobTemplate template = new MobTemplate(
             MobId.of("mob.goblin"),
             "Goblin",
@@ -91,7 +99,7 @@ class MobRegistryRangedAttackTest {
             false
         );
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
-        AttackRepository attackRepo = new StubAttackRepository(ATTACKS);
+        AttackRepository attackRepo = new StubAttackRepository(attacks);
         ItemRepository itemRepo = new StubItemRepository();
 
         RoomService roomService = new RoomService(new StubRoomRepository(), ROOM_A);
@@ -102,7 +110,7 @@ class MobRegistryRangedAttackTest {
 
         MobRegistry registry = new MobRegistry(
             templateRepo, itemRepo, attackRepo, roomService, playerRepo,
-            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, random);
         registry.init();
         return registry;
     }
@@ -198,6 +206,98 @@ class MobRegistryRangedAttackTest {
             "A mob dropped to zero HP by a ranged attack should be slain");
         assertFalse(registry.isInCombat(shooter.getUsername()),
             "A slain mob does not engage the shooter");
+    }
+
+    @Test
+    void rangedAttack_lowAccuracyShooterMisses_dealsNoDamageAndMobStaysPut() {
+        // hit_bonus of -100 floors the bow's hit chance to MIN_HIT_CHANCE (5); a roll of 50 misses.
+        AttackDefinition weakBow = new AttackDefinition(
+            BOW_ATTACK, "long bow", 3, 3, -100, 0, 0, List.of(),
+            WeaponType.PIERCING, null, RangeType.RANGED);
+        Player shooter = withBow(archer("robin"));
+        MobRegistry registry = buildRegistry(
+            shooter, 100, new ScriptedRandom(50), Map.of(UNARMED, UNARMED_MELEE, BOW_ATTACK, weakBow));
+
+        GameActionResult result =
+            registry.processPlayerRangedAttack(shooter, "goblin", Direction.NORTH, ROOM_A);
+
+        assertEquals(100, goblin(registry, ROOM_B).currentHp(),
+            "A missed shot must deal no damage; the mob stays in the adjacent room");
+        assertTrue(containsText(result, "sails wide"),
+            "The shooter should see a miss message, not a hit line");
+        assertFalse(containsText(result, "You fire at the Goblin"),
+            "A miss must not report a hit for damage");
+        assertFalse(registry.isInCombat(shooter.getUsername()),
+            "A missed shot gives the mob no reason to close the distance or engage");
+    }
+
+    @Test
+    void rangedAttack_critLandsBonusDamage() {
+        // crit_bonus of 95 lifts crit chance to 100%; a fixed 6-damage hit crits for 6 * multiplier.
+        AttackDefinition critBow = new AttackDefinition(
+            BOW_ATTACK, "long bow", 6, 6, 0, 95, 0, List.of(),
+            WeaponType.PIERCING, null, RangeType.RANGED);
+        Player shooter = withBow(archer("robin"));
+        // Rolls: hit (10 <= 75 lands), crit (1 <= 100 crits).
+        MobRegistry registry = buildRegistry(
+            shooter, 100, new ScriptedRandom(10, 1), Map.of(UNARMED, UNARMED_MELEE, BOW_ATTACK, critBow));
+
+        GameActionResult result =
+            registry.processPlayerRangedAttack(shooter, "goblin", Direction.NORTH, ROOM_A);
+
+        int expectedDamage = 6 * CombatSettings.critMultiplier();
+        assertEquals(100 - expectedDamage, goblin(registry, ROOM_A).currentHp(),
+            "A critical shot should deal bonus damage equal to the crit multiplier");
+        assertTrue(containsText(result, "critical"),
+            "A crit should read distinctly from a normal hit");
+    }
+
+    @Test
+    void rangedAttack_normalHit_stillTriggersMobCharge() {
+        // Rolls: hit (10 <= 75 lands), crit (50 > 5 does not crit).
+        Player shooter = withBow(archer("robin"));
+        MobRegistry registry = buildRegistry(shooter, 100, new ScriptedRandom(10, 50), ATTACKS);
+
+        GameActionResult result =
+            registry.processPlayerRangedAttack(shooter, "goblin", Direction.NORTH, ROOM_A);
+
+        assertEquals(97, goblin(registry, ROOM_A).currentHp(),
+            "A normal landed shot deals the bow's fixed 3 damage");
+        assertFalse(containsText(result, "critical"),
+            "A normal hit is not reported as a crit");
+        assertEquals(ROOM_A, goblin(registry, ROOM_A).roomId(),
+            "A surviving mob hit by a landed shot closes the distance into the shooter's room");
+        assertTrue(registry.isInCombat(shooter.getUsername()),
+            "A landed shot makes the retaliating mob engage the shooter");
+    }
+
+    // ── scripted RNG ──────────────────────────────────────────────────
+
+    /**
+     * A {@link CombatRandom} returning a fixed sequence of rolls (each clamped into the requested
+     * range) so ranged combat outcomes are fully deterministic. {@link #nextDouble()} returns a
+     * fixed {@code 1.0} so it never consumes a scripted roll.
+     */
+    private static final class ScriptedRandom implements CombatRandom {
+        private final Deque<Integer> rolls = new ArrayDeque<>();
+
+        ScriptedRandom(int... values) {
+            for (int value : values) {
+                rolls.add(value);
+            }
+        }
+
+        @Override
+        public int roll(int minInclusive, int maxInclusive) {
+            Integer next = rolls.poll();
+            int value = next == null ? minInclusive : next;
+            return Math.max(minInclusive, Math.min(maxInclusive, value));
+        }
+
+        @Override
+        public double nextDouble() {
+            return 1.0;
+        }
     }
 
     // ── stubs ─────────────────────────────────────────────────────────

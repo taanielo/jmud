@@ -29,7 +29,10 @@ public class RangedAttackCommand extends RegistrableCommand {
         return """
                Usage: SHOOT <target> <direction>
                  Fires your equipped ranged weapon (bow, throwing knife) at the named mob in the
-                 adjacent room in the given direction. On a hit the mob closes in to melee.\
+                 adjacent room in the given direction. The shot rolls to hit: your agility and the
+                 weapon's accuracy decide whether it lands, so a shot can miss (dealing no damage
+                 and leaving the mob where it stands) or land a critical hit for bonus damage. On a
+                 landed hit the mob closes in to melee.\
                """;
     }
 

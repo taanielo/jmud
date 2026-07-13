@@ -132,7 +132,7 @@ game-designer should propose closing.
 | System | Shipped | Known gaps |
 |---|---|---|
 | Leveling & XP | ✅ | practice-point sink ✅ #522 · class gains ✅ #523 · combat scaling ✅ #524 |
-| Combat core | ✅ | worded damage + condition display ✅ #525 · attributes ✅ #524 · elemental damage types + armour resistance ✅ #563 · deterministic Enchanting path to fire/cold resistance (of-embers/of-rime) ✅ #577 · mob flee/self-preservation ✅ #567 · epic rarity tier for boss-exclusive signature loot ✅ #583 · PvE (mob) melee now shares hit/crit/block resolution with PvP ✅ #589 (remaining gap: ranged/special/AoE/pet attacks still use flat damage) |
+| Combat core | ✅ | worded damage + condition display ✅ #525 · attributes ✅ #524 · elemental damage types + armour resistance ✅ #563 · deterministic Enchanting path to fire/cold resistance (of-embers/of-rime) ✅ #577 · mob flee/self-preservation ✅ #567 · epic rarity tier for boss-exclusive signature loot ✅ #583 · PvE (mob) melee now shares hit/crit/block resolution with PvP ✅ #589 · ranged player attacks (SHOOT) now share hit/crit resolution — a shot can miss or crit ✅ #591 (remaining gap: mob special-ability/AoE spell/summoned-pet attacks still use flat damage) |
 | New-player funnel | ✅ #516 | starter weapon/hints ✅ #517 · starter quest ✅ #518 · starting resources ✅ #519 · death grace ✅ #520 · creation info ✅ #521 |
 | Cartography | ✅ #529 (map items; MAP command retired) | difficulty bands ✅ #550 |
 | Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |
