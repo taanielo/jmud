@@ -170,6 +170,7 @@ public class SocketCommandRegistry {
         new FollowCommand(registry);
         new GuildCommand(registry);
         new TitleCommand(registry);
+        new DescribeCommand(registry);
         new DepositCommand(registry);
         new WithdrawCommand(registry);
         new StoreCommand(registry);

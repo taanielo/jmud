@@ -126,6 +126,7 @@ game-designer should propose closing.
 | Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519; auction search/sort QoL ✅ #565 |
 | Professions (craft/cook/brew/gather/salvage/enchant) | ✅ | none known |
 | Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | none known |
+| Identity/RP (titles, custom LOOK description) | ✅ #569 | named-companion `DESCRIBE <pet>` out of scope (future issue) |
 | PvP (duels, rankings, arena events) | ✅ | none known |
 | Pets (tame/summon) | ✅ | none known |
 | Weather & world ambience | ✅ | none known |

@@ -86,6 +86,7 @@ import io.taanielo.jmud.core.player.PlayerAliasService;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerFriendList;
 import io.taanielo.jmud.core.player.PlayerGuildMembership;
+import io.taanielo.jmud.core.player.PlayerIdentity;
 import io.taanielo.jmud.core.player.PlayerIgnoreList;
 import io.taanielo.jmud.core.player.PlayerMailService;
 import io.taanielo.jmud.core.player.PlayerMount;
@@ -975,11 +976,16 @@ class SocketCommandContextImpl implements SocketCommandContext {
             .orElse("");
     }
 
-    private String formatLookDescription(Player target) {
+    private List<String> formatLookDescription(Player target) {
         String name = target.getUsername().getValue();
         String race = target.getRace().getValue();
         String classId = target.getClassId().getValue();
-        return name + " the " + race + " " + classId + " (level " + target.getLevel() + ").";
+        String generated = name + " the " + race + " " + classId + " (level " + target.getLevel() + ").";
+        String custom = target.description();
+        if (custom.isEmpty()) {
+            return List.of(generated);
+        }
+        return List.of(custom, generated);
     }
 
     /**
@@ -1050,8 +1056,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player target = resolved.get();
-        String description = formatLookDescription(target);
-        connection.writeLine(description);
+        connection.writeLines(formatLookDescription(target));
         if (!target.getUsername().equals(source.getUsername())) {
             String sourceName = source.getUsername().getValue();
             sendToUsername(target.getUsername(), sourceName + " looks at you.");
@@ -4447,6 +4452,48 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLine("Active title: none. Use TITLE <name> to display one.");
         }
         sendPrompt();
+    }
+
+    @Override
+    public void manageDescription(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to set a description.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            String current = player.description();
+            if (current.isEmpty()) {
+                writeLineWithPrompt("You have no custom description set. Use DESCRIBE <text> to set one.");
+            } else {
+                connection.writeLine("Your description:");
+                connection.writeLine("  " + current);
+                sendPrompt();
+            }
+            return;
+        }
+        if (normalized.equalsIgnoreCase("CLEAR") || normalized.equalsIgnoreCase("NONE")) {
+            if (player.description().isEmpty()) {
+                writeLineWithPrompt("You have no custom description to clear.");
+                return;
+            }
+            Player updated = player.withDescription("");
+            session.replacePlayer(updated);
+            saveOrWarn(updated);
+            writeLineWithPrompt("Your description has been cleared.");
+            return;
+        }
+        if (normalized.length() > PlayerIdentity.MAX_DESCRIPTION_LENGTH) {
+            writeLineWithPrompt("Your description is too long ("
+                + normalized.length() + " characters); the limit is "
+                + PlayerIdentity.MAX_DESCRIPTION_LENGTH + ".");
+            return;
+        }
+        Player updated = player.withDescription(normalized);
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("Your description has been set.");
     }
 
     @Override
