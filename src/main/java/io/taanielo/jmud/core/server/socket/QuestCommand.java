@@ -15,8 +15,12 @@ import java.util.Optional;
  *   <li>{@code QUEST TRACK}          — points you toward the nearest live target of your kill quest</li>
  *   <li>{@code QUEST COMPLETE}       — claims kill-quest reward (must be in Courtyard)</li>
  *   <li>{@code QUEST DELIVER}        — turns in collected items to the Guild Clerk, or hands a package to the receiving NPC</li>
- *   <li>{@code QUEST ABANDON}        — drops the active quest with no penalty</li>
+ *   <li>{@code QUEST ABANDON}        — drops the active story quest with no penalty</li>
  * </ul>
+ *
+ * <p>Story contracts are held in a slot independent of the rotating {@code DAILY_QUEST}, so a
+ * player may hold one story quest and one daily quest at the same time; the {@code QUEST}
+ * sub-commands only ever affect the story slot.
  */
 public class QuestCommand extends RegistrableCommand {
 
@@ -45,7 +49,10 @@ public class QuestCommand extends RegistrableCommand {
                  QUEST TRACK            \u2014 point toward the nearest live target of your kill quest
                  QUEST COMPLETE         \u2014 claim kill-quest reward (must be in the Courtyard)
                  QUEST DELIVER          \u2014 turn in collected items to the Guild Clerk, or hand a package to the receiving NPC
-                 QUEST ABANDON          \u2014 drop the active quest with no penalty\
+                 QUEST ABANDON          \u2014 drop the active story quest with no penalty
+
+               Your story contract is held separately from your DAILY_QUEST, so you can carry
+               one of each at once.\
                """;
     }
 

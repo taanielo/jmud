@@ -99,17 +99,17 @@ class DailyQuestServiceTest {
 
     @Test
     void completeGrantsRewardAndClearsActiveQuest() {
-        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(QuestId.of("slayer-a"), 0));
+        Player withQuest = basePlayer.withActiveDailyQuest(new ActiveQuest(QuestId.of("slayer-a"), 0));
         DailyQuestCompletionResult result = service.completeDailyQuest(withQuest, QuestId.of("slayer-a"));
 
         assertTrue(result.success());
-        assertNull(result.player().getActiveQuest());
+        assertNull(result.player().getActiveDailyQuest());
         assertEquals(basePlayer.getGold() + 50, result.player().getGold());
     }
 
     @Test
     void completeFailsWhenNotOnThatQuest() {
-        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(QuestId.of("slayer-a"), 0));
+        Player withQuest = basePlayer.withActiveDailyQuest(new ActiveQuest(QuestId.of("slayer-a"), 0));
         DailyQuestCompletionResult result = service.completeDailyQuest(withQuest, QuestId.of("slayer-b"));
 
         assertFalse(result.success());
@@ -118,7 +118,7 @@ class DailyQuestServiceTest {
 
     @Test
     void completeFailsWhenQuestNotComplete() {
-        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(QuestId.of("slayer-a"), 3));
+        Player withQuest = basePlayer.withActiveDailyQuest(new ActiveQuest(QuestId.of("slayer-a"), 3));
         DailyQuestCompletionResult result = service.completeDailyQuest(withQuest, QuestId.of("slayer-a"));
 
         assertFalse(result.success());
@@ -127,7 +127,7 @@ class DailyQuestServiceTest {
 
     @Test
     void completeFailsForUnknownQuestId() {
-        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(QuestId.of("slayer-a"), 0));
+        Player withQuest = basePlayer.withActiveDailyQuest(new ActiveQuest(QuestId.of("slayer-a"), 0));
         DailyQuestCompletionResult result = service.completeDailyQuest(withQuest, QuestId.of("missing"));
 
         assertFalse(result.success());

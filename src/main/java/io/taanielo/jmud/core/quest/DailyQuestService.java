@@ -181,7 +181,7 @@ public class DailyQuestService {
         if (template == null || !template.isDaily()) {
             return DailyQuestCompletionResult.failure(player, "That is not a daily quest.");
         }
-        ActiveQuest active = player.getActiveQuest();
+        ActiveQuest active = player.getActiveDailyQuest();
         if (active == null || !active.templateId().equals(questId)) {
             return DailyQuestCompletionResult.failure(player, "You are not currently on that daily quest.");
         }
@@ -191,7 +191,7 @@ public class DailyQuestService {
                     + " (" + active.killsRemaining() + " kills remaining).");
         }
 
-        Player rewarded = player.withActiveQuest(null).addGold(template.goldReward());
+        Player rewarded = player.withActiveDailyQuest(null).addGold(template.goldReward());
         LevelUpService.LevelUpResult lvResult = levelUpService.awardXp(rewarded, template.xpReward());
         rewarded = lvResult.player();
 
