@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "voidscar-unlight",
+  "name": "The Unlight Undone",
+  "description": "The stalkers were only the spillover. At the bottom of the Voidscar, in the Void Heart, coils Vaelnith, the Unlight — the cold that the throne's fire only ever hid, feeding still on every scrap of light that reaches it. While the sovereign endures, the rift will keep drinking the world dark. Descend the drowned stair, cross the lightless expanse, and end Vaelnith where it feeds — only then will the Voidscar close.",
+  "target_mob_id": "unlight-sovereign",
+  "required_kills": 1,
+  "gold_reward": 500,
+  "xp_reward": 1200,
+  "title_reward": "Unlight's Bane",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 25,
+  "recommended_level": 40,
+  "repeatable": false,
+  "prerequisite_quest_id": "voidscar-cull"
+}
