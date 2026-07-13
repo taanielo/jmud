@@ -4,14 +4,18 @@
   "name": "an emberforged greataxe",
   "description": "A massive greataxe with a head forged from a single slab of still-warm obsidian, its edge chased with veins of trapped fire that pulse when it is swung. Torn from the hoard of Pyraxis, it hungers to burn. Its full power is a mystery until the weapon is identified.",
   "attributes": {
-    "stats": {}
+    "stats": {
+      "strength": 6,
+      "dexterity": 3,
+      "hp": 8
+    }
   },
   "effects": [],
   "messages": [],
   "equip_slot": "weapon",
   "weight": 6,
-  "value": 260,
-  "rarity": "rare",
+  "value": 560,
+  "rarity": "epic",
   "affixes": ["of-the-titan"],
   "identified": false,
   "two_handed": true

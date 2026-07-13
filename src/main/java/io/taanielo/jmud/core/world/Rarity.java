@@ -17,8 +17,13 @@ public enum Rarity {
     COMMON("common", 0),
     /** An uplifted tier that may roll a single stat affix. */
     UNCOMMON("uncommon", 1),
-    /** The top tier that rolls one or two stat affixes. */
-    RARE("rare", 2);
+    /** A high tier that rolls one or two stat affixes. */
+    RARE("rare", 2),
+    /**
+     * The apex tier reserved for hand-authored, boss-exclusive signature loot. Ranked strictly above
+     * {@link #RARE} so guaranteed world-boss rewards read as a felt upgrade over common affix rolls.
+     */
+    EPIC("epic", 3);
 
     private final String id;
     private final int tier;

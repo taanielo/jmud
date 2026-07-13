@@ -43,13 +43,21 @@ class TextStylerRarityTest {
     }
 
     @Test
+    void ansiEpicIsBoldMagentaWrapped() {
+        assertEquals(ESC + "[1;35mSword" + RESET, ansi.rarity("Sword", Rarity.EPIC));
+    }
+
+    @Test
     void ansiTiersUseDistinctColors() {
         String common = ansi.rarity("Sword", Rarity.COMMON);
         String uncommon = ansi.rarity("Sword", Rarity.UNCOMMON);
         String rare = ansi.rarity("Sword", Rarity.RARE);
+        String epic = ansi.rarity("Sword", Rarity.EPIC);
         assertNotEquals(common, uncommon);
         assertNotEquals(uncommon, rare);
         assertNotEquals(common, rare);
+        assertNotEquals(rare, epic);
+        assertNotEquals(common, epic);
     }
 
     @Test
