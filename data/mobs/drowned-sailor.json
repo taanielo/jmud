@@ -5,7 +5,7 @@
   "max_hp": 48,
   "attack_id": "attack.drowned-sailor",
   "aggressive": true,
-  "tags": ["undead"],
+  "tags": ["undead", "fearless"],
   "spawn_room_id": "shrouded-isle-shipwreck",
   "max_count": 3,
   "respawn_ticks": 30,

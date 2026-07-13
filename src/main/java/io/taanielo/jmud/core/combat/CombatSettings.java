@@ -13,6 +13,8 @@ public final class CombatSettings {
     public static final int DEFAULT_MAX_RESISTANCE_PERCENT = 75;
     public static final String DEFAULT_ATTACK_ID = "attack.unarmed";
     public static final int DEFAULT_ATTACK_CADENCE_TICKS = 1;
+    public static final int DEFAULT_MOB_FLEE_HP_PERCENT = 20;
+    public static final int DEFAULT_MOB_FLEE_CHANCE_PERCENT = 50;
 
     /**
      * Lower bound applied to a resolved hit chance, so even a heavily out-matched attacker retains a
@@ -129,5 +131,38 @@ public final class CombatSettings {
             throw new IllegalArgumentException("Attack cadence ticks must be >= 1");
         }
         return cadence;
+    }
+
+    /**
+     * The HP threshold, as a percentage of a mob's maximum HP, at or below which a badly wounded,
+     * non-boss, non-{@code fearless} mob may attempt to break off combat and flee instead of
+     * attacking (see the mob-flee AI). Clamped to the range {@code [0, 100]}; a value of {@code 0}
+     * effectively disables mob flee (a mob only flees when it has zero HP, i.e. never, since it is
+     * then dead).
+     *
+     * @return the mob-flee HP threshold as a percentage, in {@code [0, 100]}
+     */
+    public static int mobFleeHpPercent() {
+        int percent = CONFIG.getInt("jmud.combat.mob_flee_hp_percent", DEFAULT_MOB_FLEE_HP_PERCENT);
+        if (percent < 0 || percent > 100) {
+            throw new IllegalArgumentException("Mob flee HP percent must be in [0, 100]");
+        }
+        return percent;
+    }
+
+    /**
+     * The per-AI-tick percentage chance that a mob whose HP is at or below
+     * {@link #mobFleeHpPercent()} breaks off combat and flees to a random exit instead of attacking.
+     * Clamped to the range {@code [0, 100]}; a value of {@code 0} means such a mob always fights on,
+     * while {@code 100} means it flees on the first opportunity.
+     *
+     * @return the mob-flee per-tick chance as a percentage, in {@code [0, 100]}
+     */
+    public static int mobFleeChancePercent() {
+        int percent = CONFIG.getInt("jmud.combat.mob_flee_chance", DEFAULT_MOB_FLEE_CHANCE_PERCENT);
+        if (percent < 0 || percent > 100) {
+            throw new IllegalArgumentException("Mob flee chance must be in [0, 100]");
+        }
+        return percent;
     }
 }

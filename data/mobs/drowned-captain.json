@@ -6,7 +6,7 @@
   "attack_id": "attack.drowned-captain",
   "special_attack_id": "attack.drowned-captain-surge",
   "aggressive": true,
-  "tags": ["undead", "boss"],
+  "tags": ["undead", "boss", "fearless"],
   "spawn_room_id": "shrouded-isle-lighthouse-summit",
   "max_count": 1,
   "respawn_ticks": 120,

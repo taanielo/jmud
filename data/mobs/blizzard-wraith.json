@@ -5,7 +5,7 @@
   "max_hp": 160,
   "attack_id": "attack.blizzard-wraith",
   "aggressive": true,
-  "tags": ["ice", "undead", "frozen-peaks"],
+  "tags": ["ice", "undead", "frozen-peaks", "fearless"],
   "spawn_room_id": "frozen-peaks-ice-cavern",
   "max_count": 2,
   "respawn_ticks": 50,

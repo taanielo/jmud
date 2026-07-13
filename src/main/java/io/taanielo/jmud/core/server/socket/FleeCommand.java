@@ -27,7 +27,10 @@ public class FleeCommand extends RegistrableCommand {
         return """
                Usage: FLEE  |  FL
                  Attempts to escape from active combat by moving to a randomly chosen exit.
-                 You must be in combat to flee. The direction taken is chosen at random.\
+                 You must be in combat to flee. The direction taken is chosen at random.
+                 Beware: badly wounded mobs may do the same — a losing enemy can turn and flee
+                 to an adjacent room rather than fight to the death, so finish fights decisively.
+                 (Mindless creatures and world bosses never flee.)\
                """;
     }
 

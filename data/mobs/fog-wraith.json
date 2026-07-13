@@ -5,7 +5,7 @@
   "max_hp": 35,
   "attack_id": "attack.fog-wraith",
   "aggressive": true,
-  "tags": ["undead"],
+  "tags": ["undead", "fearless"],
   "spawn_room_id": "shrouded-isle-driftwood-path",
   "max_count": 2,
   "respawn_ticks": 25,
