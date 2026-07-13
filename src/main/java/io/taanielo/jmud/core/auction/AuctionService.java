@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.auction;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -84,6 +85,46 @@ public class AuctionService {
             }
         }
         return List.copyOf(active);
+    }
+
+    /**
+     * Returns the active listings matching {@code filter}, sorted by ascending price, each paired
+     * with the one-based number it holds in the full server-wide active-listing ordering (the same
+     * number {@code AUCTION BUY <#>} / {@code AUCTION CANCEL <#>} resolve against).
+     *
+     * <p>Filtering and re-sorting never renumber rows: numbers are assigned from
+     * {@link #activeListings(long)} <em>before</em> the filter is applied, so displaying a subset or
+     * a price-sorted view can never point a subsequent {@code BUY}/{@code CANCEL} at the wrong item.
+     *
+     * @param currentTick the current game tick, used to resolve the active listing ordering
+     * @param filter      the view filter to apply
+     * @return the surviving listings, price-ascending, with their original numbering preserved
+     */
+    public List<NumberedListing> activeListings(long currentTick, AuctionFilter filter) {
+        Objects.requireNonNull(filter, "filter is required");
+        List<AuctionListing> active = activeListings(currentTick);
+        List<NumberedListing> filtered = new ArrayList<>();
+        int number = 0;
+        for (AuctionListing listing : active) {
+            number++;
+            if (filter.matches(listing)) {
+                filtered.add(new NumberedListing(number, listing));
+            }
+        }
+        filtered.sort(Comparator.comparingInt(entry -> entry.listing().price()));
+        return List.copyOf(filtered);
+    }
+
+    /**
+     * An active listing paired with its stable one-based number from the full active-listing order.
+     *
+     * @param number  the one-based number to display and to resolve {@code BUY}/{@code CANCEL} against
+     * @param listing the listing itself
+     */
+    public record NumberedListing(int number, AuctionListing listing) {
+        public NumberedListing {
+            Objects.requireNonNull(listing, "listing is required");
+        }
     }
 
     /**

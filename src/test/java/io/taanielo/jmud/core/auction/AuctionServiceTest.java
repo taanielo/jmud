@@ -164,6 +164,86 @@ class AuctionServiceTest {
         assertEquals(1, auctionService.activeListings(CREATED_TICK).size());
     }
 
+    // ── filtered / sorted listing views ───────────────────────────────
+
+    @Test
+    void activeListings_noFilter_sortedByPriceAscending() {
+        addListing("alice", namedItem("plate-mail", "Plate Mail"), 300);
+        addListing("bob", namedItem("iron-sword", "Iron Sword"), 100);
+        addListing("carol", namedItem("oak-staff", "Oak Staff"), 200);
+
+        List<AuctionService.NumberedListing> view =
+            auctionService.activeListings(CREATED_TICK, AuctionFilter.all());
+
+        assertEquals(3, view.size());
+        assertEquals(100, view.get(0).listing().price());
+        assertEquals(200, view.get(1).listing().price());
+        assertEquals(300, view.get(2).listing().price());
+        // Numbers reflect insertion order (full active list), not the sorted position.
+        assertEquals(2, view.get(0).number(), "cheapest was inserted second");
+        assertEquals(3, view.get(1).number());
+        assertEquals(1, view.get(2).number());
+    }
+
+    @Test
+    void activeListings_keywordFilter_matchesCaseInsensitiveSubstring() {
+        addListing("alice", namedItem("iron-sword", "Iron Sword"), 100);
+        addListing("bob", namedItem("oak-staff", "Oak Staff"), 200);
+        addListing("carol", namedItem("short-sword", "Short Sword"), 50);
+
+        List<AuctionService.NumberedListing> view =
+            auctionService.activeListings(CREATED_TICK, AuctionFilter.keyword("SWORD"));
+
+        assertEquals(2, view.size());
+        assertEquals(50, view.get(0).listing().price(), "still price-ascending within the filter");
+        assertEquals(3, view.get(0).number());
+        assertEquals(1, view.get(1).number());
+    }
+
+    @Test
+    void activeListings_keywordFilter_noMatch_returnsEmpty() {
+        addListing("alice", namedItem("iron-sword", "Iron Sword"), 100);
+
+        assertTrue(auctionService.activeListings(CREATED_TICK, AuctionFilter.keyword("potion")).isEmpty());
+    }
+
+    @Test
+    void activeListings_mineFilter_returnsOnlyCallersListings() {
+        addListing("alice", namedItem("iron-sword", "Iron Sword"), 100);
+        addListing("bob", namedItem("oak-staff", "Oak Staff"), 200);
+        addListing("alice", namedItem("plate-mail", "Plate Mail"), 300);
+
+        List<AuctionService.NumberedListing> view =
+            auctionService.activeListings(CREATED_TICK, AuctionFilter.mine(Username.of("alice")));
+
+        assertEquals(2, view.size());
+        assertEquals("alice", view.get(0).listing().seller().getValue());
+        assertEquals("alice", view.get(1).listing().seller().getValue());
+        assertEquals(1, view.get(0).number());
+        assertEquals(3, view.get(1).number());
+    }
+
+    @Test
+    void numberingContract_buyByDisplayedNumberInFilteredView_buysCorrectItem() {
+        addListing("alice", namedItem("iron-sword", "Iron Sword"), 100);
+        addListing("bob", namedItem("oak-staff", "Oak Staff"), 200);
+        addListing("carol", namedItem("short-sword", "Short Sword"), 50);
+
+        // The buyer filters to swords; the cheapest displayed row is the Short Sword with number 3.
+        List<AuctionService.NumberedListing> view =
+            auctionService.activeListings(CREATED_TICK, AuctionFilter.keyword("sword"));
+        AuctionService.NumberedListing cheapest = view.get(0);
+        assertEquals("Short Sword", cheapest.listing().item().getName());
+
+        Player buyer = playerNamed("dave").withGold(500);
+        AuctionTransactionResult result = auctionService.buy(buyer, cheapest.number(), CREATED_TICK);
+
+        assertTrue(result.success());
+        assertNotNull(result.listing());
+        assertEquals("Short Sword", result.listing().item().getName(),
+            "BUY by displayed number must resolve to the same item shown in the filtered view");
+    }
+
     // ── expiry ─────────────────────────────────────────────────────────
 
     @Test
@@ -241,6 +321,18 @@ class AuctionServiceTest {
     private void listWord() {
         listings.stored.add(new AuctionListing(
             Username.of("alice"), sword(), 100, AUCTION_ROOM, CREATED_TICK, EXPIRY_TICK));
+    }
+
+    /** Lists an item by the given seller at the given price directly into storage. */
+    private void addListing(String seller, Item item, int price) {
+        listings.stored.add(new AuctionListing(
+            Username.of(seller), item, price, AUCTION_ROOM, CREATED_TICK, EXPIRY_TICK));
+    }
+
+    private static Item namedItem(String id, String name) {
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", ItemAttributes.empty())
+            .value(25)
+            .build();
     }
 
     private static Item sword() {
