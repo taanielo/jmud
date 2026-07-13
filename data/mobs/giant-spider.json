@@ -3,6 +3,7 @@
   "id": "giant-spider",
   "name": "Giant Spider",
   "max_hp": 14,
+  "xp_reward": 14,
   "attack_id": "attack.spider",
   "aggressive": true,
   "spawn_room_id": "dark-burrow",

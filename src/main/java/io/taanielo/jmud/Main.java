@@ -250,30 +250,40 @@ public class Main {
             return 1;
         }
 
-        List<String> areaProblems = runAreaConsistencyCheck();
-        if (!areaProblems.isEmpty()) {
-            System.out.printf("  [FAIL] %-12s  %d problem(s)%n", "areas", areaProblems.size());
-            for (String problem : areaProblems) {
-                System.out.printf("         -> %s%n", problem);
-            }
-            System.out.printf("%nData validation FAILED: %d area consistency problem(s)%n", areaProblems.size());
+        GameContext context = GameContext.create(new DefaultClientPool());
+
+        int consistencyExit = reportConsistency(
+            "areas", "world areas consistent", context.areaConsistencyChecker().check());
+        int completenessExit = reportConsistency(
+            "content", "world content complete", context.contentCompletenessChecker().check());
+        if (consistencyExit != 0 || completenessExit != 0) {
             return 1;
         }
-        System.out.printf("  [OK]   %-12s  world areas consistent%n", "areas");
+
         System.out.printf("%nData validation PASSED: %d file(s) across %d domain(s)%n",
             report.totalFiles(), report.domains().size());
         return 0;
     }
 
     /**
-     * Runs the whole-world area consistency check (issue #529): every room assigned to exactly one
-     * area, connections realized by real exits, and every area covered by an obtainable map item.
+     * Prints the outcome of one whole-world cross-reference check (issue #529 area consistency,
+     * issue #530 content completeness): an {@code [OK]} line when clean, or one {@code [FAIL]} line
+     * per actionable problem.
      *
-     * @return the list of consistency problems (empty when the world is consistent)
+     * @param domain      short domain label for the summary column
+     * @param okMessage   message printed when there are no problems
+     * @param problems    the problems reported by the check (empty when the world is consistent)
+     * @return {@code 0} when clean, {@code 1} when any problem was reported
      */
-    private static List<String> runAreaConsistencyCheck() {
-        ClientPool clientPool = new DefaultClientPool();
-        GameContext context = GameContext.create(clientPool);
-        return context.areaConsistencyChecker().check();
+    private static int reportConsistency(String domain, String okMessage, List<String> problems) {
+        if (problems.isEmpty()) {
+            System.out.printf("  [OK]   %-12s  %s%n", domain, okMessage);
+            return 0;
+        }
+        System.out.printf("  [FAIL] %-12s  %d problem(s)%n", domain, problems.size());
+        for (String problem : problems) {
+            System.out.printf("         -> %s%n", problem);
+        }
+        return 1;
     }
 }

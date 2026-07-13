@@ -3,6 +3,7 @@
   "id": "bandit-captain",
   "name": "Bandit Captain",
   "max_hp": 100,
+  "xp_reward": 100,
   "attack_id": "attack.bandit-captain",
   "special_attack_id": "attack.rally-cry",
   "aggressive": true,

@@ -3,6 +3,7 @@
   "id": "skeleton",
   "name": "Skeleton",
   "max_hp": 20,
+  "xp_reward": 20,
   "attack_id": "attack.skeleton",
   "aggressive": true,
   "tags": ["undead"],

@@ -3,6 +3,7 @@
   "id": "dire-wolf",
   "name": "Dire Wolf",
   "max_hp": 55,
+  "xp_reward": 55,
   "attack_id": "attack.dire-wolf",
   "aggressive": true,
   "spawn_room_id": "wolf-den",

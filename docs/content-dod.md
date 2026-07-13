@@ -34,15 +34,17 @@ Two enforcement tiers per item:
 ## Ability (skill/spell)
 
 - [V] Definition in `data/skills/` with level, cost, cooldown, targeting, messages
-- [V] Reachable by at least one class (starting kit or trainable pool)
+- [V] Reachable by at least one class (starting kit or trainable pool) — **live** in `--validate-data` (#530)
 - [M] Combat/utility niche that doesn't duplicate an existing ability
 - [M] Worded-damage message compliance once #525 lands
 
 ## Mob
 
-- [V] Explicit `xp_reward` (no silent max-HP fallback)
-- [V] Attack definition (or explicit `attack_id: null` for non-combatants) and loot/gold table
-- [V] Assigned spawn room that exists
+- [V] Explicit `xp_reward` (no silent max-HP fallback) — **live** in `--validate-data` (#530): a mob
+  data file without `xp_reward` fails to load with an actionable message
+- [V] Attack definition (or explicit `attack_id: null` for non-combatants) and loot/gold table —
+  **live** in `--validate-data` (#530): a non-null `attack_id` and every loot `item_id` must resolve
+- [V] Assigned spawn room that exists — **live** in `--validate-data` (#530)
 - [M] Sits on the area's difficulty curve (CONSIDER gives sane advice)
 
 ## Area / zone
@@ -58,13 +60,16 @@ Two enforcement tiers per item:
 ## Item
 
 - [V] Schema-valid definition with weight, value, and phase messages where applicable
-- [V] Obtainable somewhere (shop, loot, quest reward, craft recipe) — no orphan items
+- [V] Obtainable somewhere (shop, loot, quest reward, craft recipe, gathering yield, salvage,
+  newbie kit, or room placement) — no orphan items — **live** in `--validate-data` (#530)
 - [M] Niche vs. existing items (COMPARE shouldn't reveal a strict duplicate)
 
 ## Quest
 
-- [V] Valid target/room references; rewards defined
-- [V] Reachable giver (room or NPC that exists)
+- [V] Valid target/room references; rewards defined — **live** in `--validate-data` (#530): target,
+  giver, receiver mobs, receiver/required rooms, reward items and factions, and quest prerequisites
+  must all resolve
+- [V] Reachable giver (room or NPC that exists) — **live** in `--validate-data` (#530)
 - [M] Recommended level set and honest (#518)
 - [M] Fits a quest chain or standalone arc; no dead-end prerequisites
 

@@ -3,6 +3,7 @@
   "id": "crypt-warden",
   "name": "Crypt Warden",
   "max_hp": 40,
+  "xp_reward": 40,
   "attack_id": "attack.crypt-warden",
   "aggressive": true,
   "tags": ["undead"],

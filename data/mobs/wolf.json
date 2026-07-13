@@ -3,6 +3,7 @@
   "id": "wolf",
   "name": "Wolf",
   "max_hp": 30,
+  "xp_reward": 30,
   "attack_id": "attack.wolf",
   "aggressive": false,
   "spawn_room_id": "hunters-clearing",

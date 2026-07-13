@@ -3,6 +3,7 @@
   "id": "goblin",
   "name": "Goblin",
   "max_hp": 12,
+  "xp_reward": 12,
   "attack_id": "attack.goblin",
   "aggressive": false,
   "spawn_room_id": "sparring-pit",

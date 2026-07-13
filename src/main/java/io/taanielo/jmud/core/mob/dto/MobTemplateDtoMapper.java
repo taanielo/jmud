@@ -23,7 +23,12 @@ public class MobTemplateDtoMapper {
             .map(e -> new LootEntry(ItemId.of(e.itemId()), e.dropChance()))
             .toList();
         boolean aggressive = dto.aggressive() == null || dto.aggressive();
-        int xpReward = dto.xpReward() != null ? dto.xpReward() : dto.maxHp();
+        if (dto.xpReward() == null) {
+            throw new IllegalArgumentException("Mob '" + dto.id()
+                + "' is missing an explicit xp_reward (docs/content-dod.md → Mob); "
+                + "set it to 0 for non-combatant NPCs");
+        }
+        int xpReward = dto.xpReward();
         GoldDrop goldDrop = dto.goldDrop() != null
             ? new GoldDrop(dto.goldDrop().min(), dto.goldDrop().max())
             : null;

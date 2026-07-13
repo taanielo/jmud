@@ -3,6 +3,7 @@
   "id": "cove-fence",
   "name": "a shifty-eyed fence",
   "max_hp": 9999,
+  "xp_reward": 0,
   "attack_id": null,
   "aggressive": false,
   "tags": ["npc", "shopkeeper", "fence"],
