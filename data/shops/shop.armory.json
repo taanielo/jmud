@@ -27,6 +27,10 @@
     {"item_id": "torch"},
     {"item_id": "lantern"},
     {"item_id": "scroll-of-recall"},
+    {"item_id": "scroll-of-healing"},
+    {"item_id": "leather-bag"},
+    {"item_id": "wooden-chest"},
+    {"item_id": "iron-strongbox"},
     {"item_id": "town-map"},
     {"item_id": "darkwood-map"},
     {"item_id": "world-atlas"}

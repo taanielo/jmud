@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,11 +22,12 @@ import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.dto.ItemDto;
 import io.taanielo.jmud.core.world.dto.ItemMapper;
 import io.taanielo.jmud.core.world.dto.SchemaVersions;
+import io.taanielo.jmud.core.world.repository.ItemCatalog;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 @Slf4j
-public class JsonItemRepository implements ItemRepository, ItemContentReloader {
+public class JsonItemRepository implements ItemRepository, ItemCatalog, ItemContentReloader {
 
     private static final String ITEMS_DIR = "items";
 
@@ -76,6 +78,17 @@ public class JsonItemRepository implements ItemRepository, ItemContentReloader {
         }
         cache.put(item.getId(), item);
         return Optional.of(item);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Reads and validates every item JSON file from disk (bypassing the lazy per-id cache) so the
+     * caller sees the full catalog. Intended for whole-world validation tooling, not the hot path.
+     */
+    @Override
+    public List<Item> findAll() throws RepositoryException {
+        return List.copyOf(readAllItems().values());
     }
 
     /**

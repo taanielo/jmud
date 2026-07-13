@@ -3,6 +3,7 @@
   "id": "bandit",
   "name": "Bandit",
   "max_hp": 50,
+  "xp_reward": 50,
   "attack_id": "attack.bandit",
   "aggressive": true,
   "faction_id": "bandits",

@@ -3,6 +3,7 @@
   "id": "forest-troll",
   "name": "Forest Troll",
   "max_hp": 90,
+  "xp_reward": 90,
   "attack_id": "attack.forest-troll",
   "special_attack_id": "attack.troll-smash",
   "aggressive": true,

@@ -3,6 +3,7 @@
   "id": "trainer",
   "name": "Master Trainer",
   "max_hp": 9999,
+  "xp_reward": 0,
   "attack_id": null,
   "aggressive": false,
   "tags": ["npc"],

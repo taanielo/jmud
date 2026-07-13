@@ -3,6 +3,7 @@
   "id": "training-dummy",
   "name": "Training Dummy",
   "max_hp": 100,
+  "xp_reward": 0,
   "attack_id": null,
   "spawn_room_id": "training-yard",
   "max_count": 1,

@@ -43,6 +43,7 @@ import io.taanielo.jmud.core.bank.BankService;
 import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
 import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
@@ -66,9 +67,11 @@ import io.taanielo.jmud.core.combat.flavor.repository.json.JsonCombatFlavorRepos
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.combat.repository.json.JsonAttackRepository;
 import io.taanielo.jmud.core.config.GameConfig;
+import io.taanielo.jmud.core.content.ContentCompletenessChecker;
 import io.taanielo.jmud.core.craft.CrafterProfile;
 import io.taanielo.jmud.core.craft.CraftingService;
 import io.taanielo.jmud.core.craft.Recipe;
+import io.taanielo.jmud.core.craft.RecipeRepository;
 import io.taanielo.jmud.core.craft.RecipeRepositoryException;
 import io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
@@ -182,6 +185,7 @@ import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
 import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
+import io.taanielo.jmud.core.world.repository.ItemCatalog;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomCatalog;
@@ -255,6 +259,7 @@ public record GameContext(
     PlayerSessionRegistry playerSessionRegistry,
     AreaMapService areaMapService,
     AreaConsistencyChecker areaConsistencyChecker,
+    ContentCompletenessChecker contentCompletenessChecker,
     ShutdownHandle shutdownHandle
 ) {
 
@@ -539,6 +544,9 @@ public record GameContext(
 
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
+        ContentCompletenessChecker contentCompletenessChecker =
+            createContentCompletenessChecker(roomRepository, itemRepository, classRepository, attackRepository);
+
         return new GameContext(
             userRegistry,
             authenticationPolicy,
@@ -600,6 +608,7 @@ public record GameContext(
             playerSessionRegistry,
             areaMapService,
             areaConsistencyChecker,
+            contentCompletenessChecker,
             shutdownHandle
         );
     }
@@ -680,6 +689,36 @@ public record GameContext(
         } catch (ShopRepositoryException | RepositoryException e) {
             throw new IllegalStateException(
                 "Failed to initialize area consistency checker: " + e.getMessage(), e);
+        }
+    }
+
+    private static ContentCompletenessChecker createContentCompletenessChecker(
+        RoomRepository roomRepository,
+        ItemRepository itemRepository,
+        ClassRepository classRepository,
+        AttackRepository attackRepository) {
+        try {
+            return new ContentCompletenessChecker(
+                new JsonMobTemplateRepository(),
+                (RoomCatalog) roomRepository,
+                (ItemCatalog) itemRepository,
+                attackRepository,
+                new JsonAbilityRepository(),
+                classRepository,
+                new JsonShopRepository(),
+                new JsonQuestRepository(),
+                List.<RecipeRepository>of(
+                    new JsonRecipeRepository(),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/alchemy"),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/cooking")),
+                new JsonResourceNodeRepository(),
+                new JsonNewbieKitRepository(),
+                new JsonSalvageTierRepository(),
+                new JsonFactionRepository());
+        } catch (RepositoryException | ShopRepositoryException | RecipeRepositoryException
+            | FactionRepositoryException | AbilityRepositoryException | QuestRepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize content completeness checker: " + e.getMessage(), e);
         }
     }
 

@@ -3,6 +3,7 @@
   "id": "slime",
   "name": "Slime",
   "max_hp": 48,
+  "xp_reward": 48,
   "attack_id": "attack.slime",
   "aggressive": true,
   "spawn_room_id": "sewers-tunnel",

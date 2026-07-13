@@ -3,6 +3,7 @@
   "id": "plague-rat",
   "name": "Plague Rat",
   "max_hp": 38,
+  "xp_reward": 38,
   "attack_id": "attack.plague-rat",
   "aggressive": true,
   "spawn_room_id": "sewers-cistern",
