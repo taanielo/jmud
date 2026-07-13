@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.marrow-mother-bloom",
+  "name": "Blooming Rot",
+  "min_damage": 54,
+  "max_damage": 78,
+  "hit_bonus": 5,
+  "crit_bonus": 5,
+  "damage_bonus": 12,
+  "weapon_type": "BLUNT",
+  "damage_type": "POISON",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 80
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Ossuara throws wide its whole corona of blooms and breathes out the concentrated rot of the entire garden, a rolling green fog that drowns you and burns in every pore. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Ossuara heaves and looses its blooming rot across the heart, and you hurl yourself behind a fold of fleshy wall as the green fog roars past."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Ossuara's blooming rot catches you in the open and the poison sinks into you to the marrow, sprouting pale threads before it lets you fall! The blow {verb} you!"
+    }
+  ]
+}

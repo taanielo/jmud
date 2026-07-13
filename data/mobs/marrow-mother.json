@@ -1,0 +1,45 @@
+{
+  "schema_version": 4,
+  "id": "marrow-mother",
+  "name": "Ossuara, the Marrow Mother",
+  "max_hp": 880,
+  "attack_id": "attack.marrow-mother",
+  "special_attack_id": "attack.marrow-mother-bloom",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["fungal", "boss", "marrow-bloom"],
+  "spawn_room_id": "marrow-bloom-heart-of-rot",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 2000,
+  "loot": [
+    {
+      "item_id": "marrow-reaver",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "bloomplate-carapace",
+      "drop_chance": 0.4
+    },
+    {
+      "item_id": "blightward-amulet",
+      "drop_chance": 0.35
+    },
+    {
+      "item_id": "blightspore-cluster",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "marrow-bloom-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 440,
+    "max": 720
+  }
+}

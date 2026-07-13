@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "marrow-reaver",
+  "name": "the Marrow Reaver",
+  "description": "A long, pale blade harvested from a single hardened stalk of the Marrow Bloom and honed to an edge that is more chitin than steel, veined through with dark channels that still weep a slow, living rot. It weighs almost nothing and is always faintly warm, and its edge does not merely cut but sows, leaving each wound to fester and bloom. To carry it is to carry a cutting of the garden itself, forever reaching, forever hungry to plant more of the Bloom in whatever it opens.",
+  "attributes": {
+    "stats": {
+      "strength": 3,
+      "dexterity": 4
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 3,
+  "value": 380,
+  "rarity": "rare",
+  "attack_ref": "attack.marrow-reaver"
+}

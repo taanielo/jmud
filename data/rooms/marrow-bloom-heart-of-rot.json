@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-heart-of-rot",
+  "name": "The Heart of Rot",
+  "description": "The garden's last slope lets you down into the place where the Marrow Bloom is not a garden at all but a single living thing, and you are standing inside it. The chamber is a vast pulsing cavity, its walls of glistening grey flesh threaded through with veins of luminous pith, its floor a warm and yielding tissue that flinches at every step. From the far wall rises the great sealed bloom you glimpsed above — now unfolding, petal by monstrous petal, into a towering figure of packed fungus and swallowed bone, crowned with a corona of breathing spore. This is what became of everything the void unmade: gathered here, rotted down, and grown back into one appalling flower of hunger. Where Vaelnith above was absence, this is its answer and its opposite — growth without limit, life without cleanliness, a thing that will take the whole of you and make more of itself from it, and is opening now, unhurried and certain, to begin.",
+  "item_ids": [],
+  "exits": {
+    "up": "marrow-bloom-necrotic-garden"
+  },
+  "min_level": 46,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The chamber's fleshy walls contract in a long, slow pulse, and the whole heart draws a breath of spore around you.",
+    "A vein of luminous pith swells and courses beneath your feet, and the floor flinches away from your weight.",
+    "The great bloom unfolds another petal, and a wave of poison-thick spore rolls out across the heart toward you."
+  ]
+}

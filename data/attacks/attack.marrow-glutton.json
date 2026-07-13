@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.marrow-glutton",
+  "name": "devouring maw",
+  "min_damage": 33,
+  "max_damage": 48,
+  "hit_bonus": 6,
+  "crit_bonus": 4,
+  "damage_bonus": 9,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 50
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The marrow-glutton splits open a lipless maw ringed with grinding plates and takes a wet, tearing bite of you, greedy for the marrow beneath. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The marrow-glutton heaves its bulk at you, maw gaping, and you scramble aside as its jaws clash on empty rot."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The marrow-glutton clamps down and grinds, its plates working to crack you open for the marrow, and the garden trembles at its feeding! The blow {verb} you!"
+    }
+  ]
+}

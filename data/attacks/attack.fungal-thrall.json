@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.fungal-thrall",
+  "name": "smothering grasp",
+  "min_damage": 28,
+  "max_damage": 42,
+  "hit_bonus": 6,
+  "crit_bonus": 4,
+  "damage_bonus": 8,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The fungal thrall closes cold, mouldering arms around you and squeezes, and where its overgrown flesh presses to yours the rot begins to spread. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The fungal thrall gropes for you with rotted arms and you twist out of its slow, smothering reach."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The fungal thrall folds you into itself and holds you fast while its rot floods over you, drinking you into the garden! The blow {verb} you!"
+    }
+  ]
+}

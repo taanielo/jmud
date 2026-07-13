@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "spore-hound",
+  "name": "a spore-hound",
+  "max_hp": 300,
+  "attack_id": "attack.spore-hound",
+  "aggressive": true,
+  "tags": ["fungal", "beast", "marrow-bloom"],
+  "spawn_room_id": "marrow-bloom-choked-gallery",
+  "max_count": 3,
+  "respawn_ticks": 50,
+  "xp_reward": 400,
+  "loot": [
+    {
+      "item_id": "blightspore-cluster",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 80,
+    "max": 130
+  }
+}

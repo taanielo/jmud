@@ -1,0 +1,27 @@
+{
+  "schema_version": 4,
+  "id": "fungal-thrall",
+  "name": "a fungal thrall",
+  "max_hp": 340,
+  "attack_id": "attack.fungal-thrall",
+  "aggressive": true,
+  "tags": ["fungal", "undead", "marrow-bloom"],
+  "spawn_room_id": "marrow-bloom-fungal-canopy",
+  "max_count": 2,
+  "respawn_ticks": 60,
+  "xp_reward": 440,
+  "loot": [
+    {
+      "item_id": "blightspore-cluster",
+      "drop_chance": 0.35
+    },
+    {
+      "item_id": "blightward-amulet",
+      "drop_chance": 0.2
+    }
+  ],
+  "gold_drop": {
+    "min": 90,
+    "max": 150
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "blightspore-cluster",
+  "name": "a blightspore cluster",
+  "description": "A dense knot of grey-white spore-sacs cut from the heart of the Marrow Bloom, still warm and faintly pulsing, each swollen pod straining with a poison potent enough to unmake a strong body from the inside. Held in the hand it weeps a slow bead of venom that beads and will not dry, and the whole cluster breathes, so slightly, in time with nothing. Alchemists and enchanters who can master its rot prize it above any common venom, for a thing grown to poison the void's own leavings can be made to ward against poison as readily as to deal it.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 120,
+  "rarity": "uncommon"
+}

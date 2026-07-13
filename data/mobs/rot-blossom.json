@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "rot-blossom",
+  "name": "a rot-blossom",
+  "max_hp": 360,
+  "attack_id": "attack.rot-blossom",
+  "aggressive": true,
+  "tags": ["fungal", "plant", "marrow-bloom"],
+  "spawn_room_id": "marrow-bloom-rotting-hollow",
+  "max_count": 3,
+  "respawn_ticks": 55,
+  "xp_reward": 470,
+  "loot": [
+    {
+      "item_id": "blightspore-cluster",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 95,
+    "max": 160
+  }
+}

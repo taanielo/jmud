@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "marrow-glutton",
+  "name": "a marrow-glutton",
+  "max_hp": 420,
+  "attack_id": "attack.marrow-glutton",
+  "aggressive": true,
+  "tags": ["fungal", "beast", "marrow-bloom"],
+  "spawn_room_id": "marrow-bloom-necrotic-garden",
+  "max_count": 2,
+  "respawn_ticks": 65,
+  "xp_reward": 520,
+  "loot": [
+    {
+      "item_id": "blightspore-cluster",
+      "drop_chance": 0.45
+    }
+  ],
+  "gold_drop": {
+    "min": 110,
+    "max": 180
+  }
+}

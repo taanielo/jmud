@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "marrow-bloom-map",
+  "name": "Map of the Marrow Bloom",
+  "description": "A chart of the Marrow Bloom pressed into a sheet of dried fungal vellum, its passages traced in dark spore-ink that still smells faintly of rot. The lines seem to creep and settle when you are not looking straight at them, as though the garden it maps is unwilling to be pinned down.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 45,
+  "map_area_id": "marrow-bloom"
+}
