@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -138,7 +139,7 @@ class HelpCommandTest {
         help.match("HELP " + classId).get().execute(context);
 
         String combined = String.join("\n", context.lines);
-        assertTrue(combined.toLowerCase().contains(classId.toLowerCase()),
+        assertTrue(combined.toLowerCase(Locale.ROOT).contains(classId.toLowerCase(Locale.ROOT)),
                 "Output should name the class " + classId);
         assertTrue(combined.contains("Starting abilities:"),
                 "Output should list the starting ability kit for " + classId);
