@@ -672,7 +672,13 @@ public record GameContext(
 
     private static AreaRepository createAreaRepository() {
         try {
-            return new JsonAreaRepository();
+            AreaRepository areaRepository = new JsonAreaRepository();
+            // Warm the lazily-loaded area/atlas cache at bootstrap so the first tick-thread READ of a
+            // map item resolves from memory and never triggers a directory scan or JSON parse inline
+            // (AGENTS.md §5 — no blocking I/O reachable from tick()).
+            areaRepository.findAll();
+            areaRepository.findAtlas();
+            return areaRepository;
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize area repository: " + e.getMessage(), e);
         }
