@@ -1,10 +1,13 @@
 {
-  "schema_version": 2,
+  "schema_version": 9,
   "id": "armory",
   "name": "Armory",
-  "description": "Rows of weapon racks line the stone walls, most slots empty or holding battered spares. A faint smell of oil and rust fills the dim room.",
+  "description": "Rows of weapon racks line the stone walls, most slots empty or holding battered spares. A faint smell of oil and rust fills the dim room. One tall rack near the back sits oddly askew, as though it were dragged across the floor and never quite pushed flush against the wall again.",
   "item_ids": [],
   "exits": {
     "south": "training-yard"
+  },
+  "hidden_exits": {
+    "down": "sparring-pit"
   }
 }

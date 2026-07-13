@@ -181,6 +181,7 @@ public class SocketCommandRegistry {
         new LockCommand(registry);
         new UnlockCommand(registry);
         new PickCommand(registry);
+        new SearchCommand(registry);
         new SneakCommand(registry);
         new MountCommand(registry);
         new DismountCommand(registry);

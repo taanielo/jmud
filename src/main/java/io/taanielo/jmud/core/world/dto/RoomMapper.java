@@ -29,13 +29,17 @@ public class RoomMapper {
         room.getExits().forEach((dir, roomId) -> exits.put(dir.name().toLowerCase(Locale.ROOT), roomId.getValue()));
         Map<String, String> lockedExits = new HashMap<>();
         room.getLockedExits().forEach((dir, keyId) -> lockedExits.put(dir.name().toLowerCase(Locale.ROOT), keyId.getValue()));
+        Map<String, String> hiddenExits = new HashMap<>();
+        room.getHiddenExits().forEach((dir, roomId) -> hiddenExits.put(dir.name().toLowerCase(Locale.ROOT), roomId.getValue()));
         Integer minLevel = room.getMinLevel();
         String nightDescription = room.getNightDescription();
         Integer lightLevel = room.getLightLevel();
         boolean outdoor = room.isOutdoor();
         List<String> ambientMessages = room.getAmbientMessages();
         int version;
-        if (!ambientMessages.isEmpty()) {
+        if (!hiddenExits.isEmpty()) {
+            version = SchemaVersions.V9;
+        } else if (!ambientMessages.isEmpty()) {
             version = SchemaVersions.V8;
         } else if (outdoor) {
             version = SchemaVersions.V7;
@@ -50,7 +54,8 @@ public class RoomMapper {
         }
         return new RoomDto(version, room.getId().getValue(), room.getName(), room.getDescription(), itemIds, exits,
             lockedExits.isEmpty() ? null : lockedExits, minLevel, nightDescription, lightLevel,
-            outdoor ? Boolean.TRUE : null, ambientMessages.isEmpty() ? null : ambientMessages);
+            outdoor ? Boolean.TRUE : null, ambientMessages.isEmpty() ? null : ambientMessages,
+            hiddenExits.isEmpty() ? null : hiddenExits);
     }
 
     /**
@@ -75,6 +80,14 @@ public class RoomMapper {
                 );
             }
         }
+        Map<Direction, RoomId> hiddenExits = new HashMap<>();
+        if (dto.hiddenExits() != null) {
+            for (Map.Entry<String, String> entry : dto.hiddenExits().entrySet()) {
+                Direction.fromInput(entry.getKey()).ifPresent(
+                    dir -> hiddenExits.put(dir, RoomId.of(entry.getValue()))
+                );
+            }
+        }
         List<String> ambientMessages = dto.ambientMessages() == null ? List.of() : dto.ambientMessages();
         return new Room(
             RoomId.of(dto.id()),
@@ -88,7 +101,8 @@ public class RoomMapper {
             dto.nightDescription(),
             dto.lightLevel(),
             Boolean.TRUE.equals(dto.isOutdoor()),
-            ambientMessages
+            ambientMessages,
+            hiddenExits
         );
     }
 }

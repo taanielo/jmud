@@ -255,6 +255,30 @@ public class RoomService {
         return locationService.lock(username, direction, inventory);
     }
 
+    // ── Hidden-exit delegation ───────────────────────────────────────────────
+
+    /**
+     * Returns the hidden exit directions in the player's current room that have not yet been
+     * discovered.
+     *
+     * @param username the player whose room is inspected
+     * @return an unmodifiable set of undiscovered hidden-exit directions (may be empty, never null)
+     */
+    public Set<Direction> undiscoveredHiddenExits(Username username) {
+        return locationService.undiscoveredHiddenExits(username);
+    }
+
+    /**
+     * Reveals every currently-undiscovered hidden exit in the player's current room, making them
+     * visible and walkable for all players from now on.
+     *
+     * @param username the player performing the discovery
+     * @return the set of directions newly revealed (may be empty, never null)
+     */
+    public Set<Direction> revealHiddenExits(Username username) {
+        return locationService.revealHiddenExits(username);
+    }
+
     // ── Orchestrated operations ──────────────────────────────────────────────
 
     /**
@@ -425,7 +449,9 @@ public class RoomService {
                 room.getMinLevel(),
                 room.getNightDescription(),
                 room.getLightLevel(),
-                room.isOutdoor()
+                room.isOutdoor(),
+                room.getAmbientMessages(),
+                room.getHiddenExits()
             );
             try {
                 roomRepository.save(updated);
@@ -470,11 +496,14 @@ public class RoomService {
     private Room enrichRoom(Room room) {
         List<Username> occupants = locationService.getPlayersInRoom(room.getId());
         List<Item> items = itemService.mergeItems(room);
+        // Merge already-discovered hidden exits into the visible exit map so the renderer lists them;
+        // undiscovered hidden exits are excluded and never leak into the Exits: line.
+        Map<Direction, RoomId> visibleExits = locationService.getVisibleExits(room.getId());
         return new Room(
             room.getId(),
             room.getName(),
             room.getDescription(),
-            room.getExits(),
+            visibleExits,
             items,
             occupants,
             room.getLockedExits(),
@@ -514,7 +543,9 @@ public class RoomService {
             room.getMinLevel(),
             room.getNightDescription(),
             room.getLightLevel(),
-            room.isOutdoor()
+            room.isOutdoor(),
+            room.getAmbientMessages(),
+            room.getHiddenExits()
         );
         try {
             roomRepository.save(updated);
