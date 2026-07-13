@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.soul-rot",
+  "name": "soul rot",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 9
+  },
+  "cooldown": {
+    "ticks": 7
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["soulrot", "rot"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 15
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "soulrot"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You breathe a defiling curse over {target}, rotting their flesh and their guard."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} breathes a defiling curse over you; your flesh and guard begin to rot away!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} breathes a defiling curse of rot over {target}."
+    }
+  ]
+}

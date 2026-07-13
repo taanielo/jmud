@@ -64,6 +64,18 @@ superset of a peer's:
   fragile group-support caster (spread `agi +1, int +1, wis +1`, buff/debuff songs); neither
   shares an archetype pair, so neither can be a superset of a peer.
 
+Veteran tier (#573). Every class now has a third trainable ability gated at **level 15**, so
+progression is no longer flat past level 5 and practice points earned in the midgame have a
+`TRAIN LIST` payoff. Each veteran ability fits its class niche and introduces a new mechanic
+rather than a bigger number on an existing one: warrior `skill.execute` (heavy finisher),
+adventurer `skill.overpower` (heavy strike), rogue `skill.eviscerate` (rupture bleed), ranger
+`skill.crippling-shot` (attack/accuracy debuff), mage `spell.frostbolt` (damage + freeze),
+cleric `spell.searing-light` (holy damage vs. the living), druid `spell.thornlash` (entangle
+bleed + defense debuff), bard `spell.dissonant-chord` (demoralize debuff), shaman
+`spell.flame-shock` (scorch burn), necromancer `spell.soul-rot` (heavy nuke + defense rot) and
+paladin `spell.guardian-aura` (party-wide defensive aegis). `HELP <class>` and `TRAIN LIST`
+pick these up automatically from `trainable_ability_ids`.
+
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |

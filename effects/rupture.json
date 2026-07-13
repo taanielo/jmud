@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "rupture",
+  "name": "Rupture",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A ruptured artery gushes freely and will not stop."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is opened by a ruptured, spurting wound."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "Your ruptured wound pumps out your lifeblood."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The ruptured wound finally clots and the bleeding slows."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name}'s ruptured wound finally clots over."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is bleeding heavily from a ruptured wound."
+    }
+  ]
+}

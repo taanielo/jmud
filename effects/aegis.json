@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "aegis",
+  "name": "Guardian's Aegis",
+  "duration_ticks": 40,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "armor",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A shimmering golden aegis settles over you, turning aside harm."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A shimmering golden aegis settles over {name}."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The golden aegis flickers and fades from around you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The golden aegis around {name} flickers and fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wreathed in a shimmering golden aegis."
+    }
+  ]
+}

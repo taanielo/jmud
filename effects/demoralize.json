@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "demoralize",
+  "name": "Demoralized",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": -5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A mournful dirge saps your resolve and your courage drains away."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} falters, demoralised by a mournful dirge."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The dirge lingers in your ears and your will to fight wavers."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The dirge fades and your resolve returns."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} rallies as the dirge fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks demoralised and unsteady."
+    }
+  ]
+}

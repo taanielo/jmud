@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "scorch",
+  "name": "Scorched",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Clinging flame sears your flesh and refuses to go out."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is wreathed in clinging, scorching flame."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The clinging fire gnaws at your scorched flesh."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The clinging flames gutter out and the burning eases."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The flames clinging to {name} gutter out."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is scorched and wreathed in clinging flame."
+    }
+  ]
+}

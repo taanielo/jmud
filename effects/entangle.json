@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "entangle",
+  "name": "Entangled",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Thorned vines burst from the ground and lash tight around you."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Thorned vines erupt and coil around {name}."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The barbed vines bite deeper as you struggle against them."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The thorned vines wither and crumble away from you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The vines binding {name} wither and fall away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is bound in a thicket of barbed, biting vines."
+    }
+  ]
+}

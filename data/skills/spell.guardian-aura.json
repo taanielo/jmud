@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.guardian-aura",
+  "name": "guardian aura",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 10
+  },
+  "cooldown": {
+    "ticks": 8
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["guardian", "aura"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "aegis"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You raise a guardian aura, and a golden aegis settles over all around you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} raises a guardian aura, and a golden aegis settles over the room."
+    }
+  ]
+}

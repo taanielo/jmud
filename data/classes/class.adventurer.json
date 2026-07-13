@@ -10,6 +10,6 @@
   "attribute_bonuses": { "str": 1, "int": 1 },
   "attribute_gains": { "str": "every_3_levels", "int": "every_3_levels" },
   "ability_ids": ["skill.bash", "spell.heal"],
-  "trainable_ability_ids": ["skill.second-wind", "spell.bless"],
-  "description": "A forgiving jack-of-all-trades for new players. Adventurers mix a warrior's bash with a self-heal, so they can both fight and patch themselves up while learning the ropes."
+  "trainable_ability_ids": ["skill.second-wind", "spell.bless", "skill.overpower"],
+  "description": "A forgiving jack-of-all-trades for new players. Adventurers mix a warrior's bash with a self-heal, so they can both fight and patch themselves up while learning the ropes, and at level 15 learn overpower, a heavy driving blow."
 }
