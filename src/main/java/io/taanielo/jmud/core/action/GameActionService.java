@@ -2067,6 +2067,13 @@ public class GameActionService {
         if (ability.isEmpty()) {
             return GameActionResult.error("That scroll's magic has faded.");
         }
+        // Level gate: refuse to learn an ability above the reader's level, keeping the scroll intact so
+        // it is not wasted. Mirrors both the use-time gate in useAbility() and the trainer's LevelTooLow
+        // refusal (issue #538) — otherwise an above-level scroll would be consumed for a dead ability.
+        if (ability.get().level() > source.getLevel()) {
+            return GameActionResult.error("You are not yet skilled enough to learn "
+                + ability.get().name() + " (requires level " + ability.get().level() + ").");
+        }
         List<AbilityId> learned = new ArrayList<>(source.getLearnedAbilities());
         learned.add(abilityId);
         Player updated = source.withLearnedAbilities(learned).removeItem(item);
