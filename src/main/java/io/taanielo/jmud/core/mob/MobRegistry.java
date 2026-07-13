@@ -1378,7 +1378,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
         StringBuilder breakdown = new StringBuilder();
         List<Username> contenders = capable;
-        LinkedHashMap<Username, Integer> rolls = rollFor(contenders);
+        Map<Username, Integer> rolls = rollFor(contenders);
         breakdown.append(describeRolls(rolls));
         List<Username> top = topRollers(rolls);
         int rounds = 0;
@@ -1408,7 +1408,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param candidates the members rolling this round
      * @return an ordered map of each candidate to their 1-100 roll
      */
-    private LinkedHashMap<Username, Integer> rollFor(List<Username> candidates) {
+    private Map<Username, Integer> rollFor(List<Username> candidates) {
         LinkedHashMap<Username, Integer> rolls = new LinkedHashMap<>();
         for (Username candidate : candidates) {
             rolls.put(candidate, random.roll(1, 100));
@@ -1423,7 +1423,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param rolls the members and their rolls this round
      * @return the top-rolling members (never empty)
      */
-    private static List<Username> topRollers(LinkedHashMap<Username, Integer> rolls) {
+    private static List<Username> topRollers(Map<Username, Integer> rolls) {
         int max = rolls.values().stream().mapToInt(Integer::intValue).max().orElse(0);
         return rolls.entrySet().stream()
             .filter(entry -> entry.getValue() == max)
@@ -1437,7 +1437,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param rolls the members and their rolls this round
      * @return the joined breakdown text
      */
-    private static String describeRolls(LinkedHashMap<Username, Integer> rolls) {
+    private static String describeRolls(Map<Username, Integer> rolls) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (Map.Entry<Username, Integer> entry : rolls.entrySet()) {
