@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.holy-wrath",
+  "name": "holy wrath",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 11
+  },
+  "cooldown": {
+    "ticks": 8
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["wrath", "holy"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 13
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "radiant-brand"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You unleash your holy wrath on {target}, searing a radiant brand into their flesh."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} unleashes holy wrath upon you, searing a radiant brand into your flesh!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} unleashes holy wrath upon {target}, branding them in searing light."
+    }
+  ]
+}

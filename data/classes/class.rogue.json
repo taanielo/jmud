@@ -10,6 +10,6 @@
   "attribute_bonuses": { "agi": 3 },
   "attribute_gains": { "agi": "every_level", "str": "every_3_levels" },
   "ability_ids": ["skill.backstab", "skill.envenom", "skill.pick", "skill.sneak"],
-  "trainable_ability_ids": ["skill.second-wind", "spell.haste", "skill.eviscerate"],
-  "description": "A stealthy skirmisher built around burst damage and utility. Rogues open with a devastating backstab, envenom their blades, sneak past danger and are the only class able to pick locked chests and doors; at level 15 they learn eviscerate, a rupturing finisher that leaves a foe bleeding out."
+  "trainable_ability_ids": ["skill.second-wind", "spell.haste", "skill.eviscerate", "skill.ambush"],
+  "description": "A stealthy skirmisher built around burst damage and utility. Rogues open with a devastating backstab, envenom their blades, sneak past danger and are the only class able to pick locked chests and doors; at level 15 they learn eviscerate, a rupturing finisher that leaves a foe bleeding out, and at level 30 ambush, an opening strike from stealth that hits like a hammer and leaves the victim dazed."
 }

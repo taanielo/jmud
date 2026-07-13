@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "stormcall",
+  "name": "Stormcall",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 3
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A stormcall totem crackles nearby, and static fury sharpens every strike you make."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Crackling storm-energy from a stormcall totem wreathes {name}."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The stormcall totem falls silent and the crackling fury drains from you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The crackling storm-energy around {name} fades to stillness."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wreathed in crackling energy from a stormcall totem."
+    }
+  ]
+}

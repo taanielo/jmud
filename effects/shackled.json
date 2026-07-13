@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "shackled",
+  "name": "Shackled",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Bands of glowing arcane force clamp around your limbs and root you in place."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Glowing arcane shackles snap shut around {name}, pinning them fast."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The arcane shackles shatter and free your limbs."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The arcane shackles binding {name} shatter into fading motes."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is bound fast in glowing arcane shackles."
+    }
+  ]
+}

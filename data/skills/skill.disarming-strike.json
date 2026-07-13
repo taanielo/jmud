@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.disarming-strike",
+  "name": "disarming strike",
+  "type": "SKILL",
+  "level": 30,
+  "cost": {
+    "move": 12
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["disarm", "disarming"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 14
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "disarm"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You hook {target}'s weapon with a jarring blow, wrenching their grip loose."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} hooks your weapon with a jarring blow and wrenches your grip loose!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} lands a disarming strike that fouls {target}'s grip."
+    }
+  ]
+}

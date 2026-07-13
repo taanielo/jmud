@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.sanctuary",
+  "name": "sanctuary",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["sanct"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "sanctuary"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a hallowed sanctuary, and a mending radiance settles over all around you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls down a hallowed sanctuary, and a mending radiance fills the room."
+    }
+  ]
+}

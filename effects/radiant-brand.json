@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "radiant-brand",
+  "name": "Radiant Brand",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 5
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A searing brand of holy light sinks into you, burning away your guard."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A searing brand of holy light scorches itself into {name}."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The radiant brand flares and sears at your flesh."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The radiant brand cools and its holy fire gutters out."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The radiant brand searing {name} cools and fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is marked by a searing, radiant brand of holy light."
+    }
+  ]
+}

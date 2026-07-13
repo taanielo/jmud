@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "spell.plague-cloud",
+  "name": "plague cloud",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 10,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 8
+  },
+  "targeting": "AoE",
+  "aliases": ["plague", "cloud"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You exhale a roiling cloud of green plague that drains the life from every foe as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A roiling cloud of green plague billows from {source} as they cast {ability}!"
+    }
+  ]
+}

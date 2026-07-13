@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "anthem",
+  "name": "Restorative Anthem",
+  "duration_ticks": 40,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "heal_per_tick",
+      "op": "add",
+      "amount": 3
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A soaring, restorative anthem swells around you, mending hurts and steadying your guard."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A soaring, restorative anthem lifts {name}."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The anthem's melody knits your wounds a little further closed."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The restorative anthem fades from your ears."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The restorative anthem lifting {name} fades into silence."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is buoyed by a soaring, restorative anthem."
+    }
+  ]
+}

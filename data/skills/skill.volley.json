@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "skill.volley",
+  "name": "volley",
+  "type": "SKILL",
+  "level": 30,
+  "cost": {
+    "mana": 8,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 8
+  },
+  "targeting": "AoE",
+  "aliases": ["vly"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 9
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You draw and loose in a blur, raining a volley of arrows across every foe as you unleash {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A volley of arrows rains down around {source} as they unleash {ability}!"
+    }
+  ]
+}

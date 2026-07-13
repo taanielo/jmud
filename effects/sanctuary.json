@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "sanctuary",
+  "name": "Sanctuary",
+  "duration_ticks": 30,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "armor",
+      "op": "add",
+      "amount": 6
+    },
+    {
+      "stat": "heal_per_tick",
+      "op": "add",
+      "amount": 3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A hallowed sanctuary settles over you, blunting blows and knitting your wounds."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A hallowed radiance of sanctuary settles over {name}."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The sanctuary's warmth mends your hurts a little more."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The sanctuary's radiance dims and fades from around you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The sanctuary around {name} dims and fades away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wrapped in a hallowed radiance of sanctuary."
+    }
+  ]
+}

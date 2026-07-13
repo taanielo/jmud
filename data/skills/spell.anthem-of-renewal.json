@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.anthem-of-renewal",
+  "name": "anthem of renewal",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["anthem", "renewal"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "anthem"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You raise a soaring anthem of renewal, mending the hurts and steadying the guard of all around you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} raises a soaring anthem of renewal that lifts the whole room."
+    }
+  ]
+}

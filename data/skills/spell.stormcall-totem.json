@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.stormcall-totem",
+  "name": "stormcall totem",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["stormcall", "totem"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "stormcall"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You plant a crackling stormcall totem, and its static fury sharpens the strikes of all around you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} plants a crackling stormcall totem that wreathes the room in storm-energy."
+    }
+  ]
+}
