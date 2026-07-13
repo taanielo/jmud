@@ -3656,7 +3656,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "LOOT" -> handlePartyLoot(player, partyService, subArgs);
             case "" -> handlePartyStatus(player, partyService);
             default -> writeLineWithPrompt(
-                "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND|LOOT <free|round-robin>]");
+                "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND|LOOT <free|round-robin|roll>]");
         }
     }
 
@@ -5331,7 +5331,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         Optional<LootMode> mode = LootMode.parse(arg);
         if (mode.isEmpty()) {
-            writeLineWithPrompt("Usage: PARTY LOOT <free|round-robin>");
+            writeLineWithPrompt("Usage: PARTY LOOT <free|round-robin|roll>");
             return;
         }
         PartyService.PartyResult result = partyService.setLootMode(player.getUsername(), mode.get());

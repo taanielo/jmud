@@ -14,7 +14,7 @@ import java.util.Optional;
  *   <li>{@code PARTY DECLINE}        — decline a pending invitation</li>
  *   <li>{@code PARTY LEAVE}          — leave the current party (disbands if last member)</li>
  *   <li>{@code PARTY DISBAND}        — disband the party (leader only)</li>
- *   <li>{@code PARTY LOOT <mode>}    — set item loot mode to {@code free} or {@code round-robin} (leader only)</li>
+ *   <li>{@code PARTY LOOT <mode>}    — set item loot mode to {@code free}, {@code round-robin}, or {@code roll} (leader only)</li>
  * </ul>
  */
 public class PartyCommand extends RegistrableCommand {
@@ -49,11 +49,13 @@ public class PartyCommand extends RegistrableCommand {
                  PARTY DECLINE          \u2014 decline a pending party invitation
                  PARTY LEAVE            \u2014 leave your current party
                  PARTY DISBAND          \u2014 disband the party (leader only)
-                 PARTY LOOT <mode>      \u2014 set loot mode: free (floor drops) or round-robin (leader only)
+                 PARTY LOOT <mode>      \u2014 set loot mode: free, round-robin, or roll (leader only)
 
                XP earned from mob kills is split equally among party members in the same room.
                In round-robin loot mode, dropped items are handed to party members in turn instead of
-               landing on the floor. PARTY LOOT with no argument reports the current mode.
+               landing on the floor. In roll mode, every eligible member present rolls 1-100 for each
+               drop and the highest roll wins it (ties re-roll). PARTY LOOT with no argument reports
+               the current mode.
                Add {partyHp} to your prompt format to display party member HP at a glance.\
                """;
     }

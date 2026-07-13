@@ -332,6 +332,20 @@ class PartyServiceTest {
     }
 
     @Test
+    void setLootMode_leaderCanSwitchToRoll() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+
+        PartyResult result = partyService.setLootMode(ALICE, LootMode.ROLL);
+
+        assertTrue(result.success());
+        assertEquals(LootMode.ROLL, partyService.lootMode(ALICE));
+        // Mode is party-wide: every member sees it.
+        assertEquals(LootMode.ROLL, partyService.lootMode(BOB));
+    }
+
+    @Test
     void setLootMode_rejectedForNonLeader() {
         partyService.form(ALICE);
         partyService.invite(ALICE, BOB, true);

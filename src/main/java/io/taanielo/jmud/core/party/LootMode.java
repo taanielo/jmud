@@ -11,6 +11,9 @@ import java.util.Optional;
  *       matching solo behaviour).</li>
  *   <li>{@link #ROUND_ROBIN} — each dropped item is assigned directly to a party member present in
  *       the room, cycling through eligible members in turn across kills.</li>
+ *   <li>{@link #ROLL} — every eligible member present in the room rolls 1-100 for each dropped item;
+ *       the highest roll wins, with ties re-rolled among the tied members until a single winner
+ *       remains.</li>
  * </ul>
  */
 public enum LootMode {
@@ -19,7 +22,10 @@ public enum LootMode {
     FREE("free"),
 
     /** Items are assigned to party members in rotating order. */
-    ROUND_ROBIN("round-robin");
+    ROUND_ROBIN("round-robin"),
+
+    /** Items are awarded to the highest 1-100 roller among eligible members present in the room. */
+    ROLL("roll");
 
     private final String label;
 
@@ -38,7 +44,8 @@ public enum LootMode {
 
     /**
      * Parses a player-supplied loot-mode argument, accepting the canonical labels as well as common
-     * spelling variants ({@code roundrobin}, {@code round_robin}). Matching is case-insensitive.
+     * spelling variants ({@code roundrobin}, {@code round_robin}, {@code dice}). Matching is
+     * case-insensitive.
      *
      * @param input the raw argument text
      * @return the matching mode, or empty when the input names no known mode
@@ -51,6 +58,7 @@ public enum LootMode {
         return switch (normalized) {
             case "free" -> Optional.of(FREE);
             case "round-robin", "roundrobin", "round_robin", "rr" -> Optional.of(ROUND_ROBIN);
+            case "roll", "dice", "need" -> Optional.of(ROLL);
             default -> Optional.empty();
         };
     }
