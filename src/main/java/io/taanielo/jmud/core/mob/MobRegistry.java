@@ -32,12 +32,16 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.CombatAttributeBonusResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.DamageType;
+import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
+import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RangeType;
+import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.flavor.DamageVerb;
 import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
 import io.taanielo.jmud.core.combat.flavor.TargetConditionTable;
@@ -129,6 +133,30 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * root injects the real resolver.
      */
     private EquipmentResistanceResolver resistanceResolver = EquipmentResistanceResolver.noOp();
+    /**
+     * Resolves the total armour class (AC) a defending player contributes from equipped armour, so a
+     * mob's to-hit roll is reduced by the player's gear exactly as it is in a PvP duel. Defaults to a
+     * no-op (zero AC) so mob combat is unchanged until the composition root injects the real resolver.
+     */
+    private EquipmentArmorResolver armorResolver = EquipmentArmorResolver.noOp();
+    /**
+     * Resolves the class-based armour bonus a defending player adds to their AC against a mob's
+     * to-hit roll (e.g. a Paladin's heavy-armour proficiency), mirroring PvP. Defaults to a no-op
+     * until the composition root injects the real resolver.
+     */
+    private ClassArmorBonusResolver classArmorBonusResolver = ClassArmorBonusResolver.noOp();
+    /**
+     * Resolves the race-based armour bonus a defending player adds to their AC against a mob's
+     * to-hit roll, mirroring PvP. Defaults to a no-op until the composition root injects the real
+     * resolver.
+     */
+    private RaceArmorBonusResolver raceArmorBonusResolver = RaceArmorBonusResolver.noOp();
+    /**
+     * Resolves a shield-equipped defending player's block chance/reduction from their off-hand item,
+     * so a mob's landing hit can be blocked for reduced damage exactly as in a PvP duel. Defaults to
+     * a no-op (no block possible) until the composition root injects the real resolver.
+     */
+    private ShieldBlockResolver shieldBlockResolver = ShieldBlockResolver.noOp();
     /**
      * Optional worded-damage verb table. When set, a mob's hit message can substitute {@code {verb}}
      * with the classic-MUD damage tier (e.g. "MAULS") resolved from the damage dealt as a percentage
@@ -254,6 +282,53 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Registers the resolver that sums a defending player's equipped-armour AC, reducing a mob's
+     * chance to hit them so armour matters against mobs, not only in PvP duels. When not set, a no-op
+     * resolver contributing zero AC leaves mob hit chance unchanged.
+     *
+     * @param armorResolver the equipment armour resolver; must not be null
+     */
+    public void setEquipmentArmorResolver(EquipmentArmorResolver armorResolver) {
+        this.armorResolver = Objects.requireNonNull(armorResolver, "Equipment armor resolver is required");
+    }
+
+    /**
+     * Registers the resolver that adds a defending player's class-based armour bonus to their AC
+     * against a mob's to-hit roll (mirroring PvP). When not set, a no-op resolver contributing zero
+     * leaves mob hit chance unchanged.
+     *
+     * @param classArmorBonusResolver the class armour bonus resolver; must not be null
+     */
+    public void setClassArmorBonusResolver(ClassArmorBonusResolver classArmorBonusResolver) {
+        this.classArmorBonusResolver =
+            Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
+    }
+
+    /**
+     * Registers the resolver that adds a defending player's race-based armour bonus to their AC
+     * against a mob's to-hit roll (mirroring PvP). When not set, a no-op resolver contributing zero
+     * leaves mob hit chance unchanged.
+     *
+     * @param raceArmorBonusResolver the race armour bonus resolver; must not be null
+     */
+    public void setRaceArmorBonusResolver(RaceArmorBonusResolver raceArmorBonusResolver) {
+        this.raceArmorBonusResolver =
+            Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
+    }
+
+    /**
+     * Registers the resolver that grants a shield-equipped defending player a chance to block a mob's
+     * landing attack for reduced damage, mirroring PvP. When not set, a no-op resolver leaves mob
+     * damage unblockable.
+     *
+     * @param shieldBlockResolver the shield block resolver; must not be null
+     */
+    public void setShieldBlockResolver(ShieldBlockResolver shieldBlockResolver) {
+        this.shieldBlockResolver =
+            Objects.requireNonNull(shieldBlockResolver, "Shield block resolver is required");
+    }
+
+    /**
      * Registers the worded-damage verb table used to substitute {@code {verb}} in a mob's hit message
      * with the classic-MUD damage tier (e.g. "MAULS"). When not set, {@code {verb}} renders empty.
      *
@@ -306,16 +381,20 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param mob       the struck mob
      * @param damage    the damage dealt this strike
      * @param remaining the mob's HP after the strike
+     * @param crit      whether this strike was a critical hit (prefixed with a "critical hit!" notice)
      * @return the message text to show the attacker
      */
-    private String playerStrikeMessage(MobInstance mob, int damage, int remaining) {
+    private String playerStrikeMessage(MobInstance mob, int damage, int remaining, boolean crit) {
         String mobName = mob.template().name();
+        String critPrefix = crit ? "A critical hit! " : "";
         if (damageVerbTable == null) {
-            return "You strike the " + mobName + " for " + damage + " damage. (" + remaining + " HP remaining)";
+            return critPrefix + "You strike the " + mobName + " for " + damage
+                + " damage. (" + remaining + " HP remaining)";
         }
         int maxHp = mob.template().maxHp();
         DamageVerb verb = damageVerbTable.verbFor(Math.max(1, damage), maxHp);
-        StringBuilder text = new StringBuilder("You ")
+        StringBuilder text = new StringBuilder(critPrefix)
+            .append("You ")
             .append(verb.secondPerson())
             .append(" the ")
             .append(mobName)
@@ -328,6 +407,113 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 .append('.');
         }
         return text.toString();
+    }
+
+    /**
+     * Builds the self-facing line shown to a player whose melee attack missed a mob outright,
+     * so a player's accuracy investment (agility) and a weapon's {@code hit_bonus} produce a
+     * visible miss rather than an unconditional strike.
+     *
+     * @param mob the mob that was swung at
+     * @return the miss message text to show the attacker
+     */
+    private String playerMissMessage(MobInstance mob) {
+        return "You swing at the " + mob.template().name() + " but miss.";
+    }
+
+    /**
+     * Rolls a player attacker's melee to-hit and (on a hit) crit against a mob, mirroring the PvP
+     * {@link io.taanielo.jmud.core.combat.CombatEngine} formula: hit chance is
+     * {@link CombatSettings#baseHitChance()} plus the attack's {@code hit_bonus} plus the attacker's
+     * agility accuracy bonus, clamped to {@code [MIN_HIT_CHANCE, MAX_HIT_CHANCE]}; a mob has no dodge
+     * or armour term yet (implicitly zero). On a hit, crit chance is
+     * {@link CombatSettings#baseCritChance()} plus the attack's {@code crit_bonus} plus the attacker's
+     * agility crit bonus, and a crit multiplies damage by {@link CombatSettings#critMultiplier()}. All
+     * rolls go through the seeded {@link CombatRandom} port so outcomes stay replayable.
+     *
+     * @param attacker the attacking player
+     * @param attack   the resolved attack definition (weapon or unarmed)
+     * @return the resolved hit/crit/damage outcome
+     */
+    private PlayerHitOutcome resolvePlayerHit(Player attacker, AttackDefinition attack) {
+        int hitChance = clamp(
+            CombatSettings.baseHitChance()
+                + attack.hitBonus()
+                + attributeBonusResolver.hitChanceBonus(attacker),
+            CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
+        if (random.roll(1, 100) > hitChance) {
+            return new PlayerHitOutcome(false, false, 0);
+        }
+        int damage = rollDamage(attack, attacker);
+        int critChance = clamp(
+            CombatSettings.baseCritChance()
+                + attack.critBonus()
+                + attributeBonusResolver.critChanceBonus(attacker),
+            0, 100);
+        boolean crit = random.roll(1, 100) <= critChance;
+        if (crit) {
+            damage = Math.max(1, damage * CombatSettings.critMultiplier());
+        }
+        return new PlayerHitOutcome(true, crit, damage);
+    }
+
+    /**
+     * The outcome of a player's melee attack against a mob: whether it landed, whether it was a
+     * critical hit, and the final damage dealt (zero on a miss).
+     */
+    private record PlayerHitOutcome(boolean hit, boolean crit, int damage) {
+    }
+
+    /**
+     * The outcome of a mob's melee attack against a player: whether it landed, whether a shield
+     * blocked it (reducing damage), and the final damage dealt after block and elemental-resistance
+     * mitigation (zero on a miss).
+     */
+    private record MobAttackOutcome(boolean hit, boolean blocked, int damage) {
+    }
+
+    /**
+     * Rolls a mob's melee to-hit against a defending player and, on a hit, resolves a shield block
+     * plus elemental-resistance mitigation, mirroring the PvP
+     * {@link io.taanielo.jmud.core.combat.CombatEngine} formula. Hit chance is
+     * {@link CombatSettings#baseHitChance()} plus the attack's {@code hit_bonus} minus the defender's
+     * total armour AC (equipped armour plus class and race armour bonuses), clamped to
+     * {@code [MIN_HIT_CHANCE, MAX_HIT_CHANCE]}; a mob has no accuracy attribute of its own yet. On a
+     * hit, a shield-equipped defender may block for reduced damage
+     * ({@link ShieldBlockResolver}), after which the existing elemental-resistance mitigation
+     * ({@link #mitigateForDefender}) still applies. All rolls go through the seeded
+     * {@link CombatRandom} port so outcomes stay replayable.
+     *
+     * @param attack the mob's resolved attack definition
+     * @param target the defending player
+     * @return the resolved hit/block/damage outcome
+     */
+    private MobAttackOutcome resolveMobAttack(AttackDefinition attack, Player target) {
+        int defenderAc = armorResolver.totalAc(target)
+            + classArmorBonusResolver.armorBonus(target)
+            + raceArmorBonusResolver.armorBonus(target);
+        int hitChance = clamp(
+            CombatSettings.baseHitChance() + attack.hitBonus() - defenderAc,
+            CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
+        if (random.roll(1, 100) > hitChance) {
+            return new MobAttackOutcome(false, false, 0);
+        }
+        int damage = rollDamage(attack);
+        boolean blocked = false;
+        ShieldBlockResolver.ShieldBlock shieldBlock = shieldBlockResolver.resolve(target);
+        if (shieldBlock.canBlock()) {
+            blocked = random.roll(1, 100) <= clamp(shieldBlock.chancePercent(), 0, 100);
+            if (blocked) {
+                int reduction = clamp(shieldBlock.reductionPercent(), 0, 100);
+                damage = Math.max(1, (int) Math.round(damage * ((100 - reduction) / 100.0)));
+            }
+        }
+        damage = mitigateForDefender(damage, target, attack.damageType());
+        return new MobAttackOutcome(true, blocked, damage);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     /**
@@ -679,14 +865,20 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (attack == null) {
             return GameActionResult.error("Combat error: attack definition not found.");
         }
-        int damage = rollDamage(attack, attacker);
-        int remaining = mob.takeDamage(damage);
-
+        // Engage first so a swing that misses still commits the attacker to the fight, exactly as a
+        // landing strike does; the auto-attack then continues on the next tick (runPlayerCombat).
         mob.engage(attacker.getUsername());
         playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
 
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining)));
+        PlayerHitOutcome outcome = resolvePlayerHit(attacker, attack);
+        if (!outcome.hit()) {
+            messages.add(GameMessage.toSource(playerMissMessage(mob)));
+            return new GameActionResult(null, null, messages);
+        }
+        int damage = outcome.damage();
+        int remaining = mob.takeDamage(damage);
+        messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining, outcome.crit())));
 
         if (!mob.isAlive()) {
             awardMobKill(mob, attacker, roomId, messages);
@@ -2032,7 +2224,40 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         mob.engage(targetUsername);
         playerCombatTargets.put(targetUsername, mob.instanceId());
 
-        int damage = mitigateForDefender(rollDamage(attack), target, attack.damageType());
+        MobAttackOutcome outcome = resolveMobAttack(attack, target);
+        if (!outcome.hit()) {
+            // A miss deals no damage, wears no gear, and applies no on-hit effect. The player may
+            // still be drawn into the fight — thrown from a mount and shown the first-engagement
+            // lunge — mirroring the non-damage side effects of a landing hit.
+            List<GameMessage> messages = new ArrayList<>();
+            Player missedPlayer = target;
+            boolean playerChanged = false;
+            if (missedPlayer.isMounted()) {
+                String mountName = missedPlayer.mount().mountName();
+                missedPlayer = missedPlayer.withMount(PlayerMount.dismounted());
+                playerChanged = true;
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
+            }
+            if (firstEngagement && !useSpecial) {
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + " lunges at you!"));
+            }
+            messages.add(GameMessage.toSource(
+                mobAttackMessage(mob, attack, MessagePhase.ATTACK_MISS, useSpecial, 0,
+                    missedPlayer.getVitals().getMaxHp())));
+            // Only persist/publish an updated source when the miss actually changed the player (a
+            // mount throw); an ordinary miss leaves the player untouched, so no save is needed.
+            Player publishedSource = playerChanged ? missedPlayer : null;
+            if (playerChanged) {
+                saveOrLog(missedPlayer);
+            }
+            playerEventBus.publish(targetUsername,
+                new GameActionResult(publishedSource, null, messages));
+            return;
+        }
+
+        int damage = outcome.damage();
         Player damagedPlayer = target.withVitals(target.getVitals().damage(damage));
 
         if (damagedPlayer.getVitals().hp() <= 0) {
@@ -2050,8 +2275,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 messages.add(GameMessage.toSource(
                     "The " + mob.template().name() + " lunges at you!"));
             }
+            MessagePhase phase = outcome.blocked() ? MessagePhase.ATTACK_BLOCK : MessagePhase.ATTACK_HIT;
             messages.add(GameMessage.toSource(
-                hitMessage(mob, attack, useSpecial, damage, damagedPlayer.getVitals().getMaxHp())));
+                mobAttackMessage(mob, attack, phase, useSpecial, damage,
+                    damagedPlayer.getVitals().getMaxHp())));
             applyOnHitEffect(attack, damagedPlayer, targetUsername, candidates, messages);
             damagedPlayer = degradeEquippedGear(damagedPlayer, messages);
             saveOrLog(damagedPlayer);
@@ -2061,23 +2288,27 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
-     * Builds the self-facing message shown to a player hit by a mob's attack. When the attack
-     * carries a configured {@link MessageSpec} for the {@link MessagePhase#ATTACK_HIT} phase on the
-     * {@link MessageChannel#SELF} channel (e.g. a boss's special ability flavour text), that message
-     * is rendered and used instead of the generic damage line, so special-ability hits read
-     * distinctly from normal attacks.
+     * Builds the self-facing message shown to a player targeted by a mob's attack for the given
+     * outcome {@code phase} (hit, miss, or shield-block). When the attack carries a configured
+     * {@link MessageSpec} for that phase on the {@link MessageChannel#SELF} channel (e.g. a wolf's
+     * authored "snaps at you but misses" line, or a boss's special-ability flavour text), that
+     * message is rendered and used instead of the generic line, so authored miss/crit/block flavour
+     * finally surfaces in the PvE combat players actually do. When the attack defines no message for
+     * the phase, a sensible generic line is produced per phase.
      *
      * @param mob         the attacking mob
-     * @param attack      the attack definition that just landed a hit
-     * @param useSpecial  whether this hit was the mob's special ability rather than its basic attack
-     * @param damage      the damage dealt, substituted into the {@code {damage}} placeholder
+     * @param attack      the attack definition being resolved
+     * @param phase       the outcome phase whose SELF-channel message to render (hit/miss/block)
+     * @param useSpecial  whether this was the mob's special ability rather than its basic attack
+     * @param damage      the damage dealt, substituted into the {@code {damage}} placeholder (0 on a miss)
      * @param targetMaxHp the victim's maximum HP, used to resolve the {@code {verb}} damage tier
      * @return the rendered message text to show the target player
      */
-    private String hitMessage(
-        MobInstance mob, AttackDefinition attack, boolean useSpecial, int damage, int targetMaxHp) {
+    private String mobAttackMessage(
+        MobInstance mob, AttackDefinition attack, MessagePhase phase,
+        boolean useSpecial, int damage, int targetMaxHp) {
         for (MessageSpec spec : attack.messages()) {
-            if (spec.phase() == MessagePhase.ATTACK_HIT && spec.channel() == MessageChannel.SELF) {
+            if (spec.phase() == phase && spec.channel() == MessageChannel.SELF) {
                 DamageVerb verb = damage > 0 && damageVerbTable != null
                     ? damageVerbTable.verbFor(damage, targetMaxHp)
                     : null;
@@ -2085,14 +2316,20 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     null, null, mob.template().name(), null, null, null, attack.name(), damage,
                     verb == null ? null : verb.thirdPerson(),
                     verb == null ? null : verb.secondPerson());
-                return messageRenderer.render(spec, context);
+                String rendered = messageRenderer.render(spec, context);
+                if (rendered != null && !rendered.isBlank()) {
+                    return rendered;
+                }
             }
         }
-        if (useSpecial) {
-            return "The " + mob.template().name() + " unleashes " + attack.name()
-                + " on you for " + damage + " damage!";
-        }
-        return "The " + mob.template().name() + " hits you for " + damage + " damage!";
+        String mobName = mob.template().name();
+        return switch (phase) {
+            case ATTACK_MISS -> "The " + mobName + " misses you.";
+            case ATTACK_BLOCK -> "You block the " + mobName + "'s attack with your shield.";
+            default -> useSpecial
+                ? "The " + mobName + " unleashes " + attack.name() + " on you for " + damage + " damage!"
+                : "The " + mobName + " hits you for " + damage + " damage!";
+        };
     }
 
     /**
@@ -2209,11 +2446,16 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (attack == null) {
                 continue;
             }
-            int damage = rollDamage(attack, player);
-            int remaining = mob.takeDamage(damage);
-
             List<GameMessage> messages = new ArrayList<>();
-            messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining)));
+            PlayerHitOutcome outcome = resolvePlayerHit(player, attack);
+            if (!outcome.hit()) {
+                messages.add(GameMessage.toSource(playerMissMessage(mob)));
+                playerEventBus.publish(username, new GameActionResult(null, null, messages));
+                continue;
+            }
+            int damage = outcome.damage();
+            int remaining = mob.takeDamage(damage);
+            messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining, outcome.crit())));
 
             if (!mob.isAlive()) {
                 // Shared post-kill rewards (loot distribution, party XP, gold, quest credit, etc.)

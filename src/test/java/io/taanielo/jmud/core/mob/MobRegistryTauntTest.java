@@ -234,15 +234,21 @@ class MobRegistryTauntTest {
 
     // ── stubs ─────────────────────────────────────────────────────────
 
-    /** RNG that answers single-value rolls but rejects any genuine random target pick. */
+    /**
+     * RNG that rejects a genuine random target pick — {@code roll(0, candidates.size() - 1)} over two
+     * or more candidates — so a passing taunt test proves the taunt path bypassed target selection.
+     * Combat hit/crit rolls ({@code roll(1, 100)}, since issue #589) are permitted and answered with a
+     * fixed mid-range 50, which lands a normal hit (≤ base hit chance 75) without critting (&gt; base
+     * crit chance 5), so the mob still strikes its (taunt-forced) target every tick.
+     */
     private static final class NoRandomTargetPick implements CombatRandom {
         @Override
         public int roll(int minInclusive, int maxInclusive) {
-            if (minInclusive != maxInclusive) {
+            if (minInclusive == 0 && maxInclusive > 0) {
                 throw new AssertionError(
                     "Mob AI consulted the RNG for target selection despite an active taunt");
             }
-            return minInclusive;
+            return Math.max(minInclusive, Math.min(maxInclusive, 50));
         }
     }
 

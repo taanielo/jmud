@@ -453,6 +453,13 @@ public record GameContext(
             mobRegistry.setEncumbranceService(encumbranceService);
             mobRegistry.setCombatAttributeBonusResolver(combatAttributeBonusResolver);
             mobRegistry.setEquipmentResistanceResolver(equipmentResistanceResolver);
+            // Share the same armour/shield resolver instances the CombatEngine (PvP) uses, so PvE
+            // hit/block resolution mirrors duels without constructing duplicate repository-backed
+            // resolvers (see architecture-review-and-improvement-plan.md D4).
+            mobRegistry.setEquipmentArmorResolver(equipmentArmorResolver);
+            mobRegistry.setClassArmorBonusResolver(classArmorBonusResolver);
+            mobRegistry.setRaceArmorBonusResolver(raceArmorBonusResolver);
+            mobRegistry.setShieldBlockResolver(shieldBlockResolver);
             mobRegistry.setDamageVerbTable(damageVerbTable);
             mobRegistry.setTargetConditionTable(combatFlavor.conditions());
             WorldBossAnnouncer worldBossAnnouncer =

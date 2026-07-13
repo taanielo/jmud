@@ -89,21 +89,43 @@ public class HelpCommand extends RegistrableCommand {
         "  Only one world event is ever open at a time, so when the call goes out, it is the moment",
         "  to move. Whoever lands the killing blow is named to the whole server.");
 
+    private static final List<String> COMBAT_TOPIC = List.of(
+        "Combat: Hits, Crits, and Defence",
+        "  Every blow is rolled, not guaranteed — against other players AND against the monsters",
+        "  you spend most of your time fighting. When you attack a mob you can miss outright, and",
+        "  a landed blow can turn into a critical hit for bonus damage; sharper weapons (a higher",
+        "  hit bonus) and greater agility improve both.",
+        "",
+        "  Defence matters just as much on the receiving end. A mob's swing is rolled against your",
+        "  total armour class, so worn armour makes monsters miss you more often — it is not a",
+        "  duel-only stat. A shield in your off-hand can outright BLOCK an incoming hit, cutting the",
+        "  damage it would have dealt. Elemental resistances (see HELP resistances) then reduce any",
+        "  remaining typed damage on top of that.",
+        "",
+        "  So gear up for the fight you are actually in: better armour, a shield, and agility make",
+        "  you harder to hit and harder to hurt against mobs, not merely in the arena.");
+
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
      * name and its aliases. Looked up after commands but before classes, so {@code HELP resistances}
      * explains a game system that no single command owns.
      */
-    private static final Map<String, List<String>> TOPICS = Map.of(
-        "resistances", RESISTANCE_TOPIC,
-        "resistance", RESISTANCE_TOPIC,
-        "resist", RESISTANCE_TOPIC,
-        "world events", WORLD_EVENTS_TOPIC,
-        "world event", WORLD_EVENTS_TOPIC,
-        "worldevents", WORLD_EVENTS_TOPIC,
-        "worldevent", WORLD_EVENTS_TOPIC,
-        "events", WORLD_EVENTS_TOPIC,
-        "event", WORLD_EVENTS_TOPIC
+    private static final Map<String, List<String>> TOPICS = Map.ofEntries(
+        Map.entry("resistances", RESISTANCE_TOPIC),
+        Map.entry("resistance", RESISTANCE_TOPIC),
+        Map.entry("resist", RESISTANCE_TOPIC),
+        Map.entry("world events", WORLD_EVENTS_TOPIC),
+        Map.entry("world event", WORLD_EVENTS_TOPIC),
+        Map.entry("worldevents", WORLD_EVENTS_TOPIC),
+        Map.entry("worldevent", WORLD_EVENTS_TOPIC),
+        Map.entry("events", WORLD_EVENTS_TOPIC),
+        Map.entry("event", WORLD_EVENTS_TOPIC),
+        Map.entry("combat", COMBAT_TOPIC),
+        Map.entry("armour", COMBAT_TOPIC),
+        Map.entry("armor", COMBAT_TOPIC),
+        Map.entry("shield", COMBAT_TOPIC),
+        Map.entry("shields", COMBAT_TOPIC),
+        Map.entry("block", COMBAT_TOPIC)
     );
 
     private final SocketCommandRegistry registry;
@@ -196,7 +218,7 @@ public class HelpCommand extends RegistrableCommand {
                 context.writeLineSafe(String.format("  %-12s %s", handler.name(), short_));
             }
         }
-        context.writeLineSafe("Topics: HELP resistances, HELP world events");
+        context.writeLineSafe("Topics: HELP combat, HELP resistances, HELP world events");
         context.sendPrompt();
     }
 
