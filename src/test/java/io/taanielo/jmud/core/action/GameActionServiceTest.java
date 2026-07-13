@@ -1107,6 +1107,55 @@ class GameActionServiceTest {
     }
 
     @Test
+    void readItemRefusesAboveLevelAbilityAndKeepsScroll() {
+        Ability haste = new AbilityDefinition(
+            AbilityId.of("spell.haste"), "haste", AbilityType.SPELL, 3,
+            new AbilityCost(4, 0), new AbilityCooldown(3),
+            AbilityTargeting.BENEFICIAL, List.of(),
+            List.of(new AbilityEffect(AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.INCREASE, 6, null)),
+            List.of()
+        );
+        AbilityRegistry registry = new AbilityRegistry(List.of(haste));
+        service = new GameActionService(
+            registry, new BasicAbilityCostResolver(),
+            new EffectEngine(new StubEffectRepository(Map.of())),
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(1)
+            ),
+            roomService,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService()
+        );
+        AbilityId hasteId = AbilityId.of("spell.haste");
+        Item scroll = Item.builder(
+            ItemId.of("scroll-of-haste"), "Scroll of Haste", "A scroll teaching haste.", ItemAttributes.empty())
+            .weight(1)
+            .value(1)
+            .teachesAbilityRef(hasteId)
+            .build();
+        Player withItem = attacker.addItem(scroll); // level 1, below the ability's required level 3
+
+        GameActionResult result = service.readItem(withItem, "scroll of haste");
+
+        assertNull(result.updatedSource(), "Scroll must not be consumed when the ability is above level");
+        assertFalse(
+            withItem.getLearnedAbilities().contains(hasteId),
+            "The above-level ability must not be learned"
+        );
+        assertTrue(
+            withItem.getInventory().contains(scroll),
+            "The scroll must remain in the reader's inventory"
+        );
+        assertEquals(
+            "You are not yet skilled enough to learn haste (requires level 3).",
+            result.messages().getFirst().text()
+        );
+    }
+
+    @Test
     void writeItemReturnsErrorOnEmptyInput() {
         GameActionResult result = service.writeItem(attacker, "");
         assertEquals("Write what?", result.messages().getFirst().text());
