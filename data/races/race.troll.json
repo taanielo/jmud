@@ -6,9 +6,10 @@
     "base_modifier": 2
   },
   "carry_base": 80,
+  "attack_modifier": -3,
   "attributes": {
     "str": 3,
     "int": -3
   },
-  "description": "Hulking brutes famed for rapid regeneration. Trolls heal faster than anyone, letting them outlast drawn-out fights while carrying a hefty load."
+  "description": "Hulking brutes famed for rapid regeneration. Trolls heal faster than anyone and hit with brute strength, but their crude, wild swings land less reliably, so they win drawn-out fights by outlasting foes rather than out-damaging them."
 }

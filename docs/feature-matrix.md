@@ -34,11 +34,27 @@ _Last full audit: 2026-07-13 (seeded by hand)._
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |
 |---|---|---|---|---|
-| dwarf | ✅ | ✅ #521 | ✅ #524 | ❌ |
-| elf | ✅ | ✅ #521 | ✅ #524 | ❌ |
-| human | ✅ | ✅ #521 | ✅ #524 | ❌ |
-| orc | ✅ | ✅ #521 | ✅ #524 | ❌ |
-| troll | ✅ | ✅ #521 | ✅ #524 | ❌ |
+| dwarf | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+| elf | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+| human | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+| orc | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+| troll | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+
+Balance-pass niche rationale (baseline for future passes, #554). Each race has a
+distinct, non-dominated package — for no single class archetype (melee str-build,
+caster int/wis-build, agi-build) is one race's full package a superset of another's:
+
+- **human** — the safe generalist: `agi +1`, `carry 60`, and *no* penalty anywhere. Its
+  upside is genuine (universal agility edge + mid-pack carry) but the least extreme, so
+  it is never the strictly-weakest pick yet never a superset of a specialist either.
+- **elf** — the caster: `int +2`, `agi +2`, `mana +10`, paid for with `str -2`,
+  `healing -2`, `attack -1` and the lowest carry (40).
+- **dwarf** — the tank: `armor +2`, top carry (100), `str +2`, `wis +1`, offset by `agi -1`.
+- **orc** — burst melee dps: `str +3`, `attack +5`, carry 90, paid for with `healing -2`,
+  `mana -5`, `int -2`.
+- **troll** — attrition/sustain melee: `str +3`, `healing +2`, carry 80, but crude
+  `attack -3` (a real melee drawback, unlike the melee-irrelevant `int -3`) plus `int -3`,
+  so it outlasts rather than out-damages orc's burst.
 
 ## Areas
 

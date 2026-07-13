@@ -5,6 +5,9 @@
   "healing": {
     "base_modifier": 0
   },
-  "carry_base": 50,
-  "description": "Versatile and balanced, with no glaring weaknesses. Humans carry a solid load and suit any class, making them the safest choice for a first character."
+  "carry_base": 60,
+  "attributes": {
+    "agi": 1
+  },
+  "description": "Versatile and adaptable, with no glaring weaknesses and a knack for landing on their feet. Humans carry a solid mid-weight load and gain a small edge to agility that helps any class, making them the least extreme and safest choice for a first character."
 }
