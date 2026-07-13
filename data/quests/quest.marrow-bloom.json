@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "marrow-bloom",
+  "name": "The Marrow Mother's End",
+  "description": "The hounds were only her gardeners. Down past the Fungal Canopy and the Rotting Hollow, in the Heart of Rot, Ossuara the Marrow Mother sits half-rooted in the necrotic garden she grew from everything the void above let fall — birthing spore and blight without end, spreading the bloom back up the stair toward the living world. Cross the drowned garden, break her carapace where she feeds, and end the Marrow Bloom at its heart before it climbs.",
+  "target_mob_id": "marrow-mother",
+  "required_kills": 1,
+  "gold_reward": 500,
+  "xp_reward": 1200,
+  "title_reward": "Bloomsbane",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 25,
+  "recommended_level": 47,
+  "repeatable": false,
+  "prerequisite_quest_id": "marrow-cull"
+}
