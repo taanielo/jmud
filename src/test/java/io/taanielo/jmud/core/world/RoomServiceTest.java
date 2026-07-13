@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.output.PlainTextStyler;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
@@ -44,6 +45,42 @@ class RoomServiceTest {
 
         assertTrue(moveResult.moved());
         assertTrue(moveResult.lines().getFirst().contains("move north"));
+        assertTrue(moveResult.lines().stream().anyMatch(l -> l.equals("A bright room.")),
+            "Default (full) move should include the destination's prose description");
+    }
+
+    @Test
+    void briefModeMoveOmitsDestinationDescription() {
+        RoomId roomAId = RoomId.of("a");
+        RoomId roomBId = RoomId.of("b");
+        Room roomA = new Room(
+            roomAId,
+            "Room A",
+            "A quiet room.",
+            Map.of(Direction.NORTH, roomBId),
+            List.of(),
+            List.of()
+        );
+        Room roomB = new Room(
+            roomBId,
+            "Room B",
+            "A bright room.",
+            Map.of(Direction.SOUTH, roomAId),
+            List.of(),
+            List.of()
+        );
+        RoomService service = new RoomService(new TestRoomRepository(Map.of(roomAId, roomA, roomBId, roomB)), roomAId);
+
+        Username player = Username.of("Bob");
+        service.ensurePlayerLocation(player);
+        RoomService.MoveResult moveResult = service.move(
+            player, Direction.NORTH, new PlainTextStyler(), RoomRenderer.DescriptionMode.BRIEF);
+
+        assertTrue(moveResult.moved());
+        assertTrue(moveResult.lines().stream().anyMatch(l -> l.equals("Room B")),
+            "Brief move should still show the destination room name");
+        assertFalse(moveResult.lines().stream().anyMatch(l -> l.equals("A bright room.")),
+            "Brief move should omit the destination's prose description");
     }
 
     @Test

@@ -125,6 +125,7 @@ import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
+import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -474,6 +475,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         session.replacePlayer(player.withAutoLootEnabled(enabled));
         writeLineWithPrompt("AUTOLOOT is now " + (enabled ? "ON" : "OFF"));
+    }
+
+    private void handleBriefCommand(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to change brief mode.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.equals("STATUS")) {
+            writeLineWithPrompt("BRIEF is " + (player.isBriefModeEnabled() ? "ON" : "OFF"));
+            return;
+        }
+        switch (normalized) {
+            case "ON" -> setBriefModeEnabled(true);
+            case "OFF" -> setBriefModeEnabled(false);
+            case "TOGGLE" -> setBriefModeEnabled(!player.isBriefModeEnabled());
+            default -> writeLineWithPrompt("Usage: BRIEF [on|off|toggle|status]");
+        }
+    }
+
+    private void setBriefModeEnabled(boolean enabled) {
+        Player player = session.getPlayer();
+        if (player.isBriefModeEnabled() == enabled) {
+            writeLineWithPrompt("BRIEF is already " + (enabled ? "ON" : "OFF"));
+            return;
+        }
+        session.replacePlayer(player.withBriefModeEnabled(enabled));
+        writeLineWithPrompt("BRIEF is now " + (enabled ? "ON" : "OFF"));
+    }
+
+    private static RoomRenderer.DescriptionMode descriptionModeFor(Player player) {
+        return player.isBriefModeEnabled()
+            ? RoomRenderer.DescriptionMode.BRIEF
+            : RoomRenderer.DescriptionMode.FULL;
     }
 
     // ── AFK / away status (issue #464) ──────────────────────────────────
@@ -1083,7 +1119,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Room oldRoom = currentLook.room();
         String fromRoom = resolveRoomId(player);
         RoomService.MoveResult result =
-            roomService.move(player.getUsername(), direction, session.getTextStyler());
+            roomService.move(player.getUsername(), direction, session.getTextStyler(), descriptionModeFor(player));
         emitMoveAudit(player, direction, fromRoom, result);
         if (result.moved()) {
             player = spendMovePoints(player);
@@ -1285,7 +1321,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Room oldRoom = currentLook.room();
         String fromRoom = resolveRoomId(player);
         RoomService.MoveResult result =
-            roomService.move(player.getUsername(), direction, session.getTextStyler());
+            roomService.move(player.getUsername(), direction, session.getTextStyler(), descriptionModeFor(player));
         emitMoveAudit(player, direction, fromRoom, result);
         if (!result.moved()) {
             cancelFollow(partyService, player.getUsername(),
@@ -1473,6 +1509,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
     @Override
     public void updateAutoLoot(String args) {
         handleAutoLootCommand(args);
+    }
+
+    @Override
+    public void updateBrief(String args) {
+        handleBriefCommand(args);
     }
 
     @Override
