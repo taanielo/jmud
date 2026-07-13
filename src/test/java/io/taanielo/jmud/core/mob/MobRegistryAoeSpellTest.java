@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +33,7 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
@@ -80,6 +83,11 @@ class MobRegistryAoeSpellTest {
     }
 
     private MobRegistry buildRegistry(Player caster, int mobHp, int mobCount, RoomId mobRoom) {
+        return buildRegistry(caster, mobHp, mobCount, mobRoom, MobRegistryTestSupport.random());
+    }
+
+    private MobRegistry buildRegistry(
+        Player caster, int mobHp, int mobCount, RoomId mobRoom, CombatRandom random) {
         MobTemplate template = new MobTemplate(
             MobId.of("mob.goblin"),
             "Goblin",
@@ -108,7 +116,7 @@ class MobRegistryAoeSpellTest {
 
         MobRegistry registry = new MobRegistry(
             templateRepo, itemRepo, attackRepo, roomService, playerRepo,
-            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, random);
         registry.init();
         return registry;
     }
@@ -192,7 +200,83 @@ class MobRegistryAoeSpellTest {
             "All targets slain — the caster is left in no combat");
     }
 
+    @Test
+    void aoeSpell_canMissATarget_dealingNoDamage() {
+        Player caster = mage("merlin");
+        // Single mob; hit roll of 80 exceeds the base hit chance (75), so the spell misses outright.
+        MobRegistry registry = buildRegistry(caster, 100, 1, ROOM_A, new ScriptedRandom(80));
+
+        GameActionResult result = registry.processPlayerAoeSpell(caster, CHAIN_LIGHTNING, ROOM_A);
+
+        assertTrue(containsText(result, "crackles harmlessly past the Goblin"),
+            "A missed target should see the AoE-miss flavour line");
+        assertEquals(0, damageLineCount(result), "A missed target must not produce a strike line");
+        assertEquals(100, registry.getMobsInRoom(ROOM_A).get(0).currentHp(),
+            "A missed target takes no damage");
+        assertTrue(registry.isInCombat(caster.getUsername()),
+            "A missed but surviving target still engages the caster");
+    }
+
+    @Test
+    void aoeSpell_canCritATarget_forBonusDamage() {
+        Player caster = mage("merlin");
+        // Hit roll 10 (<= 75 lands) then crit roll 1 (<= 5 crits): 5 damage becomes 5 * 2 = 10.
+        MobRegistry registry = buildRegistry(caster, 100, 1, ROOM_A, new ScriptedRandom(10, 1));
+
+        GameActionResult result = registry.processPlayerAoeSpell(caster, CHAIN_LIGHTNING, ROOM_A);
+
+        assertTrue(containsText(result, "A critical hit! Your chain-lightning strikes the Goblin"),
+            "A crit should read distinctly from a normal strike");
+        int expectedDamage = 5 * CombatSettings.critMultiplier();
+        assertEquals(100 - expectedDamage, registry.getMobsInRoom(ROOM_A).get(0).currentHp(),
+            "A crit should deal bonus damage equal to the crit multiplier");
+    }
+
+    @Test
+    void aoeSpell_critKillingBlow_stillAwardsKillRewards() {
+        Player caster = mage("merlin");
+        // 8-HP mob survives a normal 5-damage hit but dies to a crit (5 * 2 = 10).
+        MobRegistry registry = buildRegistry(caster, 8, 1, ROOM_A, new ScriptedRandom(10, 1));
+
+        GameActionResult result = registry.processPlayerAoeSpell(caster, CHAIN_LIGHTNING, ROOM_A);
+
+        assertTrue(containsText(result, "You slay the Goblin"),
+            "A crit that reduces the target to zero HP should slay it");
+        assertTrue(containsText(result, "experience points"),
+            "A crit killing blow must still award experience");
+        assertNotNull(result.updatedSource(), "The caster carries mana deduction and rewards");
+        assertTrue(result.updatedSource().getTotalKills() >= 1,
+            "A crit killing blow should count toward the kill total");
+    }
+
     // ── stubs ─────────────────────────────────────────────────────────
+
+    /**
+     * A {@link CombatRandom} returning a fixed sequence of rolls (each clamped into the requested
+     * range) so hit/crit outcomes are fully deterministic. {@link #nextDouble()} returns {@code 1.0}
+     * so loot/wander probability gates never consume a scripted roll.
+     */
+    private static final class ScriptedRandom implements CombatRandom {
+        private final Deque<Integer> rolls = new ArrayDeque<>();
+
+        ScriptedRandom(int... values) {
+            for (int value : values) {
+                rolls.add(value);
+            }
+        }
+
+        @Override
+        public int roll(int minInclusive, int maxInclusive) {
+            Integer next = rolls.poll();
+            int value = next == null ? minInclusive : next;
+            return Math.max(minInclusive, Math.min(maxInclusive, value));
+        }
+
+        @Override
+        public double nextDouble() {
+            return 1.0;
+        }
+    }
 
     private record StubMobTemplateRepository(List<MobTemplate> templates)
         implements MobTemplateRepository {
