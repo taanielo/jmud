@@ -12,23 +12,23 @@ Machine-checkable [V] aspects disappear from this file once the corresponding
 `--validate-data` rule exists (the validator then owns them); this matrix tracks
 what validation cannot.
 
-_Last full audit: 2026-07-12 (seeded by hand)._
+_Last full audit: 2026-07-13 (seeded by hand)._
 
 ## Classes
 
 | Class | L1 offense | Trainable pool | Level gains | Attributes | Creation description | HELP entry | Balance pass |
 |---|---|---|---|---|---|---|---|
-| adventurer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| bard | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| cleric | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| druid | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| mage | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| necromancer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| paladin | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| ranger | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| rogue | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| shaman | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
-| warrior | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ❌ | ❌ |
+| adventurer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| bard | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| cleric | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| druid | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| mage | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| necromancer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| paladin | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| ranger | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| rogue | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| shaman | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
+| warrior | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | 🔨 #547 | ❌ |
 
 ## Races
 
