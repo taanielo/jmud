@@ -102,6 +102,45 @@ class HelpCommandTest {
     }
 
     @Test
+    void resistancesTopicExplainsElementalResistance() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = new HelpCommand(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP resistances").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("Elemental Resistances"), "Should show the resistances topic heading");
+        assertTrue(combined.contains("fire_resist"), "Should mention the resistance stat convention");
+        assertTrue(context.promptMessage.isBlank(),
+                "A known topic must not produce the not-found message");
+    }
+
+    @Test
+    void resistTopicAliasResolves() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = new HelpCommand(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP resist").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("Elemental Resistances"), "Alias 'resist' should resolve the topic");
+    }
+
+    @Test
+    void baseListingAdvertisesTheResistancesTopic() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = new HelpCommand(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("HELP resistances"), "Base listing should advertise the topic");
+    }
+
+    @Test
     void detailShowsLongDescriptionForKnownCommand() {
         SocketCommandRegistry registry = new SocketCommandRegistry();
         registry.register(stubCommand("foo", "Short foo", "Long foo description\nSecond line"));

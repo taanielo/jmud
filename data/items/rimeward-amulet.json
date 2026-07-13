@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "rimeward-amulet",
+  "name": "the Rimeward Amulet",
+  "description": "A pendant of blue-white glacier ice, kept forever frozen by a wisp of a blizzard wraith's own chill sealed inside it. Worn against the skin it sheds a numbing cold outward instead of in, turning the bite of frost and glacial breath so that the wearer can walk the summit of the Frozen Peaks without their blood slowing to a stop.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "cold_resist": 25
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 180,
+  "rarity": "uncommon",
+  "attack_ref": null
+}

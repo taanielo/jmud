@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.taanielo.jmud.core.output.PlainTextStyler;
 import io.taanielo.jmud.core.output.TextStyler;
@@ -23,6 +25,7 @@ public final class EquipmentListing {
 
     private static final String HEADER = "You are wearing:";
     private static final String EMPTY_SLOT = "(empty)";
+    private static final String RESIST_STAT_SUFFIX = "_resist";
     private static final TextStyler PLAIN = new PlainTextStyler();
 
     private EquipmentListing() {
@@ -71,10 +74,31 @@ public final class EquipmentListing {
                 String itemName = item != null
                     ? styler.rarity(item.presentationName(), item.presentationRarity())
                     : equipped.getValue();
-                lines.add(String.format("  %-8s : %s", label, itemName));
+                lines.add(String.format("  %-8s : %s%s", label, itemName, resistSuffix(item)));
             }
         }
         return List.copyOf(lines);
+    }
+
+    /**
+     * Renders the elemental-resistance annotation for an equipped item, e.g. {@code " [cold_resist
+     * 25, fire_resist 10]"}, so a player can see at a glance which resistances their worn gear
+     * provides. Returns an empty string when the item is unknown or carries no {@code *_resist}
+     * stat, leaving ordinary gear lines unchanged.
+     */
+    private static String resistSuffix(Item item) {
+        if (item == null || item.getAttributes() == null) {
+            return "";
+        }
+        Map<String, Integer> stats = item.getAttributes().getStats();
+        if (stats == null || stats.isEmpty()) {
+            return "";
+        }
+        String resists = new TreeMap<>(stats).entrySet().stream()
+            .filter(e -> e.getKey().endsWith(RESIST_STAT_SUFFIX) && e.getValue() != null && e.getValue() != 0)
+            .map(e -> e.getKey() + " " + e.getValue())
+            .collect(Collectors.joining(", "));
+        return resists.isEmpty() ? "" : " [" + resists + "]";
     }
 
     private static String capitalize(String s) {

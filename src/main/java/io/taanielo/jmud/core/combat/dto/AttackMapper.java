@@ -7,6 +7,7 @@ import java.util.Objects;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.WeaponType;
 import io.taanielo.jmud.core.effects.EffectId;
@@ -21,7 +22,9 @@ import io.taanielo.jmud.core.messaging.MessageSpecMapper;
  * additionally accepts an optional {@code applies_effect} field describing an on-hit
  * status effect application. Schema version 5 additionally accepts an optional
  * {@code range_type} field ({@code MELEE} or {@code RANGED}); it defaults to
- * {@link RangeType#MELEE} when absent or unrecognised.
+ * {@link RangeType#MELEE} when absent or unrecognised. Schema version 6 additionally accepts an
+ * optional {@code damage_type} field; it defaults to {@link DamageType#PHYSICAL} when absent or
+ * unrecognised, so every pre-v6 attack file loads as physical damage unchanged.
  */
 public class AttackMapper {
 
@@ -37,13 +40,15 @@ public class AttackMapper {
         if (dto.schemaVersion() != AttackSchemaVersions.V2
             && dto.schemaVersion() != AttackSchemaVersions.V3
             && dto.schemaVersion() != AttackSchemaVersions.V4
-            && dto.schemaVersion() != AttackSchemaVersions.V5) {
+            && dto.schemaVersion() != AttackSchemaVersions.V5
+            && dto.schemaVersion() != AttackSchemaVersions.V6) {
             throw new IllegalArgumentException("Unsupported attack schema version " + dto.schemaVersion());
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
         WeaponType weaponType = parseWeaponType(dto.weaponType());
         AttackEffectApplication effectOnHit = parseEffectOnHit(dto.appliesEffect());
         RangeType rangeType = parseRangeType(dto.rangeType());
+        DamageType damageType = DamageType.fromString(dto.damageType());
         return new AttackDefinition(
             AttackId.of(dto.id()),
             dto.name(),
@@ -55,7 +60,8 @@ public class AttackMapper {
             messages,
             weaponType,
             effectOnHit,
-            rangeType
+            rangeType,
+            damageType
         );
     }
 

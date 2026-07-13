@@ -54,6 +54,7 @@ import io.taanielo.jmud.core.combat.CombatEngine;
 import io.taanielo.jmud.core.combat.CombatModifierResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
+import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
 import io.taanielo.jmud.core.combat.OffhandAttackResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
@@ -325,6 +326,7 @@ public record GameContext(
         EffectEngine effectEngine = new EffectEngine(effectRepository);
 
         EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
+        EquipmentResistanceResolver equipmentResistanceResolver = new EquipmentResistanceResolver(itemRepository);
         ShieldBlockResolver shieldBlockResolver = new ShieldBlockResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
         ClassArmorBonusResolver classArmorBonusResolver = new ClassArmorBonusResolver(classRepository);
@@ -353,7 +355,8 @@ public record GameContext(
         DamageVerbTable damageVerbTable = combatFlavor.damageVerbs();
         CombatEngine combatEngine = createCombatEngine(
                 effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, shieldBlockResolver, combatAttributeBonusResolver, attackRepository,
+                equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver,
+                combatAttributeBonusResolver, attackRepository,
                 tickClock::currentTick, effectEngine, seededRng, worldSeed, damageVerbTable);
 
         // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
@@ -447,6 +450,7 @@ public record GameContext(
             mobRegistry.setPartyService(partyService);
             mobRegistry.setEncumbranceService(encumbranceService);
             mobRegistry.setCombatAttributeBonusResolver(combatAttributeBonusResolver);
+            mobRegistry.setEquipmentResistanceResolver(equipmentResistanceResolver);
             mobRegistry.setDamageVerbTable(damageVerbTable);
             mobRegistry.setTargetConditionTable(combatFlavor.conditions());
             mobRegistry.setWorldBossAnnouncer(
@@ -770,6 +774,7 @@ public record GameContext(
         RaceAttackBonusResolver attackBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
         EquipmentArmorResolver equipmentArmorResolver,
+        EquipmentResistanceResolver equipmentResistanceResolver,
         ShieldBlockResolver shieldBlockResolver,
         CombatAttributeBonusResolver attributeBonusResolver,
         JsonAttackRepository attackRepository,
@@ -785,7 +790,8 @@ public record GameContext(
             CombatRandom threadLocalRandom = new ThreadLocalCombatRandom();
             return new CombatEngine(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-                equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, attributeBonusResolver,
+                equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver, offhandAttackResolver,
+                attributeBonusResolver,
                 (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine, verbTable);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
@@ -793,7 +799,8 @@ public record GameContext(
         SeededCombatRandomProvider provider = new SeededCombatRandomProvider(worldSeed);
         return new CombatEngine(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
-            equipmentArmorResolver, shieldBlockResolver, offhandAttackResolver, attributeBonusResolver,
+            equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver, offhandAttackResolver,
+            attributeBonusResolver,
             provider, tickSupplier, effectEngine, verbTable);
     }
 

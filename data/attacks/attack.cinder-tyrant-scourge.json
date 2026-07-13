@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "attack.cinder-tyrant-scourge",
   "name": "Cinder Scourge",
   "min_damage": 38,
@@ -8,6 +8,7 @@
   "crit_bonus": 4,
   "damage_bonus": 10,
   "weapon_type": "BLUNT",
+  "damage_type": "FIRE",
   "applies_effect": {
     "effect_id": "poison",
     "chance_percent": 70

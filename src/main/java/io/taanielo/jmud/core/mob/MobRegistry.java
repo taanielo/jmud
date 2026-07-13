@@ -33,6 +33,8 @@ import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatAttributeBonusResolver;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.DamageType;
+import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
 import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.flavor.DamageVerb;
 import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
@@ -117,6 +119,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      * mob combat is unchanged until the composition root injects the real resolver.
      */
     private CombatAttributeBonusResolver attributeBonusResolver = CombatAttributeBonusResolver.noOp();
+    /**
+     * Resolves the defending player's elemental resistance from equipped armour, so a mob's typed
+     * attack (e.g. a fire wyrm's cinder breath) is mitigated by the player's {@code *_resist} gear.
+     * Defaults to a no-op so mob combat is unchanged (physical damage only) until the composition
+     * root injects the real resolver.
+     */
+    private EquipmentResistanceResolver resistanceResolver = EquipmentResistanceResolver.noOp();
     /**
      * Optional worded-damage verb table. When set, a mob's hit message can substitute {@code {verb}}
      * with the classic-MUD damage tier (e.g. "MAULS") resolved from the damage dealt as a percentage
@@ -204,6 +213,19 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     public void setCombatAttributeBonusResolver(CombatAttributeBonusResolver attributeBonusResolver) {
         this.attributeBonusResolver =
             Objects.requireNonNull(attributeBonusResolver, "Attribute bonus resolver is required");
+    }
+
+    /**
+     * Registers the resolver that mitigates a mob's typed (non-physical) attack by the defending
+     * player's equipped elemental resistance, so zone-appropriate resist gear matters against a
+     * fire/cold/poison-flavoured mob attack. When not set, a no-op resolver leaves mob damage
+     * unchanged.
+     *
+     * @param resistanceResolver the equipment resistance resolver; must not be null
+     */
+    public void setEquipmentResistanceResolver(EquipmentResistanceResolver resistanceResolver) {
+        this.resistanceResolver =
+            Objects.requireNonNull(resistanceResolver, "Equipment resistance resolver is required");
     }
 
     /**
@@ -1770,7 +1792,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         mob.engage(targetUsername);
         playerCombatTargets.put(targetUsername, mob.instanceId());
 
-        int damage = rollDamage(attack);
+        int damage = mitigateForDefender(rollDamage(attack), target, attack.damageType());
         Player damagedPlayer = target.withVitals(target.getVitals().damage(damage));
 
         if (damagedPlayer.getVitals().hp() <= 0) {
@@ -2140,6 +2162,30 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             ? attack.minDamage() + random.roll(0, range)
             : attack.minDamage();
         return Math.max(1, base + attack.damageBonus());
+    }
+
+    /**
+     * Reduces a mob's rolled damage by the defending player's equipped elemental resistance for the
+     * attack's {@link DamageType}. Physical (and untyped) attacks are never reduced. The summed
+     * resistance percentage is capped at {@link CombatSettings#maxResistancePercent()} so a typed
+     * blow always lands for at least 1 damage — resistance never grants full immunity.
+     *
+     * @param rawDamage  the pre-mitigation damage rolled for the attack (at least 1)
+     * @param defender   the player being struck
+     * @param damageType the elemental type of the incoming attack
+     * @return the mitigated damage, never below 1
+     */
+    private int mitigateForDefender(int rawDamage, Player defender, DamageType damageType) {
+        if (!damageType.isResistible()) {
+            return rawDamage;
+        }
+        int resistPercent = Math.max(0, Math.min(
+            resistanceResolver.totalResistance(defender, damageType),
+            CombatSettings.maxResistancePercent()));
+        if (resistPercent <= 0) {
+            return rawDamage;
+        }
+        return Math.max(1, (int) Math.round(rawDamage * ((100 - resistPercent) / 100.0)));
     }
 
     /**

@@ -22,7 +22,7 @@ Each JSON file includes a `schema_version` field. Versioned JSON schemas live un
 - Items: `docs/schemas/item.v1.json` (latest: `docs/schemas/item.v13.json`; `data/items/*.json`, one file per item). The loader accepts any of `schema_version` 3–13, so older item files load unchanged. Each newer version adds one optional, additive, backward-compatible change: v6 `light_radius`, v7 `max_durability`/`durability`, v8 `rarity`/`affixes`, v9 `identified`, v10 `locked`, v11 `two_handed`, v12 `mount_move_discount`, v13 adds the `neck` and `finger` values to the `equip_slot` enum (amulet/necklace and ring slots, one item each, worn and validated exactly like the existing seven slots with no combat special-casing). v11's `two_handed` is an optional boolean (default `false`) marking a weapon as needing both hands: equipping a two-handed weapon into the `weapon` slot auto-unequips any `offhand` item back into the pack, and while a two-handed weapon is worn, equipping an `offhand` item (shield or second weapon) is refused — so the dual-wield off-hand attack and shield block never apply. Two-handed weapons are flagged `(two-handed)` in EQUIPMENT and EXAMINE. v12's `mount_move_discount` is an optional positive integer marking a carried item as a rideable mount (a pony, a warhorse): a player `MOUNT`s the item to reduce each outdoor step's move-point cost by that amount (floored at zero), and `DISMOUNT`s (or is thrown off automatically on entering combat or moving indoors) to return to normal. The ridden state is transient and never persisted, though the mount item stays in inventory. One-handed weapons, non-mount items, and item files lacking these fields behave exactly as before.
 - Rooms: `docs/schemas/room.v1.json`
 - Abilities (skills/spells): `docs/schemas/ability.v1.json`
-- Attacks: `docs/schemas/attack.v1.json`
+- Attacks: `docs/schemas/attack.v1.json` (latest: `docs/schemas/attack.v6.json`; `data/attacks/*.json`, one file per attack). The loader accepts `schema_version` 2–6, so older attack files load unchanged. Each newer version adds one optional, additive, backward-compatible field: v3 `weapon_type` (default `SLASHING`), v4 `applies_effect` (on-hit status effect), v5 `range_type` (default `MELEE`), v6 `damage_type` (default `PHYSICAL`). v6's `damage_type` is one of `PHYSICAL`, `FIRE`, `COLD`, `POISON`: a non-physical attack has its computed damage reduced by the defender's matching `*_resist` armour stat (see below), capped at 75% so resistance never grants full immunity. Attack files that omit `damage_type` deal physical damage exactly as before.
 - Races: `docs/schemas/race.v1.json`
 - Classes: `docs/schemas/class.v1.json`
 - Auction listings: `docs/schemas/auction.v1.json` (`data/auctions/listings.json`; the static Auction House definition lives in `data/auctions/auction-house.*.json`, following the `data/banks/bank.*.json` shape)
@@ -115,6 +115,20 @@ Attack example (`data/attacks/attack.unarmed.json`):
   "damage_bonus": 0
 }
 ```
+
+### Elemental resistance item stats (no item schema bump)
+
+Armour resists elemental damage through the item's existing free-form `attributes.stats`
+map — the same `string -> int` mechanism that already carries `ac`. A stat key named
+`<element>_resist` (e.g. `fire_resist`, `cold_resist`, `poison_resist`) with a whole-number
+value means "reduce incoming damage of that element by that percent". Because `stats` is
+already a generic map, **no item schema version bump is required** to itemize resistance —
+existing items simply gain a new conventional key. Resistances from every equipped slot are
+summed by `EquipmentResistanceResolver` (mirroring `EquipmentArmorResolver.totalAc`) and the
+total is capped at `CombatSettings.maxResistancePercent()` (default 75) at the point of
+mitigation. `EXAMINE`, `COMPARE`, and `EQUIPMENT` surface these stats the same way `ac` is
+already surfaced. Example: a cloak with `"cold_resist": 25` cuts a frost wyrm's glacial-breath
+damage by a quarter.
 
 Race example (`data/races/race.elf.json`):
 

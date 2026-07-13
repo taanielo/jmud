@@ -10,7 +10,12 @@
   "max_count": 2,
   "respawn_ticks": 50,
   "xp_reward": 175,
-  "loot": [],
+  "loot": [
+    {
+      "item_id": "rimeward-amulet",
+      "drop_chance": 0.2
+    }
+  ],
   "gold_drop": {
     "min": 30,
     "max": 60
