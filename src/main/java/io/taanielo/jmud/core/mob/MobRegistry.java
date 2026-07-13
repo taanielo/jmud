@@ -422,6 +422,38 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Builds the self-facing line shown to a player who has just landed a ranged shot (SHOOT) on a
+     * mob in an adjacent room, mirroring the melee {@link #playerStrikeMessage} but keeping the
+     * ranged "You fire at ... to the <direction>" phrasing. A critical hit is prefixed with a
+     * "critical hit!" notice so a crit reads distinctly from a normal shot.
+     *
+     * @param mob       the struck mob
+     * @param damage    the damage dealt by this shot
+     * @param remaining the mob's HP after the shot
+     * @param direction the direction of the adjacent room the mob is in
+     * @param crit      whether this shot was a critical hit
+     * @return the message text to show the shooter
+     */
+    private String rangedStrikeMessage(
+        MobInstance mob, int damage, int remaining, Direction direction, boolean crit) {
+        String critPrefix = crit ? "A critical hit! " : "";
+        return critPrefix + "You fire at the " + mob.template().name() + " to the "
+            + direction.label() + " for " + damage + " damage. (" + remaining + " HP remaining)";
+    }
+
+    /**
+     * Builds the self-facing line shown to a player whose ranged shot (SHOOT) missed a mob outright,
+     * so a shooter's accuracy investment (agility) and a bow's {@code hit_bonus} produce a visible
+     * miss rather than an unconditional hit.
+     *
+     * @param mob the mob that was fired at
+     * @return the miss message text to show the shooter
+     */
+    private String rangedMissMessage(MobInstance mob) {
+        return "Your arrow sails wide of the " + mob.template().name() + ".";
+    }
+
+    /**
      * Rolls a player attacker's melee to-hit and (on a hit) crit against a mob, mirroring the PvP
      * {@link io.taanielo.jmud.core.combat.CombatEngine} formula: hit chance is
      * {@link CombatSettings#baseHitChance()} plus the attack's {@code hit_bonus} plus the attacker's
@@ -1336,10 +1368,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * <p>The player must be wielding a weapon whose attack is classified {@link RangeType#RANGED}
      * (see {@link AttackDefinition#isRanged()}); melee weapons and being unarmed are rejected. The
      * named direction must be a valid exit from {@code roomId}, and a live, attackable mob matching
-     * {@code targetName} must occupy that adjacent room. On a hit the mob takes damage and, if it
-     * survives, retaliates by closing the distance — moving into the shooter's room and engaging
-     * them so it attacks in melee on subsequent ticks. All mutation happens on the tick thread via
-     * the player command queue (AGENTS.md §5).
+     * {@code targetName} must occupy that adjacent room. The shot rolls to hit and crit through the
+     * same seeded {@link #resolvePlayerHit} resolution as a melee swing (issue #591), so the
+     * shooter's agility and the bow's {@code hit_bonus}/{@code crit_bonus} matter and a shot can
+     * miss or crit. A missed shot deals no damage and gives the target no reason to close — the mob
+     * stays put and does not engage. On a landing hit (normal or critical) the mob takes damage and,
+     * if it survives, retaliates by closing the distance — moving into the shooter's room and
+     * engaging them so it attacks in melee on subsequent ticks. All mutation happens on the tick
+     * thread via the player command queue (AGENTS.md §5).
      *
      * @param attacker   the shooting player
      * @param targetName the raw mob-name input to fire at
@@ -1378,17 +1414,39 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (mob.template().hasTag("npc")) {
             return GameActionResult.error("You cannot attack that.");
         }
-        int damage = rollDamage(attack, attacker);
-        int remaining = mob.takeDamage(damage);
-
         List<GameMessage> messages = new ArrayList<>();
         String mobName = mob.template().name();
+        String shooterName = attacker.getUsername().getValue();
+
+        // A shot rolls to hit and crit through the same seeded resolution as a melee swing
+        // (issue #591), so the shooter's agility and the bow's hit/crit bonuses matter.
+        PlayerHitOutcome outcome = resolvePlayerHit(attacker, attack);
+        if (!outcome.hit()) {
+            // A missed shot deals no damage and gives the target no reason to close the distance:
+            // the mob does not aggro, engage, or charge into the shooter's room (AGENTS.md §5).
+            messages.add(GameMessage.toSource(rangedMissMessage(mob)));
+            for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+                if (occupant.equals(attacker.getUsername())) {
+                    continue;
+                }
+                playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                    GameMessage.toSource(shooterName + " fires at the " + mobName
+                        + " to the " + direction.label() + " but misses."))));
+            }
+            for (Username occupant : roomService.getPlayersInRoom(adjacentRoomId)) {
+                playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                    GameMessage.toSource("An arrow flies in from the " + direction.opposite().label()
+                        + " and sails wide of the " + mobName + "."))));
+            }
+            return new GameActionResult(null, null, messages);
+        }
+
+        int damage = outcome.damage();
+        int remaining = mob.takeDamage(damage);
         messages.add(GameMessage.toSource(
-            "You fire at the " + mobName + " to the " + direction.label() + " for " + damage
-                + " damage. (" + remaining + " HP remaining)"));
+            rangedStrikeMessage(mob, damage, remaining, direction, outcome.crit())));
 
         // Announce the shot to bystanders in the shooter's room.
-        String shooterName = attacker.getUsername().getValue();
         for (Username occupant : roomService.getPlayersInRoom(roomId)) {
             if (occupant.equals(attacker.getUsername())) {
                 continue;
