@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "attack.frost-wyrm-breath",
   "name": "Glacial Breath",
   "min_damage": 34,
@@ -8,6 +8,7 @@
   "crit_bonus": 4,
   "damage_bonus": 8,
   "weapon_type": "BLUNT",
+  "damage_type": "COLD",
   "applies_effect": {
     "effect_id": "freeze",
     "chance_percent": 65

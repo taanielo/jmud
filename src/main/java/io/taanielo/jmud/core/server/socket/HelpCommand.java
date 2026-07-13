@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -46,6 +47,36 @@ import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
  * command is executed, so newly registered commands are visible immediately.
  */
 public class HelpCommand extends RegistrableCommand {
+
+    private static final List<String> RESISTANCE_TOPIC = List.of(
+        "Elemental Resistances",
+        "  Not all damage is alike. Most weapons deal ordinary physical damage, but some",
+        "  attacks — a fire wyrm's cinder breath, a frost wyrm's glacial breath, a void",
+        "  wraith's warmth-devouring dark — deal a specific element: FIRE, COLD, or POISON.",
+        "",
+        "  Armour can carry a matching resistance stat, e.g. fire_resist or cold_resist, that",
+        "  reduces incoming damage of that element by that percentage. Resistances from every",
+        "  equipped piece add together, but are capped so an elemental blow always deals at",
+        "  least some damage — resistance never grants full immunity. Physical damage is never",
+        "  reduced by resistance.",
+        "",
+        "  Seek out zone-appropriate gear: cold-resist gear near the Frozen Peaks and the",
+        "  Voidscar, fire-resist gear in the Emberdeep, Cinder Reaches, and beneath them.",
+        "",
+        "  EXAMINE an item to see its resistance stats, COMPARE two items to weigh a swap, and",
+        "  EQUIPMENT to review the resistances your worn gear currently provides."
+    );
+
+    /**
+     * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
+     * name and its aliases. Looked up after commands but before classes, so {@code HELP resistances}
+     * explains a game system that no single command owns.
+     */
+    private static final Map<String, List<String>> TOPICS = Map.of(
+        "resistances", RESISTANCE_TOPIC,
+        "resistance", RESISTANCE_TOPIC,
+        "resist", RESISTANCE_TOPIC
+    );
 
     private final SocketCommandRegistry registry;
     private final ClassRepository classRepository;
@@ -137,6 +168,7 @@ public class HelpCommand extends RegistrableCommand {
                 context.writeLineSafe(String.format("  %-12s %s", handler.name(), short_));
             }
         }
+        context.writeLineSafe("Topics: HELP resistances");
         context.sendPrompt();
     }
 
@@ -161,6 +193,15 @@ public class HelpCommand extends RegistrableCommand {
                 return;
             }
             for (String line : desc.split("\n", -1)) {
+                context.writeLineSafe(line);
+            }
+            context.sendPrompt();
+            return;
+        }
+
+        List<String> topic = TOPICS.get(lower);
+        if (topic != null) {
+            for (String line : topic) {
                 context.writeLineSafe(line);
             }
             context.sendPrompt();

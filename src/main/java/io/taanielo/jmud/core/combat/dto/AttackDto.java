@@ -16,6 +16,10 @@ import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
  *
  * <p>Schema version 5 adds the optional {@code range_type} field ({@code MELEE} or
  * {@code RANGED}); files that omit it default to {@code MELEE}.
+ *
+ * <p>Schema version 6 adds the optional {@code damage_type} field ({@code PHYSICAL},
+ * {@code FIRE}, {@code COLD}, {@code POISON}, …); files that omit it default to
+ * {@code PHYSICAL}, so every existing attack file remains valid unchanged.
  */
 public record AttackDto(
     int schemaVersion,
@@ -29,7 +33,8 @@ public record AttackDto(
     List<MessageSpecDto> messages,
     String weaponType,
     AppliesEffectDto appliesEffect,
-    String rangeType
+    String rangeType,
+    String damageType
 ) {
 
     /**

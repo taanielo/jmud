@@ -10,6 +10,7 @@ public final class CombatSettings {
     public static final int DEFAULT_BLOCK_REDUCTION_PERCENT = 50;
     public static final int DEFAULT_OFFHAND_HIT_PENALTY_PERCENT = 25;
     public static final int DEFAULT_OFFHAND_DAMAGE_PERCENT = 50;
+    public static final int DEFAULT_MAX_RESISTANCE_PERCENT = 75;
     public static final String DEFAULT_ATTACK_ID = "attack.unarmed";
     public static final int DEFAULT_ATTACK_CADENCE_TICKS = 1;
 
@@ -100,6 +101,22 @@ public final class CombatSettings {
             throw new IllegalArgumentException("Offhand damage percent must be in [0, 100]");
         }
         return percent;
+    }
+
+    /**
+     * The maximum percentage by which equipped elemental resistance may reduce incoming
+     * non-physical damage. Capped so that stacking resistance gear can never grant full immunity —
+     * a resisted blow always deals at least {@code 100 - maxResistancePercent()} percent of its
+     * computed damage (before the 1-damage floor). Clamped to the range {@code [0, 100]}.
+     *
+     * @return the resistance mitigation cap as a percentage, in {@code [0, 100]}
+     */
+    public static int maxResistancePercent() {
+        int cap = CONFIG.getInt("jmud.combat.max_resistance_percent", DEFAULT_MAX_RESISTANCE_PERCENT);
+        if (cap < 0 || cap > 100) {
+            throw new IllegalArgumentException("Max resistance percent must be in [0, 100]");
+        }
+        return cap;
     }
 
     public static AttackId defaultAttackId() {

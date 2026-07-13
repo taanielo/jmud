@@ -36,6 +36,7 @@ public class CombatEngine {
     private final RaceAttackBonusResolver attackBonusResolver;
     private final ClassArmorBonusResolver classArmorBonusResolver;
     private final EquipmentArmorResolver equipmentArmorResolver;
+    private final EquipmentResistanceResolver equipmentResistanceResolver;
     private final ShieldBlockResolver shieldBlockResolver;
     private final OffhandAttackResolver offhandAttackResolver;
     private final CombatAttributeBonusResolver attributeBonusResolver;
@@ -401,6 +402,65 @@ public class CombatEngine {
         EffectEngine effectEngine,
         DamageVerbTable verbTable
     ) {
+        this(
+            attackRepository,
+            modifierResolver,
+            armorBonusResolver,
+            attackBonusResolver,
+            classArmorBonusResolver,
+            equipmentArmorResolver,
+            EquipmentResistanceResolver.noOp(),
+            shieldBlockResolver,
+            offhandAttackResolver,
+            attributeBonusResolver,
+            randomProvider,
+            tickSupplier,
+            effectEngine,
+            verbTable
+        );
+    }
+
+    /**
+     * Fully-wired constructor that additionally resolves elemental-resistance mitigation for the
+     * defender. Non-physical attacks (see {@link AttackDefinition#damageType()}) have their computed
+     * damage reduced by the defender's total {@code *_resist} percentage from equipped armour
+     * (resolved by {@link EquipmentResistanceResolver}), capped at
+     * {@link CombatSettings#maxResistancePercent()} so resistance never grants full immunity. A
+     * {@link EquipmentResistanceResolver#noOp()} resolver disables mitigation, which is the
+     * behaviour of every constructor above.
+     *
+     * @param attackRepository            source of attack definitions
+     * @param modifierResolver            resolves combat modifier chains from player effects
+     * @param armorBonusResolver          resolves race-based AC bonuses on the target
+     * @param attackBonusResolver         resolves race-based attack (hit-chance) bonuses on the attacker
+     * @param classArmorBonusResolver     resolves class-based AC bonuses on the target
+     * @param equipmentArmorResolver      resolves equipment-based AC bonuses on the target
+     * @param equipmentResistanceResolver resolves equipment-based elemental resistance on the target
+     * @param shieldBlockResolver         resolves the target's off-hand shield block chance/reduction
+     * @param offhandAttackResolver       resolves the attacker's off-hand dual-wield weapon, if any
+     * @param attributeBonusResolver      resolves strength/agility combat bonuses from core attributes
+     * @param randomProvider              produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier                supplies the current world tick number
+     * @param effectEngine                applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                                    {@code null} disables on-hit effect application
+     * @param verbTable                   resolves worded-damage verbs; {@code null} disables verb rendering
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        EquipmentResistanceResolver equipmentResistanceResolver,
+        ShieldBlockResolver shieldBlockResolver,
+        OffhandAttackResolver offhandAttackResolver,
+        CombatAttributeBonusResolver attributeBonusResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine,
+        DamageVerbTable verbTable
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
@@ -408,6 +468,8 @@ public class CombatEngine {
         this.classArmorBonusResolver =
             Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         this.equipmentArmorResolver = Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
+        this.equipmentResistanceResolver =
+            Objects.requireNonNull(equipmentResistanceResolver, "Equipment resistance resolver is required");
         this.shieldBlockResolver = Objects.requireNonNull(shieldBlockResolver, "Shield block resolver is required");
         this.offhandAttackResolver =
             Objects.requireNonNull(offhandAttackResolver, "Offhand attack resolver is required");
@@ -577,6 +639,18 @@ public class CombatEngine {
             }
             if (offhand) {
                 adjusted = (int) Math.round(adjusted * (CombatSettings.offhandDamagePercent() / 100.0));
+            }
+            // Elemental resistance mitigation. Physical (and untyped) attacks are never reduced, so
+            // the resolver short-circuits to zero and the RNG stream — and every legacy result —
+            // is unchanged. For a typed attack the defender's summed *_resist percentage is capped
+            // at CombatSettings.maxResistancePercent() so resistance can never fully negate a blow.
+            if (attack.damageType().isResistible()) {
+                int resistPercent = clamp(
+                    equipmentResistanceResolver.totalResistance(target, attack.damageType()),
+                    0, CombatSettings.maxResistancePercent());
+                if (resistPercent > 0) {
+                    adjusted = (int) Math.round(adjusted * ((100 - resistPercent) / 100.0));
+                }
             }
             // A landed hit always deals at least 1 damage; strength can only add to this floor, so
             // all-baseline results (which already dealt >= 1 in practice) are unchanged.

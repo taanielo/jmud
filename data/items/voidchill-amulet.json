@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "voidchill-amulet",
+  "name": "the Voidchill Amulet",
+  "description": "A shard of black voidglass hung on a cord of frayed grave-linen, cold as the lightless expanse it was cut from. The Voidscar's wraiths drink light and warmth alike, and this splinter of their vault answers cold with cold — it hoards the deep freeze already in it so the wearer's own warmth is not the thing torn out of them when Vaelnith's dark comes devouring.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "cold_resist": 25
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 300,
+  "rarity": "rare",
+  "attack_ref": null
+}

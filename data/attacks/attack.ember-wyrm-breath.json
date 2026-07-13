@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "id": "attack.ember-wyrm-breath",
   "name": "Cinder Breath",
   "min_damage": 36,
@@ -8,6 +8,7 @@
   "crit_bonus": 4,
   "damage_bonus": 9,
   "weapon_type": "BLUNT",
+  "damage_type": "FIRE",
   "applies_effect": {
     "effect_id": "poison",
     "chance_percent": 65

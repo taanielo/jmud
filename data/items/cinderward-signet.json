@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "cinderward-signet",
+  "name": "the Cinderward Signet",
+  "description": "A broad signet of slag-grey metal, its face stamped with the barred sigil the slagborn wear branded into their hides. Prised from a brute in the Cinder Reaches and still warm to the touch, it holds a banked, ruinous heat that meets an incoming flame head-on and swallows it, so a wearer can stand in the scourging ember-storms of the black glass and not be flayed to the bone.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "fire_resist": 25
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 240,
+  "rarity": "uncommon",
+  "attack_ref": null
+}

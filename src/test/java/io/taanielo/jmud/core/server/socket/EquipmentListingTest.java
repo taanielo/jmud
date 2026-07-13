@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.server.socket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -26,6 +27,41 @@ class EquipmentListingTest {
             .weight(1)
             .value(0)
             .build();
+    }
+
+    private static Item resistItem(String id, String name, EquipmentSlot slot, String statKey, int value) {
+        return Item.builder(ItemId.of(id), name, "A " + name + ".", new ItemAttributes(Map.of(statKey, value)))
+            .equipSlot(slot)
+            .weight(1)
+            .value(0)
+            .build();
+    }
+
+    @Test
+    void equippedResistItemShowsResistanceAnnotation() {
+        ItemId amuletId = ItemId.of("rimeward-amulet");
+        Item amulet = resistItem("rimeward-amulet", "Rimeward Amulet", EquipmentSlot.NECK, "cold_resist", 25);
+        List<String> lines = EquipmentListing.format(
+            Map.of(EquipmentSlot.NECK, amuletId),
+            id -> id.equals(amuletId) ? amulet : null
+        );
+
+        String neckLine = lines.stream().filter(l -> l.contains("Neck")).findFirst().orElseThrow();
+        assertTrue(neckLine.contains("Rimeward Amulet"), "Should show item name: " + neckLine);
+        assertTrue(neckLine.contains("cold_resist 25"), "Should annotate resistance: " + neckLine);
+    }
+
+    @Test
+    void equippedNonResistItemHasNoResistanceAnnotation() {
+        ItemId swordId = ItemId.of("sword");
+        Item sword = item("sword", "Iron Sword", EquipmentSlot.WEAPON);
+        List<String> lines = EquipmentListing.format(
+            Map.of(EquipmentSlot.WEAPON, swordId),
+            id -> id.equals(swordId) ? sword : null
+        );
+
+        String weaponLine = lines.stream().filter(l -> l.contains("Weapon")).findFirst().orElseThrow();
+        assertFalse(weaponLine.contains("_resist"), "Plain gear should carry no resist annotation: " + weaponLine);
     }
 
     @Test

@@ -14,6 +14,10 @@
     {
       "item_id": "molten-core-shard",
       "drop_chance": 0.35
+    },
+    {
+      "item_id": "emberward-band",
+      "drop_chance": 0.2
     }
   ],
   "gold_drop": {

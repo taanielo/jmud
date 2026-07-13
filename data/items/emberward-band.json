@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "emberward-band",
+  "name": "the Emberward Band",
+  "description": "A heavy ring of scorch-blackened iron set with a bead of cooled magma that never quite loses its inner glow. Smiths of the Emberdeep quench such bands in the same magma flows the hounds prowl, so that the ring drinks a killing heat before it can reach the wearer's hand and turns the worst of fire and cinder aside.",
+  "attributes": {
+    "stats": {
+      "ac": 1,
+      "fire_resist": 25
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 180,
+  "rarity": "uncommon",
+  "attack_ref": null
+}

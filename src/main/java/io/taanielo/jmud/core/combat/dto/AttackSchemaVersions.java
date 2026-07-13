@@ -9,6 +9,8 @@ public final class AttackSchemaVersions {
     public static final int V4 = 4;
     /** V5 adds the optional {@code range_type} field (MELEE or RANGED). */
     public static final int V5 = 5;
+    /** V6 adds the optional {@code damage_type} field (PHYSICAL, FIRE, COLD, POISON, …). */
+    public static final int V6 = 6;
 
     private AttackSchemaVersions() {
     }
