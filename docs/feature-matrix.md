@@ -131,7 +131,7 @@ game-designer should propose closing.
 | System | Shipped | Known gaps |
 |---|---|---|
 | Leveling & XP | ✅ | practice-point sink ✅ #522 · class gains ✅ #523 · combat scaling ✅ #524 |
-| Combat core | ✅ | worded damage + condition display ✅ #525 · attributes ✅ #524 · elemental damage types + armour resistance ✅ #563 · mob flee/self-preservation ✅ #567 |
+| Combat core | ✅ | worded damage + condition display ✅ #525 · attributes ✅ #524 · elemental damage types + armour resistance ✅ #563 · deterministic Enchanting path to fire/cold resistance (of-embers/of-rime) ✅ #577 · mob flee/self-preservation ✅ #567 |
 | New-player funnel | ✅ #516 | starter weapon/hints ✅ #517 · starter quest ✅ #518 · starting resources ✅ #519 · death grace ✅ #520 · creation info ✅ #521 |
 | Cartography | ✅ #529 (map items; MAP command retired) | difficulty bands ✅ #550 |
 | Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |

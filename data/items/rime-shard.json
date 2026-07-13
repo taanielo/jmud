@@ -1,0 +1,14 @@
+{
+  "schema_version": 10,
+  "id": "rime-shard",
+  "name": "a rime shard",
+  "description": "A fist-sized splinter of blue-white ice that never melts, exhaling a thin curl of frost-mist no matter how warm the hand that holds it. Chipped from the frozen cores of the Frozen Peaks' creatures, such shards are prized by smiths and enchanters for the trapped cold within.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 45,
+  "rarity": "uncommon"
+}
