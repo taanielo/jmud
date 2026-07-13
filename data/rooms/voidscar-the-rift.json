@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-the-rift",
+  "name": "The Cracked Rift",
+  "description": "The perfect circle of scorched glass that floored the Cinder Throne has given way here, splitting along a hairline fracture into a jagged rift that swallows the throne-room's heat whole. Cold pours up out of the break, not the clean chill of winter but a starved, hungry cold that seems to pull warmth toward it rather than push cold out. Below, the fire that ruled the Reaches simply stops, as though a lid has been lifted off the world; what it was covering is a darkness so complete that the eye keeps insisting there must be a floor down there, and keeps being wrong. A stair of fused glass, sheared clean by the crack, descends into the black.",
+  "item_ids": [],
+  "exits": {
+    "up": "cinder-reaches-cinder-throne",
+    "down": "voidscar-hollow-descent"
+  },
+  "min_level": 32,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A thread of cold air climbs out of the rift and the last warmth of the throne-room above thins to nothing.",
+    "The hairline crack in the glass ticks and lengthens by a finger's width, and the dark below seems to lean up toward it.",
+    "Somewhere far beneath, a silence deepens, as though a sound you never heard has just been swallowed."
+  ]
+}

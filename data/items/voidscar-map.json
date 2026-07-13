@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "voidscar-map",
+  "name": "Map of the Voidscar",
+  "description": "A chart of the Voidscar scratched into a plate of blackened glass, its lines picked out in pale ash so they can be read where no light will hold.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 40,
+  "map_area_id": "voidscar"
+}

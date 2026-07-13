@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-silent-galleries",
+  "name": "The Silent Galleries",
+  "description": "The hollow narrows into a run of low, vaulted galleries whose walls are honeycombed with black recesses, each one a mouth of perfect dark. Sound dies here almost before it is made; a shout leaves the throat as a whisper and a whisper leaves as nothing at all, so that the place enforces its own silence on everything that enters it. The floor is littered with fine grey dust that holds no footprint, and here and there lie things that light-starved creatures have dragged into the recesses and forgotten. A side passage opens east onto a shore of some kind, and the main gallery falls away downward into a deeper black.",
+  "item_ids": [],
+  "exits": {
+    "up": "voidscar-hollow-descent",
+    "east": "voidscar-unlit-shore",
+    "down": "voidscar-drowned-stair"
+  },
+  "min_level": 34,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "You start to hear your own breathing and then the gallery quietly takes it away, leaving a silence with a shape.",
+    "Something shifts deep in one of the black recesses, dragging itself further from the faint light of your passing.",
+    "A drift of grey dust stirs and resettles, and the gallery is exactly as untouched as before."
+  ]
+}

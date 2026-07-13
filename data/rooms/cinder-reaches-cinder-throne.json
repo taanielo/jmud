@@ -5,7 +5,8 @@
   "description": "At the very bottom of the Reaches lies a perfect circle of scorched glass, black and mirror-smooth, ringed by standing shards of fused rock that lean inward like the teeth of a closing jaw. In the centre rises a throne that was never built, only scarred into being: a seat of blackened slag where the demonic residue of Pyraxis's death has pooled and cooled and slowly gathered itself a shape. The air over the glass shimmers with a heat that has no source, and the scorched circle drinks all light, so that whatever waits enthroned here is seen more as a wound in the dark than as a thing with edges.",
   "item_ids": [],
   "exits": {
-    "up": "cinder-reaches-collapsed-foundry"
+    "up": "cinder-reaches-collapsed-foundry",
+    "down": "voidscar-the-rift"
   },
   "min_level": 30,
   "is_outdoor": false,

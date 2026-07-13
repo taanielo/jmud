@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "voidscar",
+  "name": "The Voidscar",
+  "room_ids": [
+    "voidscar-the-rift",
+    "voidscar-hollow-descent",
+    "voidscar-silent-galleries",
+    "voidscar-unlit-shore",
+    "voidscar-drowned-stair",
+    "voidscar-lightless-expanse",
+    "voidscar-void-heart"
+  ],
+  "connections": [
+    "cinder-reaches"
+  ],
+  "level_range": {
+    "min": 32,
+    "max": 40
+  },
+  "ascii_map": [
+    "   ... THE VOIDSCAR ...",
+    "",
+    "       Cinder Reaches",
+    "             ^",
+    "             |",
+    "         [The Rift]",
+    "             |",
+    "      [Hollow Descent]",
+    "             |",
+    "     [Silent Galleries]---[Unlit Shore]",
+    "             |",
+    "      [Drowned Stair]",
+    "             |",
+    "    [Lightless Expanse]",
+    "             |",
+    "        [Void Heart]",
+    "",
+    "   A light-eating hollow beneath the throne,",
+    "   where the cold that the fire hid still feeds."
+  ]
+}

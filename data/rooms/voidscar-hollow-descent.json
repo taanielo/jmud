@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-hollow-descent",
+  "name": "The Hollow Descent",
+  "description": "The glass stair peters out and the walls fall away, so that the way down becomes a series of broad ledges cut into a hollow that has no measurable far side. There is no fire here and never was; the rock is a smooth, dark grey worn frictionless, as if a tide of nothing had lapped against it for an age. Light behaves wrongly. A held flame throws no glow past arm's reach, its brightness drunk down by the air itself, and the shadows do not fall away from it but crowd toward it, thick and almost eager. The cold is a constant subtraction, a sense of being quietly unmade.",
+  "item_ids": [],
+  "exits": {
+    "up": "voidscar-the-rift",
+    "down": "voidscar-silent-galleries"
+  },
+  "min_level": 33,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "Your light gutters and shrinks, its circle drawing in tight against you as the dark presses closer.",
+    "A ledge crumbles at its edge and the falling grit makes no sound of landing, however long you wait.",
+    "The cold deepens by a degree, and for a moment you feel warmth being drawn out of you like breath on a cold night."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.unlight-sovereign",
+  "name": "unmaking blows",
+  "min_damage": 30,
+  "max_damage": 46,
+  "hit_bonus": 5,
+  "crit_bonus": 4,
+  "damage_bonus": 9,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 55
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Vaelnith unfolds a limb of pure absence and draws it through you, and where it passes the warmth and the light go out of you together. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Vaelnith reaches for you with an arm of folded dark and you fling yourself clear of the place where being stops."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Vaelnith closes the whole of its unlight around you and for a heartbeat you are simply not there! The blow {verb} you!"
+    }
+  ]
+}

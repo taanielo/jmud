@@ -1,0 +1,17 @@
+{
+  "schema_version": 14,
+  "id": "voidplate-shroud",
+  "name": "the Voidplate Shroud",
+  "description": "A cuirass of overlapping voidglass scales sewn onto a lining of ash-grey shroud-cloth, the whole harness so dark that its wearer seems half-erased at the edges. The scales drink the force of a blow the way they drink light, spreading and swallowing it rather than turning it, and the shroud carries the void's own cold, patient stillness. It is unnervingly light for its protection, and it makes almost no sound.",
+  "attributes": {
+    "stats": {
+      "ac": 13
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 14,
+  "value": 340,
+  "rarity": "rare"
+}

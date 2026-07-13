@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.lightdrinker-wisp",
+  "name": "draining chill",
+  "min_damage": 23,
+  "max_damage": 35,
+  "hit_bonus": 5,
+  "crit_bonus": 3,
+  "damage_bonus": 6,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 55
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The lightdrinker wisp drifts through you and drinks the warmth from your blood, leaving a spreading numbness. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The lightdrinker wisp gutters toward you and thins to a smear of deeper dark before it can touch you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The lightdrinker wisp settles over your heart and drinks deep, and the cold of it stops your breath! The blow {verb} you!"
+    }
+  ]
+}

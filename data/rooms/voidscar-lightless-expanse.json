@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-lightless-expanse",
+  "name": "The Lightless Expanse",
+  "description": "The stair ends and the world simply opens, into a vault so vast and so utterly without light that it registers less as a room than as an idea of one. No lamp, no torch, no flame carried down from the fire-kingdoms above will burn here for more than a moment before the dark closes its hand and puts it out. You move by touch and by the slope of the frictionless floor, aware that the space around you is enormous only because your own small sounds refuse to echo back. Ahead, where a floor of nothing meets a far wall of the same, a faint negative shimmer marks the throat of the hollow's heart, the one place in all this dark that is somehow darker still.",
+  "item_ids": [],
+  "exits": {
+    "up": "voidscar-drowned-stair",
+    "down": "voidscar-void-heart"
+  },
+  "min_level": 37,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "Your light dies in your hand between one breath and the next, and the expanse takes you whole.",
+    "A vastness shifts somewhere ahead, felt as a pressure against the skin rather than heard.",
+    "The frictionless floor tilts almost imperceptibly downward, and the darker dark ahead seems a little nearer."
+  ]
+}

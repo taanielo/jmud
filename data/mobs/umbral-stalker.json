@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "umbral-stalker",
+  "name": "an umbral stalker",
+  "max_hp": 240,
+  "attack_id": "attack.umbral-stalker",
+  "aggressive": true,
+  "tags": ["void", "beast", "voidscar"],
+  "spawn_room_id": "voidscar-hollow-descent",
+  "max_count": 3,
+  "respawn_ticks": 50,
+  "xp_reward": 285,
+  "loot": [
+    {
+      "item_id": "voidglass-shard",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 55,
+    "max": 95
+  }
+}

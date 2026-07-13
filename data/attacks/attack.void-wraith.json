@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.void-wraith",
+  "name": "unmaking touch",
+  "min_damage": 27,
+  "max_damage": 41,
+  "hit_bonus": 5,
+  "crit_bonus": 4,
+  "damage_bonus": 8,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 55
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The void wraith lays a hand of pure absence against you, and where it touches, the world briefly forgets you are there. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The void wraith reaches through you and unravels into a coil of unlight before its touch can land."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The void wraith closes both hands of nothing over you and you feel the edges of yourself being subtracted from the dark! The blow {verb} you!"
+    }
+  ]
+}

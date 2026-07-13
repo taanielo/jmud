@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.umbral-stalker",
+  "name": "raking dark",
+  "min_damage": 22,
+  "max_damage": 34,
+  "hit_bonus": 5,
+  "crit_bonus": 3,
+  "damage_bonus": 6,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The umbral stalker peels out of the dark and rakes you with claws that leave a cold, numb wound behind them. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The umbral stalker lunges from the black and you throw yourself aside as its claws pass through where you stood."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The umbral stalker bears you down and rakes you open, and the cold of the deep floods the wound! The blow {verb} you!"
+    }
+  ]
+}
