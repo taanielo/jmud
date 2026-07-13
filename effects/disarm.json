@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "disarm",
+  "name": "Disarmed",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A jarring strike knocks your grip loose; your swings go wide and weak."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} fumbles their weapon after a jarring, disarming strike."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "You recover your grip and your swings find their weight again."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} recovers their grip and settles back into a fighting stance."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is fumbling a loosened grip after a disarming strike."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.ambush",
+  "name": "ambush",
+  "type": "SKILL",
+  "level": 30,
+  "cost": {
+    "move": 14
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "HARMFUL_OPENER",
+  "aliases": ["ambsh"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 24
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "dazed"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You explode from cover and ambush {target}, a flurry of blades leaving them reeling!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} explodes from cover and ambushes you; the flurry of blades leaves you reeling!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} bursts from hiding and ambushes {target} in a flurry of blades."
+    }
+  ]
+}

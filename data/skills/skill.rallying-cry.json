@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "skill.rallying-cry",
+  "name": "rallying cry",
+  "type": "SKILL",
+  "level": 30,
+  "cost": {
+    "move": 14
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["rally", "rallyingcry"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "rally"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loose a thunderous rallying cry, and everyone around you stands taller and fights harder."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} looses a thunderous rallying cry that steels the whole room."
+    }
+  ]
+}

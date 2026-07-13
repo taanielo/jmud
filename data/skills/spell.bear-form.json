@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.bear-form",
+  "name": "bear form",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 10
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["bear", "bearform"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "bear-form"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call on the wild and your body swells into the shape of a great, shaggy bear."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls on the wild and swells into the shape of a great, shaggy bear."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "rally",
+  "name": "Rallied",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 3
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A rallying cry steels your nerve; you stand taller and hit harder."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is emboldened by a rallying cry."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The fervour of the rallying cry drains away."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The rallying cry's fervour fades from {name}."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is emboldened, standing tall behind a rallying cry."
+    }
+  ]
+}

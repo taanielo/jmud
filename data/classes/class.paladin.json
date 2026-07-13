@@ -11,6 +11,6 @@
   "attribute_bonuses": { "str": 2, "wis": 1 },
   "attribute_gains": { "str": "every_2_levels", "wis": "every_2_levels" },
   "ability_ids": ["spell.lay.on.hands", "spell.smite", "spell.divine-shield"],
-  "trainable_ability_ids": ["spell.bless", "skill.second-wind", "spell.guardian-aura"],
-  "description": "A durable holy knight who fights and heals in equal measure. Paladins mend with lay on hands, guard with divine shield and smite the undead; note that smite only strikes undead, so rely on your weapon against the living. At level 15 they learn guardian aura, warding the whole party behind a golden aegis."
+  "trainable_ability_ids": ["spell.bless", "skill.second-wind", "spell.guardian-aura", "spell.holy-wrath"],
+  "description": "A durable holy knight who fights and heals in equal measure. Paladins mend with lay on hands, guard with divine shield and smite the undead; note that smite only strikes undead, so rely on your weapon against the living. At level 15 they learn guardian aura, warding the whole party behind a golden aegis, and at level 30 holy wrath, a searing holy strike that brands any foe and burns away their guard."
 }

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.arcane-shackles",
+  "name": "arcane shackles",
+  "type": "SPELL",
+  "level": 30,
+  "cost": {
+    "mana": 10
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["shackles", "shackle"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "shackled"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You weave bands of arcane force that clamp around {target} and root them helplessly in place."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} weaves bands of arcane force that clamp around you and root you helplessly in place!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} binds {target} in glowing arcane shackles."
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "dazed",
+  "name": "Dazed",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "The ambush leaves your head ringing; the room swims and your aim wanders."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} staggers, dazed and reeling from a sudden ambush."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The ringing in your skull fades and your senses clear."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} shakes off the daze and steadies themselves."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is dazed, reeling and slow to react."
+    }
+  ]
+}

@@ -76,6 +76,21 @@ bleed + defense debuff), bard `spell.dissonant-chord` (demoralize debuff), shama
 paladin `spell.guardian-aura` (party-wide defensive aegis). `HELP <class>` and `TRAIN LIST`
 pick these up automatically from `trainable_ability_ids`.
 
+Master tier (#597). Every class now has a fourth trainable ability gated at **level 30**, landing
+at the Cinder Reaches / Voidscar threshold so the 16-48 stretch of the leveling curve is no longer
+flat. Each master ability introduces a new mechanic for its class rather than a bigger number:
+warrior `skill.rallying-cry` (party attack/defense buff — the warrior's first group support),
+adventurer `skill.disarming-strike` (damage + attack/accuracy debuff), rogue `skill.ambush` (heavy
+stealth opener + daze), ranger `skill.volley` (the ranger's first AoE — a room-wide arrow storm),
+mage `spell.arcane-shackles` (root/control debuff distinct from frostbolt's freeze), necromancer
+`spell.plague-cloud` (AoE life-drain), cleric `spell.sanctuary` (party-wide ward: armor + heal over
+time), druid `spell.bear-form` (offensive shapeshift buff: attack + armor), shaman
+`spell.stormcall-totem` (party attack/crit totem buff), bard `spell.anthem-of-renewal` (party
+heal-over-time + defense song) and paladin `spell.holy-wrath` (holy damage vs. any foe + a burning
+radiant brand). Nine new status effects back the buff/debuff abilities; the two AoE abilities and
+`skill.ambush` reuse the direct-damage / effect pipeline. `HELP <class>` and `TRAIN LIST` pick these
+up automatically from `trainable_ability_ids`.
+
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |

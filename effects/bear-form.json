@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "bear-form",
+  "name": "Bear Form",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "armor",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Your body swells into the shape of a great bear, hide thickening, claws lengthening."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name}'s body swells and reshapes into the form of a great bear."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The bear's shape sloughs away and you settle back into your own body."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The great bear's shape melts away and {name} returns to their own form."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wearing the shape of a great, shaggy bear."
+    }
+  ]
+}
