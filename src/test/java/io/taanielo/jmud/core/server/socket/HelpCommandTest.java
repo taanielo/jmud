@@ -4,13 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import io.taanielo.jmud.core.ability.AbilityRegistry;
+import io.taanielo.jmud.core.ability.repository.json.JsonAbilityRepository;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
+import io.taanielo.jmud.core.character.repository.json.JsonClassRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
@@ -120,7 +127,75 @@ class HelpCommandTest {
         assertTrue(context.promptMessage.contains("unknowncmd"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"adventurer", "bard", "cleric", "druid", "mage", "necromancer",
+        "paladin", "ranger", "rogue", "shaman", "warrior"})
+    void classHelpShowsReferenceSheetForEveryClass(String classId) throws Exception {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = newHelpCommandWithClassData(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP " + classId).get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.toLowerCase().contains(classId.toLowerCase()),
+                "Output should name the class " + classId);
+        assertTrue(combined.contains("Starting abilities:"),
+                "Output should list the starting ability kit for " + classId);
+        assertTrue(combined.contains("Level gains:"),
+                "Output should show per-level gains for " + classId);
+        assertTrue(context.promptMessage.isBlank(),
+                "A known class must not produce the not-found message for " + classId);
+    }
+
+    @Test
+    void classHelpMatchesDisplayNameCaseInsensitively() throws Exception {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = newHelpCommandWithClassData(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP Warrior").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("Trainable via TRAIN:"),
+                "Warrior sheet should list its trainable pool");
+        assertTrue(context.promptMessage.isBlank(),
+                "Warrior lookup must not produce the not-found message");
+    }
+
+    @Test
+    void classHelpResolvesAbilityDisplayNamesNotRawIds() throws Exception {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = newHelpCommandWithClassData(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP warrior").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("bash"), "Should resolve skill.bash to its display name");
+        assertFalse(combined.contains("skill.bash"), "Should not print raw ability ids");
+    }
+
+    @Test
+    void unknownNameStillProducesNotFoundMessage() throws Exception {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = newHelpCommandWithClassData(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP notaclass").get().execute(context);
+
+        assertTrue(context.promptMessage.contains("notaclass"),
+                "Unknown name should still yield the not-found message");
+        assertTrue(context.lines.isEmpty(), "Unknown name should not print a reference sheet");
+    }
+
     // --- helpers ---
+
+    private static HelpCommand newHelpCommandWithClassData(SocketCommandRegistry registry) throws Exception {
+        ClassRepository classRepository = new JsonClassRepository(Path.of("data"));
+        AbilityRegistry abilityRegistry = new AbilityRegistry(new JsonAbilityRepository(Path.of("data")).findAll());
+        return new HelpCommand(registry, classRepository, abilityRegistry);
+    }
 
     private static SocketCommandHandler stubCommand(String name, String shortDesc) {
         return stubCommand(name, shortDesc, shortDesc);
