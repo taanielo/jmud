@@ -114,6 +114,32 @@ class WorldBossAnnouncerTest {
         assertEquals(BOSS_NAME + " has fallen to Grimtooth!", broadcaster.lastGlobalText());
     }
 
+    @Test
+    void announceEventSpawn_broadcastsRiftOpeningWithMobAndRoom() {
+        CapturingBroadcaster broadcaster = new CapturingBroadcaster();
+        WorldBossAnnouncer announcer = new WorldBossAnnouncer(
+            broadcaster, roomService("Glacier"), null, null);
+
+        announcer.announceEventSpawn("the Rimewrought Stalker", ROOM_ID);
+
+        assertEquals(
+            "A crack of unnatural energy tears open in the Glacier — the Rimewrought Stalker has emerged!",
+            broadcaster.lastGlobalText());
+    }
+
+    @Test
+    void announceEventTimeout_broadcastsRiftCollapse() {
+        CapturingBroadcaster broadcaster = new CapturingBroadcaster();
+        WorldBossAnnouncer announcer = new WorldBossAnnouncer(
+            broadcaster, roomService("Glacier"), null, null);
+
+        announcer.announceEventTimeout("the Rimewrought Stalker", ROOM_ID);
+
+        assertEquals(
+            "The rift over the Glacier collapses — the Rimewrought Stalker fades away.",
+            broadcaster.lastGlobalText());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────
 
     private RoomService roomService(String roomName) {

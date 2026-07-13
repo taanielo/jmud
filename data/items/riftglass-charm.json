@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "riftglass-charm",
+  "name": "the Riftglass Charm",
+  "description": "A shard of jagged glass that was never blown or ground, but frozen out of the raw tear an intruder left in the world's weave. It hangs from a thong of scorched sinew and hums a single, wrong note that steadies the wearer's own nerves against the dark it came from. Torn loose from the Riftspawn Mauler when it fell, the charm is far finer than anything the Darkwood should hold.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "hp": 8
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 220,
+  "rarity": "epic",
+  "attack_ref": null
+}

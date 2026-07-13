@@ -67,6 +67,28 @@ public class HelpCommand extends RegistrableCommand {
         "  EQUIPMENT to review the resistances your worn gear currently provides."
     );
 
+    private static final List<String> WORLD_EVENTS_TOPIC = List.of(
+        "World Events",
+        "  Every so often the world tears. On a randomized timer a WORLD EVENT opens: a rare,",
+        "  elite monster is torn into a fixed room in one of a handful of eligible zones — from",
+        "  the Darkwood Wilds up through the Frozen Peaks and into the Voidscar — and every online",
+        "  player hears about it at once with a server-wide line like:",
+        "",
+        "    A crack of unnatural energy tears open in the Glacier — the Rimewrought Stalker",
+        "    has emerged!",
+        "",
+        "  These elites hit far harder and soak far more punishment than the ordinary residents of",
+        "  their zone, but they drop a guaranteed, high-value reward — rare or epic loot plus bonus",
+        "  gold and experience — so they are well worth dropping what you are doing to hunt.",
+        "",
+        "  The window is short. If no one brings the elite down within its span the rift collapses",
+        "  on its own, the monster fades away with no kill credit, and everyone is told:",
+        "",
+        "    The rift over the Glacier collapses — the Rimewrought Stalker fades away.",
+        "",
+        "  Only one world event is ever open at a time, so when the call goes out, it is the moment",
+        "  to move. Whoever lands the killing blow is named to the whole server.");
+
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
      * name and its aliases. Looked up after commands but before classes, so {@code HELP resistances}
@@ -75,7 +97,13 @@ public class HelpCommand extends RegistrableCommand {
     private static final Map<String, List<String>> TOPICS = Map.of(
         "resistances", RESISTANCE_TOPIC,
         "resistance", RESISTANCE_TOPIC,
-        "resist", RESISTANCE_TOPIC
+        "resist", RESISTANCE_TOPIC,
+        "world events", WORLD_EVENTS_TOPIC,
+        "world event", WORLD_EVENTS_TOPIC,
+        "worldevents", WORLD_EVENTS_TOPIC,
+        "worldevent", WORLD_EVENTS_TOPIC,
+        "events", WORLD_EVENTS_TOPIC,
+        "event", WORLD_EVENTS_TOPIC
     );
 
     private final SocketCommandRegistry registry;
@@ -168,7 +196,7 @@ public class HelpCommand extends RegistrableCommand {
                 context.writeLineSafe(String.format("  %-12s %s", handler.name(), short_));
             }
         }
-        context.writeLineSafe("Topics: HELP resistances");
+        context.writeLineSafe("Topics: HELP resistances, HELP world events");
         context.sendPrompt();
     }
 

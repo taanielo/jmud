@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "rimewrought-heart",
+  "name": "the Rimewrought Heart",
+  "description": "A fist-sized nodule of black ice that does not melt, veined with frozen light the colour of a winter noon. It was the cold engine at the core of the Rimewrought Stalker, and even prised free it still drinks the chill out of the air around it, so the wearer's own warmth is the last thing the Frozen Peaks can take. Worn at the throat it beats, very slowly, once for every long breath.",
+  "attributes": {
+    "stats": {
+      "ac": 3,
+      "cold_resist": 20,
+      "hp": 14
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 360,
+  "rarity": "epic",
+  "attack_ref": null
+}

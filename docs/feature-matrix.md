@@ -142,6 +142,7 @@ game-designer should propose closing.
 | Identity/RP (titles, custom LOOK description, named companions) | ✅ #569 | companion naming `NAME <pet>` ✅ #571 (unblocks a future `DESCRIBE <pet>` issue) |
 | Player preferences (`ANSI`, `AUTOLOOT`, `PROMPT`, `BRIEF`) | ✅ | brief-mode room descriptions `BRIEF [on\|off\|toggle\|status]` ✅ #575 (movement skips prose; `LOOK` always shows it) |
 | PvP (duels, rankings, arena events) | ✅ | none known |
+| World events (timed rare-elite spawns) | ✅ #585 | none known |
 | Pets (tame/summon) | ✅ | custom companion names ✅ #571 |
 | Weather & world ambience | ✅ | none known |
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |

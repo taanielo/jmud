@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.mob.dto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,10 +12,23 @@ class MobTemplateDtoMapperTest {
     private final MobTemplateDtoMapper mapper = new MobTemplateDtoMapper();
 
     @Test
+    void worldEventFlagIsMapped() {
+        MobTemplateDto absent = new MobTemplateDto(
+            4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
+            1, 10, 5, null, null, null, null, null, null, null, null, null);
+        assertFalse(mapper.toDomain(absent).worldEvent(), "world_event defaults to false when absent");
+
+        MobTemplateDto present = new MobTemplateDto(
+            4, "event-mob", "Event Mob", 10, null, null, false, null, null, "room-1",
+            1, 10, 5, null, null, null, null, null, null, null, null, true);
+        assertTrue(mapper.toDomain(present).worldEvent(), "world_event=true maps to a world-event template");
+    }
+
+    @Test
     void missingXpRewardFailsWithActionableMessage() {
         MobTemplateDto dto = new MobTemplateDto(
             4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, null, null, null, null, null, null, null, null, null);
+            1, 10, null, null, null, null, null, null, null, null, null, null);
 
         IllegalArgumentException ex =
             assertThrows(IllegalArgumentException.class, () -> mapper.toDomain(dto));
@@ -29,7 +43,7 @@ class MobTemplateDtoMapperTest {
     void explicitXpRewardIsHonoured() {
         MobTemplateDto dto = new MobTemplateDto(
             4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, 42, null, null, null, null, null, null, null, null);
+            1, 10, 42, null, null, null, null, null, null, null, null, null);
 
         assertEquals(42, mapper.toDomain(dto).xpReward());
     }

@@ -110,6 +110,8 @@ import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.WorldBossAnnouncer;
+import io.taanielo.jmud.core.mob.WorldEventScheduler;
+import io.taanielo.jmud.core.mob.WorldEventSettings;
 import io.taanielo.jmud.core.mob.repository.json.JsonMobTemplateRepository;
 import io.taanielo.jmud.core.notes.NotesRepository;
 import io.taanielo.jmud.core.notes.NotesService;
@@ -453,10 +455,20 @@ public record GameContext(
             mobRegistry.setEquipmentResistanceResolver(equipmentResistanceResolver);
             mobRegistry.setDamageVerbTable(damageVerbTable);
             mobRegistry.setTargetConditionTable(combatFlavor.conditions());
-            mobRegistry.setWorldBossAnnouncer(
-                new WorldBossAnnouncer(messageBroadcaster, roomService, guildService, partyService));
+            WorldBossAnnouncer worldBossAnnouncer =
+                new WorldBossAnnouncer(messageBroadcaster, roomService, guildService, partyService);
+            mobRegistry.setWorldBossAnnouncer(worldBossAnnouncer);
             mobRegistry.init();
             tickRegistry.register(mobRegistry);
+            // Timed world events: on a randomized interval a rare-elite mob is torn into a fixed room
+            // in an eligible zone and announced server-wide, staying killable for a bounded window
+            // before it fades away unkilled. Reuses the mob registry for placement/removal and the
+            // world-boss announcer for the spawn/timeout broadcasts (AGENTS.md §3.3, §5).
+            tickRegistry.register(new WorldEventScheduler(
+                mobRegistry, worldBossAnnouncer, worldRandom,
+                WorldEventSettings.minIntervalTicks(),
+                WorldEventSettings.maxIntervalTicks(),
+                WorldEventSettings.windowTicks()));
         }
 
         // Hot-reload of JSON content (issue #349): the JSON item/room repositories and the mob

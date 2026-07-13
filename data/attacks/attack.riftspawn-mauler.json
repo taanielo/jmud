@@ -1,0 +1,28 @@
+{
+  "schema_version": 6,
+  "id": "attack.riftspawn-mauler",
+  "name": "rift-torn claws",
+  "min_damage": 14,
+  "max_damage": 24,
+  "hit_bonus": 3,
+  "crit_bonus": 2,
+  "damage_bonus": 4,
+  "weapon_type": "SLASHING",
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Riftspawn Mauler rakes you with claws that flicker in and out of the world. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Riftspawn Mauler lunges, but its claws phase harmlessly through you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Riftspawn Mauler seizes you and drags you halfway into the tear it crawled from! The blow {verb} you!"
+    }
+  ]
+}

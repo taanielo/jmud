@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "voidrift-eidolon",
+  "name": "the Voidrift Eidolon",
+  "description": "A palm of hardened void-matter cast, somehow, in the shape of a screaming face — not carved, but left behind, the way a footprint is left in cooling glass. It is colder than the Voidscar's lightless expanse and heavier than its size should allow, and holding it the wearer feels briefly, terribly seen. Rendered from the Voidrift Devourer when it was unmade, the eidolon turns the deep dark's own hunger outward, sheltering the one who bears it.",
+  "attributes": {
+    "stats": {
+      "ac": 4,
+      "cold_resist": 25,
+      "hp": 20
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 520,
+  "rarity": "epic",
+  "attack_ref": null
+}

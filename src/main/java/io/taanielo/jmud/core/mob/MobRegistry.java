@@ -87,7 +87,7 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
  * delivered via {@link PlayerEventBus} so no transport code lives here.
  */
 @Slf4j
-public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
+public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, WorldEventStage {
 
     private final MobTemplateRepository templateRepository;
     private final ItemRepository itemRepository;
@@ -164,6 +164,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
      * on-demand SUMMON path never touches the JSON repository from the tick thread (AGENTS.md §5).
      */
     private final List<MobTemplate> petTemplates = new ArrayList<>();
+    /**
+     * World-event templates (see {@link MobTemplate#worldEvent()}) cached at {@link #init()} so the
+     * {@link WorldEventScheduler} can enumerate the rare-elite pool without touching the JSON
+     * repository from the tick thread (AGENTS.md §5). Like pet templates these are never spawned
+     * into the world at start-up; an instance exists only while a scheduled world event is open.
+     */
+    private final List<MobTemplate> worldEventTemplates = new ArrayList<>();
     /**
      * All mob templates keyed by their id string, cached at {@link #init()} so tamed-pet respawn on
      * login can rebuild a companion instance from its template without touching disk on the tick
@@ -417,14 +424,20 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 petTemplates.add(template);
                 continue;
             }
+            // World-event mobs are placed on-demand by the WorldEventScheduler, never at start-up.
+            if (template.worldEvent()) {
+                worldEventTemplates.add(template);
+                continue;
+            }
             for (int i = 0; i < template.maxCount(); i++) {
                 MobInstance mob = new MobInstance(template);
                 instances.put(mob.instanceId(), mob);
                 announceWorldBossSpawn(mob);
             }
         }
-        log.info("Spawned {} mob instance(s) from {} template(s); cached {} pet template(s)",
-            instances.size(), templates.size(), petTemplates.size());
+        log.info("Spawned {} mob instance(s) from {} template(s); cached {} pet template(s), "
+                + "{} world-event template(s)",
+            instances.size(), templates.size(), petTemplates.size(), worldEventTemplates.size());
     }
 
     /**
@@ -443,12 +456,27 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private void applyTemplates(List<MobTemplate> templates) {
         templatesById.clear();
         petTemplates.clear();
+        worldEventTemplates.clear();
         for (MobTemplate template : templates) {
             templatesById.put(template.id().getValue(), template);
             if (template.isPetTemplate()) {
                 petTemplates.add(template);
             }
+            if (template.worldEvent()) {
+                worldEventTemplates.add(template);
+            }
         }
+    }
+
+    /**
+     * Returns the world-event templates cached at {@link #init()} (see {@link MobTemplate#worldEvent()}).
+     * Backs the {@link WorldEventScheduler}'s selection of which rare-elite encounter to open next.
+     *
+     * @return an immutable copy of the world-event templates (never null, may be empty)
+     */
+    @Override
+    public List<MobTemplate> worldEventTemplates() {
+        return List.copyOf(worldEventTemplates);
     }
 
     @Override
@@ -463,7 +491,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 continue;
             }
             if (!mob.isAlive()) {
-                if (mob.tickRespawn()) {
+                // World-event mobs never auto-respawn; the WorldEventScheduler purges the slain
+                // instance and opens the next event on its own randomized timer.
+                if (!mob.template().worldEvent() && mob.tickRespawn()) {
                     mob.respawn();
                     log.debug("Mob {} respawned in {}", mob.template().name(), mob.roomId());
                     announceWorldBossSpawn(mob);
@@ -601,10 +631,24 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         if (mob == null) {
             return Optional.empty();
         }
-        instances.remove(mob.instanceId());
-        endCombatForMob(mob);
+        purgeInstance(mob);
         log.debug("Purged mob {} from {} via admin command", mob.template().name(), roomId);
         return Optional.of(mob.template().name());
+    }
+
+    /**
+     * Removes a specific live mob instance outright with no respawn scheduled, tearing down any
+     * player combat engagement against it. Shares the removal path used by the wizard {@code PURGE}
+     * command ({@link #purgeMob}); the {@link WorldEventScheduler} uses it to clear a world-event mob
+     * when its window closes on a timeout. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the instance to remove
+     */
+    @Override
+    public void purgeInstance(MobInstance mob) {
+        Objects.requireNonNull(mob, "Mob is required");
+        instances.remove(mob.instanceId());
+        endCombatForMob(mob);
     }
 
     /**
