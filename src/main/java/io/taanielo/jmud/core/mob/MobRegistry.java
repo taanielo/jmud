@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jspecify.annotations.Nullable;
+
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.Ability;
@@ -59,6 +61,7 @@ import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerMount;
+import io.taanielo.jmud.core.player.PlayerPets;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.quest.QuestKillService;
 import io.taanielo.jmud.core.reload.MobContentReloader;
@@ -1438,6 +1441,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     /** Maximum number of tamed companions a single player may control at once. */
     static final int MAX_TAMED_PETS = 3;
 
+    /** Maximum length of a companion's custom name (see the NAME command). */
+    static final int MAX_PET_NAME_LENGTH = 24;
+
     /**
      * Permanently tames (charms) a charmable mob in the tamer's room, turning it into a persistent
      * companion that follows its owner between rooms and fights at their side. The captured wild mob
@@ -1514,11 +1520,61 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         List<GameMessage> messages = new ArrayList<>();
         messages.add(GameMessage.toSource("Your companions:"));
         for (MobInstance pet : pets) {
-            messages.add(GameMessage.toSource("  " + pet.template().name()
+            messages.add(GameMessage.toSource("  " + pet.displayName()
                 + " (" + pet.currentHp() + "/" + pet.template().maxHp() + " HP) in "
                 + pet.roomId().getValue()));
         }
         return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Assigns a custom display name to one of the player's own tamed companions (see the NAME
+     * command). The companion is matched by its current display name or template name (prefix match,
+     * first live occurrence, consistent with other pet targeting); its live instance and the owner's
+     * persisted {@link PlayerPets} record are both updated so the name shows everywhere immediately
+     * and survives logout/login and respawn. Runs on the tick thread via the owner's command queue
+     * (AGENTS.md §5).
+     *
+     * @param owner           the player naming their companion
+     * @param companionInput  the target companion token (template or existing custom name)
+     * @param newName         the desired custom name (validated: non-blank, capped length)
+     * @return result whose {@code updatedSource} is the owner with the renamed companion persisted on
+     *         success; or an error with no state change when validation/targeting fails
+     */
+    public GameActionResult nameCompanion(Player owner, String companionInput, String newName) {
+        Objects.requireNonNull(owner, "Owner is required");
+        if (companionInput == null || companionInput.isBlank()) {
+            return GameActionResult.error("Usage: NAME <companion> <new name>");
+        }
+        if (newName == null || newName.isBlank()) {
+            return GameActionResult.error("Name your companion what? Usage: NAME <companion> <new name>");
+        }
+        String trimmedName = newName.trim();
+        if (trimmedName.length() > MAX_PET_NAME_LENGTH) {
+            return GameActionResult.error(
+                "That name is too long; keep it to " + MAX_PET_NAME_LENGTH + " characters or fewer.");
+        }
+        Username username = owner.getUsername();
+        List<MobInstance> pets = instances.values().stream()
+            .filter(m -> m.isTamed() && m.isAlive() && username.equals(m.owner()))
+            .toList();
+        MobInstance target = findMobByName(pets, companionInput);
+        if (target == null) {
+            return GameActionResult.error("You have no companion called \"" + companionInput.trim() + "\".");
+        }
+        String templateId = target.template().id().getValue();
+        String previousName = target.customName();
+        target.setCustomName(trimmedName);
+        Player updated = owner.withTamedPets(
+            owner.pets().withName(templateId, previousName, trimmedName));
+        saveOrLog(updated);
+        return new GameActionResult(updated, null, List.of(GameMessage.toSource(
+            "Your companion shall henceforth be known as " + trimmedName + ".")));
+    }
+
+    /** Composite key pairing a tamed pet's template id and custom name for spawn deduplication. */
+    private static String liveKey(String templateId, @Nullable String customName) {
+        return templateId + " " + (customName == null ? "" : customName);
     }
 
     /**
@@ -1534,12 +1590,15 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         Objects.requireNonNull(owner, "Owner is required");
         Objects.requireNonNull(roomId, "Room id is required");
         Username username = owner.getUsername();
+        // Dedup against companions already live in the world by (template, custom name) so a named
+        // duplicate is not double-spawned and each persisted entry keeps its own name.
         List<String> alreadyLive = new ArrayList<>(instances.values().stream()
             .filter(m -> m.isTamed() && username.equals(m.owner()))
-            .map(m -> m.template().id().getValue())
+            .map(m -> liveKey(m.template().id().getValue(), m.customName()))
             .toList());
-        for (String templateId : owner.pets().tamedTemplateIds()) {
-            if (alreadyLive.remove(templateId)) {
+        for (PlayerPets.TamedPet entry : owner.pets().entries()) {
+            String templateId = entry.templateId();
+            if (alreadyLive.remove(liveKey(templateId, entry.customName()))) {
                 continue;
             }
             MobTemplate template = templatesById.get(templateId);
@@ -1547,7 +1606,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 log.warn("Tamed pet template {} for player {} no longer exists", templateId, username);
                 continue;
             }
-            MobInstance pet = MobInstance.tamed(template, roomId, username);
+            MobInstance pet = MobInstance.tamed(template, roomId, username, entry.customName());
             instances.put(pet.instanceId(), pet);
         }
     }
@@ -1570,13 +1629,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
                 continue;
             }
             if (!pet.isAlive()) {
+                String petName = pet.displayName();
                 if (pet.isTamed()) {
                     releasePersistedPet(pet);
-                    removePet(pet, "Your " + pet.template().name() + " has been slain!",
-                        "The " + pet.template().name() + " collapses, slain.");
+                    removePet(pet, "Your " + petName + " has been slain!",
+                        "The " + petName + " collapses, slain.");
                 } else {
-                    removePet(pet, "Your " + pet.template().name() + " has been destroyed!",
-                        "The " + pet.template().name() + " collapses into dust.");
+                    removePet(pet, "Your " + petName + " has been destroyed!",
+                        "The " + petName + " collapses into dust.");
                 }
                 continue;
             }
@@ -1608,7 +1668,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
             if (ownerRoom == null || ownerRoom.equals(pet.roomId())) {
                 continue;
             }
-            String petName = pet.template().name();
+            String petName = pet.displayName();
             broadcastToRoomExcept(pet.roomId(), owner,
                 "The " + petName + " trots away, following its master.");
             pet.moveTo(ownerRoom);
@@ -1634,7 +1694,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         if (ownerPlayer == null) {
             return;
         }
-        saveOrLog(ownerPlayer.withTamedPets(ownerPlayer.pets().release(pet.template().id().getValue())));
+        saveOrLog(ownerPlayer.withTamedPets(
+            ownerPlayer.pets().release(pet.template().id().getValue(), pet.customName())));
     }
 
     /**
@@ -1674,7 +1735,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
         if (petAttack == null) {
             return;
         }
-        String petName = pet.template().name();
+        String petName = pet.displayName();
         String foeName = foe.template().name();
         int damage = rollDamage(petAttack);
         int remaining = foe.takeDamage(damage);
@@ -2282,8 +2343,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader {
     private MobInstance findMobByName(List<MobInstance> mobs, String input) {
         String normalized = input.trim().toLowerCase(Locale.ROOT);
         for (MobInstance mob : mobs) {
-            String name = mob.template().name().toLowerCase(Locale.ROOT);
-            if (name.equals(normalized) || name.startsWith(normalized)) {
+            // A tamed companion may be targeted by its custom name (see NAME) or its template name.
+            String display = mob.displayName().toLowerCase(Locale.ROOT);
+            if (display.equals(normalized) || display.startsWith(normalized)) {
+                return mob;
+            }
+            String templateName = mob.template().name().toLowerCase(Locale.ROOT);
+            if (templateName.equals(normalized) || templateName.startsWith(normalized)) {
                 return mob;
             }
         }

@@ -74,6 +74,14 @@ public class MobInstance {
      */
     @Nullable
     private final Username owner;
+    /**
+     * The owner-assigned custom display name of a tamed companion (see the NAME command), or
+     * {@code null} when the companion is unnamed and shows its template name. Only meaningful for
+     * {@link #isTamed() tamed} pets; written on the tick thread via {@link #setCustomName(String)}
+     * (naming and respawn-on-login), read from any thread for message construction.
+     */
+    @Nullable
+    private volatile String customName;
 
     public MobInstance(MobTemplate template) {
         this.template = template;
@@ -131,6 +139,26 @@ public class MobInstance {
      */
     public static MobInstance tamed(MobTemplate template, RoomId spawnRoom, Username owner) {
         return new MobInstance(template, spawnRoom, owner);
+    }
+
+    /**
+     * Creates a permanently tamed pet instance owned by {@code owner} and carrying a custom display
+     * name (see the NAME command). Used when respawning a persisted companion whose owner has already
+     * named it, so the custom name is present from the moment it re-enters the world.
+     *
+     * @param template   the tamed mob's template
+     * @param spawnRoom  the room to spawn the pet into (normally the owner's current room)
+     * @param owner      the player who tamed the mob
+     * @param customName the companion's custom display name, or {@code null} to keep the template name
+     * @return the new tamed pet instance
+     */
+    public static MobInstance tamed(
+        MobTemplate template, RoomId spawnRoom, Username owner, @Nullable String customName) {
+        MobInstance instance = new MobInstance(template, spawnRoom, owner);
+        if (customName != null && !customName.isBlank()) {
+            instance.customName = customName;
+        }
+        return instance;
     }
 
     public UUID instanceId() {
@@ -306,6 +334,39 @@ public class MobInstance {
     @Nullable
     public Username owner() {
         return owner;
+    }
+
+    /**
+     * Returns the name to show for this mob: a tamed companion's owner-assigned custom name when one
+     * is set (see the NAME command), otherwise the template name. Safe to call from any thread. Use
+     * this everywhere a mob's identity is shown to players so named companions read as their custom
+     * name in listings, room descriptions, and combat messages.
+     *
+     * @return the display name, never {@code null}
+     */
+    public String displayName() {
+        String name = customName;
+        return name != null ? name : template.name();
+    }
+
+    /**
+     * Returns this tamed companion's custom display name, or {@code null} when it is unnamed.
+     *
+     * @return the custom name, or {@code null}
+     */
+    @Nullable
+    public String customName() {
+        return customName;
+    }
+
+    /**
+     * Assigns a custom display name to this tamed companion (see the NAME command). Must only be
+     * called from the tick thread.
+     *
+     * @param customName the new custom name; blank/{@code null} clears it back to the template name
+     */
+    public void setCustomName(@Nullable String customName) {
+        this.customName = customName == null || customName.isBlank() ? null : customName;
     }
 
     /**

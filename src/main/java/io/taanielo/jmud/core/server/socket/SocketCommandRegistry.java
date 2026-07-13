@@ -188,6 +188,7 @@ public class SocketCommandRegistry {
         new SummonCommand(registry);
         new TameCommand(registry);
         new CompanionsCommand(registry);
+        new NameCommand(registry);
         new TalkCommand(registry);
         new RespondCommand(registry);
         new QuitCommand(registry);

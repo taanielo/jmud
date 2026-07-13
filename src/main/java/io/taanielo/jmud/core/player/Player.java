@@ -189,7 +189,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -230,7 +230,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("duelLosses") Integer duelLosses,
         @JsonProperty("proficiencies") Map<String, Integer> proficiencies,
         @JsonProperty("autoLootEnabled") Boolean autoLootEnabled,
-        @JsonProperty("description") String description
+        @JsonProperty("description") String description,
+        @JsonProperty("tamedPetNames") List<String> tamedPetNames
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId, description),
@@ -249,7 +250,7 @@ public class Player implements EffectTarget, Combatant {
             new PlayerAliases(aliases),
             new PlayerMailbox(mailbox),
             sustenance == null ? PlayerSustenance.defaults() : sustenance,
-            new PlayerPets(tamedPets),
+            PlayerPets.fromPersisted(tamedPets, tamedPetNames),
             PlayerReputation.fromStringMap(reputation),
             PlayerAchievements.fromStringMap(achievements),
             new PlayerExploration(exploredRooms),
@@ -463,6 +464,16 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("tamedPets")
     public List<String> getTamedPets() {
         return pets.tamedTemplateIds();
+    }
+
+    /**
+     * Returns the parallel custom names of the tamed companions (see the NAME command), with a
+     * {@code null} entry for each unnamed companion, for JSON serialisation alongside
+     * {@link #getTamedPets()}. Older save files omit this property and load as all-unnamed.
+     */
+    @JsonProperty("tamedPetNames")
+    public List<String> getTamedPetNames() {
+        return pets.customNames();
     }
 
     @JsonProperty("reputation")
@@ -1150,7 +1161,8 @@ public class Player implements EffectTarget, Combatant {
             duelLosses,
             proficiencies.toStringMap(),
             preferences.autoLootEnabled(),
-            identity.description().isEmpty() ? null : identity.description()
+            identity.description().isEmpty() ? null : identity.description(),
+            pets.customNames()
         );
     }
 

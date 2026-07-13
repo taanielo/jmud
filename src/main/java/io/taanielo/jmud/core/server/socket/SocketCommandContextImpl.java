@@ -2103,6 +2103,29 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void nameCompanion(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to name a companion.");
+            return;
+        }
+        if (context.mobRegistry() == null) {
+            writeLineWithPrompt("You have no companions to name.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim();
+        String[] parts = normalized.split("\\s+", 2);
+        if (normalized.isEmpty() || parts.length < 2 || parts[1].isBlank()) {
+            writeLineWithPrompt("Usage: NAME <companion> <new name>");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = context.mobRegistry()
+            .nameCompanion(session.getPlayer(), parts[0], parts[1]);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void writeItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to write.");

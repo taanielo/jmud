@@ -126,9 +126,9 @@ game-designer should propose closing.
 | Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519; auction search/sort QoL ✅ #565 |
 | Professions (craft/cook/brew/gather/salvage/enchant) | ✅ | none known |
 | Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | none known |
-| Identity/RP (titles, custom LOOK description) | ✅ #569 | named-companion `DESCRIBE <pet>` out of scope (future issue) |
+| Identity/RP (titles, custom LOOK description, named companions) | ✅ #569 | companion naming `NAME <pet>` ✅ #571 (unblocks a future `DESCRIBE <pet>` issue) |
 | PvP (duels, rankings, arena events) | ✅ | none known |
-| Pets (tame/summon) | ✅ | none known |
+| Pets (tame/summon) | ✅ | custom companion names ✅ #571 |
 | Weather & world ambience | ✅ | none known |
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |
 | Admin/wizard tooling | ✅ | none known |

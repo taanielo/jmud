@@ -29,10 +29,11 @@ final class MonsterLineFormatter {
         if (mobs == null || mobs.isEmpty()) {
             return "Monsters: none";
         }
-        // Group by template name, preserving encounter order for determinism.
+        // Group by display name (a tamed companion's custom name when set, else its template name),
+        // preserving encounter order for determinism.
         LinkedHashMap<String, Long> counts = mobs.stream()
             .collect(Collectors.groupingBy(
-                m -> m.template().name(),
+                MobInstance::displayName,
                 LinkedHashMap::new,
                 Collectors.counting()
             ));
