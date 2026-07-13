@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntSupplier;
 
 import org.jspecify.annotations.Nullable;
 
@@ -467,33 +468,92 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param attack   the resolved attack definition (weapon or unarmed)
      * @return the resolved hit/crit/damage outcome
      */
-    private PlayerHitOutcome resolvePlayerHit(Player attacker, AttackDefinition attack) {
-        int hitChance = clamp(
+    private HitOutcome resolvePlayerHit(Player attacker, AttackDefinition attack) {
+        return resolveHit(
             CombatSettings.baseHitChance()
                 + attack.hitBonus()
                 + attributeBonusResolver.hitChanceBonus(attacker),
-            CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
-        if (random.roll(1, 100) > hitChance) {
-            return new PlayerHitOutcome(false, false, 0);
-        }
-        int damage = rollDamage(attack, attacker);
-        int critChance = clamp(
             CombatSettings.baseCritChance()
                 + attack.critBonus()
                 + attributeBonusResolver.critChanceBonus(attacker),
-            0, 100);
-        boolean crit = random.roll(1, 100) <= critChance;
-        if (crit) {
-            damage = Math.max(1, damage * CombatSettings.critMultiplier());
-        }
-        return new PlayerHitOutcome(true, crit, damage);
+            () -> rollDamage(attack, attacker));
     }
 
     /**
-     * The outcome of a player's melee attack against a mob: whether it landed, whether it was a
-     * critical hit, and the final damage dealt (zero on a miss).
+     * Rolls a caster's area-of-effect spell to-hit and (on a hit) crit against a single mob target,
+     * mirroring the melee {@link #resolvePlayerHit(Player, AttackDefinition)} formula so an AoE spell
+     * can miss a target outright or crit it for bonus damage. AoE spells deal damage through ability
+     * effects rather than an {@link AttackDefinition}, so no authored {@code hit_bonus}/{@code
+     * crit_bonus} exists: hit chance is {@link CombatSettings#baseHitChance()} plus the caster's
+     * agility accuracy bonus, and crit chance is {@link CombatSettings#baseCritChance()} plus the
+     * caster's agility crit bonus. A crit multiplies the fixed per-target spell damage by
+     * {@link CombatSettings#critMultiplier()}. All rolls go through the seeded {@link CombatRandom}
+     * port so outcomes stay replayable.
+     *
+     * @param caster     the casting player
+     * @param baseDamage the fixed per-target spell damage before any crit multiplier
+     * @return the resolved hit/crit/damage outcome for this target
      */
-    private record PlayerHitOutcome(boolean hit, boolean crit, int damage) {
+    private HitOutcome resolveSpellHit(Player caster, int baseDamage) {
+        return resolveHit(
+            CombatSettings.baseHitChance() + attributeBonusResolver.hitChanceBonus(caster),
+            CombatSettings.baseCritChance() + attributeBonusResolver.critChanceBonus(caster),
+            () -> baseDamage);
+    }
+
+    /**
+     * Rolls a mob-versus-mob attack's to-hit and (on a hit) crit, used for a summoned/tamed pet's
+     * swing at a hostile mob and for the foe's retaliation swing against the pet. Neither combatant is
+     * a player, so there is no agility accuracy term and the defending mob contributes no dodge or
+     * armour (implicitly zero, exactly as a mob defender does in {@link #resolvePlayerHit}): hit
+     * chance is {@link CombatSettings#baseHitChance()} plus the attack's {@code hit_bonus} and crit
+     * chance is {@link CombatSettings#baseCritChance()} plus the attack's {@code crit_bonus}. A crit
+     * multiplies the rolled damage by {@link CombatSettings#critMultiplier()}. All rolls go through the
+     * seeded {@link CombatRandom} port so outcomes stay replayable.
+     *
+     * @param attack the attacking mob's resolved attack definition
+     * @return the resolved hit/crit/damage outcome
+     */
+    private HitOutcome resolveMobVsMobHit(AttackDefinition attack) {
+        return resolveHit(
+            CombatSettings.baseHitChance() + attack.hitBonus(),
+            CombatSettings.baseCritChance() + attack.critBonus(),
+            () -> rollDamage(attack));
+    }
+
+    /**
+     * Shared hit/crit resolution mirroring the PvP {@link io.taanielo.jmud.core.combat.CombatEngine}
+     * formula: the {@code hitChance} is clamped to {@code [MIN_HIT_CHANCE, MAX_HIT_CHANCE]} and rolled
+     * against the seeded {@link CombatRandom}; on a hit the damage is drawn from {@code damageRoll}
+     * (invoked exactly once, after the hit roll, so a miss consumes no damage RNG) and, on a further
+     * crit roll against the {@code critChance} clamped to {@code [0, 100]}, multiplied by
+     * {@link CombatSettings#critMultiplier()}. Kept in a single place so the melee, ranged, AoE-spell,
+     * and pet damage sources all share one deterministic roll order.
+     *
+     * @param hitChance  the pre-clamp hit chance (base plus any bonuses/penalties)
+     * @param critChance the pre-clamp crit chance (base plus any bonuses)
+     * @param damageRoll supplies the pre-crit damage, invoked only on a landing hit
+     * @return the resolved hit/crit/damage outcome (zero damage on a miss)
+     */
+    private HitOutcome resolveHit(int hitChance, int critChance, IntSupplier damageRoll) {
+        int clampedHit = clamp(hitChance, CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
+        if (random.roll(1, 100) > clampedHit) {
+            return new HitOutcome(false, false, 0);
+        }
+        int damage = damageRoll.getAsInt();
+        boolean crit = random.roll(1, 100) <= clamp(critChance, 0, 100);
+        if (crit) {
+            damage = Math.max(1, damage * CombatSettings.critMultiplier());
+        }
+        return new HitOutcome(true, crit, damage);
+    }
+
+    /**
+     * The outcome of an attacker's strike (player melee/ranged, AoE spell, or pet swing) against a
+     * defender: whether it landed, whether it was a critical hit, and the final damage dealt (zero on
+     * a miss).
+     */
+    private record HitOutcome(boolean hit, boolean crit, int damage) {
     }
 
     /**
@@ -903,7 +963,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
 
         List<GameMessage> messages = new ArrayList<>();
-        PlayerHitOutcome outcome = resolvePlayerHit(attacker, attack);
+        HitOutcome outcome = resolvePlayerHit(attacker, attack);
         if (!outcome.hit()) {
             messages.add(GameMessage.toSource(playerMissMessage(mob)));
             return new GameActionResult(null, null, messages);
@@ -1551,7 +1611,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
         // A shot rolls to hit and crit through the same seeded resolution as a melee swing
         // (issue #591), so the shooter's agility and the bow's hit/crit bonuses matter.
-        PlayerHitOutcome outcome = resolvePlayerHit(attacker, attack);
+        HitOutcome outcome = resolvePlayerHit(attacker, attack);
         if (!outcome.hit()) {
             // A missed shot deals no damage and gives the target no reason to close the distance:
             // the mob does not aggro, engage, or charge into the shooter's room (AGENTS.md §5).
@@ -1633,9 +1693,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * with the crowd — {@link io.taanielo.jmud.core.ability.AbilityCost#totalMana(int)} charges the
      * spell's base mana plus its {@code mana_per_target} once per target — and the cast is refused
      * (again spending nothing) if the caster cannot pay the scaled total. On success the caster's
-     * mana is deducted once, then each mob takes the spell's summed HP-decrease damage; slain mobs
-     * award their normal kill rewards (loot, XP, gold, quest credit), accumulated onto the caster so
-     * a single persisted snapshot carries both the mana deduction and every reward.
+     * mana is deducted once, then each mob is resolved independently through the same seeded hit/crit
+     * roll as a melee swing (issue #595): a target may be missed outright (no damage) or crit for
+     * bonus damage, rather than every mob eating the same flat number. Slain mobs award their normal
+     * kill rewards (loot, XP, gold, quest credit), accumulated onto the caster so a single persisted
+     * snapshot carries both the mana deduction and every reward.
      *
      * @param caster the casting player
      * @param spell  the resolved AoE spell ability
@@ -1660,7 +1722,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return GameActionResult.error(
                 "You lack the mana to unleash " + spell.name() + " (" + scaledMana + " needed).");
         }
-        int damage = aoeSpellDamage(spell);
+        int baseDamage = aoeSpellDamage(spell);
 
         Player updated = caster.withVitals(caster.getVitals().consumeMana(scaledMana));
 
@@ -1680,9 +1742,23 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         UUID firstSurvivor = null;
         for (MobInstance mob : targets) {
             String mobName = mob.template().name();
+            // Each target rolls hit and crit independently (issue #595): the spell can miss some
+            // mobs outright and crit others rather than dealing the same flat number to all.
+            HitOutcome outcome = resolveSpellHit(caster, baseDamage);
+            if (!outcome.hit()) {
+                messages.add(GameMessage.toSource(aoeMissMessage(spell, mobName)));
+                // A missed mob takes no damage but is still drawn into the fight, exactly as a
+                // missed melee swing engages its target.
+                mob.engage(caster.getUsername());
+                if (firstSurvivor == null) {
+                    firstSurvivor = mob.instanceId();
+                }
+                continue;
+            }
+            int damage = outcome.damage();
             int remaining = mob.takeDamage(damage);
-            messages.add(GameMessage.toSource("Your " + spell.name() + " strikes the " + mobName
-                + " for " + damage + " damage. (" + remaining + " HP remaining)"));
+            messages.add(GameMessage.toSource(
+                aoeStrikeMessage(spell, mobName, damage, remaining, outcome.crit())));
             if (!mob.isAlive()) {
                 updated = applyMobKillRewards(mob, updated, roomId, messages);
                 continue;
@@ -1717,6 +1793,37 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             }
         }
         return damage;
+    }
+
+    /**
+     * Builds the per-target line shown to a caster whose AoE spell landed on a mob, mirroring the
+     * melee/ranged strike phrasing. A critical hit is prefixed with a "critical hit!" notice so a
+     * crit reads distinctly from a normal strike.
+     *
+     * @param spell     the AoE spell being cast
+     * @param mobName   the struck mob's display name
+     * @param damage    the damage this target took
+     * @param remaining the target's HP after the strike
+     * @param crit      whether this target was struck for a critical hit
+     * @return the message text to show the caster for this target
+     */
+    private static String aoeStrikeMessage(
+        Ability spell, String mobName, int damage, int remaining, boolean crit) {
+        String critPrefix = crit ? "A critical hit! " : "";
+        return critPrefix + "Your " + spell.name() + " strikes the " + mobName + " for "
+            + damage + " damage. (" + remaining + " HP remaining)";
+    }
+
+    /**
+     * Builds the per-target line shown to a caster whose AoE spell missed a mob outright, so an AoE
+     * spell can miss a target rather than always landing for a flat amount (issue #595).
+     *
+     * @param spell   the AoE spell being cast
+     * @param mobName the missed mob's display name
+     * @return the miss message text to show the caster for this target
+     */
+    private static String aoeMissMessage(Ability spell, String mobName) {
+        return "Your " + spell.name() + " crackles harmlessly past the " + mobName + ".";
     }
 
     /**
@@ -2163,49 +2270,99 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         }
         String petName = pet.displayName();
         String foeName = foe.template().name();
-        int damage = rollDamage(petAttack);
-        int remaining = foe.takeDamage(damage);
 
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("Your " + petName + " strikes the " + foeName + " for "
-            + damage + " damage. (" + remaining + " HP remaining)"));
+        // The pet's swing rolls to hit and crit through the same seeded resolution as a player's
+        // melee swing (issue #595), so a pet can miss its foe outright or crit it for bonus damage.
+        HitOutcome petOutcome = resolveMobVsMobHit(petAttack);
+        if (petOutcome.hit()) {
+            int damage = petOutcome.damage();
+            int remaining = foe.takeDamage(damage);
+            messages.add(GameMessage.toSource(
+                petStrikeMessage(petName, foeName, damage, remaining, petOutcome.crit())));
 
-        if (!foe.isAlive()) {
-            Player ownerPlayer = playerRepository.loadPlayer(owner).orElse(null);
-            if (ownerPlayer != null && !ownerPlayer.isDead()) {
-                Player rewarded = applyMobKillRewards(foe, ownerPlayer, foe.roomId(), messages);
-                saveOrLog(rewarded);
-                playerEventBus.publish(owner, new GameActionResult(rewarded, null, messages));
-            } else {
-                // Owner offline/dead: still tear the encounter down cleanly.
-                foe.scheduleRespawn(currentTimeOfDay());
-                endCombatForMob(foe);
+            if (!foe.isAlive()) {
+                Player ownerPlayer = playerRepository.loadPlayer(owner).orElse(null);
+                if (ownerPlayer != null && !ownerPlayer.isDead()) {
+                    Player rewarded = applyMobKillRewards(foe, ownerPlayer, foe.roomId(), messages);
+                    saveOrLog(rewarded);
+                    playerEventBus.publish(owner, new GameActionResult(rewarded, null, messages));
+                } else {
+                    // Owner offline/dead: still tear the encounter down cleanly.
+                    foe.scheduleRespawn(currentTimeOfDay());
+                    endCombatForMob(foe);
+                }
+                return;
             }
-            return;
+        } else {
+            messages.add(GameMessage.toSource(
+                "Your " + petName + " lunges at the " + foeName + " but misses."));
         }
 
-        // Surviving foe retaliates against the pet (not its owner).
+        // Surviving foe retaliates against the pet (not its owner), rolling its own hit/crit.
         AttackDefinition foeAttack = loadAttack(foe.template().attackId());
         if (foeAttack != null) {
-            int retaliation = rollDamage(foeAttack);
-            int petRemaining = pet.takeDamage(retaliation);
-            messages.add(GameMessage.toSource("The " + foeName + " retaliates against your " + petName
-                + " for " + retaliation + " damage. (" + petRemaining + " HP remaining)"));
-            if (!pet.isAlive()) {
-                instances.remove(pet.instanceId());
-                if (pet.isTamed()) {
-                    releasePersistedPet(pet);
-                    messages.add(GameMessage.toSource("Your " + petName + " has been slain!"));
-                    broadcastToRoomExcept(pet.roomId(), owner,
-                        "The " + petName + " collapses, slain.");
-                } else {
-                    messages.add(GameMessage.toSource("Your " + petName + " has been destroyed!"));
-                    broadcastToRoomExcept(pet.roomId(), owner,
-                        "The " + petName + " collapses into dust.");
+            HitOutcome foeOutcome = resolveMobVsMobHit(foeAttack);
+            if (!foeOutcome.hit()) {
+                messages.add(GameMessage.toSource(
+                    "The " + foeName + " swings at your " + petName + " but misses."));
+            } else {
+                int retaliation = foeOutcome.damage();
+                int petRemaining = pet.takeDamage(retaliation);
+                messages.add(GameMessage.toSource(foeRetaliationMessage(
+                    foeName, petName, retaliation, petRemaining, foeOutcome.crit())));
+                if (!pet.isAlive()) {
+                    instances.remove(pet.instanceId());
+                    if (pet.isTamed()) {
+                        releasePersistedPet(pet);
+                        messages.add(GameMessage.toSource("Your " + petName + " has been slain!"));
+                        broadcastToRoomExcept(pet.roomId(), owner,
+                            "The " + petName + " collapses, slain.");
+                    } else {
+                        messages.add(GameMessage.toSource("Your " + petName + " has been destroyed!"));
+                        broadcastToRoomExcept(pet.roomId(), owner,
+                            "The " + petName + " collapses into dust.");
+                    }
                 }
             }
         }
         playerEventBus.publish(owner, new GameActionResult(null, null, messages));
+    }
+
+    /**
+     * Builds the line shown to a pet's owner when the pet lands a swing on a hostile mob, mirroring
+     * the player melee strike phrasing. A critical hit is prefixed with a "critical hit!" notice.
+     *
+     * @param petName   the pet's display name
+     * @param foeName   the struck foe's display name
+     * @param damage    the damage the pet dealt
+     * @param remaining the foe's HP after the strike
+     * @param crit      whether the pet scored a critical hit
+     * @return the message text to show the pet's owner
+     */
+    private static String petStrikeMessage(
+        String petName, String foeName, int damage, int remaining, boolean crit) {
+        String critPrefix = crit ? "A critical hit! " : "";
+        return critPrefix + "Your " + petName + " strikes the " + foeName + " for "
+            + damage + " damage. (" + remaining + " HP remaining)";
+    }
+
+    /**
+     * Builds the line shown to a pet's owner when a surviving foe retaliates against the pet,
+     * mirroring the strike phrasing. A critical hit is prefixed with a "critical hit!" notice.
+     *
+     * @param foeName   the retaliating foe's display name
+     * @param petName   the pet's display name
+     * @param damage    the damage the foe dealt to the pet
+     * @param remaining the pet's HP after the retaliation
+     * @param crit      whether the foe scored a critical hit
+     * @return the message text to show the pet's owner
+     */
+    private static String foeRetaliationMessage(
+        String foeName, String petName, int damage, int remaining, boolean crit) {
+        String critPrefix = crit ? "A critical hit! " : "";
+        return critPrefix + "The " + foeName + " retaliates against your " + petName + " for "
+            + damage + " damage. (" + remaining + " HP remaining)";
     }
 
     /**
@@ -2636,7 +2793,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 continue;
             }
             List<GameMessage> messages = new ArrayList<>();
-            PlayerHitOutcome outcome = resolvePlayerHit(player, attack);
+            HitOutcome outcome = resolvePlayerHit(player, attack);
             if (!outcome.hit()) {
                 messages.add(GameMessage.toSource(playerMissMessage(mob)));
                 playerEventBus.publish(username, new GameActionResult(null, null, messages));

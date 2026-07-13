@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +29,7 @@ import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -119,6 +122,12 @@ class MobRegistrySummonTest {
 
     private MobRegistry buildRegistry(
         Player caster, List<Username> eventSink, List<GameActionResult> results, MobTemplate... templates) {
+        return buildRegistry(caster, MobRegistryTestSupport.random(), eventSink, results, templates);
+    }
+
+    private MobRegistry buildRegistry(
+        Player caster, CombatRandom random, List<Username> eventSink, List<GameActionResult> results,
+        MobTemplate... templates) {
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(templates));
         AttackRepository attackRepo = new StubAttackRepository(Map.of(PUNCH, PUNCH_ATTACK));
         ItemRepository itemRepo = new StubItemRepository();
@@ -135,7 +144,7 @@ class MobRegistrySummonTest {
 
         MobRegistry registry = new MobRegistry(
             templateRepo, itemRepo, attackRepo, roomService, playerRepo,
-            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, MobRegistryTestSupport.random());
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, random);
         registry.init();
         return registry;
     }
@@ -300,7 +309,92 @@ class MobRegistrySummonTest {
         assertFalse(result.messages().isEmpty(), "An explanatory message is returned");
     }
 
+    @Test
+    void pet_canMissItsFoe_dealingNoDamage() {
+        Player caster = mage("necro");
+        List<GameActionResult> results = new ArrayList<>();
+        // Pet hit roll 80 (> 75) misses; foe retaliation hit roll 80 (> 75) also misses.
+        MobRegistry registry = buildRegistry(caster, new ScriptedRandom(80, 80),
+            new ArrayList<>(), results, petTemplate(20), goblinTemplate(20, ROOM_A, 5));
+
+        registry.processSummon(caster, SUMMON, ROOM_A);
+        registry.tick();
+
+        assertTrue(containsText(results, "Your Spectral Servant lunges at the Goblin but misses"),
+            "A pet whose swing misses should report a miss, not a strike");
+        MobInstance goblin = registry.getMobsInRoom(ROOM_A).stream()
+            .filter(m -> !m.isSummoned())
+            .findFirst()
+            .orElseThrow();
+        assertTrue(goblin.currentHp() == 20, "A missed foe takes no damage");
+    }
+
+    @Test
+    void pet_canCritItsFoe_forBonusDamage() {
+        Player caster = mage("necro");
+        List<GameActionResult> results = new ArrayList<>();
+        // Pet hit 10 (lands), crit 1 (crits): 5 damage becomes 10. Foe retaliation hit 80 misses.
+        MobRegistry registry = buildRegistry(caster, new ScriptedRandom(10, 1, 80),
+            new ArrayList<>(), results, petTemplate(20), goblinTemplate(20, ROOM_A, 5));
+
+        registry.processSummon(caster, SUMMON, ROOM_A);
+        registry.tick();
+
+        assertTrue(containsText(results, "A critical hit! Your Spectral Servant strikes the Goblin"),
+            "A pet crit should read distinctly from a normal strike");
+        MobInstance goblin = registry.getMobsInRoom(ROOM_A).stream()
+            .filter(m -> !m.isSummoned())
+            .findFirst()
+            .orElseThrow();
+        assertTrue(goblin.currentHp() == 10, "A pet crit should deal double (5 * 2 = 10) damage");
+    }
+
+    @Test
+    void foeRetaliation_againstPet_canCrit() {
+        Player caster = mage("necro");
+        List<GameActionResult> results = new ArrayList<>();
+        // Pet hit 80 misses; foe retaliation hit 10 (lands), crit 1 (crits): 5 damage becomes 10.
+        MobRegistry registry = buildRegistry(caster, new ScriptedRandom(80, 10, 1),
+            new ArrayList<>(), results, petTemplate(20), goblinTemplate(20, ROOM_A, 5));
+
+        registry.processSummon(caster, SUMMON, ROOM_A);
+        registry.tick();
+
+        assertTrue(containsText(results,
+                "A critical hit! The Goblin retaliates against your Spectral Servant"),
+            "The foe's retaliation against the pet can crit for symmetry with the pet's own swing");
+        assertTrue(containsText(results, "15 HP remaining"),
+            "A 10-damage crit should leave the 25-HP pet at 15 HP");
+    }
+
     // ── stubs ─────────────────────────────────────────────────────────
+
+    /**
+     * A {@link CombatRandom} returning a fixed sequence of rolls (each clamped into the requested
+     * range) so pet hit/crit outcomes are fully deterministic. {@link #nextDouble()} returns
+     * {@code 1.0} so loot/wander probability gates never consume a scripted roll.
+     */
+    private static final class ScriptedRandom implements CombatRandom {
+        private final Deque<Integer> rolls = new ArrayDeque<>();
+
+        ScriptedRandom(int... values) {
+            for (int value : values) {
+                rolls.add(value);
+            }
+        }
+
+        @Override
+        public int roll(int minInclusive, int maxInclusive) {
+            Integer next = rolls.poll();
+            int value = next == null ? minInclusive : next;
+            return Math.max(minInclusive, Math.min(maxInclusive, value));
+        }
+
+        @Override
+        public double nextDouble() {
+            return 1.0;
+        }
+    }
 
     private record StubMobTemplateRepository(List<MobTemplate> templates)
         implements MobTemplateRepository {
