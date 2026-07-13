@@ -1069,6 +1069,17 @@ public interface SocketCommandContext extends Client {
     default void manageTitle(String args) {}
 
     /**
+     * Handles the {@code DESCRIBE} command family: showing the caller's custom LOOK description,
+     * setting it (capped at 240 characters), or clearing it back to the default generated line.
+     *
+     * <p>The default implementation is a no-op so existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument string following {@code DESCRIBE} (may be blank, free text,
+     *             {@code CLEAR}, or {@code NONE})
+     */
+    default void manageDescription(String args) {}
+
+    /**
      * Handles the {@code AFK} command: with no argument it toggles the caller's away status on (with
      * a default message) or off; with an argument it turns away status on with that custom reason.
      *

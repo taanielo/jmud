@@ -132,6 +132,45 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsCustomDescription() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("thorin"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withDescription("A grizzled dwarf with a notched axe and a permanent scowl.");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals("A grizzled dwarf with a notched axe and a permanent scowl.",
+            loaded.get().description());
+
+        Path file = tempDir.resolve("players").resolve("thorin.json");
+        JsonNode root = new ObjectMapper().readTree(Files.readString(file));
+        assertEquals("A grizzled dwarf with a notched axe and a permanent scowl.",
+            root.get("description").asText());
+    }
+
+    @Test
+    void loadsPlayerWithoutDescriptionFieldAsEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("veteran"), Password.hash("pw", 1000));
+        // Mirror a legacy save that predates the description field.
+        repository.savePlayer(Player.of(user, "%hp> "));
+        Path file = tempDir.resolve("players").resolve("veteran.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        assertFalse(root.has("description"),
+            "an unset description should be omitted from the save file");
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().description().isEmpty(),
+            "Player with no description field should default to empty");
+    }
+
+    @Test
     void loadsPlayerWithoutFriendsFieldAsEmptyList() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("lonely"), Password.hash("pw", 1000));

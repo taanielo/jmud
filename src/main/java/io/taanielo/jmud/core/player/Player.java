@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.taanielo.jmud.core.ability.AbilityId;
@@ -188,7 +189,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -228,10 +229,11 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("duelWins") Integer duelWins,
         @JsonProperty("duelLosses") Integer duelLosses,
         @JsonProperty("proficiencies") Map<String, Integer> proficiencies,
-        @JsonProperty("autoLootEnabled") Boolean autoLootEnabled
+        @JsonProperty("autoLootEnabled") Boolean autoLootEnabled,
+        @JsonProperty("description") String description
     ) {
         this(
-            new PlayerIdentity(user, level, experience, race, classId),
+            new PlayerIdentity(user, level, experience, race, classId, description),
             new PlayerCombatState(vitals, effects, dead),
             new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled),
             new PlayerAbilities(learnedAbilities),
@@ -376,6 +378,17 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("class")
     public ClassId getClassId() {
         return identity.classId();
+    }
+
+    /**
+     * Returns the player's custom LOOK description for JSON serialisation, or {@code null} when none
+     * is set (in which case the field is omitted from save files for backward compatibility).
+     */
+    @JsonProperty("description")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getDescription() {
+        String description = identity.description();
+        return description.isEmpty() ? null : description;
     }
 
     @JsonProperty("dead")
@@ -983,6 +996,24 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns this player's custom LOOK description, or an empty string when none is set.
+     */
+    @JsonIgnore
+    public String description() {
+        return identity.description();
+    }
+
+    /**
+     * Returns a copy of this player with the given custom LOOK description; pass a {@code null} or
+     * blank string to clear it back to the default generated line. The text is trimmed.
+     *
+     * @param newDescription the new description, or {@code null}/blank to clear
+     */
+    public Player withDescription(String newDescription) {
+        return withIdentity(identity.withDescription(newDescription));
+    }
+
+    /**
      * Returns a copy of this player with the resting flag set to the given value.
      *
      * <p>The resting state is in-memory only and is never persisted.
@@ -1118,7 +1149,8 @@ public class Player implements EffectTarget, Combatant {
             duelWins,
             duelLosses,
             proficiencies.toStringMap(),
-            preferences.autoLootEnabled()
+            preferences.autoLootEnabled(),
+            identity.description().isEmpty() ? null : identity.description()
         );
     }
 
