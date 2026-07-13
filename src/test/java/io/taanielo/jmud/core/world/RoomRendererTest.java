@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.output.AnsiTextStyler;
+import io.taanielo.jmud.core.output.PlainTextStyler;
 
 /**
  * Golden-output unit tests for {@link RoomRenderer}.
@@ -200,5 +201,32 @@ class RoomRendererTest {
 
         assertTrue(lines.get(1).equals("A busy square by day."),
             "The three-arg overload should default to the day description");
+    }
+
+    @Test
+    void briefModeOmitsDescriptionLine() {
+        Room room = new Room(ROOM_ID, "Town Square", "A busy square.",
+            Map.of(Direction.NORTH, NORTH_ROOM), List.of(), List.of());
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of(),
+            TimeOfDay.DAY, new PlainTextStyler(), RoomRenderer.DescriptionMode.BRIEF);
+
+        assertTrue(lines.get(0).equals("Town Square"), "First line should still be the room name");
+        assertFalse(lines.stream().anyMatch(l -> l.equals("A busy square.")),
+            "Brief mode should omit the prose description line");
+        assertTrue(lines.stream().anyMatch(l -> l.startsWith("Exits:")),
+            "Brief mode should still render the exits line");
+        assertTrue(lines.stream().anyMatch(l -> l.startsWith("Occupants:")),
+            "Brief mode should still render the occupants line");
+    }
+
+    @Test
+    void fullModeRendersDescriptionLine() {
+        Room room = new Room(ROOM_ID, "Town Square", "A busy square.",
+            Map.of(Direction.NORTH, NORTH_ROOM), List.of(), List.of());
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of(),
+            TimeOfDay.DAY, new PlainTextStyler(), RoomRenderer.DescriptionMode.FULL);
+
+        assertTrue(lines.get(1).equals("A busy square."),
+            "Full mode should render the prose description line");
     }
 }

@@ -189,7 +189,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -231,12 +231,13 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("proficiencies") Map<String, Integer> proficiencies,
         @JsonProperty("autoLootEnabled") Boolean autoLootEnabled,
         @JsonProperty("description") String description,
-        @JsonProperty("tamedPetNames") List<String> tamedPetNames
+        @JsonProperty("tamedPetNames") List<String> tamedPetNames,
+        @JsonProperty("briefModeEnabled") Boolean briefModeEnabled
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId, description),
             new PlayerCombatState(vitals, effects, dead),
-            new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled),
+            new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled, briefModeEnabled),
             new PlayerAbilities(learnedAbilities),
             new PlayerInventory(inventory),
             equipment == null ? PlayerEquipment.empty() : equipment,
@@ -364,6 +365,11 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("autoLootEnabled")
     public boolean isAutoLootEnabled() {
         return preferences.autoLootEnabled();
+    }
+
+    @JsonProperty("briefModeEnabled")
+    public boolean isBriefModeEnabled() {
+        return preferences.briefModeEnabled();
     }
 
     @JsonProperty("learnedAbilities")
@@ -879,6 +885,18 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns a copy of this player with brief mode enabled or disabled, preserving all other state.
+     * When enabled, movement (walking between rooms) omits the room's prose description line and shows
+     * only the room name, exits, items, and occupants; explicit {@code LOOK} always shows the full text.
+     *
+     * @param enabled whether brief mode should be enabled
+     * @return an updated player
+     */
+    public Player withBriefModeEnabled(boolean enabled) {
+        return new Player(identity, combatState, preferences.withBriefModeEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
+    }
+
+    /**
      * Returns a copy of this player with the given prompt format string, preserving all other state.
      *
      * @param nextFormat the new prompt format (token substitution handled by {@code PromptRenderer})
@@ -1162,7 +1180,8 @@ public class Player implements EffectTarget, Combatant {
             proficiencies.toStringMap(),
             preferences.autoLootEnabled(),
             identity.description().isEmpty() ? null : identity.description(),
-            pets.customNames()
+            pets.customNames(),
+            preferences.briefModeEnabled()
         );
     }
 

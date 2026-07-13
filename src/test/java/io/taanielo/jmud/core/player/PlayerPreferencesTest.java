@@ -45,4 +45,39 @@ class PlayerPreferencesTest {
         assertTrue(prefs.withAnsiEnabled(true).autoLootEnabled());
         assertTrue(prefs.withPromptFormat("%h>").autoLootEnabled());
     }
+
+    @Test
+    void briefModeDefaultsOffWhenAbsent() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", true, true);
+
+        assertFalse(prefs.briefModeEnabled());
+    }
+
+    @Test
+    void briefModeDefaultsOffWhenNull() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", true, true, null);
+
+        assertFalse(prefs.briefModeEnabled());
+    }
+
+    @Test
+    void withBriefModeEnabledFlipsFlagPreservingOtherFields() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", true, true, false);
+
+        PlayerPreferences enabled = prefs.withBriefModeEnabled(true);
+
+        assertTrue(enabled.briefModeEnabled());
+        assertTrue(enabled.ansiEnabled());
+        assertTrue(enabled.autoLootEnabled());
+        assertEquals("%hp>", enabled.promptFormat());
+    }
+
+    @Test
+    void withAnsiAutoLootAndPromptPreserveBriefMode() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", false, false, true);
+
+        assertTrue(prefs.withAnsiEnabled(true).briefModeEnabled());
+        assertTrue(prefs.withAutoLootEnabled(true).briefModeEnabled());
+        assertTrue(prefs.withPromptFormat("%h>").briefModeEnabled());
+    }
 }

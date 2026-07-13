@@ -305,9 +305,30 @@ public class RoomService {
      * @return the rendered move result
      */
     public MoveResult move(Username username, Direction direction, TextStyler styler) {
+        return move(username, direction, styler, RoomRenderer.DescriptionMode.FULL);
+    }
+
+    /**
+     * Attempts to move the player in the provided direction, coloring room item names in the
+     * destination's look description by their rarity tier through the supplied {@link TextStyler} and
+     * omitting the prose description line when {@code descriptionMode} is
+     * {@link RoomRenderer.DescriptionMode#BRIEF}.
+     *
+     * @param username        the player moving
+     * @param direction       the direction to move
+     * @param styler          the styler used to color item names by rarity
+     * @param descriptionMode whether the destination look includes the prose description line
+     * @return the rendered move result
+     */
+    public MoveResult move(
+            Username username,
+            Direction direction,
+            TextStyler styler,
+            RoomRenderer.DescriptionMode descriptionMode) {
         Objects.requireNonNull(username, "Username is required");
         Objects.requireNonNull(direction, "Direction is required");
         Objects.requireNonNull(styler, "Styler is required");
+        Objects.requireNonNull(descriptionMode, "Description mode is required");
         PlayerLocationService.MoveAttempt attempt = locationService.attemptMove(username, direction);
         return switch (attempt) {
             case PlayerLocationService.MoveAttempt.Failed f ->
@@ -317,7 +338,8 @@ public class RoomService {
                 Set<Direction> lockedExits = locationService.getLockedExits(enriched.getId());
                 List<String> lines = new ArrayList<>();
                 lines.add("You move " + direction.label() + ".");
-                lines.addAll(renderer.describeRoom(enriched, username, lockedExits, currentTimeOfDay(), styler));
+                lines.addAll(renderer.describeRoom(
+                    enriched, username, lockedExits, currentTimeOfDay(), styler, descriptionMode));
                 appendWeatherLines(lines, enriched);
                 yield new MoveResult(true, lines, enriched);
             }

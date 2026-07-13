@@ -21,6 +21,20 @@ import io.taanielo.jmud.core.output.TextStyler;
  */
 public class RoomRenderer {
 
+    /**
+     * Controls whether a room's prose description line is included in the rendered output.
+     *
+     * <p>{@link #FULL} renders the complete description (used by explicit {@code LOOK}); {@link #BRIEF}
+     * omits the prose line and renders only the room name, exits, items, and occupants (used by
+     * movement when the viewer has brief mode enabled).
+     */
+    public enum DescriptionMode {
+        /** Include the room's prose description line. */
+        FULL,
+        /** Omit the room's prose description line. */
+        BRIEF
+    }
+
     private static final TextStyler PLAIN = new PlainTextStyler();
 
     /**
@@ -63,14 +77,40 @@ public class RoomRenderer {
      */
     public List<String> describeRoom(
         Room room, Username viewer, Set<Direction> lockedExits, TimeOfDay timeOfDay, TextStyler styler) {
+        return describeRoom(room, viewer, lockedExits, timeOfDay, styler, DescriptionMode.FULL);
+    }
+
+    /**
+     * Returns the rendered look description lines for the given room, omitting the prose description
+     * line when {@code mode} is {@link DescriptionMode#BRIEF}.
+     *
+     * @param room        the room to describe (with occupants and merged items already embedded)
+     * @param viewer      the player requesting the description (excluded from the occupants list)
+     * @param lockedExits the set of currently locked exit directions in this room
+     * @param timeOfDay   the current time of day, used to pick the day or night description
+     * @param styler      the styler used to color item names by rarity
+     * @param mode        whether to include ({@link DescriptionMode#FULL}) or omit
+     *                    ({@link DescriptionMode#BRIEF}) the prose description line
+     * @return the list of output lines (name, optional description, exits, items, occupants)
+     */
+    public List<String> describeRoom(
+        Room room,
+        Username viewer,
+        Set<Direction> lockedExits,
+        TimeOfDay timeOfDay,
+        TextStyler styler,
+        DescriptionMode mode) {
         Objects.requireNonNull(room, "Room is required");
         Objects.requireNonNull(viewer, "Viewer is required");
         Objects.requireNonNull(lockedExits, "Locked exits set is required");
         Objects.requireNonNull(timeOfDay, "Time of day is required");
         Objects.requireNonNull(styler, "Styler is required");
+        Objects.requireNonNull(mode, "Description mode is required");
         List<String> lines = new ArrayList<>();
         lines.add(room.getName());
-        lines.add(room.describeFor(timeOfDay));
+        if (mode == DescriptionMode.FULL) {
+            lines.add(room.describeFor(timeOfDay));
+        }
         lines.add("Exits: " + formatExits(room.getExits(), lockedExits));
         lines.add("Items: " + formatItems(room.getItems(), styler));
         lines.add("Occupants: " + formatOccupants(room.getOccupants(), viewer));

@@ -85,6 +85,16 @@ public interface SocketCommandContext extends Client {
     default void updateAutoLoot(String args) {}
 
     /**
+     * Handles the {@code BRIEF} command: shows the current setting with no arguments or
+     * {@code STATUS}, and toggles it with {@code ON}, {@code OFF}, or {@code TOGGLE}. When enabled,
+     * movement omits the room's prose description line; explicit {@code LOOK} always shows it.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void updateBrief(String args) {}
+
+    /**
      * Handles the {@code PROMPT} command: shows the current prompt format with no arguments,
      * updates and persists it with {@code SET <format>}, or toggles prompt colorization with
      * {@code COLOR [on|off|toggle|status]}.
