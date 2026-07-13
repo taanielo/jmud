@@ -109,7 +109,10 @@ class MobRegistryWanderTest {
     @Test
     void wanderingMob_movesToAdjacentRoom_afterTicks() {
         MobTemplate template = wanderingTemplate(true, List.of());
-        MobRegistry registry = buildRegistry(template, twoRoomRepository());
+        // The shared deterministic RNG suppresses the 30% wander chance (nextDouble == 1.0), so this
+        // test drives wandering with a source whose nextDouble is below the 0.30 threshold; the mob
+        // then takes its single exit (NORTH) on the first tick.
+        MobRegistry registry = buildRegistry(template, twoRoomRepository(), new AlwaysWanderRandom());
 
         MobInstance mob = registry.allInstances().iterator().next();
         assertEquals(SPAWN_ROOM, mob.roomId(),
@@ -127,6 +130,23 @@ class MobRegistryWanderTest {
         assert moved : "Wandering mob should have moved within 50 ticks";
         assertEquals(NORTH_ROOM, mob.roomId(),
             "Mob should have moved to the north room");
+    }
+
+    /**
+     * Deterministic RNG whose {@link CombatRandom#nextDouble()} of {@code 0.0} is below the wander
+     * threshold (0.30) so a wandering mob moves every tick, and whose {@link CombatRandom#roll(int, int)}
+     * returns the lower bound so the first (only) exit is chosen.
+     */
+    private static final class AlwaysWanderRandom implements CombatRandom {
+        @Override
+        public int roll(int minInclusive, int maxInclusive) {
+            return minInclusive;
+        }
+
+        @Override
+        public double nextDouble() {
+            return 0.0;
+        }
     }
 
     /**

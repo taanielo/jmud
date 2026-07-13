@@ -2231,9 +2231,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             // lunge — mirroring the non-damage side effects of a landing hit.
             List<GameMessage> messages = new ArrayList<>();
             Player missedPlayer = target;
+            boolean playerChanged = false;
             if (missedPlayer.isMounted()) {
                 String mountName = missedPlayer.mount().mountName();
                 missedPlayer = missedPlayer.withMount(PlayerMount.dismounted());
+                playerChanged = true;
                 messages.add(GameMessage.toSource(
                     "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
             }
@@ -2244,9 +2246,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             messages.add(GameMessage.toSource(
                 mobAttackMessage(mob, attack, MessagePhase.ATTACK_MISS, useSpecial, 0,
                     missedPlayer.getVitals().getMaxHp())));
-            Player publishedSource = missedPlayer == target ? null : missedPlayer;
-            if (publishedSource != null) {
-                saveOrLog(publishedSource);
+            // Only persist/publish an updated source when the miss actually changed the player (a
+            // mount throw); an ordinary miss leaves the player untouched, so no save is needed.
+            Player publishedSource = playerChanged ? missedPlayer : null;
+            if (playerChanged) {
+                saveOrLog(missedPlayer);
             }
             playerEventBus.publish(targetUsername,
                 new GameActionResult(publishedSource, null, messages));

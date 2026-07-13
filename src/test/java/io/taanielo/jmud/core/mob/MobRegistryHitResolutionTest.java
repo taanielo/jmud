@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -163,8 +164,8 @@ class MobRegistryHitResolutionTest {
     // ── helpers ───────────────────────────────────────────────────────
 
     private static boolean containsText(List<GameMessage> messages, String needle) {
-        String lowered = needle.toLowerCase();
-        return messages.stream().anyMatch(m -> m.text().toLowerCase().contains(lowered));
+        String lowered = needle.toLowerCase(Locale.ROOT);
+        return messages.stream().anyMatch(m -> m.text().toLowerCase(Locale.ROOT).contains(lowered));
     }
 
     private AttackDefinition attack(
@@ -212,7 +213,7 @@ class MobRegistryHitResolutionTest {
 
     private MobTemplate template(String name, int maxHp, boolean aggressive) {
         return new MobTemplate(
-            MobId.of("mob." + name.toLowerCase()),
+            MobId.of("mob." + name.toLowerCase(Locale.ROOT)),
             name,
             maxHp,
             ATTACK_ID,

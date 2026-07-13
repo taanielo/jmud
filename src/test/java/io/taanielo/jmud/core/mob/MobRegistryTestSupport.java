@@ -29,7 +29,7 @@ final class MobRegistryTestSupport {
      * bounded {@link CombatRandom#roll(int, int)}, which under the default combat settings always
      * lands a normal hit (≤ the base hit chance of 75) without critting (&gt; the base crit chance of
      * 5), preserving the guaranteed-hit behaviour these tests were written against. Its
-     * {@link #nextDouble()} returns {@code 1.0} so probability gates (loot drop, mob wander) resolve
+     * {@code nextDouble()} returns {@code 1.0} so probability gates (loot drop, mob wander) resolve
      * only at their boundary (drop chance {@code 1.0}), keeping those outcomes deterministic too.
      */
     static CombatRandom random() {
