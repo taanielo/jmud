@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "voidscar-cull",
+  "name": "Into the Unlight",
+  "description": "Below the Cinder Throne the fire gives way to a colder hunger. Umbral stalkers boil up the Hollow Descent from the Voidscar's depths, and every scout that follows the Cinder Reaches trail down meets their claws first. Cull eight of the light-eating beasts to hold the descent, and the way into the rift may open.",
+  "target_mob_id": "umbral-stalker",
+  "required_kills": 8,
+  "gold_reward": 175,
+  "xp_reward": 450,
+  "recommended_level": 32
+}
