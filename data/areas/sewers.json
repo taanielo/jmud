@@ -10,6 +10,10 @@
   "connections": [
     "catacombs"
   ],
+  "level_range": {
+    "min": 4,
+    "max": 8
+  },
   "ascii_map": [
     "   ===== UNDERCITY SEWERS =====",
     "",

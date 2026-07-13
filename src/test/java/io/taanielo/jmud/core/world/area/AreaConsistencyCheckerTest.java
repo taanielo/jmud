@@ -65,7 +65,8 @@ class AreaConsistencyCheckerTest {
         Fixture f = twoAreaFixture();
         // Add r1 (already in area-a) to area-b as well.
         f.areas.set(1, new Area(AreaId.of("area-b"), "Area B",
-            List.of(RoomId.of("r2"), RoomId.of("r1")), List.of(AreaId.of("area-a")), List.of("B ART")));
+            List.of(RoomId.of("r2"), RoomId.of("r1")), List.of(AreaId.of("area-a")), List.of("B ART"),
+            new LevelRange(1, 5)));
 
         List<String> problems = check(f);
 
@@ -92,7 +93,8 @@ class AreaConsistencyCheckerTest {
     void reportsConnectionToUnknownArea() {
         Fixture f = twoAreaFixture();
         f.areas.set(0, new Area(AreaId.of("area-a"), "Area A",
-            List.of(RoomId.of("r1")), List.of(AreaId.of("area-b"), AreaId.of("ghost")), List.of("A ART")));
+            List.of(RoomId.of("r1")), List.of(AreaId.of("area-b"), AreaId.of("ghost")), List.of("A ART"),
+            new LevelRange(1, 5)));
 
         List<String> problems = check(f);
 
@@ -151,9 +153,11 @@ class AreaConsistencyCheckerTest {
     private static Fixture twoAreaFixture() {
         Fixture f = new Fixture();
         f.areas.add(new Area(AreaId.of("area-a"), "Area A",
-            List.of(RoomId.of("r1")), List.of(AreaId.of("area-b")), List.of("A ART")));
+            List.of(RoomId.of("r1")), List.of(AreaId.of("area-b")), List.of("A ART"),
+            new LevelRange(1, 5)));
         f.areas.add(new Area(AreaId.of("area-b"), "Area B",
-            List.of(RoomId.of("r2")), List.of(AreaId.of("area-a")), List.of("B ART")));
+            List.of(RoomId.of("r2")), List.of(AreaId.of("area-a")), List.of("B ART"),
+            new LevelRange(1, 5)));
         f.rooms.add(room("r1", Map.of(Direction.EAST, RoomId.of("r2"))));
         Item mapB = mapItem("map-b", "Map B", "area-b");
         f.rooms.add(new Room(RoomId.of("r2"), "Room r2", "desc",

@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.world.area;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -49,16 +50,44 @@ public class AreaMapService {
         try {
             Optional<Area> area = areaRepository.findById(mapAreaId);
             if (area.isPresent()) {
-                return Optional.of(frame(area.get().name(), area.get().asciiMap()));
+                String title = area.get().name() + " (" + area.get().levelRange().describe() + ")";
+                return Optional.of(frame(title, area.get().asciiMap()));
             }
             Optional<WorldAtlas> atlas = areaRepository.findAtlas();
             if (atlas.isPresent() && atlas.get().id().equals(mapAreaId.getValue())) {
-                return Optional.of(frame(atlas.get().name(), atlas.get().asciiMap()));
+                List<String> art = new ArrayList<>(atlas.get().asciiMap());
+                art.addAll(difficultyLegend());
+                return Optional.of(frame(atlas.get().name(), art));
             }
         } catch (RepositoryException e) {
             log.warn("Failed to render map for area {}: {}", mapAreaId.getValue(), e.getMessage());
         }
         return Optional.empty();
+    }
+
+    /**
+     * Builds the difficulty-band legend appended below the World Atlas art: each area with its
+     * recommended level range, ordered from lowest band to highest so players can read the world as
+     * a progression (issue #550).
+     *
+     * @return the legend lines, or an empty list when no areas are defined
+     */
+    private List<String> difficultyLegend() throws RepositoryException {
+        List<Area> areas = new ArrayList<>(areaRepository.findAll());
+        if (areas.isEmpty()) {
+            return List.of();
+        }
+        areas.sort(Comparator
+            .comparingInt((Area a) -> a.levelRange().min())
+            .thenComparingInt(a -> a.levelRange().max())
+            .thenComparing(Area::name));
+        List<String> legend = new ArrayList<>();
+        legend.add("");
+        legend.add("Recommended levels:");
+        for (Area area : areas) {
+            legend.add("  " + area.name() + " (" + area.levelRange().describe() + ")");
+        }
+        return legend;
     }
 
     private static List<String> frame(String title, List<String> art) {

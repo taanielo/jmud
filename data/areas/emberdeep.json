@@ -13,6 +13,10 @@
     "frozen-peaks",
     "cinder-reaches"
   ],
+  "level_range": {
+    "min": 20,
+    "max": 28
+  },
   "ascii_map": [
     "   *** THE EMBERDEEP ***",
     "",

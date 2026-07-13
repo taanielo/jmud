@@ -16,6 +16,7 @@ import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaId;
 import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.LevelRange;
 import io.taanielo.jmud.core.world.area.WorldAtlas;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.json.JsonDataMapper;
@@ -121,7 +122,11 @@ public class JsonAreaRepository implements AreaRepository {
                 ? List.of()
                 : dto.connections().stream().map(AreaId::of).toList();
             List<String> asciiMap = dto.asciiMap() == null ? List.of() : dto.asciiMap();
-            return new Area(AreaId.of(dto.id()), dto.name(), roomIds, connections, asciiMap);
+            if (dto.levelRange() == null) {
+                throw new IllegalArgumentException("Area " + dto.id() + " is missing a level_range");
+            }
+            LevelRange levelRange = new LevelRange(dto.levelRange().min(), dto.levelRange().max());
+            return new Area(AreaId.of(dto.id()), dto.name(), roomIds, connections, asciiMap, levelRange);
         } catch (IllegalArgumentException e) {
             throw new RepositoryException("Invalid area data in " + source + ": " + e.getMessage(), e);
         }

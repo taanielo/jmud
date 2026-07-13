@@ -13,6 +13,10 @@
   "connections": [
     "emberdeep"
   ],
+  "level_range": {
+    "min": 24,
+    "max": 32
+  },
   "ascii_map": [
     "   ,.,. CINDER REACHES .,.,",
     "",

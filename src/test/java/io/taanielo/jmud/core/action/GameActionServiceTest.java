@@ -2347,7 +2347,8 @@ class GameActionServiceTest {
 
     private static AreaMapService mapServiceForTown() {
         Area town = new Area(AreaId.of("town"), "Town",
-            List.of(RoomId.of("training-yard")), List.of(), List.of("PATHS OF TOWN"));
+            List.of(RoomId.of("training-yard")), List.of(), List.of("PATHS OF TOWN"),
+            new io.taanielo.jmud.core.world.area.LevelRange(1, 3));
         WorldAtlas atlas = new WorldAtlas("atlas", "World Atlas", List.of("WORLD OVERVIEW"));
         AreaRepository areas = new AreaRepository() {
             @Override

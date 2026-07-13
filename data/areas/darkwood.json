@@ -19,6 +19,10 @@
     "frozen-peaks",
     "shrouded-isle"
   ],
+  "level_range": {
+    "min": 1,
+    "max": 6
+  },
   "ascii_map": [
     "  ~ ~ ~ DARKWOOD WILDS ~ ~ ~",
     "",
