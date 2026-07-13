@@ -596,6 +596,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param roomId the room to place the new instance in
      * @return the spawned instance, or empty when no template with that id exists
      */
+    @Override
     public Optional<MobInstance> spawnInstance(MobId mobId, RoomId roomId) {
         Objects.requireNonNull(mobId, "Mob id is required");
         Objects.requireNonNull(roomId, "Room id is required");
@@ -2388,16 +2389,41 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         String normalized = input.trim().toLowerCase(Locale.ROOT);
         for (MobInstance mob : mobs) {
             // A tamed companion may be targeted by its custom name (see NAME) or its template name.
-            String display = mob.displayName().toLowerCase(Locale.ROOT);
-            if (display.equals(normalized) || display.startsWith(normalized)) {
-                return mob;
-            }
-            String templateName = mob.template().name().toLowerCase(Locale.ROOT);
-            if (templateName.equals(normalized) || templateName.startsWith(normalized)) {
+            if (nameMatches(mob.displayName(), normalized)
+                || nameMatches(mob.template().name(), normalized)) {
                 return mob;
             }
         }
         return null;
+    }
+
+    /**
+     * Tests whether the already-lowercased {@code input} targets the given mob {@code candidate} name.
+     * A match is an exact or prefix match on the full name, or on the name with a leading article
+     * ({@code the}/{@code a}/{@code an}) stripped, so a mob named "the Rimewrought Stalker" is
+     * reachable by typing "rimewrought" as players naturally expect.
+     *
+     * @param candidate the mob display or template name (any case)
+     * @param input     the trimmed, lowercased target text typed by the player
+     * @return true when {@code input} matches {@code candidate} directly or article-stripped
+     */
+    private boolean nameMatches(String candidate, String input) {
+        String name = candidate.toLowerCase(Locale.ROOT);
+        if (name.equals(input) || name.startsWith(input)) {
+            return true;
+        }
+        String withoutArticle = stripLeadingArticle(name);
+        return !withoutArticle.equals(name)
+            && (withoutArticle.equals(input) || withoutArticle.startsWith(input));
+    }
+
+    private String stripLeadingArticle(String name) {
+        for (String article : List.of("the ", "an ", "a ")) {
+            if (name.startsWith(article)) {
+                return name.substring(article.length());
+            }
+        }
+        return name;
     }
 
     private int rollDamage(AttackDefinition attack) {
