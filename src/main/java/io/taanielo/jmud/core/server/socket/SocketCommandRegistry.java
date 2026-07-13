@@ -6,7 +6,9 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
@@ -38,6 +40,8 @@ public class SocketCommandRegistry {
      * @param equipmentArmorResolver  resolver for AC contributed by equipped armour
      * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
      * @param classArmorBonusResolver resolver for AC contributed by the player's class
+     * @param classRepository         repository used by {@code HELP <class>} to render a class reference sheet
+     * @param abilityRegistry         registry used by {@code HELP <class>} to resolve ability ids to display names
      * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
      * @param roomService             service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
      * @param tellService             in-memory tracker of the last private-message sender per player,
@@ -63,6 +67,8 @@ public class SocketCommandRegistry {
         RaceArmorBonusResolver raceArmorBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
         CharacterAttributesResolver characterAttributesResolver,
+        ClassRepository classRepository,
+        AbilityRegistry abilityRegistry,
         PlayerRepository playerRepository,
         RoomService roomService,
         TellService tellService,
@@ -81,6 +87,8 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
         Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         Objects.requireNonNull(characterAttributesResolver, "Character attributes resolver is required");
+        Objects.requireNonNull(classRepository, "Class repository is required");
+        Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         Objects.requireNonNull(playerRepository, "Player repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(tellService, "Tell service is required");
@@ -182,7 +190,7 @@ public class SocketCommandRegistry {
         new TalkCommand(registry);
         new RespondCommand(registry);
         new QuitCommand(registry);
-        new HelpCommand(registry);
+        new HelpCommand(registry, classRepository, abilityRegistry);
         new AliasCommand(registry);
         new IgnoreCommand(registry);
         new FriendCommand(registry);

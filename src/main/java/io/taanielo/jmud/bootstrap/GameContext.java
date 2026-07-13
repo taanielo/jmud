@@ -469,6 +469,7 @@ public record GameContext(
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, characterAttributesResolver,
+            classRepository, abilityRegistry,
             playerRepository, roomService, tellService, messageBroadcaster, reputationService, weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);

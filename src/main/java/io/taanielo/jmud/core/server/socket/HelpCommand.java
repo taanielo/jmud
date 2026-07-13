@@ -1,21 +1,46 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityId;
+import io.taanielo.jmud.core.ability.AbilityRegistry;
+import io.taanielo.jmud.core.character.AttributeBonus;
+import io.taanielo.jmud.core.character.AttributeGainCadence;
+import io.taanielo.jmud.core.character.AttributeGainSchedule;
+import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.character.ClassId;
+import io.taanielo.jmud.core.character.LevelGains;
+import io.taanielo.jmud.core.character.repository.ClassRepository;
+import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 
 /**
  * Handles the {@code HELP} / {@code H} command, giving players a way to
- * discover all available commands and their descriptions.
+ * discover all available commands and their descriptions, and to look up a
+ * class reference sheet.
  *
- * <p>Two forms are supported:
+ * <p>Three forms are supported:
  * <ul>
  *   <li>{@code HELP}       — prints a sorted list of all registered command names
  *       together with their {@link SocketCommandHandler#shortDescription()}.</li>
- *   <li>{@code HELP <name>} — prints the {@link SocketCommandHandler#longDescription()}
- *       for the named command, or an error if no matching command is found.</li>
+ *   <li>{@code HELP <command>} — prints the {@link SocketCommandHandler#longDescription()}
+ *       for the named command.</li>
+ *   <li>{@code HELP <class>} — prints the reference sheet for a playable class
+ *       (role/playstyle, starting ability kit, trainable pool, per-level vitals gains and
+ *       attribute bonuses/growth), resolved from the class data. Class names are only consulted
+ *       when the argument does not match a registered command, so class names never clutter the
+ *       {@code HELP} command listing.</li>
  * </ul>
+ *
+ * <p><strong>Lookup precedence for {@code HELP <name>}:</strong> a registered command is matched
+ * first (case-insensitively); only if no command matches is {@code name} resolved against the
+ * class registry (by class id or display name, case-insensitively). If neither matches, the
+ * standard {@code No help available for '<name>'.} message is shown.
  *
  * <p>The command list is derived from the registry snapshot at the time the
  * command is executed, so newly registered commands are visible immediately.
@@ -23,15 +48,39 @@ import java.util.Optional;
 public class HelpCommand extends RegistrableCommand {
 
     private final SocketCommandRegistry registry;
+    private final ClassRepository classRepository;
+    private final AbilityRegistry abilityRegistry;
 
     /**
      * Creates a {@code HelpCommand} and registers it with the given registry.
      *
+     * @param registry        the registry that this command is part of
+     * @param classRepository repository used to resolve {@code HELP <class>} reference sheets
+     * @param abilityRegistry registry used to resolve ability ids to their display names for the
+     *                        class reference sheet
+     */
+    public HelpCommand(
+        SocketCommandRegistry registry,
+        ClassRepository classRepository,
+        AbilityRegistry abilityRegistry
+    ) {
+        super(registry);
+        this.registry = registry;
+        this.classRepository = classRepository;
+        this.abilityRegistry = abilityRegistry;
+    }
+
+    /**
+     * Creates a {@code HelpCommand} without class-lookup support (command help only).
+     *
+     * <p>Used where no class data is available; {@code HELP <class>} degrades to the standard
+     * not-found message. Production wiring uses
+     * {@link #HelpCommand(SocketCommandRegistry, ClassRepository, AbilityRegistry)}.
+     *
      * @param registry the registry that this command is part of
      */
     public HelpCommand(SocketCommandRegistry registry) {
-        super(registry);
-        this.registry = registry;
+        this(registry, null, null);
     }
 
     @Override
@@ -41,15 +90,18 @@ public class HelpCommand extends RegistrableCommand {
 
     @Override
     public String shortDescription() {
-        return "List available commands or describe a specific command. Aliases: H";
+        return "List available commands, describe a command, or view a class. Aliases: H";
     }
 
     @Override
     public String longDescription() {
         return """
-               Usage: HELP  |  HELP <command>
-                 HELP          \u2014 show a sorted list of all commands with short descriptions.
-                 HELP <name>   \u2014 show the full description for the named command.\
+               Usage: HELP  |  HELP <command>  |  HELP <class>
+                 HELP          — show a sorted list of all commands with short descriptions.
+                 HELP <name>   — show the full description for the named command.
+                 HELP <class>  — show a class reference sheet (role, starting kit, trainable
+                                 abilities, level gains and attribute growth), e.g. HELP warrior.
+               A name is matched as a command first, then as a class.\
                """;
     }
 
@@ -89,10 +141,11 @@ public class HelpCommand extends RegistrableCommand {
     }
 
     /**
-     * Sends the long description for the named command, or an error message.
+     * Sends the long description for the named command, falling back to a class reference sheet,
+     * then to an error message.
      *
      * @param context the command execution context
-     * @param name    the command name to look up (case-insensitive)
+     * @param name    the command or class name to look up (case-insensitive)
      */
     private void handleDetail(SocketCommandContext context, String name) {
         String lower = name.toLowerCase(Locale.ROOT);
@@ -100,19 +153,129 @@ public class HelpCommand extends RegistrableCommand {
                 .filter(h -> h.name().equalsIgnoreCase(lower))
                 .findFirst();
 
-        if (found.isEmpty()) {
-            context.writeLineWithPrompt("No help available for '" + name + "'.");
+        if (found.isPresent()) {
+            SocketCommandHandler handler = found.get();
+            String desc = handler.longDescription();
+            if (desc.isBlank()) {
+                context.writeLineWithPrompt("No detailed help available for '" + handler.name() + "'.");
+                return;
+            }
+            for (String line : desc.split("\n", -1)) {
+                context.writeLineSafe(line);
+            }
+            context.sendPrompt();
             return;
         }
-        SocketCommandHandler handler = found.get();
-        String desc = handler.longDescription();
-        if (desc.isBlank()) {
-            context.writeLineWithPrompt("No detailed help available for '" + handler.name() + "'.");
+
+        Optional<ClassDefinition> classDef = resolveClass(name);
+        if (classDef.isPresent()) {
+            renderClassHelp(context, classDef.get());
             return;
         }
-        for (String line : desc.split("\n", -1)) {
-            context.writeLineSafe(line);
+
+        context.writeLineWithPrompt("No help available for '" + name + "'.");
+    }
+
+    /**
+     * Resolves a class by id or display name, case-insensitively. Since every class's data file
+     * names it after its id (lower-cased), a cache-backed {@code findById} lookup on the normalised
+     * argument matches both the {@code warrior} and {@code Warrior} forms without scanning all
+     * class files on the tick thread.
+     */
+    private Optional<ClassDefinition> resolveClass(String name) {
+        if (classRepository == null) {
+            return Optional.empty();
+        }
+        String lower = name.toLowerCase(Locale.ROOT);
+        try {
+            return classRepository.findById(ClassId.of(lower));
+        } catch (IllegalArgumentException | ClassRepositoryException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Writes the reference sheet for a class: role/playstyle description, starting ability kit,
+     * trainable ability pool, per-level vitals gains and creation attribute bonuses/growth.
+     */
+    private void renderClassHelp(SocketCommandContext context, ClassDefinition cd) {
+        context.writeLineSafe(cd.name());
+        if (!cd.description().isBlank()) {
+            context.writeLineSafe("  " + cd.description().strip());
+        }
+        context.writeLineSafe("  Starting abilities: " + abilityNames(cd.startingAbilityIds()));
+        List<AbilityId> trainable = cd.trainableAbilityIds();
+        if (!trainable.isEmpty()) {
+            context.writeLineSafe("  Trainable via TRAIN: " + abilityNames(trainable));
+        }
+        LevelGains gains = cd.levelGains();
+        context.writeLineSafe(String.format(
+            "  Level gains: +%d HP, +%d mana, +%d move per level",
+            gains.hp(), gains.mana(), gains.move()));
+        String bonus = formatAttributeBonus(cd.attributeBonus());
+        if (!bonus.isEmpty()) {
+            context.writeLineSafe("  Attribute bonuses (creation): " + bonus);
+        }
+        String growth = formatAttributeGains(cd.attributeGains());
+        if (!growth.isEmpty()) {
+            context.writeLineSafe("  Attribute growth: " + growth);
         }
         context.sendPrompt();
+    }
+
+    private String abilityNames(List<AbilityId> abilityIds) {
+        if (abilityIds.isEmpty()) {
+            return "none";
+        }
+        return abilityIds.stream()
+                .map(this::abilityDisplayName)
+                .collect(Collectors.joining(", "));
+    }
+
+    private String abilityDisplayName(AbilityId abilityId) {
+        if (abilityRegistry == null) {
+            return abilityId.getValue();
+        }
+        return abilityRegistry.findById(abilityId)
+                .map(Ability::name)
+                .orElse(abilityId.getValue());
+    }
+
+    private String formatAttributeBonus(AttributeBonus bonus) {
+        List<String> parts = new ArrayList<>();
+        appendSignedAttribute(parts, "STR", bonus.strength());
+        appendSignedAttribute(parts, "INT", bonus.intellect());
+        appendSignedAttribute(parts, "WIS", bonus.wisdom());
+        appendSignedAttribute(parts, "AGI", bonus.agility());
+        return String.join(", ", parts);
+    }
+
+    private void appendSignedAttribute(List<String> parts, String label, int value) {
+        if (value > 0) {
+            parts.add("+" + value + " " + label);
+        } else if (value < 0) {
+            parts.add(value + " " + label);
+        }
+    }
+
+    private String formatAttributeGains(AttributeGainSchedule schedule) {
+        List<String> parts = new ArrayList<>();
+        appendCadence(parts, "STR", schedule.strength());
+        appendCadence(parts, "INT", schedule.intellect());
+        appendCadence(parts, "WIS", schedule.wisdom());
+        appendCadence(parts, "AGI", schedule.agility());
+        return String.join(", ", parts);
+    }
+
+    private void appendCadence(List<String> parts, String label, AttributeGainCadence cadence) {
+        String description = switch (cadence) {
+            case NONE -> null;
+            case EVERY_LEVEL -> "every level";
+            case EVERY_2_LEVELS -> "every 2 levels";
+            case EVERY_3_LEVELS -> "every 3 levels";
+        };
+        if (description != null) {
+            parts.add(label + " " + description);
+        }
     }
 }
