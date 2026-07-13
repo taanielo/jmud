@@ -121,7 +121,7 @@ a validator rule, not a manual checkbox.
 | Cinder Reaches (`cinder-reaches`) | ✅ #529 | ✅ (ember-culler, pyraxis) | ✅ #550 |
 | Shrouded Isle (`shrouded-isle`) | ✅ #529 | ✅ (drowned-watch, tidebreaker) | ✅ #550 |
 | The Voidscar (`voidscar`) | ✅ #559 | ✅ (voidscar-cull, voidscar-unlight #561) | ✅ #559 |
-| The Marrow Bloom (`marrow-bloom`) | ✅ #579 | ❌ (tracked as follow-up, same pattern as #561) | ✅ #579 |
+| The Marrow Bloom (`marrow-bloom`) | ✅ #579 | 🔨 #581 (spore-hound cull → marrow-mother capstone, same pattern as #561) | ✅ #579 |
 
 ## Systems
 
@@ -146,4 +146,4 @@ game-designer should propose closing.
 | Weather & world ambience | ✅ | none known |
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |
 | Admin/wizard tooling | ✅ | none known |
-| Classes (kits, level gains, attributes, descriptions, HELP) | ✅ #516 #521 #522 #523 #524 #547 | balance pass 🔨 #556 |
+| Classes (kits, level gains, attributes, descriptions, HELP) | ✅ #516 #521 #522 #523 #524 #547 | balance pass ✅ #556 |
