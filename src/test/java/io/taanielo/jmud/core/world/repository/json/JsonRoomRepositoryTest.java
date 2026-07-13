@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.world.repository.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
@@ -146,6 +148,40 @@ class JsonRoomRepositoryTest {
             List.of("Water drips somewhere in the dark.", "A cold draft sighs past."),
             loaded.get().getAmbientMessages());
         assertTrue(loaded.get().hasAmbientMessages());
+    }
+
+    @Test
+    void savesAndLoadsRoomWithHiddenExits() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Room room = new Room(
+            RoomId.of("secret-armory"),
+            "Secret Armory",
+            "A dim armory.",
+            Map.of(Direction.SOUTH, RoomId.of("hall")),
+            List.of(),
+            List.of(),
+            Map.of(),
+            null,
+            null,
+            null,
+            false,
+            List.of(),
+            Map.of(Direction.DOWN, RoomId.of("vault"))
+        );
+        roomRepository.save(room);
+
+        // Use a fresh repository instance so the read goes through the JSON file, not the cache.
+        JsonRoomRepository reloadedRepository = new JsonRoomRepository(itemRepository, dataRoot);
+        Optional<Room> loaded = reloadedRepository.findById(RoomId.of("secret-armory"));
+
+        assertTrue(loaded.isPresent());
+        assertEquals(Map.of(Direction.DOWN, RoomId.of("vault")), loaded.get().getHiddenExits());
+        assertTrue(loaded.get().hasHiddenExits());
+        // A hidden exit stays out of the normal exit map.
+        assertFalse(loaded.get().getExits().containsKey(Direction.DOWN));
     }
 
     @Test

@@ -1,11 +1,14 @@
 package io.taanielo.jmud.core.world;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 
@@ -32,6 +35,13 @@ public class PlayerLocationService {
      * locked. Seeded lazily from each room's {@link Room#getLockedExits()} on first access.
      */
     private final ConcurrentHashMap<RoomId, Set<Direction>> runtimeLockedExits = new ConcurrentHashMap<>();
+    /**
+     * Runtime discovered-hidden-exit state: maps each room id to the set of secret exit directions
+     * that have been found (via SEARCH) this server session. Discovery is world-scoped: once found,
+     * a hidden exit is visible and walkable for every player. The set starts empty for each room —
+     * all hidden exits begin undiscovered — and is never persisted, so it resets on restart.
+     */
+    private final ConcurrentHashMap<RoomId, Set<Direction>> runtimeDiscoveredHiddenExits = new ConcurrentHashMap<>();
 
     /**
      * Creates a player location service.
@@ -170,6 +180,91 @@ public class PlayerLocationService {
     }
 
     /**
+     * Returns the set of hidden exit directions in the given room that have been discovered this
+     * session. The set is lazily created (initially empty) on first call, mirroring the lifecycle of
+     * {@link #getLockedExits(RoomId)} but seeded to "all undiscovered" rather than from room data.
+     *
+     * @param roomId the room to query
+     * @return the mutable set of discovered hidden-exit directions (may be empty, never null)
+     */
+    public Set<Direction> getDiscoveredHiddenExits(RoomId roomId) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        return ensureDiscoveredState(roomId);
+    }
+
+    /**
+     * Returns the effective visible exit map for the given room: its normal exits plus any hidden
+     * exits that have already been discovered. Undiscovered hidden exits are excluded so callers
+     * (e.g. the room renderer) never expose them.
+     *
+     * @param roomId the room to query
+     * @return an unmodifiable map of direction to destination room id for all currently visible exits
+     */
+    public Map<Direction, RoomId> getVisibleExits(RoomId roomId) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        Room room = findRoom(roomId).orElse(null);
+        if (room == null) {
+            return Map.of();
+        }
+        if (!room.hasHiddenExits()) {
+            return room.getExits();
+        }
+        Map<Direction, RoomId> visible = new LinkedHashMap<>(room.getExits());
+        Set<Direction> discovered = ensureDiscoveredState(roomId);
+        room.getHiddenExits().forEach((direction, destination) -> {
+            if (discovered.contains(direction)) {
+                visible.put(direction, destination);
+            }
+        });
+        return Map.copyOf(visible);
+    }
+
+    /**
+     * Returns the hidden exit directions in the player's current room that have not yet been
+     * discovered.
+     *
+     * @param username the player whose room is inspected
+     * @return an unmodifiable set of undiscovered hidden-exit directions (may be empty, never null)
+     */
+    public Set<Direction> undiscoveredHiddenExits(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        Room room = loadRoomForPlayer(username).orElse(null);
+        if (room == null || !room.hasHiddenExits()) {
+            return Set.of();
+        }
+        Set<Direction> discovered = ensureDiscoveredState(room.getId());
+        return room.getHiddenExits().keySet().stream()
+            .filter(direction -> !discovered.contains(direction))
+            .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * Marks every currently-undiscovered hidden exit in the player's current room as discovered,
+     * making them visible and walkable for all players from now on.
+     *
+     * <p>Discovery only reveals an exit; it never unlocks one. A hidden exit that is also locked
+     * remains locked after being found. Must run on the tick thread (AGENTS.md §5).
+     *
+     * @param username the player performing the discovery
+     * @return the set of directions newly revealed by this call (may be empty, never null)
+     */
+    public Set<Direction> revealHiddenExits(Username username) {
+        Objects.requireNonNull(username, "Username is required");
+        Room room = loadRoomForPlayer(username).orElse(null);
+        if (room == null || !room.hasHiddenExits()) {
+            return Set.of();
+        }
+        Set<Direction> discovered = ensureDiscoveredState(room.getId());
+        Set<Direction> revealed = new HashSet<>();
+        for (Direction direction : room.getHiddenExits().keySet()) {
+            if (discovered.add(direction)) {
+                revealed.add(direction);
+            }
+        }
+        return Set.copyOf(revealed);
+    }
+
+    /**
      * Returns the room currently occupied by the player, loading it from the repository.
      *
      * <p>Ensures the player has a location (assigns starting room if absent) before resolving.
@@ -202,6 +297,14 @@ public class PlayerLocationService {
             return new MoveAttempt.Failed("You cannot move yet. The world has no rooms.", null);
         }
         RoomId destinationId = room.getExits().get(direction);
+        if (destinationId == null) {
+            // A hidden exit becomes walkable only once discovered; an undiscovered one is
+            // indistinguishable from a wall, so it falls through to the same failure below.
+            RoomId hiddenDest = room.getHiddenExits().get(direction);
+            if (hiddenDest != null && ensureDiscoveredState(room.getId()).contains(direction)) {
+                destinationId = hiddenDest;
+            }
+        }
         if (destinationId == null) {
             return new MoveAttempt.Failed("You cannot go " + direction.label() + ".", room);
         }
@@ -313,6 +416,10 @@ public class PlayerLocationService {
             findRoom(id).ifPresent(r -> set.addAll(r.getLockedExits().keySet()));
             return set;
         });
+    }
+
+    private Set<Direction> ensureDiscoveredState(RoomId roomId) {
+        return runtimeDiscoveredHiddenExits.computeIfAbsent(roomId, id -> ConcurrentHashMap.newKeySet());
     }
 
     private void propagateLockState(Room room, Direction direction, boolean nowLocked) {

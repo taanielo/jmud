@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.action;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 
@@ -189,6 +191,8 @@ public class GameActionService {
     private static final int STEAL_SUCCESS_PERCENT_PER_LEVEL = 3;
     /** Maximum STEAL success percentage, regardless of rogue level. */
     private static final int STEAL_MAX_SUCCESS_PERCENT = 90;
+    /** Probability that a single SEARCH attempt uncovers the room's undiscovered hidden exits. */
+    private static final double SEARCH_SUCCESS_CHANCE = 0.5d;
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -1427,6 +1431,64 @@ public class GameActionService {
                 source.getUsername(), null,
                 source.getUsername().getValue() + " steps out of the shadows."));
         }
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Attempts the SEARCH skill: looks for any undiscovered hidden exits in the player's current
+     * room and, on a successful roll, reveals them for every player.
+     *
+     * <p>SEARCH takes no arguments, is available to every class and level, and may be repeated
+     * freely. It is rejected while the player is dead or engaged in combat (mirroring other
+     * non-combat actions). Searching breaks stealth like any other deliberate action. When there is
+     * nothing left to find — the room has no hidden exits, or all have already been discovered — a
+     * neutral "nothing new" line is shown. Otherwise the outcome is decided by a single roll through
+     * the seeded {@link CombatRandom} port at {@link #SEARCH_SUCCESS_CHANCE}; a success reveals the
+     * exit (via {@link RoomService#revealHiddenExits(Username)}) but never unlocks it.
+     *
+     * <p>Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param source the player searching
+     * @return result with the (possibly un-stealthed) player and outcome messages
+     */
+    public GameActionResult searchForHiddenExits(Player source) {
+        Objects.requireNonNull(source, "Source player is required");
+        if (source.isDead()) {
+            return GameActionResult.error("You cannot do that right now.");
+        }
+        if (inCombatCheck.test(source)) {
+            return GameActionResult.error("You are too busy fighting to search the room.");
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        Player updated = source;
+        if (source.isStealthActive()) {
+            updated = source.withStealth(false);
+            messages.add(GameMessage.toSource("You emerge from the shadows."));
+            messages.add(GameMessage.toRoom(
+                source.getUsername(), null,
+                source.getUsername().getValue() + " emerges from the shadows!"));
+        }
+        Set<Direction> undiscovered = roomService.undiscoveredHiddenExits(source.getUsername());
+        if (undiscovered.isEmpty()) {
+            messages.add(GameMessage.toSource("You search but find nothing new."));
+            return new GameActionResult(updated, null, messages);
+        }
+        if (worldRandom.nextDouble() >= SEARCH_SUCCESS_CHANCE) {
+            messages.add(GameMessage.toSource("You search but find nothing new."));
+            return new GameActionResult(updated, null, messages);
+        }
+        Set<Direction> revealed = roomService.revealHiddenExits(source.getUsername());
+        if (revealed.isEmpty()) {
+            revealed = undiscovered;
+        }
+        String directions = revealed.stream()
+            .sorted(Comparator.comparing(Direction::label))
+            .map(Direction::label)
+            .collect(Collectors.joining(", "));
+        messages.add(GameMessage.toSource("You discover a hidden passage leading " + directions + "!"));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(), null,
+            source.getUsername().getValue() + " uncovers a hidden passage!"));
         return new GameActionResult(updated, null, messages);
     }
 

@@ -1864,6 +1864,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void searchRoom() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to search.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.searchForHiddenExits(session.getPlayer());
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void mount(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to mount.");

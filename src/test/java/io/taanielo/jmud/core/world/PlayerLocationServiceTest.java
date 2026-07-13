@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,17 @@ class PlayerLocationServiceTest {
             Map<Direction, ItemId> lockedExits) {
         return new Room(id, "Room " + id.getValue(), "A room.", exits, List.of(), List.of(),
             lockedExits);
+    }
+
+    private static Room hiddenRoom(RoomId id, Map<Direction, RoomId> exits,
+            Map<Direction, RoomId> hiddenExits) {
+        return hiddenRoom(id, exits, hiddenExits, Map.of());
+    }
+
+    private static Room hiddenRoom(RoomId id, Map<Direction, RoomId> exits,
+            Map<Direction, RoomId> hiddenExits, Map<Direction, ItemId> lockedExits) {
+        return new Room(id, "Room " + id.getValue(), "A room.", exits, List.of(), List.of(),
+            lockedExits, null, null, null, false, List.of(), hiddenExits);
     }
 
     private PlayerLocationService buildService(Map<RoomId, Room> rooms) {
@@ -158,6 +170,78 @@ class PlayerLocationServiceTest {
         PlayerLocationService.MoveAttempt.Failed failed =
             assertInstanceOf(PlayerLocationService.MoveAttempt.Failed.class, result);
         assertTrue(failed.reason().contains("locked"), "Reason should mention 'locked'");
+    }
+
+    // ── Hidden exits ────────────────────────────────────────────────────
+
+    @Test
+    void undiscoveredHiddenExitBlocksMovementAndIsInvisible() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, hiddenRoom(ROOM_A, Map.of(), Map.of(Direction.DOWN, ROOM_B)),
+            ROOM_B, basicRoom(ROOM_B, Map.of(Direction.UP, ROOM_A))));
+        Username alice = Username.of("Alice");
+        service.ensurePlayerLocation(alice);
+
+        assertFalse(service.getVisibleExits(ROOM_A).containsKey(Direction.DOWN),
+            "Undiscovered hidden exit must not appear in the visible exit map");
+        assertTrue(service.undiscoveredHiddenExits(alice).contains(Direction.DOWN));
+        assertInstanceOf(PlayerLocationService.MoveAttempt.Failed.class,
+            service.attemptMove(alice, Direction.DOWN));
+        assertEquals(Optional.of(ROOM_A), service.findPlayerLocation(alice));
+    }
+
+    @Test
+    void revealedHiddenExitBecomesVisibleAndWalkable() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, hiddenRoom(ROOM_A, Map.of(), Map.of(Direction.DOWN, ROOM_B)),
+            ROOM_B, basicRoom(ROOM_B, Map.of(Direction.UP, ROOM_A))));
+        Username alice = Username.of("Alice");
+        service.ensurePlayerLocation(alice);
+
+        assertEquals(Set.of(Direction.DOWN), service.revealHiddenExits(alice));
+        assertTrue(service.getVisibleExits(ROOM_A).containsKey(Direction.DOWN),
+            "Revealed hidden exit should appear in the visible exit map");
+        assertTrue(service.undiscoveredHiddenExits(alice).isEmpty(),
+            "Nothing left to discover after revealing the only hidden exit");
+        assertInstanceOf(PlayerLocationService.MoveAttempt.Succeeded.class,
+            service.attemptMove(alice, Direction.DOWN));
+        assertEquals(Optional.of(ROOM_B), service.findPlayerLocation(alice));
+    }
+
+    @Test
+    void discoveryIsWorldScopedAcrossPlayers() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, hiddenRoom(ROOM_A, Map.of(), Map.of(Direction.DOWN, ROOM_B)),
+            ROOM_B, basicRoom(ROOM_B, Map.of(Direction.UP, ROOM_A))));
+        Username alice = Username.of("Alice");
+        Username bob = Username.of("Bob");
+        service.ensurePlayerLocation(alice);
+        service.ensurePlayerLocation(bob);
+
+        service.revealHiddenExits(alice);
+
+        // Bob, who never searched, still benefits from Alice's discovery.
+        assertTrue(service.undiscoveredHiddenExits(bob).isEmpty());
+        assertInstanceOf(PlayerLocationService.MoveAttempt.Succeeded.class,
+            service.attemptMove(bob, Direction.DOWN));
+    }
+
+    @Test
+    void hiddenExitThatIsAlsoLockedStaysLockedAfterDiscovery() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, hiddenRoom(ROOM_A, Map.of(), Map.of(Direction.DOWN, ROOM_B),
+                Map.of(Direction.DOWN, KEY_ID)),
+            ROOM_B, basicRoom(ROOM_B, Map.of(Direction.UP, ROOM_A))));
+        Username alice = Username.of("Alice");
+        service.ensurePlayerLocation(alice);
+
+        service.revealHiddenExits(alice);
+
+        PlayerLocationService.MoveAttempt result = service.attemptMove(alice, Direction.DOWN);
+        PlayerLocationService.MoveAttempt.Failed failed =
+            assertInstanceOf(PlayerLocationService.MoveAttempt.Failed.class, result);
+        assertTrue(failed.reason().contains("locked"),
+            "Discovery reveals the exit but must not unlock it");
     }
 
     // ── Lock / Unlock ──────────────────────────────────────────────────

@@ -43,6 +43,14 @@ public class Room {
      * dripping water, distant howls). Empty means the room is silent; never null.
      */
     List<String> ambientMessages;
+    /**
+     * Optional secret exits keyed by direction to their destination room. Hidden exits are omitted
+     * from the room's rendered exit line and cannot be walked through with a normal direction
+     * command until a player has discovered them via the SEARCH command. Discovery state is tracked
+     * at runtime by the player location service, never on this immutable value object. Empty means
+     * the room has no secret exits; never null.
+     */
+    Map<Direction, RoomId> hiddenExits;
 
     /**
      * Light level at or above which a room is considered naturally lit (needs no carried light).
@@ -205,6 +213,39 @@ public class Room {
         boolean outdoor,
         List<String> ambientMessages
     ) {
+        this(id, name, description, exits, items, occupants, lockedExits, minLevel, nightDescription,
+            lightLevel, outdoor, ambientMessages, Map.of());
+    }
+
+    /**
+     * Constructs a room with all optional attributes including any secret (hidden) exits.
+     *
+     * @param lockedExits       map of direction to required key item id for exits that start locked
+     * @param minLevel          the recommended/minimum level to enter this room, or {@code null} if none
+     * @param nightDescription  the description shown at night instead of {@code description}, or
+     *                          {@code null} if the room looks the same at night
+     * @param lightLevel        the ambient light level ({@code 0} pitch dark, {@code 1} dim,
+     *                          {@code 2}+ lit), or {@code null} for a naturally lit room
+     * @param outdoor           {@code true} if the room is exposed to the sky and subject to weather
+     * @param ambientMessages   the pool of atmospheric flavour lines the room emits occasionally
+     * @param hiddenExits       map of direction to destination room id for secret exits that are
+     *                          hidden from the room's exit listing until discovered via SEARCH
+     */
+    public Room(
+        RoomId id,
+        String name,
+        String description,
+        Map<Direction, RoomId> exits,
+        List<Item> items,
+        List<Username> occupants,
+        Map<Direction, ItemId> lockedExits,
+        @Nullable Integer minLevel,
+        @Nullable String nightDescription,
+        @Nullable Integer lightLevel,
+        boolean outdoor,
+        List<String> ambientMessages,
+        Map<Direction, RoomId> hiddenExits
+    ) {
         this.id = Objects.requireNonNull(id, "Room id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Room name must not be blank");
@@ -220,6 +261,16 @@ public class Room {
         this.lightLevel = lightLevel;
         this.outdoor = outdoor;
         this.ambientMessages = List.copyOf(Objects.requireNonNull(ambientMessages, "Ambient messages are required"));
+        this.hiddenExits = Map.copyOf(Objects.requireNonNull(hiddenExits, "Hidden exits map is required"));
+    }
+
+    /**
+     * Returns whether this room declares any secret (hidden) exits.
+     *
+     * @return {@code true} if {@link #getHiddenExits()} is non-empty
+     */
+    public boolean hasHiddenExits() {
+        return !hiddenExits.isEmpty();
     }
 
     /**

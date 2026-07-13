@@ -678,6 +678,18 @@ public interface SocketCommandContext extends Client {
     default void sneak(String args) {}
 
     /**
+     * Searches the current room for undiscovered hidden exits (the SEARCH command).
+     *
+     * <p>Available to every class and level and repeatable freely. Each attempt has a chance to
+     * reveal any secret exits in the room; on success the exit becomes visible and walkable for all
+     * players. A miss (or a room with nothing left to find) prints a neutral "nothing new" line.
+     * Searching is rejected in combat and breaks stealth like other deliberate actions.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void searchRoom() {}
+
+    /**
      * Saddles the current player up on a rideable mount they own, reducing their per-step travel cost
      * while ridden.
      *
