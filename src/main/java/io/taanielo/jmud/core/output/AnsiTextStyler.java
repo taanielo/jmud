@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.output;
 import io.taanielo.jmud.core.world.Rarity;
 
 public class AnsiTextStyler implements TextStyler {
+    private static final String BOLD_MAGENTA = "[1;35m";
     private static final String RESET = "[0m";
     private static final String BOLD_CYAN = "[1;36m";
     private static final String BOLD_GREEN = "[1;32m";
@@ -31,6 +32,7 @@ public class AnsiTextStyler implements TextStyler {
             case COMMON -> text;
             case UNCOMMON -> wrap(GREEN, text);
             case RARE -> wrap(CYAN, text);
+            case EPIC -> wrap(BOLD_MAGENTA, text);
         };
     }
 

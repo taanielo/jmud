@@ -4,14 +4,18 @@
   "name": "a runed longsword",
   "description": "A longsword whose blade is chased with faintly glowing runes. Their meaning is a mystery until the weapon is identified.",
   "attributes": {
-    "stats": {}
+    "stats": {
+      "strength": 4,
+      "dexterity": 4,
+      "hp": 6
+    }
   },
   "effects": [],
   "messages": [],
   "equip_slot": "weapon",
   "weight": 4,
-  "value": 120,
-  "rarity": "rare",
+  "value": 480,
+  "rarity": "epic",
   "affixes": ["of-the-titan"],
   "identified": false
 }

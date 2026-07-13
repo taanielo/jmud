@@ -50,7 +50,7 @@
             "minItems": 1,
             "items": {
               "type": "string",
-              "enum": ["common", "uncommon", "rare"]
+              "enum": ["common", "uncommon", "rare", "epic"]
             }
           }
         }

@@ -20,6 +20,13 @@
         { "item": "iron-ore", "quantity": 3 },
         { "item": "arcane-dust", "quantity": 2 }
       ]
+    },
+    {
+      "rarity": "epic",
+      "materials": [
+        { "item": "iron-ore", "quantity": 5 },
+        { "item": "arcane-dust", "quantity": 4 }
+      ]
     }
   ]
 }

@@ -5,16 +5,17 @@
   "description": "A long, single-edged blade of blackened slag-steel that drinks the light along its length and bleeds a thin line of trapped fire down its fuller. Reforged from the throne-scar of Vhalgrimm itself, the warblade is faintly warm even at rest and its edge sears shut every wound it opens. It is a cruel, magnificent thing, and it remembers being a demon.",
   "attributes": {
     "stats": {
-      "strength": 3,
-      "dexterity": 2
+      "strength": 5,
+      "dexterity": 4,
+      "hp": 6
     }
   },
   "effects": [],
   "messages": [],
   "equip_slot": "weapon",
   "weight": 4,
-  "value": 320,
-  "rarity": "rare",
+  "value": 520,
+  "rarity": "epic",
   "affixes": ["of-the-titan"],
   "attack_ref": "attack.cinder-warblade"
 }

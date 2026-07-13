@@ -137,8 +137,8 @@
     },
     "rarity": {
       "type": "string",
-      "enum": ["common", "uncommon", "rare"],
-      "description": "Rarity tier of this item, governing its colored display name and which stat affixes it may carry. Absent means 'common' (no visual highlight and no affixes), keeping legacy item data fully backward compatible."
+      "enum": ["common", "uncommon", "rare", "epic"],
+      "description": "Rarity tier of this item, governing its colored display name and which stat affixes it may carry. Absent means 'common' (no visual highlight and no affixes), keeping legacy item data fully backward compatible. 'epic' is the apex tier reserved for hand-authored, boss-exclusive signature loot; it ranks above 'rare' and renders in bold magenta."
     },
     "affixes": {
       "type": "array",

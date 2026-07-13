@@ -34,6 +34,7 @@ class SalvageServiceTest {
     private static final ItemId COMMON_SWORD = ItemId.of("common-sword");
     private static final ItemId UNCOMMON_SWORD = ItemId.of("uncommon-sword");
     private static final ItemId RARE_SWORD = ItemId.of("rare-sword");
+    private static final ItemId EPIC_SWORD = ItemId.of("epic-sword");
     private static final ItemId POTION = ItemId.of("healing-potion");
 
     private final Map<ItemId, Item> catalogue = new HashMap<>();
@@ -54,7 +55,9 @@ class SalvageServiceTest {
         new SalvageTier(Rarity.UNCOMMON,
             List.of(new SalvageMaterial(IRON_ORE, 2), new SalvageMaterial(ARCANE_DUST, 1))),
         new SalvageTier(Rarity.RARE,
-            List.of(new SalvageMaterial(IRON_ORE, 3), new SalvageMaterial(ARCANE_DUST, 2)))
+            List.of(new SalvageMaterial(IRON_ORE, 3), new SalvageMaterial(ARCANE_DUST, 2))),
+        new SalvageTier(Rarity.EPIC,
+            List.of(new SalvageMaterial(IRON_ORE, 5), new SalvageMaterial(ARCANE_DUST, 4)))
     );
 
     private final SalvageService service = new SalvageService(tiers, itemRepository);
@@ -127,6 +130,19 @@ class SalvageServiceTest {
         Player updated = outcome.updatedPlayer();
         assertEquals(3, count(updated, IRON_ORE));
         assertEquals(2, count(updated, ARCANE_DUST));
+    }
+
+    @Test
+    void salvageEpicYieldsSuperiorMaterials() {
+        Player player = player().addItem(gear(EPIC_SWORD, "epic sword", Rarity.EPIC));
+
+        SalvageOutcome outcome = service.salvage(player, "epic sword");
+
+        assertTrue(outcome.success(), outcome.message());
+        Player updated = outcome.updatedPlayer();
+        assertEquals(0, count(updated, EPIC_SWORD), "salvaged item removed");
+        assertEquals(5, count(updated, IRON_ORE), "epic yields more iron ore than rare");
+        assertEquals(4, count(updated, ARCANE_DUST), "epic yields more arcane dust than rare");
     }
 
     @Test
