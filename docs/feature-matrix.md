@@ -18,17 +18,51 @@ _Last full audit: 2026-07-13 (seeded by hand)._
 
 | Class | L1 offense | Trainable pool | Level gains | Attributes | Creation description | HELP entry | Balance pass |
 |---|---|---|---|---|---|---|---|
-| adventurer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| bard | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| cleric | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| druid | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| mage | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| necromancer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| paladin | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| ranger | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| rogue | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| shaman | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
-| warrior | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | 🔨 #556 |
+| adventurer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| bard | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| cleric | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| druid | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| mage | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| necromancer | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| paladin | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| ranger | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| rogue | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| shaman | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+| warrior | ✅ (#516) | ✅ #522 | ✅ #523 | ✅ #524 | ✅ #521 | ✅ #547 | ✅ #556 |
+
+Balance-pass niche rationale (baseline for future passes, #556). Every class's
+`level_gains` share a fixed 18-point budget (hp+mana+move), so no class is strictly
+stronger — only the distribution, carry, healing, attribute bonuses and kit size differ
+by archetype. For no archetype is one class's full package (stats + total kit size) a
+superset of a peer's:
+
+- **melee-str — warrior vs. paladin.** Warrior is the pure bruiser: top HP (13/lvl), top
+  carry (20), best self-heal (+3), but the lightest attribute bonus (`str +2`) and only 4
+  abilities. Paladin trades raw HP/carry for `armor +5`, extra mana, a third attribute
+  point (`str +2, wis +1`) and a fifth ability (divine shield / lay on hands) — hybrid
+  durability, not a warrior upgrade.
+- **caster-int — mage vs. necromancer.** Previously an identical stat block with an
+  unequal kit; now split. Mage is the fragile nuker: lowest HP (6/lvl), highest mana
+  (9/lvl), the deepest toolkit (4 starting + 3 trainable = 7 abilities). Necromancer trades
+  spell mana (7/lvl) and two abilities (5 total) for sturdier health (8/lvl), extra carry
+  (6) and matching self-sustain via life drain (`healing -1`) — the durable attrition
+  caster who stands behind its pets. Neither package is a superset of the other.
+- **caster-wis-hybrid — cleric vs. druid vs. shaman.** Cleric is the dedicated healer:
+  best healing (+2), most carry (10) and the biggest kit (4 starting, incl. resurrection),
+  paid for with the slowest move of any class (2/lvl). Druid keeps normal move (3) and a
+  higher mana pool for nature damage; shaman keeps normal move (3) and the extra HP of a
+  totem hybrid (8/lvl) with three starting abilities. Each wins at least one axis (move or
+  mana or HP) that cleric does not.
+- **agi-skirmish — rogue vs. ranger.** Rogue is the burst/utility skirmisher: highest HP
+  in the pair (10/lvl), most carry (8), and the largest kit (4 starting: backstab, envenom,
+  pick, sneak). Ranger is the mobility/reach specialist: the fastest class afoot (unique
+  move 5/lvl) with more mana (5/lvl), trading HP and kit size for unmatched mobility and
+  ranged tracking. Rogue does not dominate ranger's move/mana; ranger does not dominate
+  rogue's HP/carry/kit.
+- **generalist / support outliers.** Adventurer is the deliberately forgiving beginner
+  (lightest `str +1, int +1` bonus, balanced 10/5/3 vitals, bash + self-heal). Bard is the
+  fragile group-support caster (spread `agi +1, int +1, wis +1`, buff/debuff songs); neither
+  shares an archetype pair, so neither can be a superset of a peer.
 
 ## Races
 
