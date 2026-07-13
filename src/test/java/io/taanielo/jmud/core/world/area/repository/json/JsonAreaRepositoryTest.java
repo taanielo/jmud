@@ -45,7 +45,7 @@ class JsonAreaRepositoryTest {
         """;
 
     @Test
-    void warmingLoadsAreasAndAtlasIntoMemory(@TempDir Path dataRoot) throws IOException {
+    void warmingLoadsAreasAndAtlasIntoMemory(@TempDir Path dataRoot) throws Exception {
         writeWorld(dataRoot);
         JsonAreaRepository repository = new JsonAreaRepository(dataRoot);
 
@@ -60,7 +60,7 @@ class JsonAreaRepositoryTest {
     }
 
     @Test
-    void servesFromMemoryAfterWarmingEvenWhenDataFilesDisappear(@TempDir Path dataRoot) throws IOException {
+    void servesFromMemoryAfterWarmingEvenWhenDataFilesDisappear(@TempDir Path dataRoot) throws Exception {
         writeWorld(dataRoot);
         JsonAreaRepository repository = new JsonAreaRepository(dataRoot);
 
