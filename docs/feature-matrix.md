@@ -121,7 +121,7 @@ a validator rule, not a manual checkbox.
 | Cinder Reaches (`cinder-reaches`) | ✅ #529 | ✅ (ember-culler, pyraxis) | ✅ #550 |
 | Shrouded Isle (`shrouded-isle`) | ✅ #529 | ✅ (drowned-watch, tidebreaker) | ✅ #550 |
 | The Voidscar (`voidscar`) | ✅ #559 | ✅ (voidscar-cull, voidscar-unlight #561) | ✅ #559 |
-| The Marrow Bloom (`marrow-bloom`) | ✅ #579 | ❌ (tracked as follow-up, same pattern as #561) | ✅ #579 |
+| The Marrow Bloom (`marrow-bloom`) | ✅ #579 | ✅ (marrow-cull, marrow-bloom #581) | ✅ #579 |
 
 ## Systems
 

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "marrow-cull",
+  "name": "Where the Rot Begins",
+  "description": "The stair down from the Void Heart does not end in stone but in soft, breathing dark. Spore-hounds prowl the Choked Gallery just past the descent, dragging the freshly dead deeper to feed the bloom, and no one who climbs down from the Voidscar gets past them unbloodied. Put down eight of the fungal beasts to hold the gallery, and the deeper garden may open before it swallows you.",
+  "target_mob_id": "spore-hound",
+  "required_kills": 8,
+  "gold_reward": 175,
+  "xp_reward": 450,
+  "recommended_level": 41
+}
