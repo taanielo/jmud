@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "unlight-reaver",
+  "name": "the Unlight Reaver",
+  "description": "A long, wicked blade forged from voidglass drawn out of Vaelnith itself, its edge so lightless that it reads as a slit cut in the air rather than a thing of steel. It weighs almost nothing and is always cold, and any warmth or light brought near its edge simply thins and fails. To carry it is to carry a little of the void's hunger, and the blade seems to reach for whatever it is swung toward, as though eager to unmake it.",
+  "attributes": {
+    "stats": {
+      "strength": 3,
+      "dexterity": 3
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 3,
+  "value": 360,
+  "rarity": "rare",
+  "attack_ref": "attack.unlight-reaver"
+}

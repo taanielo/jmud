@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-unlit-shore",
+  "name": "The Unlit Shore",
+  "description": "The gallery opens onto the rim of a still, black expanse that could be water or could be a floor made of settled dark; nothing thrown into it disturbs a surface, and nothing thrown into it returns. Along the shore lie the leavings of the things that hunt this deep: cracked bones bleached to the same grey as the dust, the collapsed husk of some long-dead delver, and stranger relics carried down from the burning world above and left to cool forever in the cold. Whatever light you carry lays a single wan reflection on the black, and the reflection is always a pace behind where it should be.",
+  "item_ids": [],
+  "exits": {
+    "west": "voidscar-silent-galleries"
+  },
+  "min_level": 35,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The black expanse laps once against the shore without sound and lies flat again.",
+    "A husk on the shore settles as something small and hungry withdraws from it into the dark.",
+    "Your reflection on the black surface lags a heartbeat behind your movement, then catches up wrong."
+  ]
+}

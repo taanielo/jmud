@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.unlight-sovereign-devour",
+  "name": "Devour the Light",
+  "min_damage": 44,
+  "max_damage": 66,
+  "hit_bonus": 4,
+  "crit_bonus": 4,
+  "damage_bonus": 11,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 70
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Vaelnith gathers itself and the point of unlight at its heart flares black, devouring every scrap of light and warmth in the vault and tearing it out of you with it. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Vaelnith looses its devouring dark across the void-heart and you press yourself flat behind a fold of stone as the unlight roars past."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Vaelnith's devouring dark catches you in the open and the vault drinks you nearly to nothing before it lets you go! The blow {verb} you!"
+    }
+  ]
+}

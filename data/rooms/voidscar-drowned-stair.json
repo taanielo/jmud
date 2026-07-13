@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-drowned-stair",
+  "name": "The Drowned Stair",
+  "description": "A broad stair descends into the deepest reach of the hollow, and though there is no water anywhere the steps are called drowned for good reason: the dark rises up them like a tide, so that with each step down the last of your light is submerged a little further until only the faint memory of it remains. The walls to either side are carved with grooves worn by nothing anyone can name, spiralling down alongside the stair like the threads of a screw sinking into the world. The cold at the bottom is total. It is not the absence of heat but the presence of its opposite, a hunger that reaches up the stair to meet you.",
+  "item_ids": [],
+  "exits": {
+    "up": "voidscar-silent-galleries",
+    "down": "voidscar-lightless-expanse"
+  },
+  "min_level": 36,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The dark rises another step to meet you and your light shrinks to a coal, then to a spark.",
+    "The spiralling grooves in the wall seem to turn very slowly, screwing the stair one thread deeper into the black.",
+    "A breath of the hungry cold climbs the stair and every warm thing in you flinches from it."
+  ]
+}

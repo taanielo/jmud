@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "voidscar-void-heart",
+  "name": "The Void Heart",
+  "description": "Here, at the bottom of everything, the hollow gathers itself into a single point of absolute unlight, and around that point the void has slowly learned a shape. Where the Cinder Throne was a wound of fire, this is a wound of its absence: a tall, folded silhouette that is not there so much as it is a place where being has been subtracted, ringed by a floor of black that does not reflect and does not end. Light does not merely die here, it is unmade, drawn thread by thread out of the world and into the folded dark, and with the light goes warmth, and sound, and the small certainties by which a living thing knows itself apart from the nothing around it. Whatever waits at the heart of the Voidscar is the price the fire was always paying to keep the dark beneath it fed.",
+  "item_ids": [],
+  "exits": {
+    "up": "voidscar-lightless-expanse"
+  },
+  "min_level": 38,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The point of unlight at the heart of the vault deepens, and for a heartbeat you cannot remember the colour of fire.",
+    "A cold beyond cold reaches out from the folded dark, and the edges of you feel thin, as though partly erased.",
+    "The silence takes on a terrible attention, and you understand that the heart of the hollow has noticed you."
+  ]
+}

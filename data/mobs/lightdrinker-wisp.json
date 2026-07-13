@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "lightdrinker-wisp",
+  "name": "a lightdrinker wisp",
+  "max_hp": 265,
+  "attack_id": "attack.lightdrinker-wisp",
+  "aggressive": true,
+  "tags": ["void", "spirit", "voidscar"],
+  "spawn_room_id": "voidscar-unlit-shore",
+  "max_count": 3,
+  "respawn_ticks": 50,
+  "xp_reward": 300,
+  "loot": [
+    {
+      "item_id": "voidglass-shard",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 55,
+    "max": 100
+  }
+}

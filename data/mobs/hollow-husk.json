@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "hollow-husk",
+  "name": "a hollow husk",
+  "max_hp": 280,
+  "attack_id": "attack.hollow-husk",
+  "aggressive": true,
+  "tags": ["void", "undead", "voidscar"],
+  "spawn_room_id": "voidscar-silent-galleries",
+  "max_count": 3,
+  "respawn_ticks": 55,
+  "xp_reward": 310,
+  "loot": [
+    {
+      "item_id": "voidglass-shard",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 60,
+    "max": 105
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": 4,
+  "id": "unlight-sovereign",
+  "name": "Vaelnith, the Unlight",
+  "max_hp": 720,
+  "attack_id": "attack.unlight-sovereign",
+  "special_attack_id": "attack.unlight-sovereign-devour",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["void", "boss", "voidscar"],
+  "spawn_room_id": "voidscar-void-heart",
+  "max_count": 1,
+  "respawn_ticks": 340,
+  "xp_reward": 1600,
+  "loot": [
+    {
+      "item_id": "unlight-reaver",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "voidplate-shroud",
+      "drop_chance": 0.4
+    },
+    {
+      "item_id": "voidglass-shard",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "voidscar-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 360,
+    "max": 600
+  }
+}

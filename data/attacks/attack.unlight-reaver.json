@@ -1,0 +1,58 @@
+{
+  "schema_version": 5,
+  "id": "attack.unlight-reaver",
+  "name": "unlight reaver",
+  "weapon_type": "SLASHING",
+  "min_damage": 11,
+  "max_damage": 19,
+  "hit_bonus": 6,
+  "crit_bonus": 4,
+  "damage_bonus": 5,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You draw the unlight reaver across {target} and its lightless edge drinks the wound cold as it opens. Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} draws an unlight reaver across you and its edge leaves a cold, numb wound in its wake. The blows {verb} you!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} draws a lightless reaver across {target}, and the blade seems to drink the light around it."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You sweep the unlight reaver at {target} and its dark edge hisses through empty air."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} sweeps an unlight reaver at you and the lightless blade passes by."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} sweeps a lightless reaver at {target} and misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You bury the unlight reaver in {target} and the cold of the void erupts along the blade! Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} buries an unlight reaver in you and the cold of the void erupts through you! The blows {verb} you!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} buries a lightless reaver in {target} and the dark bursts along the blade!"
+    }
+  ]
+}

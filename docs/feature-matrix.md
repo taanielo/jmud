@@ -108,6 +108,7 @@ a validator rule, not a manual checkbox.
 | The Emberdeep (`emberdeep`) | ✅ #529 | ✅ (ember-culler, pyraxis) | ✅ #550 |
 | Cinder Reaches (`cinder-reaches`) | ✅ #529 | ✅ (ember-culler, pyraxis) | ✅ #550 |
 | Shrouded Isle (`shrouded-isle`) | ✅ #529 | ✅ (drowned-watch, tidebreaker) | ✅ #550 |
+| The Voidscar (`voidscar`) | ✅ #559 | ❌ (follow-up: quest chain) | ✅ #559 |
 
 ## Systems
 

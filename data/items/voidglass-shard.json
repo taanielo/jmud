@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "voidglass-shard",
+  "name": "a voidglass shard",
+  "description": "A splinter of glass drawn up from the heart of the Voidscar, so black that it reads as a hole cut in whatever lies behind it. It is cold in a way that never fades, drinking the warmth from a bare hand and giving back nothing, and light laid against it simply stops at its surface rather than reflecting. Smiths and enchanters who dare to work it prize the shard above any cinder or ore, for a thing that swallows light can be made to swallow much else besides.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 110,
+  "rarity": "uncommon"
+}
