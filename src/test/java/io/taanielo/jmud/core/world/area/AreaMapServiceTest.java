@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,7 @@ class AreaMapServiceTest {
 
     private static Area area(String id, String name, LevelRange range) {
         return new Area(AreaId.of(id), name, List.of(RoomId.of(id + "-room")), List.of(),
-            List.of(name.toUpperCase() + " ART"), range);
+            List.of(name.toUpperCase(Locale.ROOT) + " ART"), range);
     }
 
     @Test
