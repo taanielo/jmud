@@ -38,6 +38,7 @@ public class MobTemplateDtoMapper {
         DialogueId dialogueId = dto.dialogueId() != null ? DialogueId.of(dto.dialogueId()) : null;
         FactionId factionId = dto.factionId() != null ? FactionId.of(dto.factionId()) : null;
         boolean worldBoss = dto.worldBoss() != null && dto.worldBoss();
+        boolean worldEvent = dto.worldEvent() != null && dto.worldEvent();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -58,7 +59,8 @@ public class MobTemplateDtoMapper {
             charmable,
             dialogueId,
             factionId,
-            worldBoss
+            worldBoss,
+            worldEvent
         );
     }
 }

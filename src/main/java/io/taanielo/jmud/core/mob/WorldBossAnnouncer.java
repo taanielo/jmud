@@ -16,11 +16,17 @@ import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 
 /**
- * Domain service that broadcasts the two server-wide announcements of a world-boss encounter
- * (see {@link MobTemplate#worldBoss()}): the boss awakening on spawn/respawn, and its fall when a
- * player lands the killing blow.
+ * Domain service that broadcasts the server-wide announcements of rare-encounter lifecycles: a
+ * <em>world boss</em> (see {@link MobTemplate#worldBoss()}) awakening on spawn/respawn and falling
+ * when a player lands the killing blow, and a timed <em>world event</em> (see
+ * {@link MobTemplate#worldEvent()}) whose rare-elite mob is torn into the world by the
+ * {@link WorldEventScheduler} and, if left unkilled, fades away when its window closes.
  *
- * <p>Both announcements go out through the sanctioned {@link MessageBroadcaster} global fan-out
+ * <p>A world-event mob that is also flagged {@link MobTemplate#worldBoss()} reuses
+ * {@link #announceDeath} for its kill announcement, so only its spawn ({@link #announceEventSpawn})
+ * and unkilled timeout ({@link #announceEventTimeout}) need event-specific flavour here.
+ *
+ * <p>All announcements go out through the sanctioned {@link MessageBroadcaster} global fan-out
  * (AGENTS.md §3.3), mirroring the tick-driven broadcast pattern used by the arena and daily-quest
  * tickers. The death announcement enriches the killer's name with their guild (preferred) or party
  * affiliation when they belong to one, resolved from the injected {@link GuildService}/
@@ -69,6 +75,39 @@ public class WorldBossAnnouncer {
         String roomName = roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue());
         broadcaster.broadcastGlobal(new PlainTextMessage(
             "The earth trembles — " + bossName + " has awoken in the " + roomName + "!"), Set.of());
+    }
+
+    /**
+     * Broadcasts the opening of a timed world event to every online player: a rare-elite mob has
+     * been torn into the named room. The room name falls back to the room id when it has no
+     * resolvable name.
+     *
+     * @param mobName the world-event mob's display name
+     * @param roomId  the room the mob has spawned into
+     */
+    public void announceEventSpawn(String mobName, RoomId roomId) {
+        Objects.requireNonNull(mobName, "mobName is required");
+        Objects.requireNonNull(roomId, "roomId is required");
+        String roomName = roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue());
+        broadcaster.broadcastGlobal(new PlainTextMessage(
+            "A crack of unnatural energy tears open in the " + roomName + " — "
+                + mobName + " has emerged!"), Set.of());
+    }
+
+    /**
+     * Broadcasts the close of an unkilled world event to every online player: nobody slew the
+     * rare-elite mob within its window, so the rift collapses and the mob fades away with no kill
+     * credit. The room name falls back to the room id when it has no resolvable name.
+     *
+     * @param mobName the world-event mob's display name
+     * @param roomId  the room the mob occupied
+     */
+    public void announceEventTimeout(String mobName, RoomId roomId) {
+        Objects.requireNonNull(mobName, "mobName is required");
+        Objects.requireNonNull(roomId, "roomId is required");
+        String roomName = roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue());
+        broadcaster.broadcastGlobal(new PlainTextMessage(
+            "The rift over the " + roomName + " collapses — " + mobName + " fades away."), Set.of());
     }
 
     /**

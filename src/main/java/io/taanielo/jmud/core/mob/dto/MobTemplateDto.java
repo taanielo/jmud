@@ -23,6 +23,7 @@ public record MobTemplateDto(
     Boolean charmable,
     String dialogueId,
     String factionId,
-    Boolean worldBoss
+    Boolean worldBoss,
+    Boolean worldEvent
 ) {
 }

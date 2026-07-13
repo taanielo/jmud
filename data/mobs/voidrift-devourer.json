@@ -1,0 +1,25 @@
+{
+  "schema_version": 4,
+  "id": "voidrift-devourer",
+  "name": "the Voidrift Devourer",
+  "max_hp": 900,
+  "attack_id": "attack.voidrift-devourer",
+  "aggressive": true,
+  "world_boss": true,
+  "world_event": true,
+  "tags": ["aberration", "void", "cold", "rift", "elite", "world-event", "fearless", "voidscar"],
+  "spawn_room_id": "voidscar-silent-galleries",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "xp_reward": 1400,
+  "loot": [
+    {
+      "item_id": "voidrift-eidolon",
+      "drop_chance": 1.0
+    }
+  ],
+  "gold_drop": {
+    "min": 360,
+    "max": 560
+  }
+}

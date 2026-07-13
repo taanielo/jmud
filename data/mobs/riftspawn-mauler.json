@@ -1,0 +1,25 @@
+{
+  "schema_version": 4,
+  "id": "riftspawn-mauler",
+  "name": "the Riftspawn Mauler",
+  "max_hp": 180,
+  "attack_id": "attack.riftspawn-mauler",
+  "aggressive": true,
+  "world_boss": true,
+  "world_event": true,
+  "tags": ["aberration", "rift", "elite", "world-event", "fearless", "darkwood"],
+  "spawn_room_id": "hunters-clearing",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "xp_reward": 320,
+  "loot": [
+    {
+      "item_id": "riftglass-charm",
+      "drop_chance": 1.0
+    }
+  ],
+  "gold_drop": {
+    "min": 80,
+    "max": 160
+  }
+}

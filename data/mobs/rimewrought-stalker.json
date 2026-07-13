@@ -1,0 +1,25 @@
+{
+  "schema_version": 4,
+  "id": "rimewrought-stalker",
+  "name": "the Rimewrought Stalker",
+  "max_hp": 520,
+  "attack_id": "attack.rimewrought-stalker",
+  "aggressive": true,
+  "world_boss": true,
+  "world_event": true,
+  "tags": ["aberration", "cold", "rift", "elite", "world-event", "fearless", "frozen-peaks"],
+  "spawn_room_id": "frozen-peaks-glacier",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "xp_reward": 780,
+  "loot": [
+    {
+      "item_id": "rimewrought-heart",
+      "drop_chance": 1.0
+    }
+  ],
+  "gold_drop": {
+    "min": 180,
+    "max": 300
+  }
+}

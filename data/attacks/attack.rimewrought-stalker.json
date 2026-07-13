@@ -1,0 +1,29 @@
+{
+  "schema_version": 6,
+  "id": "attack.rimewrought-stalker",
+  "name": "glacial evisceration",
+  "min_damage": 28,
+  "max_damage": 44,
+  "hit_bonus": 5,
+  "crit_bonus": 4,
+  "damage_bonus": 7,
+  "weapon_type": "SLASHING",
+  "damage_type": "COLD",
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Rimewrought Stalker opens you with a limb of jagged black ice and the cold pours in after. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Rimewrought Stalker's ice-blade shears past you, close enough to frost your breath."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Rimewrought Stalker impales you and the wound flashes to solid ice around its limb! The blow {verb} you!"
+    }
+  ]
+}

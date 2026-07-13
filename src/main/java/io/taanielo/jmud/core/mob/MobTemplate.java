@@ -47,6 +47,13 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                 resolution guarantees at least one rare-or-higher item drop on top of the normal
  *                 loot table; defaults to {@code false} for ordinary mobs, which produce no such
  *                 server-wide announcements
+ * @param worldEvent when {@code true} this mob is a <em>world-event</em> encounter: a rare elite
+ *                  spawned on-demand by the {@link WorldEventScheduler} rather than at server start.
+ *                  Like a pet template it is excluded from {@link MobRegistry}'s normal start-up
+ *                  spawn loop and never auto-respawns; an instance exists only for the bounded
+ *                  window a scheduled world event is open. Combine with {@link #worldBoss()} to reuse
+ *                  the world-boss kill path (server-wide death announcement and guaranteed
+ *                  rare-or-higher drop). Defaults to {@code false} for ordinary mobs.
  */
 public record MobTemplate(
     MobId id,
@@ -68,7 +75,8 @@ public record MobTemplate(
     boolean charmable,
     @Nullable DialogueId dialogueId,
     @Nullable FactionId factionId,
-    boolean worldBoss
+    boolean worldBoss,
+    boolean worldEvent
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -115,7 +123,7 @@ public record MobTemplate(
         boolean wanders
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null, null, false);
+            respawnTicks, xpReward, goldDrop, tags, wanders, null, null, false, null, null, false, false);
     }
 
     /**
@@ -140,7 +148,8 @@ public record MobTemplate(
         @Nullable Integer nightRespawnTicks
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
-            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null, null, false);
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, null, false, null, null, false,
+            false);
     }
 
     /**
@@ -168,7 +177,7 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks, false, null,
-            null, false);
+            null, false, false);
     }
 
     /**
@@ -196,7 +205,7 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, null, null, false);
+            charmable, null, null, false, false);
     }
 
     /**
@@ -227,7 +236,39 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, dialogueId, factionId, false);
+            charmable, dialogueId, factionId, false, false);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a world-boss flag but are not world-event
+     * encounters; defaults {@link #worldEvent()} to {@code false} (an ordinary mob or permanent
+     * world boss spawned at server start rather than by the {@link WorldEventScheduler}).
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, false);
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */

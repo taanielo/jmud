@@ -79,6 +79,8 @@ Available keys:
 - `jmud.movement.overburdened_surcharge` (extra move points per step while overburdened)
 - `jmud.combat.mob_flee_hp_percent` (HP threshold, as a percent of max HP, at/below which a wounded mob may flee; default 20)
 - `jmud.combat.mob_flee_chance` (per-AI-tick percent chance a below-threshold mob flees instead of attacking; default 50, set 0 to disable). World bosses and `fearless`-tagged mobs never flee.
+- `jmud.world_event.min_interval_ticks` / `jmud.world_event.max_interval_ticks` (randomized gap, in ticks, between timed world events; defaults 300/600). A world event spawns a rare-elite mob in an eligible zone and announces it server-wide; only one is open at a time.
+- `jmud.world_event.window_ticks` (ticks an open world event stays killable before its mob fades away unkilled; default 120).
 
 Players can toggle ANSI output in-game with `ANSI on|off|toggle|status`.
 
