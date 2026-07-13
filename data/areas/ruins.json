@@ -11,6 +11,10 @@
   "connections": [
     "darkwood"
   ],
+  "level_range": {
+    "min": 5,
+    "max": 10
+  },
   "ascii_map": [
     "   #=#=#  BROKEN RUINS  #=#=#",
     "",

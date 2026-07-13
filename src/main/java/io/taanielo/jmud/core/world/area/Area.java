@@ -19,8 +19,16 @@ import io.taanielo.jmud.core.world.RoomId;
  * @param connections the ids of the areas directly reachable from this one, used to draw the atlas
  * @param asciiMap    the hand-authored map art as one string per line (never empty, never contains
  *                    a player marker)
+ * @param levelRange  the recommended character-level band, surfaced to players so they can judge a
+ *                    zone's difficulty before travelling there (issue #550)
  */
-public record Area(AreaId id, String name, List<RoomId> roomIds, List<AreaId> connections, List<String> asciiMap) {
+public record Area(
+    AreaId id,
+    String name,
+    List<RoomId> roomIds,
+    List<AreaId> connections,
+    List<String> asciiMap,
+    LevelRange levelRange) {
 
     /** Canonical constructor validating required fields and defensively copying the lists. */
     public Area {
@@ -28,6 +36,7 @@ public record Area(AreaId id, String name, List<RoomId> roomIds, List<AreaId> co
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Area name must not be blank");
         }
+        Objects.requireNonNull(levelRange, "Area level range is required");
         roomIds = List.copyOf(Objects.requireNonNull(roomIds, "Area room ids are required"));
         if (roomIds.isEmpty()) {
             throw new IllegalArgumentException("Area " + id.getValue() + " must contain at least one room");

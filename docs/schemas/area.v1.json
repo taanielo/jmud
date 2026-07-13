@@ -11,7 +11,8 @@
     "name",
     "room_ids",
     "connections",
-    "ascii_map"
+    "ascii_map",
+    "level_range"
   ],
   "properties": {
     "schema_version": {
@@ -49,6 +50,22 @@
       "description": "Hand-authored map art, one string per line. Draws the area's paths and landmarks; must never contain a player-position marker (no '@').",
       "items": {
         "type": "string"
+      }
+    },
+    "level_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The recommended character-level band for this area, shown to players when they READ its map item and on the World Atlas. Authored from the toughness of the mobs spawning in the area's rooms and any recommended_level on quests targeting it (issue #550). Enforced by --validate-data: present with min <= max.",
+      "required": ["min", "max"],
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     }
   }

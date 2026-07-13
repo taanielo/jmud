@@ -15,6 +15,10 @@
   "connections": [
     "darkwood"
   ],
+  "level_range": {
+    "min": 8,
+    "max": 15
+  },
   "ascii_map": [
     "   ~~~~ SHROUDED ISLE ~~~~",
     "",
