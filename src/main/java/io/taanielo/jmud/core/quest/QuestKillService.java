@@ -92,8 +92,10 @@ public class QuestKillService {
      * Records a mob kill for the player and returns an updated player together
      * with any progress messages.
      *
-     * <p>Returns empty when the player has no active quest or the killed mob
-     * does not match the quest target.
+     * <p>The player's story-quest slot ({@link Player#getActiveQuest()}) and daily-quest slot
+     * ({@link Player#getActiveDailyQuest()}) are checked independently, so a single kill can
+     * progress either or both without conflating the two. Returns empty when neither held quest
+     * targets the killed mob.
      *
      * @param player          the attacking player; must not be null
      * @param killedMobId     the template id of the mob that was just killed
@@ -103,9 +105,32 @@ public class QuestKillService {
         Objects.requireNonNull(player, "player is required");
         Objects.requireNonNull(killedMobId, "killedMobId is required");
 
-        ActiveQuest active = player.getActiveQuest();
-        if (active == null) {
+        List<String> messages = new ArrayList<>();
+        Player current = player;
+        current = recordKillForSlot(current, killedMobId, false, messages);
+        current = recordKillForSlot(current, killedMobId, true, messages);
+
+        if (messages.isEmpty()) {
             return Optional.empty();
+        }
+        return Optional.of(new KillResult(current, List.copyOf(messages)));
+    }
+
+    /**
+     * Applies a kill to a single quest slot (story or daily), appending any progress/completion
+     * message to {@code messages} and returning the player with that slot decremented. Returns the
+     * player unchanged when the slot is empty or its quest does not target the killed mob.
+     *
+     * @param player      the player whose slot is being checked; must not be null
+     * @param killedMobId the id of the mob that was just killed; must not be null
+     * @param dailySlot   {@code true} to check the daily slot, {@code false} for the story slot
+     * @param messages    the mutable message list to append to; must not be null
+     * @return the player, updated when the slot progressed
+     */
+    private Player recordKillForSlot(Player player, String killedMobId, boolean dailySlot, List<String> messages) {
+        ActiveQuest active = dailySlot ? player.getActiveDailyQuest() : player.getActiveQuest();
+        if (active == null) {
+            return player;
         }
 
         QuestTemplate template;
@@ -113,25 +138,22 @@ public class QuestKillService {
             template = questRepository.findById(active.templateId()).orElse(null);
         } catch (QuestRepositoryException e) {
             log.warn("Failed to load quest template {}: {}", active.templateId(), e.getMessage());
-            return Optional.empty();
+            return player;
         }
 
-        if (template == null) {
-            return Optional.empty();
-        }
-
-        if (template.isDeliveryQuest() || template.targetMobId() == null) {
-            return Optional.empty();
+        if (template == null || template.isDeliveryQuest() || template.targetMobId() == null) {
+            return player;
         }
 
         if (!template.targetMobId().equals(killedMobId)) {
-            return Optional.empty();
+            return player;
         }
 
         ActiveQuest updated = active.decrementKills();
-        Player updatedPlayer = player.withActiveQuest(updated);
+        Player updatedPlayer = dailySlot
+            ? player.withActiveDailyQuest(updated)
+            : player.withActiveQuest(updated);
 
-        List<String> messages = new ArrayList<>();
         if (updated.isComplete()) {
             if (template.isDaily()) {
                 messages.add("Daily quest complete! Use DAILY_QUEST COMPLETE to claim your reward.");
@@ -143,7 +165,7 @@ public class QuestKillService {
             messages.add(template.name() + ": " + done + "/" + template.requiredKills() + " kills.");
         }
 
-        return Optional.of(new KillResult(updatedPlayer, List.copyOf(messages)));
+        return updatedPlayer;
     }
 
     /**

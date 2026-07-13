@@ -13,7 +13,11 @@ import java.util.Optional;
  *   <li>{@code DAILY_QUEST ACCEPT <pool>}   — accept the pool's active daily quest</li>
  *   <li>{@code DAILY_QUEST STATUS}          — show progress on the held daily quest</li>
  *   <li>{@code DAILY_QUEST COMPLETE}        — claim the daily bonus reward once complete</li>
+ *   <li>{@code DAILY_QUEST ABANDON}         — drop the held daily quest with no penalty</li>
  * </ul>
+ *
+ * <p>The daily-quest slot is independent of the story-quest slot managed by {@code QUEST}, so a
+ * player may hold one of each at the same time.
  */
 public class DailyQuestCommand extends RegistrableCommand {
 
@@ -39,7 +43,11 @@ public class DailyQuestCommand extends RegistrableCommand {
                  DAILY_QUEST LIST            \u2014 same as the bare command
                  DAILY_QUEST ACCEPT <pool>   \u2014 accept a pool's active daily quest (e.g. DAILY_QUEST ACCEPT slayer)
                  DAILY_QUEST STATUS          \u2014 show progress on your held daily quest
-                 DAILY_QUEST COMPLETE        \u2014 claim the daily bonus reward once complete\
+                 DAILY_QUEST COMPLETE        \u2014 claim the daily bonus reward once complete
+                 DAILY_QUEST ABANDON         \u2014 drop your held daily quest (no penalty)
+
+               Your daily quest is held independently of your QUEST story contract, so you can
+               carry one of each at once.\
                """;
     }
 

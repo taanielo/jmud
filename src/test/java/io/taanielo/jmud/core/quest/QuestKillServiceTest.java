@@ -342,6 +342,48 @@ class QuestKillServiceTest {
         assertFalse(result.messages().stream().anyMatch(m -> m.contains("Your standing with")));
     }
 
+    // ── Independent story + daily slots ────────────────────────────────────
+
+    @Test
+    void killProgressesBothStoryAndDailySlotsIndependently() {
+        QuestTemplate dailyRats = new QuestTemplate(
+            QuestId.of("daily-rats"), "Daily Rats", "Kill 4 rats.", "rat", 4, 40, 90, "slayer");
+        QuestKillService svc = new QuestKillService(new StubQuestRepository(List.of(RAT_CATCHER, dailyRats)));
+
+        Player player = basePlayer
+            .withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 5))
+            .withActiveDailyQuest(new ActiveQuest(QuestId.of("daily-rats"), 4));
+
+        Optional<QuestKillService.KillResult> result = svc.recordKill(player, "rat");
+
+        assertTrue(result.isPresent());
+        Player updated = result.get().player();
+        // Each slot decrements by exactly one — no double counting, neither slot ignored.
+        assertEquals(4, updated.getActiveQuest().killsRemaining());
+        assertEquals(3, updated.getActiveDailyQuest().killsRemaining());
+        // One progress message per slot.
+        assertEquals(2, result.get().messages().size());
+    }
+
+    @Test
+    void killMatchingOnlyDailySlotLeavesStorySlotUntouched() {
+        QuestTemplate dailyGoblins = new QuestTemplate(
+            QuestId.of("daily-goblins"), "Daily Goblins", "Kill 3 goblins.", "goblin", 3, 40, 90, "slayer");
+        QuestKillService svc = new QuestKillService(new StubQuestRepository(List.of(RAT_CATCHER, dailyGoblins)));
+
+        Player player = basePlayer
+            .withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 5))
+            .withActiveDailyQuest(new ActiveQuest(QuestId.of("daily-goblins"), 3));
+
+        Optional<QuestKillService.KillResult> result = svc.recordKill(player, "goblin");
+
+        assertTrue(result.isPresent());
+        Player updated = result.get().player();
+        assertEquals(5, updated.getActiveQuest().killsRemaining());
+        assertEquals(2, updated.getActiveDailyQuest().killsRemaining());
+        assertEquals(1, result.get().messages().size());
+    }
+
     // ── fakes ──────────────────────────────────────────────────────────────
 
     private static QuestReputationRewardService reputationRewardService() throws FactionRepositoryException {

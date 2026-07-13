@@ -150,7 +150,7 @@ game-designer should propose closing.
 | Combat core | ✅ | worded damage + condition display ✅ #525 · attributes ✅ #524 · elemental damage types + armour resistance ✅ #563 · deterministic Enchanting path to fire/cold resistance (of-embers/of-rime) ✅ #577 · mob flee/self-preservation ✅ #567 · epic rarity tier for boss-exclusive signature loot ✅ #583 · PvE (mob) melee now shares hit/crit/block resolution with PvP ✅ #589 · ranged player attacks (SHOOT) now share hit/crit resolution — a shot can miss or crit ✅ #591 (mob special-ability attacks already covered by `resolveMobAttack`, no gap there) · AoE spell / summoned-pet-attack hit/crit resolution — a spell can miss/crit per target and a pet swing (and the foe's retaliation) can miss/crit ✅ #595 |
 | New-player funnel | ✅ #516 | starter weapon/hints ✅ #517 · starter quest ✅ #518 · starting resources ✅ #519 · death grace ✅ #520 · creation info ✅ #521 |
 | Cartography | ✅ #529 (map items; MAP command retired) | difficulty bands ✅ #550 |
-| Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |
+| Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 · independent story + daily quest slots — a player can hold one `QUEST` contract and one `DAILY_QUEST` at once; a kill progresses both slots independently; `DAILY_QUEST ABANDON` added ✅ #599 |
 | Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519; auction search/sort QoL ✅ #565 |
 | Professions (craft/cook/brew/gather/salvage/enchant) | ✅ | none known |
 | Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | party loot modes: free · round-robin · roll (highest 1-100 roll wins each drop, ties re-roll) ✅ #593 |

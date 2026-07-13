@@ -168,6 +168,48 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsIndependentStoryAndDailyQuestSlots() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("questor"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withActiveQuest(new io.taanielo.jmud.core.quest.ActiveQuest(
+                io.taanielo.jmud.core.quest.QuestId.of("rat-catcher"), 5))
+            .withActiveDailyQuest(new io.taanielo.jmud.core.quest.ActiveQuest(
+                io.taanielo.jmud.core.quest.QuestId.of("daily-slayer-rats"), 8));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals("rat-catcher", loaded.get().getActiveQuest().templateId().getValue());
+        assertEquals(5, loaded.get().getActiveQuest().killsRemaining());
+        assertEquals("daily-slayer-rats", loaded.get().getActiveDailyQuest().templateId().getValue());
+        assertEquals(8, loaded.get().getActiveDailyQuest().killsRemaining());
+    }
+
+    @Test
+    void loadsLegacySaveWithOnlyStoryQuestAndEmptyDailySlot() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("veteran"), Password.hash("pw", 1000));
+        // A legacy save holds a single activeQuest and predates the activeDailyQuest field.
+        repository.savePlayer(Player.of(user, "%hp> ")
+            .withActiveQuest(new io.taanielo.jmud.core.quest.ActiveQuest(
+                io.taanielo.jmud.core.quest.QuestId.of("rat-catcher"), 3)));
+        Path file = tempDir.resolve("players").resolve("veteran.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        assertFalse(root.has("activeDailyQuest"),
+            "empty daily slot should be omitted from save files for backward compatibility");
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals("rat-catcher", loaded.get().getActiveQuest().templateId().getValue());
+        org.junit.jupiter.api.Assertions.assertNull(loaded.get().getActiveDailyQuest(),
+            "legacy save should load with an empty daily-quest slot");
+    }
+
+    @Test
     void savesAndLoadsTamedCompanionCustomName() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("beastmaster"), Password.hash("pw", 1000));

@@ -3234,8 +3234,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "ACCEPT" -> handleDailyQuestAccept(dailyQuestService, subArgs);
             case "STATUS" -> handleDailyQuestStatus(dailyQuestService);
             case "COMPLETE" -> handleDailyQuestComplete(dailyQuestService);
+            case "ABANDON" -> handleDailyQuestAbandon();
             default -> writeLineWithPrompt(
-                "Usage: DAILY_QUEST [LIST|ACCEPT <pool>|STATUS|COMPLETE]");
+                "Usage: DAILY_QUEST [LIST|ACCEPT <pool>|STATUS|COMPLETE|ABANDON]");
         }
     }
 
@@ -3263,8 +3264,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
-        if (player.getActiveQuest() != null) {
-            writeLineWithPrompt("You already hold an active contract. QUEST ABANDON it first.");
+        if (player.getActiveDailyQuest() != null) {
+            writeLineWithPrompt("You already hold a daily quest. DAILY_QUEST ABANDON it first.");
             return;
         }
         String poolId = poolInput.trim().toLowerCase(Locale.ROOT);
@@ -3275,7 +3276,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         ActiveQuest activeQuest = new ActiveQuest(template.id(), template.requiredKills());
-        session.replacePlayer(player.withActiveQuest(activeQuest));
+        session.replacePlayer(player.withActiveDailyQuest(activeQuest));
         writeLineWithPrompt(
             "Daily quest accepted: " + template.name() + ". "
                 + "Kill " + template.requiredKills() + " " + template.targetMobId()
@@ -3284,7 +3285,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     private void handleDailyQuestStatus(DailyQuestService dailyQuestService) {
         Player player = session.getPlayer();
-        ActiveQuest active = player.getActiveQuest();
+        ActiveQuest active = player.getActiveDailyQuest();
         if (active == null) {
             writeLineWithPrompt("You have no active daily quest.");
             return;
@@ -3304,7 +3305,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     private void handleDailyQuestComplete(DailyQuestService dailyQuestService) {
         Player player = session.getPlayer();
-        ActiveQuest active = player.getActiveQuest();
+        ActiveQuest active = player.getActiveDailyQuest();
         if (active == null) {
             writeLineWithPrompt("You have no active daily quest to complete.");
             return;
@@ -3334,6 +3335,16 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 ? "You cannot complete that daily quest yet."
                 : result.messages().get(0));
         }
+    }
+
+    private void handleDailyQuestAbandon() {
+        Player player = session.getPlayer();
+        if (player.getActiveDailyQuest() == null) {
+            writeLineWithPrompt("You have no active daily quest to abandon.");
+            return;
+        }
+        session.replacePlayer(player.withActiveDailyQuest(null));
+        writeLineWithPrompt("Daily quest abandoned. No reward will be granted.");
     }
 
     @Override
