@@ -9,7 +9,8 @@ import java.util.Optional;
  * enforced in {@link SocketCommandContext#manageAuction}, mirroring how {@code DEPOSIT}/{@code
  * WITHDRAW} require a bank room). Supported forms:
  * <ul>
- *   <li>{@code AUCTION LIST}              — list all active listings server-wide.</li>
+ *   <li>{@code AUCTION LIST [keyword|MINE]} — list active listings (all, name-filtered, or your own),
+ *       cheapest first.</li>
  *   <li>{@code AUCTION SELL <item> <price>} — list an item from your inventory for a gold price.</li>
  *   <li>{@code AUCTION BUY <#>}            — buy the numbered listing.</li>
  *   <li>{@code AUCTION CANCEL <#>}         — cancel your own numbered listing.</li>
@@ -44,11 +45,15 @@ public class AuctionCommand extends RegistrableCommand {
     @Override
     public String longDescription() {
         return """
-               Usage: AUCTION LIST  |  AUCTION SELL <item> <price>  |  AUCTION BUY <#>  |  AUCTION CANCEL <#>
-                 AUCTION LIST                  \u2014 list all active listings (item, price, seller, ticks left).
+               Usage: AUCTION LIST [keyword|MINE] | AUCTION SELL <item> <price> | AUCTION BUY <#> | AUCTION CANCEL <#>
+                 AUCTION LIST                  \u2014 list all active listings (item, price, seller, ticks left),
+                                                 cheapest first.
+                 AUCTION LIST <keyword>        \u2014 list only listings whose item name contains the keyword.
+                 AUCTION LIST MINE             \u2014 list only your own active listings.
                  AUCTION SELL <item> <price>   \u2014 list an item from your inventory for a gold price.
                  AUCTION BUY <#>               \u2014 buy the listing with the given number.
                  AUCTION CANCEL <#>            \u2014 cancel your own listing and get the item back.
+                 Displayed numbers are stable across filters, so BUY/CANCEL always target the same listing.
                  Must be used at the Auction House. Sold gold reaches the seller even while offline;
                  listings expire after a while and are returned to the seller.\
                """;

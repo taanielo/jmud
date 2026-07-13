@@ -123,7 +123,7 @@ game-designer should propose closing.
 | New-player funnel | ✅ #516 | starter weapon/hints ✅ #517 · starter quest ✅ #518 · starting resources ✅ #519 · death grace ✅ #520 · creation info ✅ #521 |
 | Cartography | ✅ #529 (map items; MAP command retired) | difficulty bands ✅ #550 |
 | Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |
-| Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519 |
+| Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519; auction search/sort QoL ✅ #565 |
 | Professions (craft/cook/brew/gather/salvage/enchant) | ✅ | none known |
 | Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | none known |
 | PvP (duels, rankings, arena events) | ✅ | none known |

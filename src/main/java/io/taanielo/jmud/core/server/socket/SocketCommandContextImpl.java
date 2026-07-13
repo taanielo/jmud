@@ -36,8 +36,10 @@ import io.taanielo.jmud.core.action.FleeResult;
 import io.taanielo.jmud.core.action.GameActionResult;
 import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
+import io.taanielo.jmud.core.auction.AuctionFilter;
 import io.taanielo.jmud.core.auction.AuctionListing;
 import io.taanielo.jmud.core.auction.AuctionService;
+import io.taanielo.jmud.core.auction.AuctionService.NumberedListing;
 import io.taanielo.jmud.core.auction.AuctionSettings;
 import io.taanielo.jmud.core.auction.AuctionTransactionResult;
 import io.taanielo.jmud.core.audit.AuditEvent;
@@ -4878,37 +4880,52 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         long currentTick = context.tickClock().currentTick();
         String normalized = args == null ? "" : args.trim();
-        if (normalized.isEmpty() || normalized.equalsIgnoreCase("LIST")) {
-            listAuctions(auctionService, currentTick);
+        if (normalized.isEmpty()) {
+            listAuctions(auctionService, player, "", currentTick);
             return;
         }
         String[] parts = normalized.split("\\s+", 2);
         String sub = parts[0].toUpperCase(Locale.ROOT);
         String rest = parts.length > 1 ? parts[1].trim() : "";
         switch (sub) {
+            case "LIST" -> listAuctions(auctionService, player, rest, currentTick);
             case "SELL" -> auctionSell(auctionService, player, roomId, rest, currentTick);
             case "BUY" -> auctionBuy(auctionService, player, rest, currentTick);
             case "CANCEL" -> auctionCancel(auctionService, player, rest, currentTick);
             default -> writeLineWithPrompt(
-                "Usage: AUCTION LIST | AUCTION SELL <item> <price> | AUCTION BUY <#> | AUCTION CANCEL <#>");
+                "Usage: AUCTION LIST [keyword|MINE] | AUCTION SELL <item> <price> "
+                    + "| AUCTION BUY <#> | AUCTION CANCEL <#>");
         }
     }
 
-    private void listAuctions(AuctionService auctionService, long currentTick) {
-        List<AuctionListing> listings = auctionService.activeListings(currentTick);
+    private void listAuctions(AuctionService auctionService, Player player, String filterArg, long currentTick) {
+        AuctionFilter filter;
+        String emptyMessage;
+        if (filterArg.isEmpty()) {
+            filter = AuctionFilter.all();
+            emptyMessage = "There are no items up for auction.";
+        } else if (filterArg.equalsIgnoreCase("MINE")) {
+            filter = AuctionFilter.mine(player.getUsername());
+            emptyMessage = "You have no active listings.";
+        } else {
+            filter = AuctionFilter.keyword(filterArg);
+            emptyMessage = "No auction listings match '" + filterArg + "'.";
+        }
+        List<NumberedListing> listings = auctionService.activeListings(currentTick, filter);
         if (listings.isEmpty()) {
-            writeLineWithPrompt("There are no items up for auction.");
+            writeLineWithPrompt(emptyMessage);
             return;
         }
         connection.writeLine("Items up for auction:");
         connection.writeLine(String.format("%-4s %-28s %-8s %-14s %s", "#", "Item", "Price", "Seller", "Ticks left"));
         var styler = session.getTextStyler();
-        int index = 1;
-        for (AuctionListing listing : listings) {
+        for (NumberedListing entry : listings) {
+            AuctionListing listing = entry.listing();
             Item item = listing.item();
             String name = styler.rarity(item.presentationName(), item.presentationRarity());
             connection.writeLine(String.format("%-4d %-28s %-8d %-14s %d",
-                index++, name, listing.price(), listing.seller().getValue(), listing.ticksRemaining(currentTick)));
+                entry.number(), name, listing.price(), listing.seller().getValue(),
+                listing.ticksRemaining(currentTick)));
         }
         sendPrompt();
     }
