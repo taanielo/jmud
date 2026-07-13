@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "skill.execute",
+  "name": "execute",
+  "type": "SKILL",
+  "level": 15,
+  "cost": {
+    "move": 12
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["finish"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 18
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You raise your weapon high and bring it down on {target} in a savage, crushing execution!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} raises their weapon high and brings it down on you in a savage, crushing blow!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} brings a savage, crushing execution down upon {target}!"
+    }
+  ]
+}

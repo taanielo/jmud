@@ -28,6 +28,7 @@ class DruidClassSeedingTest {
     private static final AbilityId CURE = AbilityId.of("spell.cure");
     private static final AbilityId STONESKIN = AbilityId.of("spell.stoneskin");
     private static final AbilityId MOONFIRE = AbilityId.of("spell.moonfire");
+    private static final AbilityId THORNLASH = AbilityId.of("spell.thornlash");
 
     @Test
     void druidClassJsonLoadsCorrectly() throws Exception {
@@ -39,7 +40,7 @@ class DruidClassSeedingTest {
         assertEquals("druid", druid.id().getValue());
         assertEquals("Druid", druid.name());
         assertEquals(List.of(CURE, MOONFIRE), druid.startingAbilityIds());
-        assertEquals(List.of(REGROWTH, STONESKIN), druid.trainableAbilityIds());
+        assertEquals(List.of(REGROWTH, STONESKIN, THORNLASH), druid.trainableAbilityIds());
     }
 
     @Test

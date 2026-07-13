@@ -10,6 +10,6 @@
   "attribute_bonuses": { "int": 3 },
   "attribute_gains": { "int": "every_level", "wis": "every_2_levels" },
   "ability_ids": ["spell.fireball", "spell.heal", "spell.summon", "spell.chain-lightning"],
-  "trainable_ability_ids": ["spell.stoneskin", "spell.haste", "spell.fireball.greater"],
-  "description": "A glass-cannon spellcaster with unmatched ranged firepower. Mages open with fireball and chain lightning, patch themselves with heal, and summon allies; frail in melee, they rely on mana over muscle."
+  "trainable_ability_ids": ["spell.stoneskin", "spell.haste", "spell.fireball.greater", "spell.frostbolt"],
+  "description": "A glass-cannon spellcaster with unmatched ranged firepower. Mages open with fireball and chain lightning, patch themselves with heal, and summon allies; frail in melee, they rely on mana over muscle, and at level 15 learn frostbolt to chill and slow a foe."
 }

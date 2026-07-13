@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.dissonant-chord",
+  "name": "dissonant chord",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 7
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["dissonant", "chord"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "demoralize"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You strike a dissonant chord that batters {target} and breaks their nerve."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} strikes a dissonant chord that batters you and breaks your nerve!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} strikes a dissonant chord that rattles {target}."
+    }
+  ]
+}

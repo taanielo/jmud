@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.crippling-shot",
+  "name": "crippling shot",
+  "type": "SKILL",
+  "level": 15,
+  "cost": {
+    "move": 8
+  },
+  "cooldown": {
+    "ticks": 8
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["cripple", "crippling"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "cripple"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loose a shot into {target}'s joint, crippling their guard and their swing."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} shoots you through the joint; the crippling wound throws off your guard!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} looses a crippling shot into {target}."
+    }
+  ]
+}

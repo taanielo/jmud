@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "soulrot",
+  "name": "Soul Rot",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A creeping rot sinks into your soul and your guard sloughs away."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name}'s defences slough away as a creeping rot takes hold."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The soul rot spreads, leaving you unable to protect yourself."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The soul rot recedes and your guard returns."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The rot afflicting {name} recedes."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is marked by a creeping, defiling soul rot."
+    }
+  ]
+}

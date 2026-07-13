@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.eviscerate",
+  "name": "eviscerate",
+  "type": "SKILL",
+  "level": 15,
+  "cost": {
+    "move": 10
+  },
+  "cooldown": {
+    "ticks": 8
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["evis"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 12
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "rupture"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You drive your blade deep and twist, rupturing {target} in a spray of blood!"
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} drives a blade deep and twists, rupturing you in a spray of blood!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} eviscerates {target} with a deep, twisting blade."
+    }
+  ]
+}

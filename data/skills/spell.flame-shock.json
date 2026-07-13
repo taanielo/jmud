@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.flame-shock",
+  "name": "flame shock",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 6
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["flameshock", "flame"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "scorch"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You sear {target} with a burst of elemental flame that clings and burns."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} sears you with a burst of elemental flame that clings and burns!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} sears {target} with a clinging burst of elemental flame."
+    }
+  ]
+}

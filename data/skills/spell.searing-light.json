@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "spell.searing-light",
+  "name": "searing light",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 8
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["searing", "light"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 13
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a searing lance of holy light that scours {target}."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls down a searing lance of holy light that scours you!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls down a searing lance of holy light upon {target}."
+    }
+  ]
+}

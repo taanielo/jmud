@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.frostbolt",
+  "name": "frostbolt",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 7
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["frost"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 10
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "freeze"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You hurl a shard of biting frost that slams into {target} and rimes them in ice."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} hurls a shard of biting frost that slams into you and freezes you to the bone!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} hurls a shard of biting frost at {target}."
+    }
+  ]
+}

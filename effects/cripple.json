@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "cripple",
+  "name": "Crippled",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -2
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A shot to the joint leaves you crippled and slow to strike."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} staggers, crippled by a well-placed shot."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "Your crippled limb throbs and your blows fall wide."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Feeling returns to your crippled limb and your aim steadies."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} shakes off the crippling wound and steadies."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} favours a crippled, blood-slick limb."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.thornlash",
+  "name": "thornlash",
+  "type": "SPELL",
+  "level": 15,
+  "cost": {
+    "mana": 7
+  },
+  "cooldown": {
+    "ticks": 5
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["thorns", "thorn"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 9
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "entangle"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call up thorned vines that lash {target} and bind them fast."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls up thorned vines that lash you raw and bind you fast!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls up a lash of thorned vines around {target}."
+    }
+  ]
+}
