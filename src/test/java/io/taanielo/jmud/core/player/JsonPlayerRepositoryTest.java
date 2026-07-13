@@ -132,6 +132,45 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsTamedCompanionCustomName() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("beastmaster"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withTamedPets(PlayerPets.empty().tame("wolf").withName("wolf", null, "Fluffy"));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("wolf"), loaded.get().getTamedPets(),
+            "The companion template id round-trips");
+        assertEquals(List.of("Fluffy"), loaded.get().getTamedPetNames(),
+            "The companion custom name round-trips");
+    }
+
+    @Test
+    void loadsLegacyTamedPetsWithoutNamesAsUnnamed() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("veteran"), Password.hash("pw", 1000));
+        // Mirror a legacy save whose tamedPets is a bare list of template ids with no names field.
+        repository.savePlayer(Player.of(user, "%hp> ").withTamedPets(PlayerPets.empty().tame("wolf")));
+        Path file = tempDir.resolve("players").resolve("veteran.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("tamedPetNames");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("wolf"), loaded.get().getTamedPets(),
+            "Legacy bare template-id list still loads");
+        assertEquals(1, loaded.get().pets().count());
+        assertTrue(loaded.get().pets().entries().get(0).name().isEmpty(),
+            "A legacy companion with no name loads as unnamed");
+    }
+
+    @Test
     void savesAndLoadsCustomDescription() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("thorin"), Password.hash("pw", 1000));

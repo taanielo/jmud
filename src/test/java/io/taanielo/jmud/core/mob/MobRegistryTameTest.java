@@ -287,6 +287,94 @@ class MobRegistryTameTest {
         assertEquals(tamer.getUsername(), pet.owner());
     }
 
+    @Test
+    void nameCompanion_setsCustomName_shownInListingAndCombat() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A), goblin(20, ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult named = h.registry.nameCompanion(owner, "wolf", "Fluffy");
+        assertNotNull(named.updatedSource(), "Naming a companion returns the updated owner");
+        assertEquals(List.of("wolf"), named.updatedSource().getTamedPets(),
+            "The template id is unchanged by naming");
+        assertEquals(List.of("Fluffy"), named.updatedSource().getTamedPetNames(),
+            "The custom name is recorded on the owner");
+
+        GameActionResult listed = h.registry.listCompanions(named.updatedSource());
+        assertTrue(containsText(listed, "Fluffy"), "COMPANIONS shows the custom name");
+        assertFalse(containsText(listed, "Wolf ("), "COMPANIONS no longer shows the template name");
+
+        h.registry.tick();
+        assertTrue(containsText(h.results, "Your Fluffy strikes the Goblin"),
+            "Combat messages use the custom name");
+    }
+
+    @Test
+    void nameCompanion_matchesByExistingCustomName_andOverwrites() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+        owner = h.registry.nameCompanion(owner, "wolf", "Fluffy").updatedSource();
+
+        GameActionResult renamed = h.registry.nameCompanion(owner, "Fluffy", "Rex");
+        assertNotNull(renamed.updatedSource());
+        assertEquals(List.of("Rex"), renamed.updatedSource().getTamedPetNames(),
+            "Renaming by the current custom name overwrites it");
+    }
+
+    @Test
+    void nameCompanion_persistsAcrossRespawn() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+        h.registry.nameCompanion(owner, "wolf", "Fluffy");
+
+        Player reloaded = h.reload(tamer.getUsername());
+        assertEquals(List.of("Fluffy"), reloaded.getTamedPetNames(),
+            "The custom name is persisted to the owner's save");
+
+        // Simulate a fresh login into a new registry with no live pets.
+        Harness fresh = harness(reloaded, charmable(WOLF_ID, "Wolf", ROOM_A));
+        fresh.registry.spawnTamedPets(reloaded, ROOM_A);
+        MobInstance pet = fresh.registry.getMobsInRoom(ROOM_A).stream()
+            .filter(MobInstance::isTamed).findFirst().orElseThrow();
+        assertEquals("Fluffy", pet.displayName(),
+            "A respawned companion keeps its custom name on next login");
+    }
+
+    @Test
+    void nameCompanion_rejectsUnknownCompanion() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult result = h.registry.nameCompanion(owner, "bear", "Fluffy");
+        assertNull(result.updatedSource(), "Naming a companion you do not own changes no state");
+        assertTrue(containsText(result, "no companion"), "A clear error is shown");
+    }
+
+    @Test
+    void nameCompanion_rejectsTooLongName() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        String tooLong = "x".repeat(MobRegistry.MAX_PET_NAME_LENGTH + 1);
+        GameActionResult result = h.registry.nameCompanion(owner, "wolf", tooLong);
+        assertNull(result.updatedSource(), "An over-long name is rejected");
+        assertTrue(containsText(result, "too long"), "The length limit is explained");
+    }
+
+    @Test
+    void nameCompanion_rejectsBlankName() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult result = h.registry.nameCompanion(owner, "wolf", "   ");
+        assertNull(result.updatedSource(), "A blank name is rejected");
+    }
+
     // ── stubs ─────────────────────────────────────────────────────────
 
     private record StubMobTemplateRepository(List<MobTemplate> templates)

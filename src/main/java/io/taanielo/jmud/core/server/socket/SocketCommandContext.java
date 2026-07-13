@@ -752,6 +752,21 @@ public interface SocketCommandContext extends Client {
     default void companions() {}
 
     /**
+     * Gives one of the player's own tamed companions a custom display name (see the NAME command),
+     * which then replaces the template name everywhere the companion is shown — {@code COMPANIONS},
+     * room {@code LOOK}, and combat/room broadcasts — for the owner and other players.
+     *
+     * <p>The companion is matched by its current display or template name (prefix match, first
+     * occurrence); the name is validated (non-blank, capped length) and persisted so it survives
+     * logout/login and respawn. The game logic lives in {@code MobRegistry.nameCompanion}.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw arguments: {@code <companion> <new name>}
+     */
+    default void nameCompanion(String args) {}
+
+    /**
      * Deposits the specified amount of gold from the player's carried balance into the bank.
      *
      * <p>Requires the player to be in the same room as a bank NPC.
