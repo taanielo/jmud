@@ -1254,7 +1254,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * carry still drops to the floor so nothing is lost. In {@link LootMode#ROUND_ROBIN}
      * each item is handed to the next eligible party member in rotation — skipping members whose
      * inventory is full — and only falls to the floor (with an explanatory message) when no eligible
-     * member can carry it, so an item is never lost. Recipients get a {@code "You loot ..."} message
+     * member can carry it, so an item is never lost. In {@link LootMode#ROLL} every eligible member
+     * who can carry the item rolls 1-100 through the seeded {@link CombatRandom}; the highest roll
+     * wins, ties re-roll among only the tied members until a single winner remains, and the whole
+     * party sees the roll breakdown and the winner — an unclaimable item still falls to the floor
+     * exactly as in round-robin. Recipients get a {@code "You loot ..."} message
      * and the rest of the party in the room sees who received it. Working inventory snapshots are
      * mutated in place so capacity checks and the eventual save reflect every assignment. Runs on the
      * tick thread (AGENTS.md §5).
@@ -1277,7 +1281,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         Map<Username, List<GameMessage>> memberMessages) {
         LootMode mode = partyService != null ? partyService.lootMode(attacker) : LootMode.FREE;
         boolean roundRobin = mode == LootMode.ROUND_ROBIN && !eligible.isEmpty();
+        boolean roll = mode == LootMode.ROLL && !eligible.isEmpty();
         for (Item item : drops) {
+            if (roll) {
+                distributeByRoll(mob, attacker, item, eligible, working,
+                    attackerMessages, memberMessages);
+                continue;
+            }
             if (!roundRobin) {
                 Player attackerSnapshot = working.get(attacker);
                 if (attackerSnapshot != null
@@ -1317,6 +1327,127 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     attackerMessages, memberMessages);
             }
         }
+    }
+
+    /**
+     * Safety cap on how many tie-breaking re-roll rounds {@link #distributeByRoll} performs for a
+     * single item before falling back to the first tied member in party order. With a real seeded
+     * {@link CombatRandom} a tie among 1-100 rolls is broken almost immediately, so this cap only ever
+     * matters for a degenerate RNG (e.g. a fixed-value test source) and exists purely to guarantee the
+     * loop terminates on the tick thread (AGENTS.md §5).
+     */
+    private static final int MAX_ROLL_ROUNDS = 20;
+
+    /**
+     * Awards a single dropped item under {@link LootMode#ROLL}: every eligible member who can carry it
+     * rolls 1-100 through the seeded {@link CombatRandom}, the highest roll wins, and ties re-roll
+     * among only the tied members until one winner remains (bounded by {@link #MAX_ROLL_ROUNDS}). The
+     * whole party in the room sees the roll breakdown and the winner. When nobody present can carry the
+     * item it falls to the floor with the same message round-robin uses, so an item is never lost. The
+     * winner's working snapshot is mutated in place so the eventual save carries the item. Runs on the
+     * tick thread (AGENTS.md §5).
+     *
+     * @param mob              the slain mob (source of the room to floor an unclaimable drop into)
+     * @param attacker         the killer, used to route the attacker's messages inline
+     * @param item             the dropped item being rolled for
+     * @param eligible         ordered list of alive recipients present in the room (includes attacker)
+     * @param working          mutable per-recipient player snapshots, updated when the winner is chosen
+     * @param attackerMessages the attacker-facing message list to append the attacker's notices to
+     * @param memberMessages   the per-member message map to append other recipients' notices to
+     */
+    private void distributeByRoll(
+        MobInstance mob,
+        Username attacker,
+        Item item,
+        List<Username> eligible,
+        Map<Username, Player> working,
+        List<GameMessage> attackerMessages,
+        Map<Username, List<GameMessage>> memberMessages) {
+        List<Username> capable = eligible.stream()
+            .filter(member -> canReceiveItem(working.get(member), item))
+            .toList();
+        if (capable.isEmpty()) {
+            roomService.addItem(mob.roomId(), item);
+            String note = "No one has room for the " + item.getName()
+                + ", so it drops to the ground.";
+            for (Username member : eligible) {
+                routeLootMessage(member, attacker, note, attackerMessages, memberMessages);
+            }
+            return;
+        }
+
+        StringBuilder breakdown = new StringBuilder();
+        List<Username> contenders = capable;
+        LinkedHashMap<Username, Integer> rolls = rollFor(contenders);
+        breakdown.append(describeRolls(rolls));
+        List<Username> top = topRollers(rolls);
+        int rounds = 0;
+        while (top.size() > 1 && rounds < MAX_ROLL_ROUNDS) {
+            breakdown.append(" — tie at ").append(rolls.get(top.get(0)))
+                .append(", re-rolling: ");
+            contenders = top;
+            rolls = rollFor(contenders);
+            breakdown.append(describeRolls(rolls));
+            top = topRollers(rolls);
+            rounds++;
+        }
+        Username winner = top.get(0);
+
+        working.put(winner, working.get(winner).addItem(item));
+        String text = breakdown + " for the " + item.getName() + "... "
+            + winner.getValue() + " wins the roll!";
+        for (Username member : eligible) {
+            routeLootMessage(member, attacker, text, attackerMessages, memberMessages);
+        }
+    }
+
+    /**
+     * Rolls 1-100 through the seeded {@link CombatRandom} for each candidate, preserving iteration
+     * order so the breakdown reads in party order.
+     *
+     * @param candidates the members rolling this round
+     * @return an ordered map of each candidate to their 1-100 roll
+     */
+    private LinkedHashMap<Username, Integer> rollFor(List<Username> candidates) {
+        LinkedHashMap<Username, Integer> rolls = new LinkedHashMap<>();
+        for (Username candidate : candidates) {
+            rolls.put(candidate, random.roll(1, 100));
+        }
+        return rolls;
+    }
+
+    /**
+     * Returns the members whose roll equals the highest value in {@code rolls}, in iteration order.
+     * A single-element result means there is an outright winner; more than one means a tie to break.
+     *
+     * @param rolls the members and their rolls this round
+     * @return the top-rolling members (never empty)
+     */
+    private static List<Username> topRollers(LinkedHashMap<Username, Integer> rolls) {
+        int max = rolls.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        return rolls.entrySet().stream()
+            .filter(entry -> entry.getValue() == max)
+            .map(Map.Entry::getKey)
+            .toList();
+    }
+
+    /**
+     * Formats a roll round as a human-readable breakdown, e.g. {@code "Aria rolls 87, Boren rolls 42"}.
+     *
+     * @param rolls the members and their rolls this round
+     * @return the joined breakdown text
+     */
+    private static String describeRolls(LinkedHashMap<Username, Integer> rolls) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<Username, Integer> entry : rolls.entrySet()) {
+            if (!first) {
+                sb.append(", ");
+            }
+            sb.append(entry.getKey().getValue()).append(" rolls ").append(entry.getValue());
+            first = false;
+        }
+        return sb.toString();
     }
 
     /**

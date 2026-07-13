@@ -138,7 +138,7 @@ game-designer should propose closing.
 | Quests (kill/explore/delivery/daily) | ✅ | level hints ✅ #518 |
 | Economy (shops, auction, bank, guild treasury, mail gold) | ✅ | newbie bootstrap ✅ #519; auction search/sort QoL ✅ #565 |
 | Professions (craft/cook/brew/gather/salvage/enchant) | ✅ | none known |
-| Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | none known |
+| Social (friends, tells, gossip, ignore, LFG, boards, guilds, parties) | ✅ | party loot modes: free · round-robin · roll (highest 1-100 roll wins each drop, ties re-roll) ✅ #593 |
 | Identity/RP (titles, custom LOOK description, named companions) | ✅ #569 | companion naming `NAME <pet>` ✅ #571 (unblocks a future `DESCRIBE <pet>` issue) |
 | Player preferences (`ANSI`, `AUTOLOOT`, `PROMPT`, `BRIEF`) | ✅ | brief-mode room descriptions `BRIEF [on\|off\|toggle\|status]` ✅ #575 (movement skips prose; `LOOK` always shows it) |
 | PvP (duels, rankings, arena events) | ✅ | none known |
