@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.spore-hound",
+  "name": "spore-choked bite",
+  "min_damage": 26,
+  "max_damage": 38,
+  "hit_bonus": 6,
+  "crit_bonus": 4,
+  "damage_bonus": 8,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 40
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The spore-hound lunges out of the fungal murk and buries rows of soft, rotten teeth in you, and a puff of spore bursts from its jaws as it bites. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The spore-hound snaps at you and you wrench clear as its jaws clash shut on a mouthful of drifting spore."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The spore-hound bears you down and worries at you, grinding its rotten teeth deep while its spores flood the wound! The blow {verb} you!"
+    }
+  ]
+}

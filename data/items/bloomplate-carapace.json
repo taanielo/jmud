@@ -1,0 +1,18 @@
+{
+  "schema_version": 14,
+  "id": "bloomplate-carapace",
+  "name": "the Bloomplate Carapace",
+  "description": "A cuirass grown rather than forged, cut whole from the woody shelf-fungus that armours the Marrow Bloom's oldest growths and cured hard as horn over a lining of matted grey fibre. The overlapping plates are the colour of old bone and bruise, and they take a blow the way living wood takes an axe, closing spongily around the force and swallowing it rather than shattering. It is unnervingly light, faintly warm, and never quite stops its slow, imperceptible creep of growth against the skin.",
+  "attributes": {
+    "stats": {
+      "ac": 14,
+      "poison_resist": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 13,
+  "value": 360,
+  "rarity": "rare"
+}

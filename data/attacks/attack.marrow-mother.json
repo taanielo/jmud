@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.marrow-mother",
+  "name": "rending petals",
+  "min_damage": 38,
+  "max_damage": 56,
+  "hit_bonus": 6,
+  "crit_bonus": 5,
+  "damage_bonus": 10,
+  "weapon_type": "SLASHING",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 55
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "Ossuara unfurls a limb of packed fungus tipped in swallowed bone and rakes it through you, and the rot goes in with the wound. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "Ossuara sweeps a great bloom-crowned limb at you and you fling yourself flat as it passes overhead, shedding spore."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "Ossuara folds every petal of itself around you and grinds, and for a moment you feel the garden begin to take you apart for planting! The blow {verb} you!"
+    }
+  ]
+}

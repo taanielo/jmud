@@ -1,0 +1,32 @@
+{
+  "schema_version": 5,
+  "id": "attack.rot-blossom",
+  "name": "spore burst",
+  "min_damage": 30,
+  "max_damage": 44,
+  "hit_bonus": 5,
+  "crit_bonus": 4,
+  "damage_bonus": 9,
+  "weapon_type": "BLUNT",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 60
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The rot-blossom flexes wide and coughs a cloud of grey spore full into your face, and it burns going in and keeps burning. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The rot-blossom heaves and looses its spore-cloud, and you throw an arm across your face and stumble clear of the worst of it."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The rot-blossom bursts and drowns you in a churning fog of spore that fills your lungs and your eyes and every open wound! The blow {verb} you!"
+    }
+  ]
+}

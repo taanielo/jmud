@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-fungal-canopy",
+  "name": "Beneath the Fungal Canopy",
+  "description": "The gallery falls away into a cavern so large its far walls are only a suggestion, roofed over entirely by a canopy of bone-white fungus that has grown together into a single vast, ribbed vault overhead. Pale stalks thick as old trees rise to hold it up, and from the underside of the canopy hang long luminous fronds that give off a sick, greenish half-light — the first true light since the Void Heart, and worse, somehow, than the dark had been. Beneath that foul glow the whole cavern floor is a garden of caps and blooms and creeping mould, and the air hangs so still and so thick with drifting spore that breathing it feels like a slow poisoning. Things move between the stalks with a soft, boneless purpose, and the light is just enough to show you that they have noticed you.",
+  "item_ids": [],
+  "exits": {
+    "up": "marrow-bloom-choked-gallery",
+    "down": "marrow-bloom-rotting-hollow"
+  },
+  "min_level": 43,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A luminous frond overhead swells and drips a bead of glowing pith to the cavern floor, where the mould drinks it eagerly.",
+    "The sick green light dims and brightens as something large passes between you and the canopy.",
+    "A slow gust moves through the cavern, and the whole canopy sighs and sheds a curtain of drifting spore."
+  ]
+}

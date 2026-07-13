@@ -1,0 +1,62 @@
+{
+  "schema_version": 5,
+  "id": "attack.marrow-reaver",
+  "name": "marrow reaver",
+  "weapon_type": "SLASHING",
+  "min_damage": 14,
+  "max_damage": 24,
+  "hit_bonus": 6,
+  "crit_bonus": 5,
+  "damage_bonus": 6,
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 35
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You draw the marrow reaver across {target} and its living edge weeps rot into the wound as it opens. Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} draws a marrow reaver across you and the wound it leaves festers and burns at once. The blows {verb} you!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} draws a marrow reaver across {target}, and the pale blade weeps a bead of rot down its edge."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You sweep the marrow reaver at {target} and its rot-slick edge hisses through empty air."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} sweeps a marrow reaver at you and the pale blade passes by."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} sweeps a marrow reaver at {target} and misses."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You bury the marrow reaver in {target} and the blade drinks deep, flooding the wound with the Bloom's poison! Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} buries a marrow reaver in you and the Bloom's poison floods through the wound! The blows {verb} you!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} buries a marrow reaver in {target} and the pale blade weeps rot into the wound!"
+    }
+  ]
+}

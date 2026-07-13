@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-root-cellar",
+  "name": "The Root Cellar",
+  "description": "The breach lets into a low, close chamber where the Bloom keeps its larder. Here the growth has gone woody and pale, sending down thick knotted roots that plunge through the floor and bind together a compacted mass of everything the void once swallowed and could not keep: shards of blackened glass, splinters of bone, drifts of cold ash, all of it pressed and threaded through with questing tendrils that are slowly, patiently drawing the last of it back into the world as rot and fibre. The roots creak and tighten as you move among them, and where one has cracked open a swallowed thing, a wet pith glistens inside, faintly luminous, faintly moving. The whole cellar has the still, watchful quiet of a stomach mid-meal.",
+  "item_ids": [],
+  "exits": {
+    "west": "marrow-bloom-choked-gallery"
+  },
+  "min_level": 43,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A root shifts and tightens with a long wooden groan, drawing some swallowed thing a fraction deeper into the mass.",
+    "Pale pith glistens in a cracked root, and for a moment it seems to be quietly chewing.",
+    "A splinter of bone works loose from the compacted floor and is drawn slowly under by a questing tendril."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-rotting-hollow",
+  "name": "The Rotting Hollow",
+  "description": "Below the canopy the ground sinks into a wide, sunken hollow where the garden turns to open decay. The springing fungal mat gives way to a bog of black rot, ankle-deep and warm, its surface skinned over with films of grey mould that tear and knit as you wade through them. Half-dissolved shapes rise out of the muck — the swallowed dead of a hundred fallen things, held upright by the growth that has claimed them and slowly unmade into nutrient and spore. The reek here is overpowering, a wet green rot that coats the back of the throat, and the very air seems to work against you, thick with a poison the Bloom breathes out as freely as a forest breathes shade. Every surface glistens, every surface is faintly, horribly warm, and nothing here is quite finished dying.",
+  "item_ids": [],
+  "exits": {
+    "up": "marrow-bloom-fungal-canopy",
+    "down": "marrow-bloom-necrotic-garden"
+  },
+  "min_level": 44,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A skin of grey mould tears across the bog with a wet sigh and knits itself shut behind you.",
+    "A half-dissolved shape sinks a little further into the black rot, and the muck closes over it with a swallow.",
+    "The poison-thick air thickens further, and your breath comes shallow and sweetish in the reek."
+  ]
+}

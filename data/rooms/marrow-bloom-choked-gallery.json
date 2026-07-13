@@ -1,0 +1,19 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-choked-gallery",
+  "name": "The Choked Gallery",
+  "description": "The descent opens into a long gallery whose every surface has vanished beneath growth: the floor is a springing, spongy mat that gives underfoot and closes again behind each step, the walls are hung with sheets of grey-white fungus draped like rotted tapestry, and the ceiling is lost in a hanging thicket of pale caps and dangling threads. What light you carry does not so much illuminate the place as get strangled by it, swallowed into the soft dark between the growths. The air is thick enough to chew, heavy with spores and the sweetish reek of rot, and everywhere there is a faint, ceaseless motion, a settling and swelling and creeping, as the garden goes about the slow work of turning everything the void swallowed back into hungry, living matter. To the east a low breach has been eaten through the wall; ahead the gallery drops away into deeper growth.",
+  "item_ids": [],
+  "exits": {
+    "up": "marrow-bloom-spore-descent",
+    "down": "marrow-bloom-fungal-canopy",
+    "east": "marrow-bloom-root-cellar"
+  },
+  "min_level": 42,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A cap the size of a shield swells and splits somewhere in the dark, loosing a slow cloud of spores across the gallery.",
+    "The spongy floor shudders and settles as something moves beneath the mat of growth.",
+    "A drape of pale fungus tears free of the wall under its own weight and slaps wetly to the floor."
+  ]
+}

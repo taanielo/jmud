@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "id": "marrow-bloom",
+  "name": "The Marrow Bloom",
+  "room_ids": [
+    "marrow-bloom-spore-descent",
+    "marrow-bloom-choked-gallery",
+    "marrow-bloom-root-cellar",
+    "marrow-bloom-fungal-canopy",
+    "marrow-bloom-rotting-hollow",
+    "marrow-bloom-necrotic-garden",
+    "marrow-bloom-heart-of-rot"
+  ],
+  "connections": [
+    "voidscar"
+  ],
+  "level_range": {
+    "min": 41,
+    "max": 48
+  },
+  "ascii_map": [
+    "   ... THE MARROW BLOOM ...",
+    "",
+    "         The Voidscar",
+    "              ^",
+    "              |",
+    "       [Spore Descent]",
+    "              |",
+    "     [Choked Gallery]---[Root Cellar]",
+    "              |",
+    "      [Fungal Canopy]",
+    "              |",
+    "      [Rotting Hollow]",
+    "              |",
+    "     [Necrotic Garden]",
+    "              |",
+    "       [Heart of Rot]",
+    "",
+    "   A lightless fungal garden grown from all",
+    "   the void above unmade and let fall.",
+    "   Beneath absence, the rot begins to bloom."
+  ]
+}

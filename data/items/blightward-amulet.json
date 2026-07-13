@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "blightward-amulet",
+  "name": "the Blightward Amulet",
+  "description": "A single sealed blightspore pod bound in a cage of pale root-fibre and hung on a cord of dried fungal sinew, warm against the breastbone. The Marrow Bloom drowns its prey in rot and spore alike, and this pendant answers poison with poison — the sealed pod drinks in venom the way the garden drinks the dead, so the rot that fills the Bloom's air finds the wearer already full and turns aside. It smells, always, very faintly of turned earth.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "poison_resist": 25
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 320,
+  "rarity": "rare",
+  "attack_ref": null
+}

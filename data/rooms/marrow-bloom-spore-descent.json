@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-spore-descent",
+  "name": "The Spore Descent",
+  "description": "The point of absolute unlight that crowned the Void Heart does not, it turns out, mark the bottom of anything; a throat opens beneath it, and where the void above unmade all light and warmth and matter, here something has caught what it could not fully erase and begun, patiently, to feed on it. The descent is a slick gullet of grey stone furred with pale threads that pulse faintly where a torch strays near, and the cold of the vault above gives way to a close, damp warmth that smells of turned earth and old bone. Spores drift up the passage like slow snow, catching in the throat and the lashes, and with every step downward the pale growth thickens, until it is less a wall you pass than a living thing you are being swallowed into.",
+  "item_ids": [],
+  "exits": {
+    "up": "voidscar-void-heart",
+    "down": "marrow-bloom-choked-gallery"
+  },
+  "min_level": 41,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A drift of pale spores sifts up the passage and settles on your skin, faintly warm, faintly alive.",
+    "The threads furring the walls pulse once, together, as though the descent has drawn a slow breath around you.",
+    "Somewhere below, something vast and soft shifts its weight, and a wet, patient sound climbs the throat toward you."
+  ]
+}

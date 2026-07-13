@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "marrow-bloom-necrotic-garden",
+  "name": "The Necrotic Garden",
+  "description": "The rot drains away down a last slope into a chamber that can only be called a garden, though nothing clean has ever grown in it. Here the Bloom has cultivated itself into deliberate rows: raised beds of compacted corruption, each planted with a single towering, deliberate growth, tended by the crawling things of the deep as bees tend a hive. The blooms themselves are grotesque and beautiful, vast fungal flowers of grey and bruise-purple and bone, breathing spore in slow pulses that you can feel against your skin. This is the near heart of the place, the point toward which every thread and root in the Marrow Bloom has been reaching, and the closer you come to the great sealed bloom at the garden's centre, the more the whole cavern seems to turn its slow attention on you. Whatever grew this place is very near now, and it is aware of you.",
+  "item_ids": [],
+  "exits": {
+    "up": "marrow-bloom-rotting-hollow",
+    "down": "marrow-bloom-heart-of-rot"
+  },
+  "min_level": 45,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A towering bloom exhales a slow pulse of spore, and the crawling tenders of the garden pause as one to regard you.",
+    "The beds of corruption shift and settle, and a new bud pushes up through the muck, already the size of a fist.",
+    "The great sealed bloom at the garden's centre swells a fraction, and something enormous turns over in its sleep within."
+  ]
+}
