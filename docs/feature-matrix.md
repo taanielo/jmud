@@ -12,7 +12,7 @@ Machine-checkable [V] aspects disappear from this file once the corresponding
 `--validate-data` rule exists (the validator then owns them); this matrix tracks
 what validation cannot.
 
-_Last full audit: 2026-07-13 (seeded by hand)._
+_Last full audit: 2026-07-16 (seeded by hand)._
 
 ## Classes
 
@@ -163,5 +163,5 @@ game-designer should propose closing.
 | Weather & world ambience | ✅ | none known |
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |
 | Admin/wizard tooling | ✅ | none known |
-| Classes (kits, level gains, attributes, descriptions, HELP) | ✅ #516 #521 #522 #523 #524 #547 | balance pass 🔨 #556 |
+| Classes (kits, level gains, attributes, descriptions, HELP) | ✅ #516 #521 #522 #523 #524 #547 | balance pass ✅ #556 |
 | Exploration (locked doors, hidden exits + SEARCH) | ✅ #587 | world-scoped discovery (in-memory, resets on restart); a rogue/skill-based bonus find chance is a possible future gap |
