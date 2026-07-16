@@ -1,0 +1,20 @@
+{
+  "schema_version": 8,
+  "id": "bonelight-ossuary-processional",
+  "name": "The Ossuary Processional",
+  "description": "The descent widens into a long processional hall, a nave-aisle of the great structure, and here the calcified order of the place declares itself fully. Two ranks of fused-bone pillars march away into the glowing dark, each one a spiral of thousands of skulls set jaw to crown, and between them the floor is laid in a mosaic of flattened, polished vertebrae worn smooth by nothing you would care to name. Bone censers hang from the vault on threads of knotted sinew, swinging very slowly though no air stirs, each trailing a thin ribbon of luminous spore-smoke. Things move in slow procession down the aisle ahead, cowled and unhurried, singing the single held note that fills the whole cathedral. To the east a side-chapel of hollowed ribs breathes with a deeper, moaning music; to the west a low arch leads down into a vault of gathered trophies; and the aisle itself descends onward toward a crypt of hanging bells.",
+  "item_ids": [],
+  "exits": {
+    "up": "bonelight-choir-descent",
+    "east": "bonelight-organ-loft",
+    "west": "bonelight-reliquary-vault",
+    "down": "bonelight-bell-crypt"
+  },
+  "min_level": 50,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A cowled shape passes down the aisle without turning its head, and the held note swells for the length of its stride.",
+    "A bone censer swings a fraction wider on its sinew thread, trailing a curl of luminous spore-smoke across the mosaic floor.",
+    "One of the spiral pillars settles with a dry click as a skull turns in its socket to regard you, then stills again."
+  ]
+}

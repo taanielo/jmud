@@ -137,6 +137,7 @@ a validator rule, not a manual checkbox.
 | Shrouded Isle (`shrouded-isle`) | ✅ #529 | ✅ (drowned-watch, tidebreaker) | ✅ #550 |
 | The Voidscar (`voidscar`) | ✅ #559 | ✅ (voidscar-cull, voidscar-unlight #561) | ✅ #559 |
 | The Marrow Bloom (`marrow-bloom`) | ✅ #579 | ✅ (marrow-cull, marrow-bloom #581) | ✅ #579 |
+| The Bonelight Choir (`bonelight-choir`) | ✅ #608 | 🔨 (quest chain #609) | ✅ #608 |
 
 ## Systems
 

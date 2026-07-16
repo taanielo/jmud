@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "bonelight-choir",
+  "name": "The Bonelight Choir",
+  "room_ids": [
+    "bonelight-choir-descent",
+    "bonelight-ossuary-processional",
+    "bonelight-organ-loft",
+    "bonelight-reliquary-vault",
+    "bonelight-bell-crypt",
+    "bonelight-choir-nave"
+  ],
+  "connections": [
+    "marrow-bloom"
+  ],
+  "level_range": {
+    "min": 49,
+    "max": 56
+  },
+  "ascii_map": [
+    "        ... THE BONELIGHT CHOIR ...",
+    "",
+    "              The Marrow Bloom",
+    "                     ^",
+    "                     |",
+    "           [Bonelight Descent]",
+    "                     |",
+    "  [Reliquary Vault]-[Processional]-[Organ Loft]",
+    "                     |",
+    "               [Bell Crypt]",
+    "                     |",
+    "               [Choir Nave]",
+    "",
+    "   An ossuary cathedral grown from all the",
+    "   Bloom digested and set aside to keep.",
+    "   Fused bone, ordered and singing as one."
+  ]
+}

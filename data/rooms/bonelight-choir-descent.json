@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "bonelight-choir-descent",
+  "name": "The Bonelight Descent",
+  "description": "The Heart of Rot does not, in the end, digest everything into more of itself; some part of what it swallows it sets aside, hardens, and keeps. A narrow throat opens in the fleshy floor and lets you down out of the wet warmth of the Bloom into a cold, dry, ordered place, and the change is so total it stops you on the first step. Where the garden above was sprawl and hunger and wet grey growth, here everything is bone: pillars of fused skulls and knitted ribs rise sheer to a vaulted dark, their surfaces smoothed and calcined to a faint ivory glow that needs no torch to be seen by. A single held note hangs on the air, so low and so constant that you feel it in your teeth before you hear it, and the pale light of the walls seems to pulse very slightly in time with it. This is what unlimited hunger makes once it has finished eating: not more sprawl, but a single vast structure, arranged and singing.",
+  "item_ids": [],
+  "exits": {
+    "up": "marrow-bloom-heart-of-rot",
+    "down": "bonelight-ossuary-processional"
+  },
+  "min_level": 49,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The held note in the air deepens for a moment, and the ivory glow of the fused-bone walls swells with it before settling again.",
+    "A fine drift of bone-dust sifts down from the vaulted dark and settles on your shoulders like cold ash.",
+    "Somewhere far below, a great many throats draw breath together, and the whole descent hums with the intake."
+  ]
+}

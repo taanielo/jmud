@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "bonelight-reliquary-vault",
+  "name": "The Reliquary Vault",
+  "description": "The low arch opens into a close, cold vault where the cathedral keeps its treasures, and its treasures are trophies. Set into niches carved from fused bone, ranked floor to vault, are the calcified relics of everything the Bloom judged worth preserving whole: a knight's gauntlet grown through with ivory, a crown of antlers fused to the skull that wore it, a lute whose strings have hardened to threads of bone and still, faintly, ring. Each relic sits in its niche wrapped in a skin of pale calcite, half-swallowed and half-enshrined, and each hums its own thin note under the great held chord, so that the whole vault chimes very softly, like a room full of struck glasses on the edge of stilling. A reliquary-warden keeps this place, moving from niche to niche to test each seal, and it does not care for visitors who come to take what the choir has chosen to keep.",
+  "item_ids": [],
+  "exits": {
+    "east": "bonelight-ossuary-processional"
+  },
+  "min_level": 51,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A relic in its niche chimes a fraction louder, and a hairline of calcite creeps another finger's width across its surface.",
+    "The soft glassy chiming of the whole vault shifts key for a moment, as though something has been added to the collection.",
+    "A skin of pale calcite tightens over a preserved trophy with a sound like slow ice."
+  ]
+}

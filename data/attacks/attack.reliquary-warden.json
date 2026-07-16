@@ -1,0 +1,28 @@
+{
+  "schema_version": 5,
+  "id": "attack.reliquary-warden",
+  "name": "a calcite grasp",
+  "min_damage": 46,
+  "max_damage": 66,
+  "hit_bonus": 7,
+  "crit_bonus": 4,
+  "damage_bonus": 12,
+  "weapon_type": "BLUNT",
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The reliquary-warden closes a hand sheathed in hardened calcite around you and squeezes, as though testing whether you would sit well in a niche. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The reliquary-warden reaches for you with a calcite-crusted grip and you twist free, leaving a smear of pale dust across your arm."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The reliquary-warden lifts you toward an empty niche, and a skin of cold calcite begins to creep up your limbs before you tear loose! The blow {verb} you!"
+    }
+  ]
+}
