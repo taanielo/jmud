@@ -74,4 +74,29 @@ class JsonAffixRepositoryTest {
 
         assertFalse(repository.findAll().isEmpty(), "Bundled data/item-affixes.json should define affixes");
     }
+
+    @Test
+    void ofWardingAffix_grantsPoisonResistLikeEmbersAndRime() throws Exception {
+        JsonAffixRepository repository = new JsonAffixRepository(Path.of("data"));
+
+        ItemAffix warding = repository.findById(AffixId.of("of-warding")).orElse(null);
+
+        assertTrue(warding != null, "of-warding affix must be defined");
+        assertEquals(15, warding.stats().getOrDefault("poison_resist", 0),
+            "of-warding should grant poison_resist sized like of-embers/of-rime");
+        assertTrue(warding.allowsRarity(Rarity.UNCOMMON) && warding.allowsRarity(Rarity.RARE),
+            "of-warding should roll on the same rarities as of-embers/of-rime");
+    }
+
+    @Test
+    void ofResonanceAffix_grantsCasterStats() throws Exception {
+        JsonAffixRepository repository = new JsonAffixRepository(Path.of("data"));
+
+        ItemAffix resonance = repository.findById(AffixId.of("of-resonance")).orElse(null);
+
+        assertTrue(resonance != null, "of-resonance affix must be defined");
+        assertTrue(resonance.stats().getOrDefault("wisdom", 0) > 0
+                || resonance.stats().getOrDefault("mana", 0) > 0,
+            "of-resonance should grant a caster-leaning wisdom/mana bonus");
+    }
 }

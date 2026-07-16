@@ -57,6 +57,23 @@
         "cold_resist": 15
       },
       "allowed_rarities": ["uncommon", "rare"]
+    },
+    {
+      "id": "of-warding",
+      "label": "of Warding",
+      "stats": {
+        "poison_resist": 15
+      },
+      "allowed_rarities": ["uncommon", "rare"]
+    },
+    {
+      "id": "of-resonance",
+      "label": "of Resonance",
+      "stats": {
+        "wisdom": 2,
+        "mana": 10
+      },
+      "allowed_rarities": ["uncommon", "rare"]
     }
   ]
 }
