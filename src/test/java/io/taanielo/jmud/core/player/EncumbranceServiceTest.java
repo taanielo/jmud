@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,12 @@ import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
 import io.taanielo.jmud.core.character.repository.RaceRepository;
 import io.taanielo.jmud.core.character.repository.RaceRepositoryException;
+import io.taanielo.jmud.core.world.EquipmentSlot;
+import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemAttributes;
+import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.repository.ItemRepository;
+import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 class EncumbranceServiceTest {
 
@@ -64,6 +71,62 @@ class EncumbranceServiceTest {
 
         int result = assertDoesNotThrow(() -> service.maxCarry(player));
         assertEquals(100, result);
+    }
+
+    @Test
+    void maxCarryAddsEquippedBackpackCarryBonusOnTopOfRaceAndClass() {
+        RaceId raceId = RaceId.of("human");
+        ClassId classId = ClassId.of("warrior");
+        RaceRepository races = fixedRace(raceId, new Race(raceId, "Human", 0, 100));
+        ClassRepository classes = fixedClass(classId, new ClassDefinition(classId, "Warrior", 0, 25, List.of()));
+
+        ItemId packId = ItemId.of("leather-backpack");
+        Item pack = Item.builder(packId, "a leather backpack", "A sturdy pack.", new ItemAttributes(Map.of("carry", 18)))
+            .equipSlot(EquipmentSlot.BACK)
+            .weight(3)
+            .value(70)
+            .build();
+        EquipmentCarryResolver carryResolver = new EquipmentCarryResolver(stubItemRepository(Map.of(packId, pack)));
+        EncumbranceService service = new EncumbranceService(races, classes, carryResolver);
+
+        Player player = playerWith(raceId, classId)
+            .withEquipment(PlayerEquipment.empty().equip(EquipmentSlot.BACK, packId));
+
+        // 100 (race base) + 25 (class bonus) + 18 (worn pack) = 143.
+        assertEquals(143, service.maxCarry(player));
+    }
+
+    @Test
+    void maxCarryIgnoresBackpackBonusWhenNothingWorn() {
+        RaceId raceId = RaceId.of("human");
+        ClassId classId = ClassId.of("warrior");
+        RaceRepository races = fixedRace(raceId, new Race(raceId, "Human", 0, 100));
+        ClassRepository classes = fixedClass(classId, new ClassDefinition(classId, "Warrior", 0, 25, List.of()));
+
+        ItemId packId = ItemId.of("leather-backpack");
+        Item pack = Item.builder(packId, "a leather backpack", "A sturdy pack.", new ItemAttributes(Map.of("carry", 18)))
+            .equipSlot(EquipmentSlot.BACK)
+            .weight(3)
+            .value(70)
+            .build();
+        EquipmentCarryResolver carryResolver = new EquipmentCarryResolver(stubItemRepository(Map.of(packId, pack)));
+        EncumbranceService service = new EncumbranceService(races, classes, carryResolver);
+
+        // No back-slot item equipped: only race base + class bonus contribute.
+        assertEquals(125, service.maxCarry(playerWith(raceId, classId)));
+    }
+
+    private static ItemRepository stubItemRepository(Map<ItemId, Item> items) {
+        return new ItemRepository() {
+            @Override
+            public void save(Item item) {
+            }
+
+            @Override
+            public Optional<Item> findById(ItemId id) throws RepositoryException {
+                return Optional.ofNullable(items.get(id));
+            }
+        };
     }
 
     private static RaceRepository fixedRace(RaceId id, Race race) {

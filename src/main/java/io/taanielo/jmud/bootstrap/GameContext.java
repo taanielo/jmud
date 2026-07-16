@@ -122,6 +122,7 @@ import io.taanielo.jmud.core.player.ArenaEventTicker;
 import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
+import io.taanielo.jmud.core.player.EquipmentCarryResolver;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.OnlinePlayersSupplier;
@@ -386,7 +387,8 @@ public record GameContext(
             worldRandom, playerLocationService, messageBroadcaster, ferryRepository.findAll());
         tickRegistry.register(boatEngine);
 
-        EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
+        EncumbranceService encumbranceService = new EncumbranceService(
+            raceRepository, classRepository, new EquipmentCarryResolver(itemRepository));
 
         HealingEngine healingEngine = new HealingEngine(effectRepository);
         HealingBaseResolver healingBaseResolver = new HealingBaseResolver(raceRepository, classRepository);

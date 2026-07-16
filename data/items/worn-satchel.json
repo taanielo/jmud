@@ -1,0 +1,17 @@
+{
+  "schema_version": 15,
+  "id": "worn-satchel",
+  "name": "a worn satchel",
+  "description": "A scuffed canvas satchel worn slung across the back. Its wide strap spreads the load, letting its wearer haul a little more before their knees buckle.",
+  "attributes": {
+    "stats": {
+      "carry": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "back",
+  "weight": 2,
+  "value": 30,
+  "attack_ref": null
+}
