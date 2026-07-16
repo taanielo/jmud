@@ -17,7 +17,8 @@ public enum EquipmentSlot {
     HANDS("hands"),
     FEET("feet"),
     NECK("neck"),
-    FINGER("finger");
+    FINGER("finger"),
+    BACK("back");
 
     private static final Map<String, EquipmentSlot> LOOKUP = new ConcurrentHashMap<>();
 

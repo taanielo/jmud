@@ -1,0 +1,17 @@
+{
+  "schema_version": 15,
+  "id": "reinforced-rucksack",
+  "name": "a reinforced rucksack",
+  "description": "A campaigner's rucksack banded with iron rivets and a rigid frame, engineered so a heavily laden pack rides high and steady on a long march.",
+  "attributes": {
+    "stats": {
+      "carry": 25
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "back",
+  "weight": 4,
+  "value": 120,
+  "attack_ref": null
+}

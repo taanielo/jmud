@@ -1,0 +1,17 @@
+{
+  "schema_version": 15,
+  "id": "leather-backpack",
+  "name": "a leather backpack",
+  "description": "A sturdy leather backpack with buckled flaps and a padded harness, built to carry a serious haul of loot without cutting into the shoulders.",
+  "attributes": {
+    "stats": {
+      "carry": 18
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "back",
+  "weight": 3,
+  "value": 70,
+  "attack_ref": null
+}
