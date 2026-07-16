@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "bonelight-choir-map",
+  "name": "Map of the Bonelight Choir",
+  "description": "A chart of the Bonelight Choir scored into a leaf of thin, calcined bone, its passages traced in lines of luminous spore-ink that hum, very faintly, when you hold it near your ear. The map is cold to the touch and slightly too heavy for its size, as though some small part of the cathedral's held note has been pressed into it and will not be silenced.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 55,
+  "map_area_id": "bonelight-choir"
+}

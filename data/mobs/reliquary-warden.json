@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "reliquary-warden",
+  "name": "a reliquary-warden",
+  "max_hp": 540,
+  "attack_id": "attack.reliquary-warden",
+  "aggressive": true,
+  "tags": ["bone", "construct", "bonelight-choir"],
+  "spawn_room_id": "bonelight-reliquary-vault",
+  "max_count": 2,
+  "respawn_ticks": 65,
+  "xp_reward": 640,
+  "loot": [
+    {
+      "item_id": "resonant-bonelight-shard",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 140,
+    "max": 220
+  }
+}

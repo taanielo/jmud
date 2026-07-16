@@ -1,0 +1,33 @@
+{
+  "schema_version": 4,
+  "id": "bonelight-cantor",
+  "name": "The Bonelight Cantor",
+  "max_hp": 1080,
+  "attack_id": "attack.bonelight-cantor",
+  "special_attack_id": "attack.bonelight-cantor-hymn",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["bone", "boss", "bonelight-choir"],
+  "spawn_room_id": "bonelight-choir-nave",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 2400,
+  "loot": [
+    {
+      "item_id": "resonant-bonelight-shard",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "bonelight-choir-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 520,
+    "max": 840
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.bonelight-cantor-hymn",
+  "name": "The Unison Hymn",
+  "min_damage": 66,
+  "max_damage": 92,
+  "hit_bonus": 6,
+  "crit_bonus": 6,
+  "damage_bonus": 16,
+  "weapon_type": "BLUNT",
+  "damage_type": "POISON",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 85
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Cantor raises every limb at once and the whole cathedral answers, ten thousand throats loosing the Unison Hymn as a single wall of spore-thick sound that folds over you and tries to pull your voice out to join it. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Cantor cues the Unison Hymn and the choir's full voice rolls across the nave, and you drop behind a rank of fused bone as the sound shears the tier above you to dust."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Cantor bends the whole Unison Hymn down onto you alone, and for a long, drowning moment your own throat opens against your will and begins, helplessly, to sing! The blow {verb} you!"
+    }
+  ]
+}
