@@ -103,7 +103,14 @@ public class HelpCommand extends RegistrableCommand {
         "  remaining typed damage on top of that.",
         "",
         "  So gear up for the fight you are actually in: better armour, a shield, and agility make",
-        "  you harder to hit and harder to hurt against mobs, not merely in the arena.");
+        "  you harder to hit and harder to hurt against mobs, not merely in the arena.",
+        "",
+        "  Watch the company a monster keeps. Some creatures run in PACKS: a solo-looking pull can",
+        "  wake its neighbours. Strike one wolf in a den and the rest snarl and lunge to its",
+        "  defence, piling onto you as extra attackers. Thin the pack before you commit — a stealth",
+        "  pull, a crowd-control spell, or an area attack that hits several at once turns a deadly",
+        "  swarm into a fair fight. A packmate only joins a fight already begun; it never ambushes",
+        "  you first, so hidden rogues still choose their moment.");
 
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
