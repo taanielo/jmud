@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "enchant-of-warding",
+  "affix": "of-warding",
+  "gold_cost": 90,
+  "min_skill": 2,
+  "materials": [
+    { "item": "blightspore-cluster", "quantity": 1 },
+    { "item": "arcane-dust", "quantity": 3 }
+  ]
+}

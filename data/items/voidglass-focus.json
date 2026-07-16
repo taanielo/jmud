@@ -1,0 +1,19 @@
+{
+  "schema_version": 15,
+  "id": "voidglass-focus",
+  "name": "a voidglass focus",
+  "description": "A shard of voidscar glass cradled in a loop of cold iron and hung so it can be held loose in the off hand, a caster's focus rather than a smith's blade. Where a lesser focus catches and scatters a spell's light, this one drinks it, and the drawn-in glow feeds back down the wielder's arm as a low, steady pressure behind the eyes — the quiet by which a mind gathers what it means to unmake. Smiths who master the glass make of it not a weapon but a listening thing.",
+  "attributes": {
+    "stats": {
+      "intellect": 3,
+      "mana": 15
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "offhand",
+  "weight": 1,
+  "value": 180,
+  "rarity": "uncommon",
+  "attack_ref": null
+}
