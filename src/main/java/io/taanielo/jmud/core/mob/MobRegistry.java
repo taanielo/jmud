@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.mob;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -185,6 +186,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
     /** Data tag marking a mob that never flees regardless of how badly wounded it is. */
     private static final String FEARLESS_TAG = "fearless";
+
+    /**
+     * Data tag marking a <em>pack</em> mob. A pack mob never starts a fresh fight on its own: it
+     * only reinforces an existing one, joining against a player already engaged with a different
+     * alive mob in the same room (see {@link #playersEngagedWithRoommates} and
+     * {@link #isPackOnlyInitiator}). Additive and optional — see {@code docs/data-schema.md}.
+     */
+    private static final String PACK_TAG = "pack";
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -782,10 +791,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 continue;
             }
             // A mob may initiate combat when it is inherently aggressive, when it belongs to a
-            // faction (its hostility is then decided per-player in runMobAi from reputation), or
-            // when it is already engaged in a fight.
+            // faction (its hostility is then decided per-player in runMobAi from reputation), when
+            // it is a pack mob and a room-mate already has a player engaged (it reinforces that
+            // fight — see runMobAi), or when it is already engaged in a fight.
             boolean couldInitiate = mob.template().aggressive()
-                || (reputationService != null && mob.template().factionId() != null);
+                || (reputationService != null && mob.template().factionId() != null)
+                || (mob.template().hasTag(PACK_TAG) && !playersEngagedWithRoommates(mob).isEmpty());
             if (!couldInitiate && mob.engagedPlayers().isEmpty()) {
                 continue;
             }
@@ -2518,12 +2529,83 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         return candidates.get(random.roll(0, candidates.size() - 1));
     }
 
+    /**
+     * Builds the first-engagement flavour line shown to a player as a mob joins the fight against
+     * them. A {@code pack} mob reinforcing an existing fight ({@code packJoin}) gets a distinct
+     * "snarls and lunges to its packmate's defense" line so the player can tell a den has woken,
+     * rather than the generic solo-aggro lunge.
+     *
+     * @param mob      the mob entering combat
+     * @param packJoin whether this engagement is a pack mob reinforcing a room-mate's fight
+     * @return the self-facing first-engagement message
+     */
+    private String firstEngagementMessage(MobInstance mob, boolean packJoin) {
+        if (packJoin) {
+            return "Another " + mob.template().name()
+                + " snarls and lunges to its packmate's defense!";
+        }
+        return "The " + mob.template().name() + " lunges at you!";
+    }
+
+    /**
+     * Reports whether {@code mob} is a mob that would <em>not</em> initiate combat on its own but
+     * carries the {@code pack} tag, so its first engagement must be restricted to reinforcing an
+     * existing fight (see {@link #playersEngagedWithRoommates}). A mob that is inherently aggressive
+     * or belongs to a faction already initiates independently, so the pack restriction does not
+     * apply to it even when it also carries the tag.
+     *
+     * @param mob the mob under evaluation
+     * @return {@code true} when the mob may only act as a pack reinforcement this engagement
+     */
+    private boolean isPackOnlyInitiator(MobInstance mob) {
+        boolean independentInitiator = mob.template().aggressive()
+            || (reputationService != null && mob.template().factionId() != null);
+        return !independentInitiator && mob.template().hasTag(PACK_TAG);
+    }
+
+    /**
+     * Returns the players currently in {@code mob}'s room who are already engaged in combat with a
+     * different alive, non-pet mob in that same room. These are the only players a {@code pack} mob
+     * may join against: a pack mob reinforces a fight already started (by the player attacking any
+     * mob, or by an aggressive/faction room-mate), it never starts a fresh one. Runs on the tick
+     * thread over the live instance map (AGENTS.md §5).
+     *
+     * @param mob the pack mob looking for a fight to join
+     * @return the in-room players engaged with a room-mate mob, or an empty list when none
+     */
+    private List<Username> playersEngagedWithRoommates(MobInstance mob) {
+        RoomId roomId = mob.roomId();
+        Set<Username> engagedByRoommates = new HashSet<>();
+        for (MobInstance other : instances.values()) {
+            if (other.instanceId().equals(mob.instanceId()) || other.isPet() || !other.isAlive()) {
+                continue;
+            }
+            if (!other.roomId().equals(roomId)) {
+                continue;
+            }
+            engagedByRoommates.addAll(other.engagedPlayers());
+        }
+        if (engagedByRoommates.isEmpty()) {
+            return List.of();
+        }
+        return roomService.getPlayersInRoom(roomId).stream()
+            .filter(engagedByRoommates::contains)
+            .toList();
+    }
+
     private void runMobAi(MobInstance mob) {
         List<Username> candidates;
         Set<Username> engaged = mob.engagedPlayers();
+        boolean packJoin = false;
         if (!engaged.isEmpty()) {
             List<Username> inRoom = roomService.getPlayersInRoom(mob.roomId());
             candidates = engaged.stream().filter(inRoom::contains).toList();
+        } else if (isPackOnlyInitiator(mob)) {
+            // A pack mob with no fight of its own only reinforces an existing one: its first target
+            // must already be engaged with a different mob in the same room, never a fresh victim.
+            // Restricting the candidate set here is what keeps "pack" from behaving like "aggressive".
+            candidates = playersEngagedWithRoommates(mob);
+            packJoin = true;
         } else {
             candidates = roomService.getPlayersInRoom(mob.roomId());
         }
@@ -2586,8 +2668,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
             }
             if (firstEngagement && !useSpecial) {
-                messages.add(GameMessage.toSource(
-                    "The " + mob.template().name() + " lunges at you!"));
+                messages.add(GameMessage.toSource(firstEngagementMessage(mob, packJoin)));
             }
             messages.add(GameMessage.toSource(
                 mobAttackMessage(mob, attack, MessagePhase.ATTACK_MISS, useSpecial, 0,
@@ -2618,8 +2699,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
             }
             if (firstEngagement && !useSpecial) {
-                messages.add(GameMessage.toSource(
-                    "The " + mob.template().name() + " lunges at you!"));
+                messages.add(GameMessage.toSource(firstEngagementMessage(mob, packJoin)));
             }
             MessagePhase phase = outcome.blocked() ? MessagePhase.ATTACK_BLOCK : MessagePhase.ATTACK_HIT;
             messages.add(GameMessage.toSource(
