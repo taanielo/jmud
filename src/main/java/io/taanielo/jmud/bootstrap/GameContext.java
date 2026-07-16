@@ -174,6 +174,7 @@ import io.taanielo.jmud.core.weather.WeatherSettings;
 import io.taanielo.jmud.core.world.AmbientMessageEngine;
 import io.taanielo.jmud.core.world.AmbientMessageSettings;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
+import io.taanielo.jmud.core.world.DiscoveredExitsRepository;
 import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.MapService;
@@ -195,6 +196,7 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomCatalog;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonAffixRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonDiscoveredExitsRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
 
@@ -293,8 +295,9 @@ public record GameContext(
 
         RoomRepository roomRepository = createRoomRepository(itemRepository);
         RoomItemService roomItemService = new RoomItemService();
+        DiscoveredExitsRepository discoveredExitsRepository = new JsonDiscoveredExitsRepository();
         PlayerLocationService playerLocationService =
-            new PlayerLocationService(roomRepository, RoomId.of("training-yard"));
+            new PlayerLocationService(roomRepository, RoomId.of("training-yard"), discoveredExitsRepository);
         RoomService roomService = new RoomService(
             playerLocationService, roomItemService, new RoomRenderer(), roomRepository);
         MapService mapService = new MapService(roomRepository);
