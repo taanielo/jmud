@@ -1,0 +1,14 @@
+{
+  "schema_version": 4,
+  "id": "halfling",
+  "name": "Halfling",
+  "healing": {
+    "base_modifier": 0
+  },
+  "carry_base": 45,
+  "attributes": {
+    "str": -2,
+    "agi": 3
+  },
+  "description": "Small, quick-footed folk with the best hands and reflexes in the world, giving them the sharpest agility bonus of any race. Halflings excel at nimble, precise fighting styles but hit softly and lose any straight shove-and-shield contest, rewarding rogues, rangers, and other agility-focused builds over brawlers."
+}
