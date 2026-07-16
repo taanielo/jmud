@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "bonelight-cull",
+  "name": "Silence the Processional",
+  "description": "The stair down from the Heart of Rot does not end in more soft dark but in cold, ordered bone, and the first thing to meet you is song. Cowled choristers pace the Ossuary Processional in slow procession, each one a body of fused skulls bending the cathedral's single held note toward any living throat that descends — for the choir does not fight so much as gather, and a voice unbroken is a voice it means to add. Break eight of the choristers where they walk the aisle, before the note takes root in your teeth, and the deeper cathedral may open before it swallows your breath.",
+  "target_mob_id": "bonelight-chorister",
+  "required_kills": 8,
+  "gold_reward": 220,
+  "xp_reward": 550,
+  "recommended_level": 49
+}

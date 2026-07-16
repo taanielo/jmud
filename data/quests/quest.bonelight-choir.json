@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "bonelight-choir",
+  "name": "The Conductor's Silence",
+  "description": "The choristers were only the near ranks. Down past the Bell Crypt, in the nave where all the tiers of singing skulls converge, the choir has grown itself a conductor: the Bonelight Cantor, a towering thing of knitted spine and fused wing-bone and a corona of open, singing mouths, woven from every voice the Marrow Bloom ever silenced and given its breath back calcified and ordered. It has been waiting to add your voice to the chord. Cross the nave, break the Cantor where it lifts its countless throats against you, and end the Bonelight Choir before its one held note climbs the stair into the living world.",
+  "target_mob_id": "bonelight-cantor",
+  "required_kills": 1,
+  "gold_reward": 600,
+  "xp_reward": 1500,
+  "title_reward": "Choirbreaker",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 30,
+  "recommended_level": 54,
+  "repeatable": false,
+  "prerequisite_quest_id": "bonelight-cull"
+}
