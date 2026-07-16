@@ -97,6 +97,7 @@ up automatically from `trainable_ability_ids`.
 |---|---|---|---|---|
 | dwarf | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
 | elf | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+| halfling | ✅ #615 | ✅ #615 | ✅ #615 | ✅ #615 |
 | human | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
 | orc | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
 | troll | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
@@ -116,6 +117,16 @@ caster int/wis-build, agi-build) is one race's full package a superset of anothe
 - **troll** — attrition/sustain melee: `str +3`, `healing +2`, carry 80, but crude
   `attack -3` (a real melee drawback, unlike the melee-irrelevant `int -3`) plus `int -3`,
   so it outlasts rather than out-damages orc's burst.
+- **halfling** (#615) — the agility specialist: the highest agility bonus in the game
+  (`agi +3`, edging out elf's `+2`) driving accuracy/dodge/crit, paid for with `str -2`
+  and a light `carry 45`, and *no* caster upside (mana/int/attack/healing all default 0).
+  vs. **human**: out-agi's the safe generalist (`+3` vs `+1`) but carries less (45 vs 60)
+  and takes a real `str -2` human lacks — human stays the no-penalty pick, halfling the
+  higher-ceiling specialist. vs. **elf**: beats elf's agility by 1 with zero caster
+  package, so elf still wins outright for a caster build while halfling wins outright for
+  a pure-martial agi build (rogue backstab/crit, ranger marksman) — neither package is a
+  superset of the other. vs. the str-based dwarf/orc/troll it competes on a different
+  axis entirely.
 
 ## Areas
 
