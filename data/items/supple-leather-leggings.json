@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "supple-leather-leggings",
+  "name": "Supple Leather Leggings",
+  "description": "Close-fitting leggings cut from cured pelt, waxed until they flex with every stride. Favoured by scouts who value speed over bulk.",
+  "attributes": {
+    "stats": {
+      "ac": 4
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "legs",
+  "weight": 4,
+  "value": 65,
+  "attack_ref": null
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "padded-leather-gloves",
+  "name": "Padded Leather Gloves",
+  "description": "Snug gloves of doubled pelt, padded across the knuckles yet thin enough to keep a bowstring's feel.",
+  "attributes": {
+    "stats": {
+      "ac": 3
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "hands",
+  "weight": 2,
+  "value": 55,
+  "attack_ref": null
+}

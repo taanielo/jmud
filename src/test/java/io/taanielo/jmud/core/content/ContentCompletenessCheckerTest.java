@@ -76,7 +76,9 @@ class ContentCompletenessCheckerTest {
             List.<RecipeRepository>of(
                 new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(DATA_ROOT),
                 new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(DATA_ROOT, "recipes/alchemy"),
-                new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(DATA_ROOT, "recipes/cooking")),
+                new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(DATA_ROOT, "recipes/cooking"),
+                new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(
+                    DATA_ROOT, "recipes/leatherworking")),
             new io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository(DATA_ROOT),
             new io.taanielo.jmud.core.creation.json.JsonNewbieKitRepository(DATA_ROOT),
             new io.taanielo.jmud.core.salvage.repository.json.JsonSalvageTierRepository(DATA_ROOT),

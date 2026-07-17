@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "leatherworking-padded-leather-gloves",
+  "name": "Padded Leather Gloves",
+  "output_item": "padded-leather-gloves",
+  "gold_cost": 20,
+  "materials": [
+    { "item": "wolf-pelt", "quantity": 2 }
+  ]
+}
