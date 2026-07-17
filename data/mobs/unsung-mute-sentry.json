@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "unsung-mute-sentry",
+  "name": "a mute sentry",
+  "max_hp": 480,
+  "attack_id": "attack.unsung-mute-sentry",
+  "aggressive": true,
+  "tags": ["undead", "silent", "the-unsung"],
+  "spawn_room_id": "unsung-hall-of-refusal",
+  "max_count": 2,
+  "respawn_ticks": 70,
+  "xp_reward": 640,
+  "loot": [
+    {
+      "item_id": "woven-silence-skein",
+      "drop_chance": 0.15
+    }
+  ],
+  "gold_drop": {
+    "min": 130,
+    "max": 210
+  }
+}

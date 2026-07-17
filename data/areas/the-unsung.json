@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "the-unsung",
+  "name": "The Unsung",
+  "room_ids": [
+    "unsung-threshold",
+    "unsung-hall-of-refusal",
+    "unsung-gallery-of-cut-throats",
+    "unsung-barricade",
+    "unsung-catacomb-of-dissent",
+    "unsung-last-stand"
+  ],
+  "connections": [
+    "bonelight-choir"
+  ],
+  "level_range": {
+    "min": 57,
+    "max": 64
+  },
+  "ascii_map": [
+    "          ... THE UNSUNG ...",
+    "",
+    "            The Bonelight Choir",
+    "                    ^",
+    "                    |",
+    "              [Threshold]",
+    "                    |",
+    "  [Gallery]--[Hall of Refusal]--[Barricade]",
+    "                    |",
+    "           [Catacomb of Dissent]",
+    "                    |",
+    "               [Last Stand]",
+    "",
+    "   Catacombs beneath the Choir's reliquary,",
+    "   held by every throat that refused the",
+    "   chord and cut its own voice out to fight",
+    "   the cathedral in weaponized silence."
+  ]
+}

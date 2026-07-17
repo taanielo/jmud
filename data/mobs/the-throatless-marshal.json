@@ -1,0 +1,41 @@
+{
+  "schema_version": 4,
+  "id": "the-throatless-marshal",
+  "name": "the Throatless Marshal",
+  "max_hp": 1320,
+  "attack_id": "attack.throatless-marshal",
+  "special_attack_id": "attack.throatless-marshal-hush",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["undead", "silent", "boss", "the-unsung"],
+  "spawn_room_id": "unsung-last-stand",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 3000,
+  "loot": [
+    {
+      "item_id": "the-mute-edge",
+      "drop_chance": 0.4
+    },
+    {
+      "item_id": "shroud-of-refusal",
+      "drop_chance": 0.4
+    },
+    {
+      "item_id": "woven-silence-skein",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "the-unsung-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 620,
+    "max": 960
+  }
+}

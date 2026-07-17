@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "unsung-gallery-of-cut-throats",
+  "name": "The Gallery of Cut Throats",
+  "description": "The pale, small things the guttering light caught are relics, and the gallery is a reliquary of refusal. Set in niches along both walls, each on its own bed of dark cloth, are voices — or what is left of them: the excised throats of the Unsung, cut out by their own hands and kept, dried and dark and terribly quiet, as proof of a price paid and a song not sung. There are hundreds of them, and the oldest have gone to little more than knots of shadow, but every niche is tended, dusted, honored. This is not a charnel house; it is a shrine. The throatless partisans who keep it move between the niches with a devotion that has no words because it has renounced words, and they resent your intrusion into their reliquary with a cold, mute fury. To be here at all, breathing, throat intact, is an obscenity to them.",
+  "item_ids": [],
+  "exits": {
+    "west": "unsung-hall-of-refusal"
+  },
+  "min_level": 59,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A throatless partisan pauses at a niche, lays a wrapped hand against a dried and darkened relic, and bows its head in a silence that is somehow a prayer.",
+    "The dark cloth beneath the relics drinks the last of the light near the far niches, and the shrine seems to lengthen away into black.",
+    "One of the excised throats, ancient and shrunken, shifts fractionally on its bed of cloth as though it had tried, and failed, to make a sound."
+  ]
+}

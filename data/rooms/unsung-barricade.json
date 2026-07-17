@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "unsung-barricade",
+  "name": "The Barricade of Silence",
+  "description": "The west way is blocked, and the block is a work of grim ingenuity. Across the passage the Unsung have raised a barricade from the only two materials they have ever had: bone, hauled from the cathedral above and stacked into a rampart the height of two people, and silence, packed into every gap and joint of it like mortar. It should not hold — it is only stacked bone — but the silence in it is a structural thing, a refusal so dense it bears load, and where you press against it the barricade presses back with a numbing, breath-stealing cold that climbs your arm to the shoulder. A single low sally-gap has been left open, and it is guarded. The barricade warden that keeps it does not challenge you; it simply plants itself in the gap, wrapped and mute and immovable, and waits for you to be foolish enough to try the crossing.",
+  "item_ids": [],
+  "exits": {
+    "east": "unsung-hall-of-refusal"
+  },
+  "min_level": 60,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The silence packed into the barricade shifts and settles, and a breath of numbing cold rolls out of the stacked bone across the floor.",
+    "The barricade warden adjusts its stance in the sally-gap without a sound, and the cold in the air deepens a degree.",
+    "A single bone works loose somewhere high in the rampart and falls — and lands, impossibly, without a sound, swallowed whole before it strikes."
+  ]
+}

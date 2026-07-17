@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.unsung-throatless-partisan",
+  "name": "a silent stroke",
+  "min_damage": 48,
+  "max_damage": 70,
+  "hit_bonus": 8,
+  "crit_bonus": 6,
+  "damage_bonus": 12,
+  "weapon_type": "SLASHING",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 50
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The throatless partisan draws a blade honed on nothing but silence and cuts, and the edge takes not just skin but the sound of the wound, so that you feel the cold of it before you feel the pain. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The throatless partisan strikes for your throat with the mute fury of the wronged, and you throw yourself back from the noiseless blade."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The throatless partisan opens you throat to hip in one silent stroke, and the reliquary of cut voices seems to lean nearer, honoring the price it has made you pay! The blow {verb} you!"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "the-unsung-map",
+  "name": "Map of the Unsung",
+  "description": "A chart of the catacombs beneath the Choir, drawn not in ink but in absence: the passages are the places where the sound-drinking cloth has been cut away, so that the map is read by silence against silence, its routes traced in a quiet a shade deeper than the parchment around them. It is cold to hold and heavier than it looks, and when you bring it near your ear you hear nothing at all — a nothing so complete it has a shape, the shape of every voice the Unsung cut out rather than sing.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 60,
+  "map_area_id": "the-unsung"
+}
