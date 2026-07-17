@@ -1,0 +1,53 @@
+{
+  "schema_version": 5,
+  "type": "daily",
+  "pool_id": "warband-slayer",
+  "name": "Daily Warband Slayer",
+  "quests": [
+    {
+      "id": "daily-warband-embercrawlers",
+      "name": "Daily Warband Slayer: Embercrawlers",
+      "description": "Embercrawlers boil out of the Emberdeep passages. Burn them back.",
+      "target_mob_id": "embercrawler",
+      "required_kills": 6,
+      "gold_reward": 720,
+      "xp_reward": 1440
+    },
+    {
+      "id": "daily-warband-magma-hounds",
+      "name": "Daily Warband Slayer: Magma Hounds",
+      "description": "Magma hounds prowl the magma flow. Put down the pack.",
+      "target_mob_id": "magma-hound",
+      "required_kills": 6,
+      "gold_reward": 830,
+      "xp_reward": 1660
+    },
+    {
+      "id": "daily-warband-cinder-wraiths",
+      "name": "Daily Warband Slayer: Cinder Wraiths",
+      "description": "Cinder wraiths drift through the Cinder Reaches. Dispel them.",
+      "target_mob_id": "cinder-wraith",
+      "required_kills": 6,
+      "gold_reward": 945,
+      "xp_reward": 1890
+    },
+    {
+      "id": "daily-warband-void-wraiths",
+      "name": "Daily Warband Slayer: Void Wraiths",
+      "description": "Void wraiths bleed from the lightless expanse. Banish them.",
+      "target_mob_id": "void-wraith",
+      "required_kills": 5,
+      "gold_reward": 1350,
+      "xp_reward": 2700
+    },
+    {
+      "id": "daily-warband-marrow-gluttons",
+      "name": "Daily Warband Slayer: Marrow-gluttons",
+      "description": "Marrow-gluttons feast in the necrotic garden. Starve the bloom.",
+      "target_mob_id": "marrow-glutton",
+      "required_kills": 5,
+      "gold_reward": 1950,
+      "xp_reward": 3900
+    }
+  ]
+}
