@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "starcut-heartgem",
+  "name": "Starcut Heartgem",
+  "description": "A masterwork amulet: a garnet cut in a hundred facets around a quartz core, so it seems to hold a caged star. Only a seasoned jeweler could shape it, and it pours strength into a caster's every incantation.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "mana": 18,
+      "hp": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 180,
+  "attack_ref": null
+}

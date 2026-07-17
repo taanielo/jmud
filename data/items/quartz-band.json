@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "quartz-band",
+  "name": "Quartz Band",
+  "description": "A slim silver band set with a single clear-cut quartz. The stone hums faintly against the skin, steadying a spellcaster's focus.",
+  "attributes": {
+    "stats": {
+      "ac": 1,
+      "mana": 6
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 45,
+  "attack_ref": null
+}

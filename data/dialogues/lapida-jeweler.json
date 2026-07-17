@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "lapida-jeweler-welcome",
+  "npc_id": "jeweler",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "These ruins are full of buried treasure, if you know where to dig. Bring me rough gems and I'll cut you a ring or amulet worth wearing.",
+      "responses": [
+        { "text": "What can you cut?", "target": "cut" },
+        { "text": "Where do I find gems?", "target": "gems" },
+        { "text": "I'll come back later.", "target": "end" }
+      ]
+    },
+    "cut": {
+      "text": "Quartz makes a caster's band, clear and steadying. Bring me deep garnets and I'll cut you a choker, or — if your hands have grown sure enough — a Starcut Heartgem fit for an archmage. Type CUT here and I'll show you my patterns.",
+      "responses": [
+        { "text": "Where do I find gems?", "target": "gems" },
+        { "text": "Done talking.", "target": "end" }
+      ]
+    },
+    "gems": {
+      "text": "Cloudy quartz glitters in the tower's fallen stone, just north of here. Darker garnets lie deeper still, seamed into the catacombs beneath the wood. GATHER what the rubble gives up and bring it back to me.",
+      "responses": [
+        { "text": "What can you cut?", "target": "cut" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Mind the bandits on your way out. A good gem is wasted on a corpse.",
+      "responses": []
+    }
+  }
+}

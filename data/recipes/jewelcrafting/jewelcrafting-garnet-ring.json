@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "jewelcrafting-garnet-ring",
+  "name": "Garnet Ring",
+  "output_item": "garnet-ring",
+  "gold_cost": 55,
+  "materials": [
+    { "item": "raw-garnet", "quantity": 2 },
+    { "item": "rough-quartz", "quantity": 1 }
+  ]
+}

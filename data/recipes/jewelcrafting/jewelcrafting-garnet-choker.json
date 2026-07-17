@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "jewelcrafting-garnet-choker",
+  "name": "Garnet Choker",
+  "output_item": "garnet-choker",
+  "gold_cost": 75,
+  "materials": [
+    { "item": "raw-garnet", "quantity": 3 },
+    { "item": "rough-quartz", "quantity": 1 }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 4,
+  "id": "jeweler",
+  "name": "Lapida the Gem-Cutter",
+  "max_hp": 9999,
+  "xp_reward": 0,
+  "attack_id": null,
+  "aggressive": false,
+  "tags": ["npc", "shopkeeper", "jeweler"],
+  "spawn_room_id": "crumbling-courtyard",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "loot": [],
+  "dialogue_id": "lapida-jeweler-welcome"
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "garnet-choker",
+  "name": "Garnet Choker",
+  "description": "A close-fitting choker of linked garnets, cut so each stone bleeds into the next. It girds the throat with a slow, steadying warmth.",
+  "attributes": {
+    "stats": {
+      "ac": 1,
+      "mana": 12,
+      "hp": 6
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 100,
+  "attack_ref": null
+}

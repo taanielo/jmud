@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "garnet-ring",
+  "name": "Garnet Ring",
+  "description": "A heavy ring crowned with a faceted garnet that glows like a coal. Its warmth deepens the wearer's reserves of will.",
+  "attributes": {
+    "stats": {
+      "mana": 10,
+      "hp": 6
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 80,
+  "attack_ref": null
+}

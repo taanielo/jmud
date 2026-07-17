@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "raw-garnet",
+  "name": "Raw Garnet",
+  "description": "A blood-dark garnet crystal, still crusted with grave-clay from the catacombs. It catches torchlight in deep crimson glints where the dirt has flaked away.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 12
+}
