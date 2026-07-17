@@ -2350,7 +2350,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return GameActionResult.error("Your summons fizzles — nothing answers the call.");
         }
         MobInstance pet = MobInstance.summoned(
-            petTemplate, roomId, caster.getUsername(), petTemplate.summonDurationTicks());
+            petTemplate, roomId, caster.getUsername(), caster.getLevel(),
+            petTemplate.summonDurationTicks());
         instances.put(pet.instanceId(), pet);
 
         Player updated = caster.withVitals(caster.getVitals().consumeMana(manaCost));
@@ -2456,7 +2457,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         mob.scheduleRespawn(currentTimeOfDay());
         endCombatForMob(mob);
 
-        MobInstance pet = MobInstance.tamed(mob.template(), roomId, tamer.getUsername());
+        MobInstance pet = MobInstance.tamed(mob.template(), roomId, tamer.getUsername(), tamer.getLevel());
         instances.put(pet.instanceId(), pet);
 
         Player updated = tamer.withTamedPets(tamer.pets().tame(mob.template().id().getValue()));
@@ -2721,7 +2722,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 continue;
             }
             MobInstance pet = MobInstance.tamed(
-                template, roomId, username, entry.customName(), entry.customDescription());
+                template, roomId, username, owner.getLevel(), entry.customName(),
+                entry.customDescription());
             instances.put(pet.instanceId(), pet);
         }
     }
@@ -2858,7 +2860,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         // melee swing (issue #595), so a pet can miss its foe outright or crit it for bonus damage.
         HitOutcome petOutcome = resolveMobVsMobHit(petAttack);
         if (petOutcome.hit()) {
-            int damage = petOutcome.damage();
+            // Scale the resolved hit by the owner's level (see CompanionScaling) so a high-level
+            // owner's companion hits harder than the same template obtained by a low-level owner.
+            int damage = pet.scaleCompanionDamage(petOutcome.damage());
             int remaining = foe.takeDamage(damage);
             messages.add(GameMessage.toSource(
                 petStrikeMessage(petName, foeName, damage, remaining, petOutcome.crit())));
