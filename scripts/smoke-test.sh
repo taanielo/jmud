@@ -189,7 +189,7 @@ T1="$OUT_DIR/phase1-new-user.txt"
 run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
     "score" "inventory" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" \
     "drop all" "get all" \
-    "drop iron sword" "drop health potion" "drop poisonous potion" "drop treasure chest" \
+    "drop iron sword" "drop health potion" "drop poisonous potion" "drop a treasure chest" \
     "quit"
 
 # Note: the prompt is written without a trailing newline, so command output
