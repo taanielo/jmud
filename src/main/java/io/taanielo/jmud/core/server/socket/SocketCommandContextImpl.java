@@ -116,6 +116,7 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
+import io.taanielo.jmud.core.social.MarriageService;
 import io.taanielo.jmud.core.trade.TradeExecutionService;
 import io.taanielo.jmud.core.trade.TradeService;
 import io.taanielo.jmud.core.trade.TradeSession;
@@ -1659,6 +1660,231 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GameActionResult result = gameActionService.acceptPlayerDuel(session.getPlayer());
         deliverResult(result);
         sendPrompt();
+    }
+
+    // ── Marriage (issue #649) ───────────────────────────────────────────
+
+    @Override
+    public void executeMarry(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to marry.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("STATUS")) {
+            showMarriageStatus(player);
+            return;
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        String rest = parts.length < 2 ? "" : parts[1];
+        switch (sub) {
+            case "ACCEPT" -> acceptMarriageProposal(player);
+            case "DECLINE" -> declineMarriageProposal(player);
+            case "DIVORCE" -> divorce(player);
+            case "TELL" -> spouseTell(rest);
+            default -> proposeMarriage(player, trimmed);
+        }
+    }
+
+    private MarriageService marriageService() {
+        return context.marriageService();
+    }
+
+    private void showMarriageStatus(Player player) {
+        MarriageService marriageService = marriageService();
+        if (player.isMarried()) {
+            // Self-heal a dangling bond: a spouse who was purged (or whose file no longer exists) and
+            // is not online effectively divorces this player (issue #649). Reflect single status.
+            String spouse = player.spouse();
+            if (spouse != null && findOnlinePlayer(Username.of(spouse)) == null
+                && context.playerRepository().loadPlayer(Username.of(spouse)).isEmpty()) {
+                session.replacePlayer(player.withSpouse(null));
+                writeLineWithPrompt("Your former spouse " + spouse
+                    + " is no longer among us; you are single once more.");
+                return;
+            }
+            writeLineWithPrompt("You are married to " + spouse + ".");
+            return;
+        }
+        Optional<Username> proposer = marriageService.pendingProposer(player.getUsername());
+        if (proposer.isPresent()) {
+            writeLineWithPrompt(proposer.get().getValue()
+                + " has proposed to you. Type MARRY ACCEPT or MARRY DECLINE.");
+            return;
+        }
+        writeLineWithPrompt("You are not married and have no pending proposals.");
+    }
+
+    private void proposeMarriage(Player player, String targetName) {
+        if (player.isMarried()) {
+            writeLineWithPrompt("You are already married to " + player.spouse()
+                + ". You must DIVORCE before proposing to another.");
+            return;
+        }
+        Optional<Player> match = abilityTargetResolver.resolve(player, targetName);
+        if (match.isEmpty()) {
+            writeLineWithPrompt("There is no one here by that name to marry.");
+            return;
+        }
+        Player target = match.get();
+        if (target.getUsername().equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot marry yourself.");
+            return;
+        }
+        if (target.isMarried()) {
+            writeLineWithPrompt(target.getUsername().getValue() + " is already married.");
+            return;
+        }
+        if (marriageService().hasPendingProposal(target.getUsername())) {
+            writeLineWithPrompt(target.getUsername().getValue()
+                + " already has a pending proposal. Let them answer it first.");
+            return;
+        }
+        marriageService().propose(player.getUsername(), target.getUsername());
+        sendToUsername(target.getUsername(), player.getUsername().getValue()
+            + " proposes marriage to you! Type MARRY ACCEPT to say yes, or MARRY DECLINE."
+            + " The proposal lapses in 60 seconds.");
+        writeLineWithPrompt("You propose marriage to " + target.getUsername().getValue()
+            + ". They have 60 seconds to answer.");
+    }
+
+    private void acceptMarriageProposal(Player player) {
+        Optional<Username> proposerMatch = marriageService().pendingProposer(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending marriage proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        if (player.isMarried()) {
+            marriageService().resolve(player.getUsername());
+            writeLineWithPrompt("You are already married to " + player.spouse() + ".");
+            return;
+        }
+        Player proposer = findOnlinePlayer(proposerName);
+        if (proposer == null) {
+            marriageService().resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue() + " is no longer online; the proposal is void.");
+            return;
+        }
+        if (proposer.isMarried()) {
+            marriageService().resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue() + " has married someone else in the meantime.");
+            return;
+        }
+        marriageService().resolve(player.getUsername());
+        Player updatedAccepter = player.withSpouse(proposerName.getValue());
+        Player updatedProposer = proposer.withSpouse(player.getUsername().getValue());
+        session.replacePlayer(updatedAccepter);
+        updateTarget(updatedProposer);
+        sendToUsername(proposerName, player.getUsername().getValue()
+            + " accepts your proposal. You are now married!");
+        // Server-wide wedding announcement (flavor only, no mechanical reward), excluding the couple
+        // who already receive their own confirmations (AGENTS.md §3.3 — via MessageBroadcaster).
+        context.messageBroadcaster().broadcastGlobal(
+            new PlainTextMessage("Wedding bells ring out! " + proposerName.getValue() + " and "
+                + player.getUsername().getValue() + " are now married. Congratulations!"),
+            Set.of(proposerName, player.getUsername()));
+        writeLineWithPrompt("You accept " + proposerName.getValue() + "'s proposal. You are now married!");
+    }
+
+    private void declineMarriageProposal(Player player) {
+        Optional<Username> proposerMatch = marriageService().resolve(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending marriage proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        sendToUsername(proposerName, player.getUsername().getValue() + " declined your marriage proposal.");
+        writeLineWithPrompt("You decline " + proposerName.getValue() + "'s marriage proposal.");
+    }
+
+    private void divorce(Player player) {
+        if (!player.isMarried()) {
+            writeLineWithPrompt("You are not married.");
+            return;
+        }
+        String spouseName = player.spouse();
+        Username spouseUsername = Username.of(spouseName);
+        Username self = player.getUsername();
+        session.replacePlayer(player.withSpouse(null));
+        Player onlineSpouse = findOnlinePlayer(spouseUsername);
+        if (onlineSpouse != null) {
+            if (bondPointsAt(onlineSpouse, self)) {
+                updateTarget(onlineSpouse.withSpouse(null));
+            }
+            sendToUsername(spouseUsername, self.getValue()
+                + " has divorced you. You are single once more.");
+        } else {
+            notifyOfflineSpouseOfDivorce(spouseUsername, self);
+        }
+        writeLineWithPrompt("You divorce " + spouseName + ". You are single once more.");
+    }
+
+    /** Returns whether {@code spouse}'s recorded bond points back at {@code partner}. */
+    private static boolean bondPointsAt(Player spouse, Username partner) {
+        String bonded = spouse.spouse();
+        return bonded != null && Username.of(bonded).equals(partner);
+    }
+
+    /**
+     * Clears an offline spouse's persisted bond and leaves them a mail so they learn of the divorce on
+     * next login (issue #649). Best-effort: if their record no longer exists, or no longer points back
+     * at the divorcing player, there is nothing to clear.
+     */
+    private void notifyOfflineSpouseOfDivorce(Username spouseUsername, Username initiator) {
+        Player offlineSpouse = context.playerRepository().loadPlayer(spouseUsername).orElse(null);
+        if (offlineSpouse == null || !bondPointsAt(offlineSpouse, initiator)) {
+            return;
+        }
+        String initiatorName = initiator.getValue();
+        Player cleared = offlineSpouse.withSpouse(null);
+        long currentTick = context.tickClock().currentTick();
+        MailResult mail = playerMailService.send(cleared, initiatorName, currentTick,
+            initiatorName + " has divorced you. You are single once more.");
+        saveOrWarn(mail.success() && mail.updatedPlayer() != null ? mail.updatedPlayer() : cleared);
+    }
+
+    @Override
+    public void spouseTell(String message) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to use SPOUSETELL.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        if (!player.isMarried()) {
+            writeLineWithPrompt("You are not married. SPOUSETELL needs a spouse (see HELP MARRY).");
+            return;
+        }
+        String trimmed = message == null ? "" : message.trim();
+        if (trimmed.isEmpty()) {
+            writeLineWithPrompt("Usage: SPOUSETELL <message>");
+            return;
+        }
+        String spouseName = player.spouse();
+        Username spouseUsername = Username.of(spouseName);
+        Player onlineSpouse = findOnlinePlayer(spouseUsername);
+        if (onlineSpouse == null) {
+            writeLineWithPrompt("Your spouse " + spouseName + " is not online right now.");
+            return;
+        }
+        // Spouse messages bypass IGNORE by design (issue #649): the escape hatch is DIVORCE.
+        sendToUsername(spouseUsername, player.getUsername().getValue() + " tells you (spouse): " + trimmed);
+        writeLineSafe("You tell " + spouseUsername.getValue() + " (spouse): " + trimmed);
+        awayNotice(spouseUsername).ifPresent(this::writeLineSafe);
+        sendPrompt();
+    }
+
+    @Override
+    public String marriedTag(Username username) {
+        Player online = findOnlinePlayer(username);
+        if (online != null && online.isMarried()) {
+            return " (Married to " + online.spouse() + ")";
+        }
+        return "";
     }
 
     @Override
@@ -6254,6 +6480,32 @@ class SocketCommandContextImpl implements SocketCommandContext {
         // online player who has this player friended that they have entered the game.
         if (!isReattach && session.getPlayer() != null) {
             notifyFriendsOfLogin(session.getPlayer());
+        }
+        if (!isReattach && session.getPlayer() != null) {
+            reconcileMarriageOnLogin(session.getPlayer());
+        }
+    }
+
+    /**
+     * Reconciles a possibly-stale marriage bond at login: if the player's spouse no longer exists (for
+     * example the spouse was purged while this player was offline) and is not online, the bond is
+     * cleared so no dangling reference remains, and the player is told they are single (issue #649).
+     */
+    private void reconcileMarriageOnLogin(Player player) {
+        if (!player.isMarried()) {
+            return;
+        }
+        String spouse = player.spouse();
+        if (spouse == null) {
+            return;
+        }
+        Username spouseUsername = Username.of(spouse);
+        boolean spouseExists = findOnlinePlayer(spouseUsername) != null
+            || context.playerRepository().loadPlayer(spouseUsername).isPresent();
+        if (!spouseExists) {
+            session.replacePlayer(player.withSpouse(null));
+            connection.writeLine("Your former spouse " + spouse
+                + " is no longer among us; you are single once more.");
         }
     }
 

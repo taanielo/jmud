@@ -158,6 +158,7 @@ import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
 import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
+import io.taanielo.jmud.core.social.MarriageService;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickMetricsService;
@@ -263,6 +264,7 @@ public record GameContext(
     AttackRepository attackRepository,
     AchievementService achievementService,
     DuelService duelService,
+    MarriageService marriageService,
     NotesService notesService,
     PlayerSessionRegistry playerSessionRegistry,
     AreaMapService areaMapService,
@@ -543,6 +545,12 @@ public record GameContext(
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);
 
+        // Consensual player marriage (issue #649): the transient proposal registry ages out pending
+        // proposals each tick; the accepted bond is persisted on Player. All state mutation runs on
+        // the tick thread (AGENTS.md §5).
+        MarriageService marriageService = new MarriageService();
+        tickRegistry.register(marriageService);
+
         // The Arena drafts random online players into announced consensual duels on a fixed tick
         // interval. It reads the live client snapshot only to enumerate online usernames; all state
         // mutation (challenge issue, spectator notices) runs on the tick thread (AGENTS.md §5).
@@ -646,6 +654,7 @@ public record GameContext(
             attackRepository,
             achievementService,
             duelService,
+            marriageService,
             notesService,
             playerSessionRegistry,
             areaMapService,

@@ -227,6 +227,26 @@ class WhoListingTest {
     }
 
     @Test
+    void appendsMaritalStatusSuffixAtEnd() {
+        List<String> lines = WhoListing.format(
+            List.of(Username.of("Sparky"), Username.of("Solo")),
+            name -> "",
+            name -> "",
+            name -> false,
+            name -> false,
+            name -> " [30 Paladin]",
+            name -> "",
+            name -> name.equals(Username.of("Sparky")) ? " (Married to Alice)" : "");
+
+        assertEquals(List.of(
+            "Players online:",
+            "  Sparky [30 Paladin] (Married to Alice)",
+            "  Solo [30 Paladin]",
+            "2 players online."
+        ), lines);
+    }
+
+    @Test
     void emptyLevelClassAndLfgResolversRenderBareName() {
         List<String> lines = WhoListing.format(
             List.of(Username.of("Solo")),
