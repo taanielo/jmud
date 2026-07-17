@@ -1,0 +1,58 @@
+{
+  "schema_version": 5,
+  "id": "attack.cantors-knell",
+  "name": "cantor's knell",
+  "weapon_type": "BLUNT",
+  "min_damage": 17,
+  "max_damage": 27,
+  "hit_bonus": 5,
+  "crit_bonus": 7,
+  "damage_bonus": 7,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You swing the cantor's knell into {target} and its hollow skulls toll a single deep note that drives the wound home. Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} swings a cantor's knell into you and the bone bell tolls, its held note shuddering through your bones. The blows {verb} you!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} swings a cantor's knell into {target}, and the mace of fused skulls tolls a low, ringing note across the nave."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You heave the cantor's knell around at {target} and its heavy skulls sing past on the wrong note, striking only air."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} heaves a cantor's knell around at you and the tolling head sweeps past your ear."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} heaves a cantor's knell around at {target} and the bell-note dies unstruck."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You bring the cantor's knell down full on {target} and every hollow skull in its head tolls at once, folding the whole choir's held breath into the blow! Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} brings a cantor's knell down full upon you and the bone bell tolls its whole chord into the strike! The blows {verb} you!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} brings a cantor's knell down full on {target} and the mace tolls a note that shakes dust from the singing walls!"
+    }
+  ]
+}

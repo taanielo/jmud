@@ -14,6 +14,14 @@
   "xp_reward": 2400,
   "loot": [
     {
+      "item_id": "cantors-knell",
+      "drop_chance": 0.45
+    },
+    {
+      "item_id": "cantors-reliquary",
+      "drop_chance": 0.4
+    },
+    {
       "item_id": "resonant-bonelight-shard",
       "drop_chance": 1.0
     },

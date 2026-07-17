@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "cantors-reliquary",
+  "name": "the Cantor's Reliquary",
+  "description": "A small locket of latticed bone worn at the throat, sealed around a single ember of the Choir's ivory light and strung on a cord of braided sinew. It hums against the breastbone with the cathedral's held note, and where the resonant shard sings too low to hear, this reliquary answers, gathering that ordered sound and lending it back to the mind of whoever wears it. It steadies the thoughts and deepens the well a caster draws upon, though it offers little enough to turn a blade — it is a thing meant for a voice raised in the choir, not an arm set against it.",
+  "attributes": {
+    "stats": {
+      "ac": 3,
+      "mana": 12,
+      "hp": 8
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 360,
+  "rarity": "rare",
+  "attack_ref": null
+}
