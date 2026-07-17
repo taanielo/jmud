@@ -1719,6 +1719,35 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void initiateWagerDuel(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to duel.");
+            return;
+        }
+        cancelRestIfActive();
+        String trimmed = args == null ? "" : args.trim();
+        String[] parts = trimmed.isEmpty() ? new String[0] : trimmed.split("\\s+");
+        if (parts.length < 2) {
+            writeLineWithPrompt("Usage: DUEL WAGER <player> <gold>");
+            return;
+        }
+        long wager;
+        try {
+            wager = Long.parseLong(parts[1]);
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("The wager must be a positive whole number of gold.");
+            return;
+        }
+        if (wager <= 0) {
+            writeLineWithPrompt("The wager must be a positive whole number of gold.");
+            return;
+        }
+        GameActionResult result = gameActionService.initiatePlayerDuel(session.getPlayer(), parts[0], wager);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void acceptDuel() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to accept a duel.");

@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.action;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -285,6 +286,136 @@ class GameActionServicePlayerDuelTest {
         assertEquals(0, loser.getVitals().hp());
         assertTrue(roomService.findPlayerLocation(lowHpTarget.getUsername()).isEmpty());
         assertTrue(roomHasCorpse());
+    }
+
+    // ── wager (issue #661) ──────────────────────────────────────────────────────
+
+    @Test
+    void wageredChallengeAnnouncesAmountAndRecordsPendingWager() {
+        Player richAttacker = attacker.withGold(500);
+        GameActionService service = service(defaultCombat(), resolver(target), _ -> false);
+
+        GameActionResult result = service.initiatePlayerDuel(richAttacker, "target", 100L);
+
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE
+                && m.text().equals("You challenge target to a duel wagering 100 gold.")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER && m.text().contains("wagering 100 gold")));
+        assertEquals(100L, duelService.wagerOf(target.getUsername()));
+    }
+
+    @Test
+    void plainChallengeMessagingIsUnchangedByTheWagerFeature() {
+        Player richAttacker = attacker.withGold(500);
+        GameActionService service = service(defaultCombat(), resolver(target), _ -> false);
+
+        GameActionResult result = service.initiatePlayerDuel(richAttacker, "target");
+
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().equals("You challenge target to a duel.")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER
+                && m.text().equals(
+                    "attacker challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout.")));
+        assertEquals(0L, duelService.wagerOf(target.getUsername()));
+    }
+
+    @Test
+    void wageredChallengeRejectedWhenChallengerCannotCoverStake() {
+        Player poorAttacker = attacker.withGold(10);
+        GameActionService service = service(defaultCombat(), resolver(target), _ -> false);
+
+        GameActionResult result = service.initiatePlayerDuel(poorAttacker, "target", 100L);
+
+        assertTrue(result.messages().getFirst().text().startsWith("You do not have 100 gold to wager"));
+        assertTrue(duelService.pendingChallenger(target.getUsername()).isEmpty());
+    }
+
+    @Test
+    void acceptRejectedWhenTargetCannotCoverWagerLeavesNoStateAndMovesNoGold() {
+        Player richAttacker = attacker.withGold(500);
+        Player poorTarget = target.withGold(10);
+        GameActionService service = service(defaultCombat(), resolver(poorTarget), _ -> false);
+        service.initiatePlayerDuel(richAttacker, "target", 100L);
+
+        GameActionResult result = service.acceptPlayerDuel(poorTarget);
+
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().contains("do not have 100 gold")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER && m.text().contains("cannot cover the 100 gold wager")));
+        // No duel started and no dangling pending/active state left behind.
+        assertFalse(duelService.isDueling(richAttacker.getUsername()));
+        assertFalse(duelService.isDueling(poorTarget.getUsername()));
+        assertTrue(duelService.pendingChallenger(poorTarget.getUsername()).isEmpty());
+        assertTrue(duelService.stateOf(poorTarget.getUsername()).isEmpty());
+        assertTrue(duelService.stateOf(richAttacker.getUsername()).isEmpty());
+        // Neither result player is populated, so no gold moves.
+        assertNull(result.updatedSource());
+        assertNull(result.updatedTarget());
+    }
+
+    @Test
+    void wageredDuelEndTransfersStakeFromLoserToWinner() {
+        Player winner = attacker.withGold(500);
+        Player loser = playerWithHp("target", 0).withGold(300);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(600, result.updatedSource().getGold(), "winner gains the staked gold");
+        assertEquals(200, result.updatedTarget().getGold(), "loser forfeits the staked gold");
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().equals("You win 100 gold from the wager!")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER && m.text().equals("You lose 100 gold from the wager.")));
+    }
+
+    @Test
+    void wageredDuelEndClampsTransferToLoserLiveGold() {
+        Player winner = attacker.withGold(0);
+        Player loser = playerWithHp("target", 0).withGold(40);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(40, result.updatedSource().getGold(), "winner gains only what the loser could pay");
+        assertEquals(0, result.updatedTarget().getGold(), "loser is emptied, never driven negative");
+    }
+
+    @Test
+    void unwageredDuelEndMovesNoGold() {
+        Player winner = attacker.withGold(500);
+        Player loser = playerWithHp("target", 0).withGold(300);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(500, result.updatedSource().getGold());
+        assertEquals(300, result.updatedTarget().getGold());
+        assertTrue(result.messages().stream().noneMatch(m -> m.text().contains("wager")));
+    }
+
+    @Test
+    void forfeitViaClearForOnWageredDuelMovesNoGold() {
+        Player winner = attacker.withGold(500);
+        Player loser = target.withGold(300);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+
+        duelService.clearFor(loser.getUsername());
+
+        // Wallets are untouched: clearFor never reaches endPlayerDuel, and no escrow exists.
+        assertEquals(500, winner.getGold());
+        assertEquals(300, loser.getGold());
+        assertFalse(duelService.isDueling(winner.getUsername()));
+        assertFalse(duelService.isDueling(loser.getUsername()));
     }
 
     // ── flee / room move ────────────────────────────────────────────────────────
