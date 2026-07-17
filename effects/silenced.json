@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "silenced",
+  "name": "Silenced",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A crushing silence smothers your voice; you cannot shape a single word of power."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A crushing silence falls over {name}, smothering every word they try to speak."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The silence lifts and your voice returns to you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The silence smothering {name} lifts."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wrapped in a smothering silence, unable to voice a spell."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "skill.brace",
+  "name": "brace",
+  "type": "SKILL",
+  "level": 45,
+  "cost": {
+    "move": 10
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["bracestance", "guard"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "braced"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You set your feet and raise your guard, bracing to weather the next assault."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} sets their feet and braces behind a raised guard."
+    }
+  ]
+}

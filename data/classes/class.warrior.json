@@ -10,6 +10,6 @@
   "attribute_bonuses": { "str": 2 },
   "attribute_gains": { "str": "every_level", "agi": "every_3_levels" },
   "ability_ids": ["skill.bash", "skill.rend"],
-  "trainable_ability_ids": ["skill.second-wind", "skill.taunt", "skill.execute", "skill.rallying-cry"],
-  "description": "The archetypal front-line fighter: tough, hard-hitting and simple to play. Warriors bash foes to stun them and rend for bleeding damage, then train second wind and taunt to endure and control fights, and at level 15 learn execute, a savage finishing blow, then at level 30 a rallying cry that steels the whole party with a group-wide attack and defense buff."
+  "trainable_ability_ids": ["skill.second-wind", "skill.taunt", "skill.execute", "skill.rallying-cry", "skill.sunder-armor"],
+  "description": "The archetypal front-line fighter: tough, hard-hitting and simple to play. Warriors bash foes to stun them and rend for bleeding damage, then train second wind and taunt to endure and control fights, and at level 15 learn execute, a savage finishing blow, then at level 30 a rallying cry that steels the whole party with a group-wide attack and defense buff, and at level 45 sunder armor, a splitting blow that shears a foe's protection away and leaves them open."
 }

@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.purify",
+  "name": "purify",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["cleanse", "dispel"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "purified"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a wave of cleansing light that washes affliction from every ally around you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls down a wave of cleansing light that washes over the whole room."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.sunder-armor",
+  "name": "sunder armor",
+  "type": "SKILL",
+  "level": 45,
+  "cost": {
+    "move": 14
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["sunder", "sunderarmor"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 12
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "sundered"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You hammer a splitting blow into {target}'s armor, shearing their protection away."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} hammers a splitting blow into your armor, shearing your protection away!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} hammers a sundering blow into {target}'s armor."
+    }
+  ]
+}

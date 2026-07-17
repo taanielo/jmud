@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.war-song",
+  "name": "war song",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 11
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["warsong", "march"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "war-song"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You strike up a driving war song, and every ally around you fights harder and truer."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} strikes up a driving war song that sets the whole room's blood pounding."
+    }
+  ]
+}
