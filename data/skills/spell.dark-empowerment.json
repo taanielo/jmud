@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.dark-empowerment",
+  "name": "dark empowerment",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 13
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["empower", "darkempowerment"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "dark-empowerment"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You pour necrotic power into your minions and allies, quickening every strike with dark hunger."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} pours necrotic power into their servants, wreathing them in dark hunger."
+    }
+  ]
+}

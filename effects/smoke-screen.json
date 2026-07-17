@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "smoke-screen",
+  "name": "Smoke Screen",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 8
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Choking smoke billows up around you; blows go wide as you slip through the haze."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A cloud of choking smoke billows up around {name}, veiling them from sight."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The smoke thins and drifts apart, leaving you exposed once more."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The smoke veiling {name} thins and drifts apart."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is shrouded in a drifting cloud of choking smoke."
+    }
+  ]
+}

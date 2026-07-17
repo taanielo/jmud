@@ -10,6 +10,6 @@
   "attribute_bonuses": { "int": 3 },
   "attribute_gains": { "int": "every_level", "wis": "every_3_levels" },
   "ability_ids": ["spell.death-coil", "spell.summon", "spell.cure"],
-  "trainable_ability_ids": ["spell.stoneskin", "spell.haste", "spell.soul-rot", "spell.plague-cloud"],
-  "description": "A dark caster who drains life and commands minions. Necromancers wither foes with death coil, summon servants and mend with cure; where a mage is a fragile nuker, the necromancer trades raw spell mana for sturdier health, standing behind its pets and sustaining on stolen life. At level 15 they learn soul rot, a heavy curse that rots a foe's flesh and defences, and at level 30 plague cloud, a roiling AoE that drains the life from every foe in the room."
+  "trainable_ability_ids": ["spell.stoneskin", "spell.haste", "spell.soul-rot", "spell.plague-cloud", "spell.dark-empowerment"],
+  "description": "A dark caster who drains life and commands minions. Necromancers wither foes with death coil, summon servants and mend with cure; where a mage is a fragile nuker, the necromancer trades raw spell mana for sturdier health, standing behind its pets and sustaining on stolen life. At level 15 they learn soul rot, a heavy curse that rots a foe's flesh and defences, and at level 30 plague cloud, a roiling AoE that drains the life from every foe in the room, then at level 45 dark empowerment, pouring necrotic power into their minions and allies to sharpen every strike."
 }

@@ -10,6 +10,6 @@
   "attribute_bonuses": { "agi": 1, "int": 1, "wis": 1 },
   "attribute_gains": { "agi": "every_2_levels", "int": "every_3_levels" },
   "ability_ids": ["spell.battle-hymn", "spell.discord"],
-  "trainable_ability_ids": ["spell.haste", "spell.bless", "spell.dissonant-chord", "spell.anthem-of-renewal"],
-  "description": "A support caster who turns the tide with song. Bards buff allies with battle hymn and weaken foes with discord, later learning haste and, at level 15, a dissonant chord that batters a foe and breaks their nerve, then at level 30 an anthem of renewal that steadily mends and guards the whole party; they shine in a group but are fragile on their own."
+  "trainable_ability_ids": ["spell.haste", "spell.bless", "spell.dissonant-chord", "spell.anthem-of-renewal", "spell.war-song"],
+  "description": "A support caster who turns the tide with song. Bards buff allies with battle hymn and weaken foes with discord, later learning haste and, at level 15, a dissonant chord that batters a foe and breaks their nerve, then at level 30 an anthem of renewal that steadily mends and guards the whole party, and at level 45 a driving war song that sharpens the whole party's attacks and accuracy; they shine in a group but are fragile on their own."
 }

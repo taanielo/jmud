@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.wild-growth",
+  "name": "wild growth",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["wildgrowth", "grove"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "wild-growth"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call the wild's renewal over your companions, and verdant growth blooms across their wounds."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls the wild's renewal over the room, and verdant growth blooms across every ally."
+    }
+  ]
+}

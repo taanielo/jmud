@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "spell.consecration",
+  "name": "consecration",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 12,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "AoE",
+  "aliases": ["consecrate", "hallow"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 10
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You consecrate the ground, and a burst of holy light sears every foe around you as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "The ground blazes with consecrated holy light around {source} as they cast {ability}!"
+    }
+  ]
+}

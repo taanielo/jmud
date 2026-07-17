@@ -91,6 +91,21 @@ radiant brand). Nine new status effects back the buff/debuff abilities; the two 
 `skill.ambush` reuse the direct-damage / effect pipeline. `HELP <class>` and `TRAIN LIST` pick these
 up automatically from `trainable_ability_ids`.
 
+Grandmaster tier (#643). Every class now has a fifth trainable ability gated at **level 45**, landing
+at the Marrow Bloom / Bonelight Choir / Unsung threshold so the 31-64 endgame stretch — over half the
+current level range — is no longer flat past the master tier. Each grandmaster ability introduces a
+new mechanic for its class rather than a bigger number: warrior `skill.sunder-armor` (armor-shred
+defense debuff), adventurer `skill.brace` (reactive self defensive stance), rogue `skill.smoke-bomb`
+(escape/concealment self-buff), ranger `skill.hunters-mark` (marking debuff that bares a foe's
+defences), mage `spell.silence` (anti-caster control distinct from frostbolt's freeze and shackles'
+root), necromancer `spell.dark-empowerment` (party/minion attack+crit empowerment), cleric
+`spell.purify` (party-wide cleansing heal burst), druid `spell.wild-growth` (group heal-over-time),
+shaman `spell.healing-totem` (a second, defensive/healing totem to pair with stormcall), bard
+`spell.war-song` (party attack/accuracy offense song) and paladin `spell.consecration` (the paladin's
+first AoE — a room-wide burst of holy damage). Ten new status effects back the buff/debuff abilities;
+`spell.consecration` reuses the AoE direct-damage pipeline. `HELP <class>` and `TRAIN LIST` pick these
+up automatically from `trainable_ability_ids`.
+
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |

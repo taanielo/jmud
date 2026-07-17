@@ -10,6 +10,6 @@
   "attribute_bonuses": { "int": 3 },
   "attribute_gains": { "int": "every_level", "wis": "every_2_levels" },
   "ability_ids": ["spell.fireball", "spell.heal", "spell.summon", "spell.chain-lightning"],
-  "trainable_ability_ids": ["spell.stoneskin", "spell.haste", "spell.fireball.greater", "spell.frostbolt", "spell.arcane-shackles"],
-  "description": "A glass-cannon spellcaster with unmatched ranged firepower. Mages open with fireball and chain lightning, patch themselves with heal, and summon allies; frail in melee, they rely on mana over muscle, and at level 15 learn frostbolt to chill and slow a foe, then at level 30 arcane shackles to root a foe in place and cripple their offence."
+  "trainable_ability_ids": ["spell.stoneskin", "spell.haste", "spell.fireball.greater", "spell.frostbolt", "spell.arcane-shackles", "spell.silence"],
+  "description": "A glass-cannon spellcaster with unmatched ranged firepower. Mages open with fireball and chain lightning, patch themselves with heal, and summon allies; frail in melee, they rely on mana over muscle, and at level 15 learn frostbolt to chill and slow a foe, then at level 30 arcane shackles to root a foe in place and cripple their offence, and at level 45 silence, a control spell that smothers a foe's voice and chokes off their spellcasting."
 }
