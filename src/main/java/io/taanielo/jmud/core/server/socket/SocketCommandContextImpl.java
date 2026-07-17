@@ -1670,26 +1670,84 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player playerBeforeGet = session.getPlayer();
         GameActionResult result = gameActionService.getItem(playerBeforeGet, args);
         deliverResult(result);
-        // After a successful pickup, check if this triggers delivery quest progress
-        if (result.updatedSource() != null && context.questRepository() != null) {
-            Player updatedPlayer = session.getPlayer();
-            // Find the newly added item by comparing item-id counts before and after
-            Map<ItemId, Long> oldCounts =
-                playerBeforeGet.getInventory().stream()
-                    .collect(Collectors.groupingBy(Item::getId, Collectors.counting()));
-            QuestDeliveryService deliverySvc = new QuestDeliveryService(context.questRepository());
-            for (Item item : updatedPlayer.getInventory()) {
-                long before = oldCounts.getOrDefault(item.getId(), 0L);
-                long after = updatedPlayer.getInventory().stream()
-                    .filter(i -> i.getId().equals(item.getId())).count();
-                if (after > before) {
-                    deliverySvc.checkPickupProgress(updatedPlayer, item.getId())
-                        .ifPresent(connection::writeLine);
-                    break;
-                }
-            }
+        if (result.updatedSource() != null) {
+            checkDeliveryPickupProgress(playerBeforeGet);
         }
         revealRoomIfNewlyLit(playerBeforeGet);
+        sendPrompt();
+    }
+
+    /**
+     * After one or more pickups, fires delivery-quest pickup-progress notifications for every item id
+     * whose carried count increased between {@code playerBeforeGet} and the current session player.
+     *
+     * <p>Shared by single {@code GET} and bulk {@code GET ALL}/{@code GET ALL FROM} so a bulk pickup
+     * still advances a delivery quest once per newly-gathered item, matching the single-item path.
+     *
+     * @param playerBeforeGet the player's state before the pickup(s) mutated their inventory
+     */
+    private void checkDeliveryPickupProgress(Player playerBeforeGet) {
+        if (context.questRepository() == null) {
+            return;
+        }
+        Player updatedPlayer = session.getPlayer();
+        if (updatedPlayer == null) {
+            return;
+        }
+        Map<ItemId, Long> oldCounts =
+            playerBeforeGet.getInventory().stream()
+                .collect(Collectors.groupingBy(Item::getId, Collectors.counting()));
+        Map<ItemId, Long> newCounts =
+            updatedPlayer.getInventory().stream()
+                .collect(Collectors.groupingBy(Item::getId, Collectors.counting()));
+        QuestDeliveryService deliverySvc = new QuestDeliveryService(context.questRepository());
+        for (Map.Entry<ItemId, Long> entry : newCounts.entrySet()) {
+            long before = oldCounts.getOrDefault(entry.getKey(), 0L);
+            if (entry.getValue() > before) {
+                deliverySvc.checkPickupProgress(updatedPlayer, entry.getKey())
+                    .ifPresent(connection::writeLine);
+            }
+        }
+    }
+
+    @Override
+    public void getAllItems() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to get items.");
+            return;
+        }
+        cancelRestIfActive();
+        Player playerBeforeGet = session.getPlayer();
+        GameActionResult result = gameActionService.getAllItems(playerBeforeGet);
+        deliverResult(result);
+        if (result.updatedSource() != null) {
+            checkDeliveryPickupProgress(playerBeforeGet);
+        }
+        revealRoomIfNewlyLit(playerBeforeGet);
+        sendPrompt();
+    }
+
+    @Override
+    public void getAllFromContainer(String containerInput) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to get items from containers.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.getAllFromContainer(session.getPlayer(), containerInput);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void dropAllItems() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to drop items.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.dropAllItems(session.getPlayer());
+        deliverResult(result);
         sendPrompt();
     }
 

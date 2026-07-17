@@ -186,6 +186,35 @@ public interface SocketCommandContext extends Client {
     void dropItem(String args);
 
     /**
+     * Picks up every item currently on the room floor in one command (the {@code GET ALL} form).
+     *
+     * <p>Mirrors {@link #getItem(String)}'s per-item side effects — delivery-quest pickup progress and
+     * the dark-room light-reveal check — applying them across every newly gathered item. Stops early
+     * and keeps prior pickups if the player becomes overburdened partway through.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void getAllItems() {}
+
+    /**
+     * Retrieves every item from a carried container into the player's inventory in one command (the
+     * {@code GET ALL FROM <container>} form).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param containerInput the container name or id to empty
+     */
+    default void getAllFromContainer(String containerInput) {}
+
+    /**
+     * Drops every unequipped inventory item to the room floor in one command (the {@code DROP ALL}
+     * form). Worn or wielded gear is left alone and never auto-unequipped.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void dropAllItems() {}
+
+    /**
      * Places an item from the player's inventory into a carried container.
      *
      * <p>The default implementation is a no-op so that existing test stubs do not need to be

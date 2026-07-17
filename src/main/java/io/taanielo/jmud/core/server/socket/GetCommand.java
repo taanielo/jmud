@@ -26,7 +26,14 @@ public class GetCommand extends RegistrableCommand {
         return """
                Usage: GET <item>
                  Picks up the named item from the floor of your current room
-                 and adds it to your inventory.\
+                 and adds it to your inventory.
+               Usage: GET ALL
+                 Picks up every item on the room floor in one command, stopping
+                 early (and keeping what you already took) if you become
+                 overburdened.
+               Usage: GET ALL FROM <container>
+                 Empties a container you are carrying, moving all of its contents
+                 into your inventory.\
                """;
     }
 
@@ -37,9 +44,13 @@ public class GetCommand extends RegistrableCommand {
             return Optional.empty();
         }
         String args = parts[1];
-        // "GET <item> FROM <container>" is handled by GetFromCommand; don't double-match it here.
+        // "GET <item> FROM <container>" (including "GET ALL FROM <container>") is handled by
+        // GetFromCommand; don't double-match it here.
         if (args.toLowerCase(Locale.ROOT).contains(GetFromCommand.SEPARATOR)) {
             return Optional.empty();
+        }
+        if (args.trim().equalsIgnoreCase("all")) {
+            return Optional.of(new SocketCommandMatch(this, SocketCommandContext::getAllItems));
         }
         return Optional.of(new SocketCommandMatch(this, context -> context.getItem(args)));
     }
