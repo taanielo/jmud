@@ -3,9 +3,11 @@
   "id": "stable-shop",
   "name": "Hedwig the Stablemaster",
   "room_id": "courtyard",
+  "faction_id": "militia",
   "stock": [
     {"item_id": "sturdy-pony"},
-    {"item_id": "swift-warhorse"}
+    {"item_id": "swift-warhorse"},
+    {"item_id": "militia-charger", "min_reputation": 20}
   ],
   "sell_ratio": 0.5
 }
