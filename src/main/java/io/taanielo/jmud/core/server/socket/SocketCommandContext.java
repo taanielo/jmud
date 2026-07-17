@@ -882,11 +882,25 @@ public interface SocketCommandContext extends Client {
     default void claimItemFromBank(String args) {}
 
     /**
-     * Sends the current player's bank-vault listing (stored items).
+     * Sends the current player's bank-vault listing (stored items), showing slots used versus their
+     * effective capacity and, when not yet at the top tier, the cost and slot gain of the next
+     * {@code VAULT UPGRADE}.
      *
      * <p>The default implementation is a no-op so that existing test stubs do not need updating.
      */
     default void sendVault() {}
+
+    /**
+     * Buys the next vault-capacity upgrade tier for the current player, permanently raising their
+     * personal vault size in exchange for carried gold.
+     *
+     * <p>Requires the player to be in the same room as a bank NPC. Fails with a clear message if no
+     * bank is present, the player cannot afford the next tier, or the vault is already at the top
+     * tier.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need updating.
+     */
+    default void upgradeVault() {}
 
     /**
      * Executes an ALIAS sub-command: lists the player's aliases when {@code args} is

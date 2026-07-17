@@ -191,7 +191,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -236,7 +236,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("tamedPetNames") List<String> tamedPetNames,
         @JsonProperty("briefModeEnabled") Boolean briefModeEnabled,
         @JsonProperty("activeDailyQuest") ActiveQuest activeDailyQuest,
-        @JsonProperty("tamedPetDescriptions") List<String> tamedPetDescriptions
+        @JsonProperty("tamedPetDescriptions") List<String> tamedPetDescriptions,
+        @JsonProperty("vaultTier") Integer vaultTier
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId, description),
@@ -263,7 +264,7 @@ public class Player implements EffectTarget, Combatant {
             new PlayerIgnoreList(ignoredPlayers == null ? List.of() : ignoredPlayers),
             new PlayerFriendList(friends == null ? List.of() : friends),
             PlayerGuildMembership.fromId(guildId),
-            new PlayerVault(bankedItems),
+            new PlayerVault(bankedItems, vaultTier == null ? 0 : Math.max(0, vaultTier)),
             new PlayerCompletedQuests(completedQuests),
             duelWins == null ? 0 : Math.max(0, duelWins),
             duelLosses == null ? 0 : Math.max(0, duelLosses),
@@ -652,6 +653,17 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("bankedItems")
     public List<Item> getBankedItems() {
         return vault.items();
+    }
+
+    /**
+     * Returns this player's purchased vault-capacity tier, for JSON serialisation.
+     *
+     * <p>Defaults to {@code 0} for existing saves (today's flat capacity) and only ever grows as the
+     * player buys {@code VAULT UPGRADE} tiers.
+     */
+    @JsonProperty("vaultTier")
+    public int getVaultTier() {
+        return vault.capacityTier();
     }
 
     /**
@@ -1223,7 +1235,8 @@ public class Player implements EffectTarget, Combatant {
             pets.customNames(),
             preferences.briefModeEnabled(),
             activeDailyQuest,
-            pets.customDescriptions()
+            pets.customDescriptions(),
+            vault.capacityTier()
         );
     }
 

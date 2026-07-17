@@ -132,6 +132,43 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsVaultTier() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("hoarder"), Password.hash("pw", 1000));
+        Player base = Player.of(user, "%hp> ");
+        Player player = base.withVault(base.vault().withCapacityTier(2));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(2, loaded.get().vault().capacityTier(), "vault tier should round-trip");
+
+        Path file = tempDir.resolve("players").resolve("hoarder.json");
+        JsonNode root = new ObjectMapper().readTree(Files.readString(file));
+        assertEquals(2, root.get("vaultTier").asInt(), "vaultTier should be persisted");
+    }
+
+    @Test
+    void loadsPlayerWithoutVaultTierFieldAsTierZero() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("legacy"), Password.hash("pw", 1000));
+        // Mirror a legacy save that predates the vaultTier field.
+        repository.savePlayer(Player.of(user, "%hp> "));
+        Path file = tempDir.resolve("players").resolve("legacy.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("vaultTier");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(0, loaded.get().vault().capacityTier(),
+            "Player with no vaultTier field should default to tier 0");
+    }
+
+    @Test
     void savesAndLoadsBriefModePreference() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("wanderer"), Password.hash("pw", 1000));

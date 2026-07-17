@@ -42,12 +42,61 @@ public class BankService {
     }
 
     /**
-     * Returns the maximum number of items a player may keep in their vault.
+     * Returns the base (tier-0) maximum number of items any player may keep in their vault before
+     * purchasing any {@code VAULT UPGRADE} tier.
      *
-     * @return the configured vault capacity
+     * @return the configured base vault capacity
      */
     public int vaultCapacity() {
         return vaultCapacity;
+    }
+
+    /**
+     * Returns the effective vault capacity for the given player: the base capacity plus the slot
+     * bonus of the player's purchased {@link VaultUpgradeTier}.
+     *
+     * @param player the player whose capacity to compute
+     * @return the number of item slots this player's vault can hold right now
+     */
+    public int effectiveVaultCapacity(Player player) {
+        Objects.requireNonNull(player, "player is required");
+        return vaultCapacity + VaultUpgradeTier.forRank(player.vault().capacityTier()).slotBonus();
+    }
+
+    /**
+     * Attempts to buy the next {@link VaultUpgradeTier} for the given player, permanently raising
+     * their personal vault capacity in exchange for carried gold.
+     *
+     * <p>Fails without any state change when the player is already at the top tier or is not
+     * carrying enough gold. On success the cost is deducted from carried gold only and the player's
+     * persisted capacity tier advances by one; purchased capacity is never lost.
+     *
+     * @param player the upgrading player; never mutated
+     * @return a result describing success or failure
+     */
+    public BankTransactionResult upgradeVault(Player player) {
+        Objects.requireNonNull(player, "player is required");
+        VaultUpgradeTier current = VaultUpgradeTier.forRank(player.vault().capacityTier());
+        Optional<VaultUpgradeTier> nextTier = current.next();
+        if (nextTier.isEmpty()) {
+            return BankTransactionResult.failure(
+                "Your vault is already at its maximum capacity of " + effectiveVaultCapacity(player)
+                    + " slots. There is nothing more to upgrade.");
+        }
+        VaultUpgradeTier next = nextTier.get();
+        int cost = next.upgradeCost();
+        if (player.getGold() < cost) {
+            return BankTransactionResult.failure(
+                "Upgrading your vault costs " + cost + " gold, but you are only carrying "
+                    + player.getGold() + " gold.");
+        }
+        int newCapacity = vaultCapacity + next.slotBonus();
+        Player updated = player.addGold(-cost).withVault(player.vault().withCapacityTier(next.rank()));
+        return BankTransactionResult.success(
+            "You pay " + cost + " gold to expand your vault to " + newCapacity + " slots. "
+                + "Carried: " + updated.getGold() + " gold.",
+            updated
+        );
     }
 
     /**
@@ -129,7 +178,7 @@ public class BankService {
      * vault, unequipping it first if worn (mirroring GIVE/DROP behaviour).
      *
      * <p>Fails without any state change if the name is blank, no carried item matches, or the
-     * vault is already at {@link #vaultCapacity() capacity}.
+     * vault is already at the player's {@link #effectiveVaultCapacity(Player) effective capacity}.
      *
      * @param player   the storing player; never mutated
      * @param itemName the name or id of the item to store
@@ -145,7 +194,7 @@ public class BankService {
         if (item == null) {
             return BankTransactionResult.failure("You aren't carrying '" + normalized + "'.");
         }
-        if (player.getBankedItems().size() >= vaultCapacity) {
+        if (player.getBankedItems().size() >= effectiveVaultCapacity(player)) {
             return BankTransactionResult.failure("Your vault is full.");
         }
         PlayerEquipment equipment = player.getEquipment();

@@ -60,6 +60,20 @@ class StoreClaimVaultCommandTest {
     }
 
     @Test
+    void vaultUpgradeCommand_matchesAndDelegatesToUpgrade() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        VaultCommand command = new VaultCommand(registry);
+        CapturingContext context = new CapturingContext();
+
+        Optional<SocketCommandMatch> match = command.match("vault upgrade");
+        assertTrue(match.isPresent());
+        match.get().execute(context);
+
+        assertTrue(context.vaultUpgraded);
+        assertFalse(context.vaultListed, "UPGRADE should not fall through to the listing");
+    }
+
+    @Test
     void commands_doNotMatchOtherTokens() {
         SocketCommandRegistry registry = new SocketCommandRegistry();
         assertFalse(new StoreCommand(registry).match("look").isPresent());
@@ -71,6 +85,7 @@ class StoreClaimVaultCommandTest {
         String storedItem;
         String claimedItem;
         boolean vaultListed;
+        boolean vaultUpgraded;
 
         @Override public boolean isAuthenticated() { return true; }
         @Override public Player getPlayer() { return null; }
@@ -103,6 +118,7 @@ class StoreClaimVaultCommandTest {
         @Override public void storeItemInBank(String a) { storedItem = a; }
         @Override public void claimItemFromBank(String a) { claimedItem = a; }
         @Override public void sendVault() { vaultListed = true; }
+        @Override public void upgradeVault() { vaultUpgraded = true; }
         @Override public void sendMessage(io.taanielo.jmud.core.messaging.Message m) {}
         @Override public void close() {}
         @Override public void run() {}
