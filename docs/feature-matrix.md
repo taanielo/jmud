@@ -149,7 +149,7 @@ a validator rule, not a manual checkbox.
 | The Voidscar (`voidscar`) | ✅ #559 | ✅ (voidscar-cull, voidscar-unlight #561) | ✅ #559 |
 | The Marrow Bloom (`marrow-bloom`) | ✅ #579 | ✅ (marrow-cull, marrow-bloom #581) | ✅ #579 |
 | The Bonelight Choir (`bonelight-choir`) | ✅ #608 | ✅ (bonelight-cull, bonelight-choir #609) | ✅ #608 |
-| The Unsung (`the-unsung`) | ✅ #633 | 🔨 (#634) | ✅ #633 |
+| The Unsung (`the-unsung`) | ✅ #633 | ✅ (unsung-cull, unsung-last-stand #634) | ✅ #633 |
 
 ## Systems
 
