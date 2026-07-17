@@ -3538,6 +3538,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void cut(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to cut gems.");
+            return;
+        }
+        if (context.jewelerService() == null) {
+            writeLineWithPrompt("There is no jeweler here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isJewelerPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no jeweler here to cut with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.jewelerService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.jewelerService().craft(player, args);
+        Player cut = outcome.updatedPlayer();
+        if (outcome.success() && cut != null) {
+            session.replacePlayer(cut);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
     public void gather() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to gather resources.");
@@ -3604,6 +3639,15 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         return context.mobRegistry().getMobsInRoom(roomId).stream()
             .anyMatch(mob -> mob.template().hasTag("leatherworker"));
+    }
+
+    /** Returns whether a jeweler NPC (tagged {@code jeweler}) is alive in the given room. */
+    private boolean isJewelerPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("jeweler"));
     }
 
     @Override

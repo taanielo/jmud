@@ -167,6 +167,7 @@ public class SocketCommandRegistry {
         new CookCommand(registry);
         new EnchantCommand(registry);
         new TanCommand(registry);
+        new CutCommand(registry);
         new GatherCommand(registry);
         new QuestCommand(registry);
         new DailyQuestCommand(registry);

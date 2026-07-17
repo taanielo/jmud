@@ -50,6 +50,12 @@ public record CrafterProfile(
             ProfessionId.LEATHERWORKING);
     }
 
+    /** Returns the jeweler profile used by the {@code CUT} command. */
+    public static CrafterProfile jeweler() {
+        return new CrafterProfile("jeweler", "CUT", "cut", "cuts your gems into",
+            ProfessionId.JEWELCRAFTING);
+    }
+
     /** Returns the action verb with its first letter capitalized (e.g. {@code "Craft"}, {@code "Brew"}). */
     public String capitalizedVerb() {
         if (verb.isEmpty()) {

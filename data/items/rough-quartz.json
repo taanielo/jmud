@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "rough-quartz",
+  "name": "Rough Quartz",
+  "description": "A cloudy nub of quartz prised from the rubble of the old keep. Uncut and dull, but a patient jeweler can coax a clear facet from it.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 6
+}
