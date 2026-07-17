@@ -188,7 +188,9 @@ T1="$OUT_DIR/phase1-new-user.txt"
 # but do not require standing in the Courtyard to inspect the contract board.
 run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
     "score" "inventory" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" \
-    "drop all" "get all" "quit"
+    "drop all" "get all" \
+    "drop iron sword" "drop health potion" "drop poisonous potion" "drop treasure chest" \
+    "quit"
 
 # Note: the prompt is written without a trailing newline, so command output
 # can share a line with it — don't anchor patterns with ^ unless the line is
@@ -212,7 +214,11 @@ expect "$T1" "SCORE shows a non-zero starting gold purse" 'Gold  : [1-9][0-9]*'
 expect "$T1" "INVENTORY holds starter bread"      'Loaf of Bread'
 expect "$T1" "INVENTORY holds starter waterskin"  'Waterskin'
 # Bulk item handling (issue #641): DROP ALL empties the unequipped starter pack onto the floor
-# in one summarized line, and GET ALL scoops it all back up in one command.
+# in one summarized line, and GET ALL scoops it all back up in one command. GET ALL also sweeps
+# the Training Yard's authored fixtures (iron sword, potions, locked chest) since it takes every
+# floor item, not just what the player dropped; static room items never respawn once picked up
+# (no restock mechanism exists), so the drop-iron-sword/etc. commands below put them back on the
+# floor for every later phase (2c chest checks, 2d2 combat) and every future test/player run.
 expect "$T1" "DROP ALL drops the whole pack"      'You drop .+\. \([0-9]+ items?\)'
 expect "$T1" "GET ALL recovers the whole pack"    'You get .+\. \([0-9]+ items?\)'
 expect "$T1" "QUEST LIST shows the contract board" 'Available Contracts'
