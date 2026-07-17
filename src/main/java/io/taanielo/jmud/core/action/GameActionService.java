@@ -191,8 +191,12 @@ public class GameActionService {
     private static final int STEAL_SUCCESS_PERCENT_PER_LEVEL = 3;
     /** Maximum STEAL success percentage, regardless of rogue level. */
     private static final int STEAL_MAX_SUCCESS_PERCENT = 90;
-    /** Probability that a single SEARCH attempt uncovers the room's undiscovered hidden exits. */
-    private static final double SEARCH_SUCCESS_CHANCE = 0.5d;
+    /** Base probability that a single SEARCH attempt uncovers the room's undiscovered hidden exits. */
+    static final double SEARCH_BASE_SUCCESS_CHANCE = 0.5d;
+    /** Additional SEARCH success probability granted per rogue level, on top of the base chance. */
+    static final double SEARCH_ROGUE_SUCCESS_CHANCE_PER_LEVEL = 0.02d;
+    /** Maximum SEARCH success probability for a rogue, regardless of level (never guaranteed). */
+    static final double SEARCH_ROGUE_MAX_SUCCESS_CHANCE = 0.9d;
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -1443,8 +1447,11 @@ public class GameActionService {
      * non-combat actions). Searching breaks stealth like any other deliberate action. When there is
      * nothing left to find — the room has no hidden exits, or all have already been discovered — a
      * neutral "nothing new" line is shown. Otherwise the outcome is decided by a single roll through
-     * the seeded {@link CombatRandom} port at {@link #SEARCH_SUCCESS_CHANCE}; a success reveals the
-     * exit (via {@link RoomService#revealHiddenExits(Username)}) but never unlocks it.
+     * the seeded {@link CombatRandom} port against
+     * {@link #calculateSearchSuccessChance(boolean, int)}; a success reveals the exit (via
+     * {@link RoomService#revealHiddenExits(Username)}) but never unlocks it. Non-rogues use a flat
+     * {@link #SEARCH_BASE_SUCCESS_CHANCE}; rogues gain a per-level bonus (capped at
+     * {@link #SEARCH_ROGUE_MAX_SUCCESS_CHANCE}), mirroring the PICK skill's scaling.
      *
      * <p>Runs on the tick thread (AGENTS.md §5).
      *
@@ -1473,7 +1480,8 @@ public class GameActionService {
             messages.add(GameMessage.toSource("You search but find nothing new."));
             return new GameActionResult(updated, null, messages);
         }
-        if (worldRandom.nextDouble() >= SEARCH_SUCCESS_CHANCE) {
+        double successChance = calculateSearchSuccessChance(isRogue(source), source.getLevel());
+        if (worldRandom.nextDouble() >= successChance) {
             messages.add(GameMessage.toSource("You search but find nothing new."));
             return new GameActionResult(updated, null, messages);
         }
@@ -1490,6 +1498,29 @@ public class GameActionService {
             source.getUsername(), null,
             source.getUsername().getValue() + " uncovers a hidden passage!"));
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Calculates the probability, in {@code [0, 1]}, that a single SEARCH attempt uncovers a hidden
+     * exit. Non-rogues always use the flat {@link #SEARCH_BASE_SUCCESS_CHANCE}. Rogues add
+     * {@link #SEARCH_ROGUE_SUCCESS_CHANCE_PER_LEVEL} per level on top of the base chance, capped at
+     * {@link #SEARCH_ROGUE_MAX_SUCCESS_CHANCE} so a search is never guaranteed — mirroring the shape
+     * of {@link io.taanielo.jmud.core.world.ContainerLockingService#calculatePickSuccessChance(int)}.
+     *
+     * <p>Pure function of {@code (class, level)}, with no RNG or state, so it is unit-testable
+     * independently of the roll.
+     *
+     * @param isRogue whether the searching player is a rogue
+     * @param level   the player's level (only used for rogues)
+     * @return the SEARCH success probability in {@code [0, 1]}
+     */
+    static double calculateSearchSuccessChance(boolean isRogue, int level) {
+        if (!isRogue) {
+            return SEARCH_BASE_SUCCESS_CHANCE;
+        }
+        double bonusLevels = Math.max(0, level);
+        double chance = SEARCH_BASE_SUCCESS_CHANCE + SEARCH_ROGUE_SUCCESS_CHANCE_PER_LEVEL * bonusLevels;
+        return Math.min(SEARCH_ROGUE_MAX_SUCCESS_CHANCE, chance);
     }
 
     /**

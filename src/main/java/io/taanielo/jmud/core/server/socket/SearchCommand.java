@@ -34,7 +34,8 @@ public class SearchCommand extends RegistrableCommand {
                  Carefully searches your current room for secret passages. Each attempt has a
                  chance to reveal a hidden exit; once found, it becomes a normal exit for everyone.
                  A search that finds nothing costs you nothing, so feel free to try again. You
-                 cannot search while fighting, and searching reveals you if you were hidden.\
+                 cannot search while fighting, and searching reveals you if you were hidden.
+                 Rogues are more likely to succeed, with the bonus growing as they gain levels.\
                """;
     }
 
