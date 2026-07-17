@@ -176,4 +176,4 @@ game-designer should propose closing.
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |
 | Admin/wizard tooling | ✅ | none known |
 | Classes (kits, level gains, attributes, descriptions, HELP) | ✅ #516 #521 #522 #523 #524 #547 | balance pass 🔨 #556 |
-| Exploration (locked doors, hidden exits + SEARCH) | ✅ #587 #612 | discovery now persists across restarts (#612); a rogue/skill-based bonus find chance is a possible future gap |
+| Exploration (locked doors, hidden exits + SEARCH) | ✅ #587 #612 #621 | discovery persists across restarts (#612); rogues get a levelled SEARCH find-chance bonus (#621) on top of the flat 50% base, capped below certainty and mirroring the PICK formula shape |
