@@ -12,6 +12,7 @@ import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.craft.PlayerProficiencies;
 import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LightingService;
@@ -111,6 +112,29 @@ public class ScoreCommand extends RegistrableCommand {
         return Optional.of(new SocketCommandMatch(this, this::handleScore));
     }
 
+    /**
+     * Renders the {@code Profs} line for a player, listing every profession they have practised
+     * (proficiency points {@code > 0}) with its level and progress toward the next level. Professions
+     * are listed in {@link ProfessionId#known()} order so newly shipped professions appear without a
+     * further edit here. Returns {@code "none"} when the player has practised no profession, avoiding a
+     * blank-line artifact for brand-new characters.
+     *
+     * @param proficiencies the player's crafting proficiencies
+     * @return the rendered proficiency summary
+     */
+    static String formatProficiencies(PlayerProficiencies proficiencies) {
+        String rendered = ProfessionId.known().stream()
+            .filter(profession -> proficiencies.points(profession) > 0)
+            .map(profession -> {
+                int level = proficiencies.level(profession);
+                int progress = proficiencies.points(profession) % PlayerProficiencies.POINTS_PER_LEVEL;
+                return String.format("%s %d (%d/%d to next)",
+                    profession.value(), level, progress, PlayerProficiencies.POINTS_PER_LEVEL);
+            })
+            .collect(Collectors.joining(", "));
+        return rendered.isEmpty() ? "none" : rendered;
+    }
+
     private void handleScore(SocketCommandContext context) {
         if (!context.isAuthenticated() || context.getPlayer() == null) {
             context.writeLineWithPrompt("You must be logged in to view your score.");
@@ -147,10 +171,7 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Duels : %dW / %dL", player.getDuelWins(), player.getDuelLosses()));
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
-        context.writeLineSafe(String.format("Profs : blacksmithing %d, alchemy %d, cooking %d",
-            player.proficiencies().level(ProfessionId.BLACKSMITHING),
-            player.proficiencies().level(ProfessionId.ALCHEMY),
-            player.proficiencies().level(ProfessionId.COOKING)));
+        context.writeLineSafe("Profs : " + formatProficiencies(player.proficiencies()));
         lightingService.brightestLightSource(player).ifPresent(light ->
             context.writeLineSafe(String.format("Light : %s (radius %d)", light.getName(),
                 lightingService.carriedLightRadius(player))));
