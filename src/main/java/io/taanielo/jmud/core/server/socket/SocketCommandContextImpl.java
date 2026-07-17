@@ -59,6 +59,7 @@ import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.enchant.EnchantOutcome;
 import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
@@ -1024,11 +1025,27 @@ class SocketCommandContextImpl implements SocketCommandContext {
         String race = target.getRace().getValue();
         String classId = target.getClassId().getValue();
         String generated = name + " the " + race + " " + classId + " (level " + target.getLevel() + ").";
+        List<String> lines = new ArrayList<>();
         String custom = target.description();
-        if (custom.isEmpty()) {
-            return List.of(generated);
+        if (!custom.isEmpty()) {
+            lines.add(custom);
         }
-        return List.of(custom, generated);
+        lines.add(generated);
+        lines.addAll(effectExamineLines(target));
+        return lines;
+    }
+
+    /**
+     * Returns the {@code examine}-phase flavour line for each of the target's currently active
+     * effects that authors one, for {@code LOOK <player>}. Effects with no such message contribute
+     * no line; a repository lookup failure degrades to no effect lines rather than aborting the look.
+     */
+    private List<String> effectExamineLines(Player target) {
+        try {
+            return context.effectEngine().examineLines(target);
+        } catch (EffectRepositoryException e) {
+            return List.of();
+        }
     }
 
     /**
@@ -2885,6 +2902,22 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLine(String.format("%-20s %-6s %-12s %s",
                 ability.name(), ability.type().name(), costStr, cooldownStr));
         }
+        sendPrompt();
+    }
+
+    @Override
+    public void sendEffects() {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to view your effects.");
+            return;
+        }
+        List<String> lines = EffectListingFormatter.format(player.effects(), context.effectRepository());
+        if (lines.isEmpty()) {
+            writeLineWithPrompt("You have no active effects.");
+            return;
+        }
+        connection.writeLines(lines);
         sendPrompt();
     }
 

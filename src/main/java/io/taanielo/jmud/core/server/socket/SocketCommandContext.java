@@ -387,6 +387,19 @@ public interface SocketCommandContext extends Client {
     default void sendAbilities() {}
 
     /**
+     * Sends the current player's active status effects, split into beneficial and harmful groups,
+     * with each effect's display name, remaining duration in ticks (or {@code permanent}), and
+     * stack count when stacked. Prints a clear "no active effects" line when the player has none.
+     *
+     * <p>This is a pure read of the player's live effect list (the {@code EFFECTS}/{@code AFFECTS}
+     * command); it never mutates effect durations or stacks.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void sendEffects() {}
+
+    /**
      * Attempts to flee from active combat by moving to a random available exit.
      */
     void fleeCombat();

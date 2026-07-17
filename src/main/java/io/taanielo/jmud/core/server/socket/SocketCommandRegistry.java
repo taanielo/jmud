@@ -136,6 +136,7 @@ public class SocketCommandRegistry {
         new AbilityCommand(registry);
         new CastCommand(registry);
         new AbilitiesCommand(registry);
+        new EffectsCommand(registry);
         new AttackCommand(registry);
         new KillCommand(registry);
         new AssistCommand(registry);
