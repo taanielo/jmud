@@ -1142,6 +1142,21 @@ public interface SocketCommandContext extends Client {
     default void initiateDuel(String targetName) {}
 
     /**
+     * Challenges a player in the same room to a consensual duel staked with a gold wager via the
+     * {@code DUEL WAGER <player> <gold>} command (issue #661).
+     *
+     * <p>{@code args} is the text following {@code WAGER}, expected to be a player name followed by a
+     * positive whole-number gold amount. Fails with a clear message when the amount is missing or not
+     * a positive integer, and otherwise defers to the ordinary duel validation (including a check that
+     * the challenger currently holds the staked gold). No gold is escrowed at challenge time.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the {@code <player> <gold>} text following {@code WAGER}
+     */
+    default void initiateWagerDuel(String args) {}
+
+    /**
      * Accepts a pending duel challenge via the {@code ACCEPT} command, engaging both participants.
      *
      * <p>Fails with a clear message when the player has no pending challenge or is already dueling.

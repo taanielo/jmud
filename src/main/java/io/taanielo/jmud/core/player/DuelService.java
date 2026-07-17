@@ -42,9 +42,25 @@ public class DuelService implements Tickable {
      * @param target     the challenged player
      */
     public synchronized void requestDuel(Username challenger, Username target) {
+        requestDuel(challenger, target, 0L);
+    }
+
+    /**
+     * Records a pending duel challenge from {@code challenger} to {@code target} staked with an
+     * optional gold wager, starting the default acceptance window. Any existing challenge held
+     * against {@code target} is replaced.
+     *
+     * <p>The wager is not escrowed here; it is only transferred loser-to-winner when the duel
+     * actually resolves (issue #661). A wager of {@code 0} marks an ordinary risk-free duel.
+     *
+     * @param challenger the player issuing the challenge
+     * @param target     the challenged player
+     * @param wager      the gold staked on the duel, or {@code 0} when unwagered
+     */
+    public synchronized void requestDuel(Username challenger, Username target, long wager) {
         Objects.requireNonNull(challenger, "Challenger is required");
         Objects.requireNonNull(target, "Target is required");
-        states.put(target, PlayerDuelState.pending(challenger, DEFAULT_TIMEOUT_TICKS));
+        states.put(target, PlayerDuelState.pending(challenger, DEFAULT_TIMEOUT_TICKS, wager));
     }
 
     /**
@@ -68,8 +84,10 @@ public class DuelService implements Tickable {
     public synchronized void activate(Username challenger, Username target) {
         Objects.requireNonNull(challenger, "Challenger is required");
         Objects.requireNonNull(target, "Target is required");
-        states.put(challenger, PlayerDuelState.active(target));
-        states.put(target, PlayerDuelState.active(challenger));
+        PlayerDuelState pending = states.get(target);
+        long wager = pending != null && pending.isPending() ? pending.wager() : 0L;
+        states.put(challenger, PlayerDuelState.active(target, wager));
+        states.put(target, PlayerDuelState.active(challenger, wager));
     }
 
     /**
@@ -119,6 +137,20 @@ public class DuelService implements Tickable {
     public Optional<PlayerDuelState> stateOf(Username player) {
         Objects.requireNonNull(player, "Player is required");
         return Optional.ofNullable(states.get(player));
+    }
+
+    /**
+     * Returns the gold wager currently staked on the given player's duel relationship, whether the
+     * duel is pending or active.
+     *
+     * @param player the player to look up
+     * @return the staked wager, or {@code 0} when the player has no duel state or the duel is
+     *         unwagered
+     */
+    public long wagerOf(Username player) {
+        Objects.requireNonNull(player, "Player is required");
+        PlayerDuelState state = states.get(player);
+        return state == null ? 0L : state.wager();
     }
 
     /**

@@ -569,6 +569,26 @@ public class GameActionService {
      * @return a result carrying the challenge messages, or an error describing why it was rejected
      */
     public GameActionResult initiatePlayerDuel(Player initiator, String targetName) {
+        return initiatePlayerDuel(initiator, targetName, 0L);
+    }
+
+    /**
+     * Initiates a consensual duel, optionally staked with a gold wager, by sending a challenge to a
+     * player in the same room (issue #661).
+     *
+     * <p>All the validation of the unwagered form applies (blank name, self-target, absent target,
+     * either party already in combat). When {@code wager} is positive, the challenger must currently
+     * hold at least that much gold, otherwise the challenge is rejected. No gold is escrowed or moved
+     * here — the wager is recorded on the transient duel state and only transferred loser-to-winner
+     * when the duel resolves in {@link #endPlayerDuel}. A wager of {@code 0} produces the ordinary,
+     * risk-free challenge with byte-for-byte identical messaging.
+     *
+     * @param initiator  the challenging player
+     * @param targetName the raw name of the player to challenge
+     * @param wager      the gold to stake, or {@code 0} for an ordinary risk-free duel
+     * @return a result carrying the challenge messages, or an error describing why it was rejected
+     */
+    public GameActionResult initiatePlayerDuel(Player initiator, String targetName, long wager) {
         Objects.requireNonNull(initiator, "Initiator is required");
         String normalized = targetName == null ? "" : targetName.trim();
         if (normalized.isEmpty()) {
@@ -576,6 +596,10 @@ public class GameActionService {
         }
         if (isEngagedInCombat(initiator)) {
             return GameActionResult.error("You cannot start a duel while in combat.");
+        }
+        if (wager > 0 && initiator.getGold() < wager) {
+            return GameActionResult.error(
+                "You do not have " + wager + " gold to wager (you have " + initiator.getGold() + ").");
         }
         Optional<Player> targetMatch = abilityTargetResolver.resolve(initiator, normalized);
         if (targetMatch.isEmpty()) {
@@ -588,13 +612,23 @@ public class GameActionService {
         if (isEngagedInCombat(target)) {
             return GameActionResult.error(target.getUsername().getValue() + " is already in combat.");
         }
-        duelService.requestDuel(initiator.getUsername(), target.getUsername());
+        duelService.requestDuel(initiator.getUsername(), target.getUsername(), wager);
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You challenge " + target.getUsername().getValue() + " to a duel."));
-        messages.add(GameMessage.toPlayer(
-            target.getUsername(),
-            initiator.getUsername().getValue()
-                + " challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout."));
+        if (wager > 0) {
+            messages.add(GameMessage.toSource(
+                "You challenge " + target.getUsername().getValue() + " to a duel wagering " + wager
+                    + " gold."));
+            messages.add(GameMessage.toPlayer(
+                target.getUsername(),
+                initiator.getUsername().getValue() + " challenges you to a duel wagering " + wager
+                    + " gold. Type ACCEPT to engage or wait 30s for timeout."));
+        } else {
+            messages.add(GameMessage.toSource("You challenge " + target.getUsername().getValue() + " to a duel."));
+            messages.add(GameMessage.toPlayer(
+                target.getUsername(),
+                initiator.getUsername().getValue()
+                    + " challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout."));
+        }
         return new GameActionResult(null, null, messages);
     }
 
@@ -619,13 +653,37 @@ public class GameActionService {
             return GameActionResult.error("You have no pending duel challenge.");
         }
         Username challenger = challengerMatch.get();
+        long wager = duelService.wagerOf(target.getUsername());
+        if (wager > 0 && target.getGold() < wager) {
+            // The accepting player can no longer cover the stake: cancel the challenge outright so no
+            // dangling pending state lingers, move no gold, and tell both players why (issue #661).
+            duelService.clearFor(target.getUsername());
+            List<GameMessage> rejection = new ArrayList<>();
+            rejection.add(GameMessage.toSource(
+                "You do not have " + wager + " gold to cover the wager; the duel is called off."));
+            rejection.add(GameMessage.toPlayer(
+                challenger,
+                target.getUsername().getValue()
+                    + " cannot cover the " + wager + " gold wager; the duel is called off."));
+            return new GameActionResult(null, null, rejection);
+        }
         duelService.activate(challenger, target.getUsername());
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource(
-            "You accept " + challenger.getValue() + "'s duel. Combat begins!"));
-        messages.add(GameMessage.toPlayer(
-            challenger,
-            target.getUsername().getValue() + " accepts your duel. Combat begins!"));
+        if (wager > 0) {
+            messages.add(GameMessage.toSource(
+                "You accept " + challenger.getValue() + "'s duel wagering " + wager
+                    + " gold. Combat begins!"));
+            messages.add(GameMessage.toPlayer(
+                challenger,
+                target.getUsername().getValue() + " accepts your duel wagering " + wager
+                    + " gold. Combat begins!"));
+        } else {
+            messages.add(GameMessage.toSource(
+                "You accept " + challenger.getValue() + "'s duel. Combat begins!"));
+            messages.add(GameMessage.toPlayer(
+                challenger,
+                target.getUsername().getValue() + " accepts your duel. Combat begins!"));
+        }
         return new GameActionResult(null, null, messages);
     }
 
@@ -651,6 +709,10 @@ public class GameActionService {
     public GameActionResult endPlayerDuel(Player survivor, Player loser) {
         Objects.requireNonNull(survivor, "Survivor is required");
         Objects.requireNonNull(loser, "Loser is required");
+        // Read the staked wager before ending the duel (which drops the transient state), then apply
+        // it as a single atomic transfer clamped to the loser's live gold — no escrow, nothing to
+        // roll back (issue #661).
+        long wager = duelService.wagerOf(survivor.getUsername());
         duelService.endDuel(survivor.getUsername(), loser.getUsername());
         Player updatedSurvivor = survivor.withDuelWins(survivor.getDuelWins() + 1);
         PlayerVitals nearDeathVitals =
@@ -662,6 +724,16 @@ public class GameActionService {
         List<GameMessage> messages = new ArrayList<>();
         messages.add(GameMessage.toSource(
             "You have defeated " + loser.getUsername().getValue() + " in the duel!"));
+        int transfer = (int) Math.min(wager, Math.max(0, nearDeathLoser.getGold()));
+        if (transfer > 0) {
+            updatedSurvivor = updatedSurvivor.addGold(transfer);
+            nearDeathLoser = nearDeathLoser.addGold(-transfer);
+            messages.add(GameMessage.toSource(
+                "You win " + transfer + " gold from the wager!"));
+            messages.add(GameMessage.toPlayer(
+                loser.getUsername(),
+                "You lose " + transfer + " gold from the wager."));
+        }
         messages.add(GameMessage.toSource("Duel ended."));
         messages.add(GameMessage.toPlayer(
             loser.getUsername(),
