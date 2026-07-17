@@ -56,6 +56,7 @@ import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
 import io.taanielo.jmud.core.combat.OffhandAttackResolver;
+import io.taanielo.jmud.core.combat.ParryResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
@@ -349,6 +350,10 @@ public record GameContext(
             createCharacterAttributesResolver(raceRepository, classRepository);
         CombatAttributeBonusResolver combatAttributeBonusResolver =
             new CombatAttributeBonusResolver(characterAttributesResolver);
+        // Parry (issue #639): a defender wielding a melee weapon may fully avoid an incoming melee hit
+        // and riposte, scaled by agility. Shares the attack repository (melee gate + riposte damage
+        // roll) and attribute resolver (parry chance) with the rest of the combat pipeline.
+        ParryResolver parryResolver = new ParryResolver(attackRepository, combatAttributeBonusResolver);
         // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
         // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
         // logged by SeededCombatRandomProvider; set jmud.world.seed to replay a specific session.
@@ -364,7 +369,7 @@ public record GameContext(
                 effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
                 equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver,
                 combatAttributeBonusResolver, attackRepository,
-                tickClock::currentTick, effectEngine, seededRng, worldSeed, damageVerbTable);
+                tickClock::currentTick, effectEngine, seededRng, worldSeed, damageVerbTable, parryResolver);
 
         // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
         // deterministic and replayable alongside combat/mob rolls (AGENTS.md §5). Only outdoor rooms
@@ -467,6 +472,10 @@ public record GameContext(
             mobRegistry.setClassArmorBonusResolver(classArmorBonusResolver);
             mobRegistry.setRaceArmorBonusResolver(raceArmorBonusResolver);
             mobRegistry.setShieldBlockResolver(shieldBlockResolver);
+            // Parry (issue #639): a player may parry a mob's melee swing and riposte the mob, using the
+            // same resolver the PvP CombatEngine uses. A mob's own attack is never parried by the mob
+            // (mobs do not parry player attacks in v1 — documented scope limit).
+            mobRegistry.setParryResolver(parryResolver);
             mobRegistry.setDamageVerbTable(damageVerbTable);
             mobRegistry.setTargetConditionTable(combatFlavor.conditions());
             WorldBossAnnouncer worldBossAnnouncer =
@@ -810,7 +819,8 @@ public record GameContext(
         EffectEngine effectEngine,
         boolean seeded,
         long worldSeed,
-        DamageVerbTable verbTable
+        DamageVerbTable verbTable,
+        ParryResolver parryResolver
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
         OffhandAttackResolver offhandAttackResolver = new OffhandAttackResolver();
@@ -820,7 +830,7 @@ public record GameContext(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
                 equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver, offhandAttackResolver,
                 attributeBonusResolver,
-                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine, verbTable);
+                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine, verbTable, parryResolver);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
@@ -829,7 +839,7 @@ public record GameContext(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
             equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver, offhandAttackResolver,
             attributeBonusResolver,
-            provider, tickSupplier, effectEngine, verbTable);
+            provider, tickSupplier, effectEngine, verbTable, parryResolver);
     }
 
     private static CombatFlavor createCombatFlavor() {

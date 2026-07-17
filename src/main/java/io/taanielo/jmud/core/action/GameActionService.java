@@ -913,6 +913,30 @@ public class GameActionService {
             if (mountBase.isMounted()) {
                 updatedSource = breakMountOnCombat(mountBase, messages);
             }
+            // Parry riposte (issue #639): if the target parried and riposted, the CombatEngine already
+            // reduced the attacker's vitals in result.attacker(). Fold that HP loss into the persisted
+            // source so the counter-strike sticks, and resolve the attacker's own death if the riposte
+            // proved lethal — symmetric to the target-death handling above, but only when the target
+            // survived (a parry deals the target zero damage, so this is the common case).
+            int riposteToSource = source.getVitals().hp() - result.attacker().getVitals().hp();
+            if (riposteToSource > 0) {
+                Player riposteBase = updatedSource != null ? updatedSource : source;
+                Player riposted = riposteBase.withVitals(riposteBase.getVitals().damage(riposteToSource));
+                if (riposted.getVitals().hp() <= 0 && updatedTarget.getVitals().hp() > 0) {
+                    if (duelService.areDueling(source.getUsername(), target.getUsername())) {
+                        GameActionResult duelEnd = endPlayerDuel(target, riposted);
+                        updatedSource = duelEnd.updatedTarget();
+                        updatedTarget = duelEnd.updatedSource();
+                        messages.addAll(duelEnd.messages());
+                    } else {
+                        GameActionResult deathResult = resolveDeathIfNeeded(riposted, target);
+                        updatedSource = deathResult.updatedTarget();
+                        messages.addAll(deathResult.messages());
+                    }
+                } else {
+                    updatedSource = riposted;
+                }
+            }
             Map<String, Object> meta = result.rngSeed() != 0L
                 ? Map.of("rngSeed", result.rngSeed())
                 : Map.of();

@@ -38,6 +38,7 @@ public class CombatEngine {
     private final EquipmentArmorResolver equipmentArmorResolver;
     private final EquipmentResistanceResolver equipmentResistanceResolver;
     private final ShieldBlockResolver shieldBlockResolver;
+    private final ParryResolver parryResolver;
     private final OffhandAttackResolver offhandAttackResolver;
     private final CombatAttributeBonusResolver attributeBonusResolver;
     private final CombatRandomProvider randomProvider;
@@ -461,6 +462,66 @@ public class CombatEngine {
         EffectEngine effectEngine,
         DamageVerbTable verbTable
     ) {
+        this(
+            attackRepository,
+            modifierResolver,
+            armorBonusResolver,
+            attackBonusResolver,
+            classArmorBonusResolver,
+            equipmentArmorResolver,
+            equipmentResistanceResolver,
+            shieldBlockResolver,
+            offhandAttackResolver,
+            attributeBonusResolver,
+            randomProvider,
+            tickSupplier,
+            effectEngine,
+            verbTable,
+            ParryResolver.noOp()
+        );
+    }
+
+    /**
+     * Fully-wired constructor that additionally resolves the defender's agility-driven parry chance
+     * and riposte. A defender wielding a melee weapon in their mainhand may fully avoid an otherwise
+     * landing melee hit ({@link ParryResolver}) and answer with a free counter-strike, mitigated by
+     * the attacker's armour exactly like a normal hit. A {@link ParryResolver#noOp()} resolver
+     * disables parry (never rolls), which is the behaviour of every constructor above.
+     *
+     * @param attackRepository            source of attack definitions
+     * @param modifierResolver            resolves combat modifier chains from player effects
+     * @param armorBonusResolver          resolves race-based AC bonuses on the target
+     * @param attackBonusResolver         resolves race-based attack (hit-chance) bonuses on the attacker
+     * @param classArmorBonusResolver     resolves class-based AC bonuses on the target
+     * @param equipmentArmorResolver      resolves equipment-based AC bonuses on the target
+     * @param equipmentResistanceResolver resolves equipment-based elemental resistance on the target
+     * @param shieldBlockResolver         resolves the target's off-hand shield block chance/reduction
+     * @param offhandAttackResolver       resolves the attacker's off-hand dual-wield weapon, if any
+     * @param attributeBonusResolver      resolves strength/agility combat bonuses from core attributes
+     * @param randomProvider              produces a fresh {@link CombatRandom} per encounter
+     * @param tickSupplier                supplies the current world tick number
+     * @param effectEngine                applies {@link AttackDefinition#effectOnHit()} to targets;
+     *                                    {@code null} disables on-hit effect application
+     * @param verbTable                   resolves worded-damage verbs; {@code null} disables verb rendering
+     * @param parryResolver               resolves the defender's mainhand parry chance and riposte weapon
+     */
+    public CombatEngine(
+        AttackRepository attackRepository,
+        CombatModifierResolver modifierResolver,
+        RaceArmorBonusResolver armorBonusResolver,
+        RaceAttackBonusResolver attackBonusResolver,
+        ClassArmorBonusResolver classArmorBonusResolver,
+        EquipmentArmorResolver equipmentArmorResolver,
+        EquipmentResistanceResolver equipmentResistanceResolver,
+        ShieldBlockResolver shieldBlockResolver,
+        OffhandAttackResolver offhandAttackResolver,
+        CombatAttributeBonusResolver attributeBonusResolver,
+        CombatRandomProvider randomProvider,
+        LongSupplier tickSupplier,
+        EffectEngine effectEngine,
+        DamageVerbTable verbTable,
+        ParryResolver parryResolver
+    ) {
         this.attackRepository = Objects.requireNonNull(attackRepository, "Attack repository is required");
         this.modifierResolver = Objects.requireNonNull(modifierResolver, "Modifier resolver is required");
         this.armorBonusResolver = Objects.requireNonNull(armorBonusResolver, "Armor bonus resolver is required");
@@ -471,6 +532,7 @@ public class CombatEngine {
         this.equipmentResistanceResolver =
             Objects.requireNonNull(equipmentResistanceResolver, "Equipment resistance resolver is required");
         this.shieldBlockResolver = Objects.requireNonNull(shieldBlockResolver, "Shield block resolver is required");
+        this.parryResolver = Objects.requireNonNull(parryResolver, "Parry resolver is required");
         this.offhandAttackResolver =
             Objects.requireNonNull(offhandAttackResolver, "Offhand attack resolver is required");
         this.attributeBonusResolver =
@@ -529,6 +591,10 @@ public class CombatEngine {
             targetArmorBonus, attackerRaceAttackBonus, action, null);
 
         Player currentTarget = main.updatedTarget();
+        // A successful parry ripostes the attacker, reducing their vitals; thread the updated attacker
+        // through the round so the returned result reflects the riposte damage. Off-hand swings never
+        // parry (v1 scope), so an unparried round leaves the attacker unchanged.
+        Player currentAttacker = main.updatedAttacker();
 
         CombatResult.OffhandResult offhandResult = null;
         Optional<OffhandAttackResolver.OffhandWeapon> offhandWeapon = offhandAttackResolver.resolve(attacker);
@@ -537,10 +603,11 @@ public class CombatEngine {
                 attackRepository.findById(offhandWeapon.get().attackId()).orElse(null);
             if (offhandAttack != null) {
                 AttackOutcome off = resolveSingleAttack(
-                    attacker, currentTarget, offhandAttack, random, attackerMods, targetMods,
+                    currentAttacker, currentTarget, offhandAttack, random, attackerMods, targetMods,
                     targetArmorBonus, attackerRaceAttackBonus, action,
                     offhandWeapon.get().weaponName());
                 currentTarget = off.updatedTarget();
+                currentAttacker = off.updatedAttacker();
                 offhandResult = new CombatResult.OffhandResult(
                     off.hit(), off.crit(), off.blocked(), off.damage(),
                     off.sourceMessage(), off.targetMessage(), off.roomMessage(),
@@ -548,7 +615,7 @@ public class CombatEngine {
             }
         }
 
-        return new CombatResult(attacker, currentTarget, main.hit(), main.crit(), main.blocked(),
+        return new CombatResult(currentAttacker, currentTarget, main.hit(), main.crit(), main.blocked(),
             main.damage(), main.sourceMessage(), main.targetMessage(), main.roomMessage(), rngSeed,
             main.effectTargetMessages(), main.effectRoomMessages(), offhandResult);
     }
@@ -602,59 +669,83 @@ public class CombatEngine {
         int damage = 0;
         boolean crit = false;
         boolean blocked = false;
+        boolean parried = false;
+        int riposteDamage = 0;
+        Player updatedAttacker = attacker;
         if (hit) {
-            int baseDamage = random.roll(attack.minDamage(), attack.maxDamage());
-            // Strength adds flat physical damage after the weapon roll (zero for all-baseline
-            // attackers, preserving legacy results). It participates in effect damage modifiers,
-            // variance and crit just like the weapon's own damage bonus.
-            int strengthDamageBonus = attributeBonusResolver.meleeDamageBonus(attacker);
-            int adjusted = attackerMods.damage().apply(baseDamage + attack.damageBonus() + strengthDamageBonus);
-            int variance = CombatSettings.damageVariancePercent();
-            if (variance > 0) {
-                int varianceRoll = random.roll(-variance, variance);
-                adjusted = Math.max(0, (int) Math.round(adjusted * (1 + (varianceRoll / 100.0))));
+            // A defender wielding a melee weapon may parry an otherwise-landing melee hit before any
+            // block or crit is rolled: a parried hit deals zero damage and is answered by a free
+            // riposte. Off-hand swings and ranged attacks never provoke a parry (v1 scope). Only roll
+            // when a parry is possible so a defender who cannot parry leaves the RNG stream — and every
+            // legacy result — unchanged.
+            ParryResolver.Parry parry = (!offhand && !attack.isRanged())
+                ? parryResolver.resolve(target)
+                : ParryResolver.Parry.none();
+            if (parry.canParry()) {
+                int parryRoll = random.roll(1, 100);
+                parried = parryRoll <= clamp(parry.chancePercent(), 0, 100);
             }
-            // A shield in the target's off-hand may block an otherwise-landing hit. Only roll when a
-            // block is possible so equipment without a shield leaves the RNG stream (and therefore
-            // every existing result) unchanged. A block reduces damage and precludes a crit.
-            ShieldBlockResolver.ShieldBlock shieldBlock = shieldBlockResolver.resolve(target);
-            if (shieldBlock.canBlock()) {
-                int blockRoll = random.roll(1, 100);
-                blocked = blockRoll <= clamp(shieldBlock.chancePercent(), 0, 100);
-            }
-            if (blocked) {
-                int reduction = clamp(shieldBlock.reductionPercent(), 0, 100);
-                adjusted = (int) Math.round(adjusted * ((100 - reduction) / 100.0));
+            if (parried) {
+                // Riposte: the defender counter-hits the attacker with their own mainhand weapon roll,
+                // mitigated by the attacker's resistances exactly like a normal hit. The parried blow
+                // itself deals zero damage and can never crit or be blocked (no double-dip).
+                riposteDamage = resolveRiposteDamage(parry.riposteAttack(), target, attacker, random);
+                updatedAttacker = attacker.withVitals(attacker.getVitals().damage(riposteDamage));
             } else {
-                int critChance = CombatSettings.baseCritChance()
-                    + attack.critBonus()
-                    + attributeBonusResolver.critChanceBonus(attacker);
-                critChance = attackerMods.critChance().apply(critChance);
-                critChance = clamp(critChance, 0, 100);
-                int critRoll = random.roll(1, 100);
-                crit = critRoll <= critChance;
-                if (crit) {
-                    adjusted *= CombatSettings.critMultiplier();
+                int baseDamage = random.roll(attack.minDamage(), attack.maxDamage());
+                // Strength adds flat physical damage after the weapon roll (zero for all-baseline
+                // attackers, preserving legacy results). It participates in effect damage modifiers,
+                // variance and crit just like the weapon's own damage bonus.
+                int strengthDamageBonus = attributeBonusResolver.meleeDamageBonus(attacker);
+                int adjusted = attackerMods.damage().apply(baseDamage + attack.damageBonus() + strengthDamageBonus);
+                int variance = CombatSettings.damageVariancePercent();
+                if (variance > 0) {
+                    int varianceRoll = random.roll(-variance, variance);
+                    adjusted = Math.max(0, (int) Math.round(adjusted * (1 + (varianceRoll / 100.0))));
                 }
-            }
-            if (offhand) {
-                adjusted = (int) Math.round(adjusted * (CombatSettings.offhandDamagePercent() / 100.0));
-            }
-            // Elemental resistance mitigation. Physical (and untyped) attacks are never reduced, so
-            // the resolver short-circuits to zero and the RNG stream — and every legacy result —
-            // is unchanged. For a typed attack the defender's summed *_resist percentage is capped
-            // at CombatSettings.maxResistancePercent() so resistance can never fully negate a blow.
-            if (attack.damageType().isResistible()) {
-                int resistPercent = clamp(
-                    equipmentResistanceResolver.totalResistance(target, attack.damageType()),
-                    0, CombatSettings.maxResistancePercent());
-                if (resistPercent > 0) {
-                    adjusted = (int) Math.round(adjusted * ((100 - resistPercent) / 100.0));
+                // A shield in the target's off-hand may block an otherwise-landing hit. Only roll when
+                // a block is possible so equipment without a shield leaves the RNG stream (and
+                // therefore every existing result) unchanged. A block reduces damage and precludes a
+                // crit.
+                ShieldBlockResolver.ShieldBlock shieldBlock = shieldBlockResolver.resolve(target);
+                if (shieldBlock.canBlock()) {
+                    int blockRoll = random.roll(1, 100);
+                    blocked = blockRoll <= clamp(shieldBlock.chancePercent(), 0, 100);
                 }
+                if (blocked) {
+                    int reduction = clamp(shieldBlock.reductionPercent(), 0, 100);
+                    adjusted = (int) Math.round(adjusted * ((100 - reduction) / 100.0));
+                } else {
+                    int critChance = CombatSettings.baseCritChance()
+                        + attack.critBonus()
+                        + attributeBonusResolver.critChanceBonus(attacker);
+                    critChance = attackerMods.critChance().apply(critChance);
+                    critChance = clamp(critChance, 0, 100);
+                    int critRoll = random.roll(1, 100);
+                    crit = critRoll <= critChance;
+                    if (crit) {
+                        adjusted *= CombatSettings.critMultiplier();
+                    }
+                }
+                if (offhand) {
+                    adjusted = (int) Math.round(adjusted * (CombatSettings.offhandDamagePercent() / 100.0));
+                }
+                // Elemental resistance mitigation. Physical (and untyped) attacks are never reduced, so
+                // the resolver short-circuits to zero and the RNG stream — and every legacy result —
+                // is unchanged. For a typed attack the defender's summed *_resist percentage is capped
+                // at CombatSettings.maxResistancePercent() so resistance can never fully negate a blow.
+                if (attack.damageType().isResistible()) {
+                    int resistPercent = clamp(
+                        equipmentResistanceResolver.totalResistance(target, attack.damageType()),
+                        0, CombatSettings.maxResistancePercent());
+                    if (resistPercent > 0) {
+                        adjusted = (int) Math.round(adjusted * ((100 - resistPercent) / 100.0));
+                    }
+                }
+                // A landed hit always deals at least 1 damage; strength can only add to this floor, so
+                // all-baseline results (which already dealt >= 1 in practice) are unchanged.
+                damage = Math.max(1, adjusted);
             }
-            // A landed hit always deals at least 1 damage; strength can only add to this floor, so
-            // all-baseline results (which already dealt >= 1 in practice) are unchanged.
-            damage = Math.max(1, adjusted);
         }
 
         Player updatedTarget = hit && damage > 0
@@ -663,7 +754,7 @@ public class CombatEngine {
 
         List<String> effectTargetMessages = new ArrayList<>();
         List<String> effectRoomMessages = new ArrayList<>();
-        if (hit && effectEngine != null && attack.effectOnHit() != null) {
+        if (hit && !parried && effectEngine != null && attack.effectOnHit() != null) {
             AttackEffectApplication effectApplication = attack.effectOnHit();
             int effectRoll = random.roll(1, 100);
             if (effectRoll <= effectApplication.chancePercent()) {
@@ -690,7 +781,50 @@ public class CombatEngine {
         String roomMessage;
         String targetName = target.getUsername().getValue();
         String attackerName = attacker.getUsername().getValue();
-        if (offhand) {
+        if (parried) {
+            // A parry is the defender's action, so the wording flips: the attacker (source) sees their
+            // blow parried and answered, while the defender (target) is the one who ripostes. Generic
+            // lines use the riposte's worded-damage verb; authored ATTACK_PARRY specs may override.
+            DamageVerb riposteVerb = riposteDamage > 0 && verbTable != null
+                ? verbTable.verbFor(riposteDamage, attacker.getVitals().getMaxHp())
+                : null;
+            ParryMessages parryMessages =
+                parryMessages(attackerName, targetName, riposteDamage, riposteVerb);
+            sourceMessage = parryMessages.source();
+            targetMessage = parryMessages.target();
+            roomMessage = parryMessages.room();
+            List<MessageSpec> specs = attack.messages();
+            if (!specs.isEmpty()) {
+                MessageContext context = new MessageContext(
+                    attacker.getUsername(),
+                    target.getUsername(),
+                    attackerName,
+                    targetName,
+                    null,
+                    null,
+                    attack.name(),
+                    riposteDamage,
+                    riposteVerb == null ? null : riposteVerb.thirdPerson(),
+                    riposteVerb == null ? null : riposteVerb.secondPerson()
+                );
+                for (MessageSpec spec : specs) {
+                    if (spec.phase() != MessagePhase.ATTACK_PARRY) {
+                        continue;
+                    }
+                    String rendered = renderer.render(spec, context);
+                    if (rendered == null || rendered.isBlank()) {
+                        continue;
+                    }
+                    if (spec.channel() == MessageChannel.SELF) {
+                        sourceMessage = rendered;
+                    } else if (spec.channel() == MessageChannel.TARGET) {
+                        targetMessage = rendered;
+                    } else if (spec.channel() == MessageChannel.ROOM) {
+                        roomMessage = rendered;
+                    }
+                }
+            }
+        } else if (offhand) {
             // Off-hand swings always use dedicated, weapon-named messages so a player can tell the
             // second hit of the round apart from their main-hand attack.
             OffhandMessages offhandMessages =
@@ -764,8 +898,54 @@ public class CombatEngine {
             }
         }
 
-        return new AttackOutcome(updatedTarget, hit, crit, blocked, damage,
-            sourceMessage, targetMessage, roomMessage, effectTargetMessages, effectRoomMessages);
+        return new AttackOutcome(updatedTarget, updatedAttacker, hit, crit, blocked, parried, damage,
+            riposteDamage, sourceMessage, targetMessage, roomMessage,
+            effectTargetMessages, effectRoomMessages);
+    }
+
+    /**
+     * Rolls the damage a defender's riposte deals to the attacker whose blow they just parried. The
+     * defender's mainhand weapon roll (plus their strength bonus and the weapon's flat damage bonus)
+     * is mitigated by the attacker's elemental resistance via the same path a normal hit uses, then
+     * floored at 1. A riposte never crits.
+     *
+     * @param riposteAttack the defender's mainhand attack definition (from {@link ParryResolver})
+     * @param riposter      the defender landing the counter-strike
+     * @param victim        the original attacker taking the riposte
+     * @param random        the encounter RNG used for the damage roll
+     * @return the riposte damage, never below 1
+     */
+    private int resolveRiposteDamage(
+        AttackDefinition riposteAttack, Player riposter, Player victim, CombatRandom random) {
+        int baseDamage = random.roll(riposteAttack.minDamage(), riposteAttack.maxDamage());
+        int strengthDamageBonus = attributeBonusResolver.meleeDamageBonus(riposter);
+        int adjusted = baseDamage + riposteAttack.damageBonus() + strengthDamageBonus;
+        if (riposteAttack.damageType().isResistible()) {
+            int resistPercent = clamp(
+                equipmentResistanceResolver.totalResistance(victim, riposteAttack.damageType()),
+                0, CombatSettings.maxResistancePercent());
+            if (resistPercent > 0) {
+                adjusted = (int) Math.round(adjusted * ((100 - resistPercent) / 100.0));
+            }
+        }
+        return Math.max(1, adjusted);
+    }
+
+    private ParryMessages parryMessages(
+        String attackerName, String targetName, int riposteDamage, DamageVerb riposteVerb) {
+        if (riposteVerb != null) {
+            return new ParryMessages(
+                targetName + " parries your attack and " + riposteVerb.thirdPerson()
+                    + " you for " + riposteDamage + "!",
+                "You parry " + attackerName + "'s attack and " + riposteVerb.secondPerson()
+                    + " " + attackerName + " for " + riposteDamage + "!",
+                targetName + " parries " + attackerName + "'s attack and " + riposteVerb.thirdPerson()
+                    + " back!");
+        }
+        return new ParryMessages(
+            targetName + " parries your attack and ripostes for " + riposteDamage + "!",
+            "You parry " + attackerName + "'s attack and riposte for " + riposteDamage + "!",
+            targetName + " parries " + attackerName + "'s attack and ripostes!");
     }
 
     private OffhandMessages offhandMessages(
@@ -801,15 +981,20 @@ public class CombatEngine {
     }
 
     /**
-     * The outcome of resolving a single attack (main-hand or off-hand): the updated target plus the
-     * hit/crit/block/damage flags and the three rendered messages and any on-hit effect messages.
+     * The outcome of resolving a single attack (main-hand or off-hand): the updated target and updated
+     * attacker (the latter reduced by a riposte on a parry) plus the hit/crit/block/parry/damage flags,
+     * the riposte damage dealt back on a parry, the three rendered messages and any on-hit effect
+     * messages.
      */
     private record AttackOutcome(
         Player updatedTarget,
+        Player updatedAttacker,
         boolean hit,
         boolean crit,
         boolean blocked,
+        boolean parried,
         int damage,
+        int riposteDamage,
         String sourceMessage,
         String targetMessage,
         String roomMessage,
@@ -819,5 +1004,8 @@ public class CombatEngine {
     }
 
     private record OffhandMessages(String source, String target, String room) {
+    }
+
+    private record ParryMessages(String source, String target, String room) {
     }
 }
