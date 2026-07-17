@@ -56,6 +56,12 @@ public record CrafterProfile(
             ProfessionId.JEWELCRAFTING);
     }
 
+    /** Returns the tailor profile used by the {@code SEW} command. */
+    public static CrafterProfile tailor() {
+        return new CrafterProfile("tailor", "SEW", "sew", "sews your cloth into",
+            ProfessionId.TAILORING);
+    }
+
     /** Returns the action verb with its first letter capitalized (e.g. {@code "Craft"}, {@code "Brew"}). */
     public String capitalizedVerb() {
         if (verb.isEmpty()) {

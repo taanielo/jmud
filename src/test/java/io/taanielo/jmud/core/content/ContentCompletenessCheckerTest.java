@@ -80,7 +80,9 @@ class ContentCompletenessCheckerTest {
                 new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(
                     DATA_ROOT, "recipes/leatherworking"),
                 new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(
-                    DATA_ROOT, "recipes/jewelcrafting")),
+                    DATA_ROOT, "recipes/jewelcrafting"),
+                new io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository(
+                    DATA_ROOT, "recipes/tailoring")),
             new io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository(DATA_ROOT),
             new io.taanielo.jmud.core.creation.json.JsonNewbieKitRepository(DATA_ROOT),
             new io.taanielo.jmud.core.salvage.repository.json.JsonSalvageTierRepository(DATA_ROOT),

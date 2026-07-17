@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "silkweave-slippers",
+  "name": "Silkweave Slippers",
+  "description": "Soft slippers of woven spider silk that make no sound on stone. They settle the wearer's step and, with it, the wandering mind, lending a quiet clarity of purpose.",
+  "attributes": {
+    "stats": {
+      "ac": 1,
+      "wisdom": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "feet",
+  "weight": 1,
+  "value": 45,
+  "attack_ref": null
+}

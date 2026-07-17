@@ -168,6 +168,7 @@ public class SocketCommandRegistry {
         new EnchantCommand(registry);
         new TanCommand(registry);
         new CutCommand(registry);
+        new SewCommand(registry);
         new GatherCommand(registry);
         new QuestCommand(registry);
         new DailyQuestCommand(registry);

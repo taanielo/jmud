@@ -28,13 +28,15 @@ public record ProfessionId(String value) {
     public static final ProfessionId LEATHERWORKING = new ProfessionId("leatherworking");
     /** The jewelcrafting profession backing the {@code CUT} command. */
     public static final ProfessionId JEWELCRAFTING = new ProfessionId("jewelcrafting");
+    /** The tailoring profession backing the {@code SEW} command. */
+    public static final ProfessionId TAILORING = new ProfessionId("tailoring");
 
     /**
      * All professions known to the game, in a stable display order. New professions must be appended
      * here so read-only surfaces (e.g. {@code SCORE}) pick them up without further edits.
      */
-    private static final List<ProfessionId> KNOWN =
-        List.of(BLACKSMITHING, ALCHEMY, COOKING, ENCHANTING, LEATHERWORKING, JEWELCRAFTING);
+    private static final List<ProfessionId> KNOWN = List.of(
+        BLACKSMITHING, ALCHEMY, COOKING, ENCHANTING, LEATHERWORKING, JEWELCRAFTING, TAILORING);
 
     public ProfessionId {
         Objects.requireNonNull(value, "Profession id is required");

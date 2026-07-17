@@ -3573,6 +3573,41 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void sew(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sew cloth.");
+            return;
+        }
+        if (context.tailorService() == null) {
+            writeLineWithPrompt("There is no tailor here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isTailorPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no tailor here to sew with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.tailorService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.tailorService().craft(player, args);
+        Player sewn = outcome.updatedPlayer();
+        if (outcome.success() && sewn != null) {
+            session.replacePlayer(sewn);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
     public void gather() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to gather resources.");
@@ -3648,6 +3683,15 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         return context.mobRegistry().getMobsInRoom(roomId).stream()
             .anyMatch(mob -> mob.template().hasTag("jeweler"));
+    }
+
+    /** Returns whether a tailor NPC (tagged {@code tailor}) is alive in the given room. */
+    private boolean isTailorPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("tailor"));
     }
 
     @Override

@@ -258,6 +258,7 @@ public record GameContext(
     CraftingService cookingService,
     CraftingService leatherworkingService,
     CraftingService jewelerService,
+    CraftingService tailorService,
     SalvageService salvageService,
     EnchantingService enchantingService,
     ResourceGatheringService resourceGatheringService,
@@ -435,6 +436,7 @@ public record GameContext(
         CraftingService cookingService = createCookingService(itemRepository);
         CraftingService leatherworkingService = createLeatherworkingService(itemRepository);
         CraftingService jewelerService = createJewelerService(itemRepository);
+        CraftingService tailorService = createTailorService(itemRepository);
         SalvageService salvageService = createSalvageService(itemRepository);
         EnchantingService enchantingService =
             createEnchantingService(itemRepository, affixRepository, itemAffixService);
@@ -652,6 +654,7 @@ public record GameContext(
             cookingService,
             leatherworkingService,
             jewelerService,
+            tailorService,
             salvageService,
             enchantingService,
             resourceGatheringService,
@@ -776,7 +779,8 @@ public record GameContext(
                     new JsonRecipeRepository(Path.of("data"), "recipes/alchemy"),
                     new JsonRecipeRepository(Path.of("data"), "recipes/cooking"),
                     new JsonRecipeRepository(Path.of("data"), "recipes/leatherworking"),
-                    new JsonRecipeRepository(Path.of("data"), "recipes/jewelcrafting")),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/jewelcrafting"),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/tailoring")),
                 new JsonResourceNodeRepository(),
                 new JsonNewbieKitRepository(),
                 new JsonSalvageTierRepository(),
@@ -974,6 +978,17 @@ public record GameContext(
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException(
                 "Failed to initialize jewelcrafting service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createTailorService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes =
+                new JsonRecipeRepository(Path.of("data"), "recipes/tailoring").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.tailor());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize tailoring service: " + e.getMessage(), e);
         }
     }
 
