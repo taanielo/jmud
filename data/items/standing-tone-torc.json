@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "standing-tone-torc",
+  "name": "the Standing Tone Torc",
+  "description": "A heavy collar of frost-locked bone worn open at the throat, its two ends never quite meeting, and in the gap between them a single note stands unbroken — the underhum of the source itself, caught and kept ringing too low to hear against the hollow of the wearer's throat. It does not warm and it does not still. The cold that lives in it turns aside the bite of frost and stolen breath, and the tone it holds seems to answer the will of whoever wears it, deepening the reach of a spoken word or a shaped power the way the source deepens its own hum. It is a thing for one who works with voice and resonance rather than the blade, and its unending note is company as much as ward.",
+  "attributes": {
+    "stats": {
+      "ac": 5,
+      "cold_resist": 26,
+      "mana": 15
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 2,
+  "value": 560,
+  "rarity": "rare",
+  "attack_ref": null
+}

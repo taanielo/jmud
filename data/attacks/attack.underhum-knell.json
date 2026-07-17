@@ -1,0 +1,59 @@
+{
+  "schema_version": 6,
+  "id": "attack.underhum-knell",
+  "name": "the underhum knell",
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "min_damage": 30,
+  "max_damage": 44,
+  "hit_bonus": 8,
+  "crit_bonus": 9,
+  "damage_bonus": 12,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You swing the underhum knell into {target} and the head tolls a note too low to hear, a standing tone that rings through their bones before the weight of it ever lands. Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} swings the underhum knell into you and a struck-bell cold rings up through your marrow, the note arriving a heartbeat ahead of the blow. The strike {verb} you!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} swings the underhum knell into {target}, and a single unhearable note rolls out through the cold as it lands, felt in the teeth of everyone near."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You bring the underhum knell down at {target} and it tolls its low note against nothing, the standing tone fraying into the cold air."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} brings the underhum knell down at you and the ringing weight sweeps past, its unheard note shivering the frost where you stood."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} brings the underhum knell down at {target} and the tolling head finds only air, its note guttering into silence."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You drive the underhum knell home and the whole standing tone of the source pours through the stroke at once, ringing {target} against themselves until something inside them cracks on the note! Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} drives the underhum knell home and the note swallows you whole, the cold ringing your marrow against itself until your own body answers the tone and gives! The strike {verb} you!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} drives the underhum knell into {target}, and the note deepens to a toll that stands in the cold long after the blow, as if the source itself had answered."
+    }
+  ]
+}
