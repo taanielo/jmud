@@ -375,6 +375,128 @@ class MobRegistryTameTest {
         assertNull(result.updatedSource(), "A blank name is rejected");
     }
 
+    @Test
+    void describeCompanion_setsDescription_persistedAndShownOnLook() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult set = h.registry.describeCompanion(owner, "wolf", "A shaggy grey wolf.");
+        assertNotNull(set.updatedSource(), "Describing a companion returns the updated owner");
+        assertEquals(List.of("A shaggy grey wolf."), set.updatedSource().getTamedPetDescriptions(),
+            "The custom description is recorded on the owner");
+
+        // The description round-trips through the owner's save.
+        assertEquals(List.of("A shaggy grey wolf."),
+            h.reload(tamer.getUsername()).getTamedPetDescriptions(),
+            "The description is persisted to the owner's save");
+
+        // LOOK renders the custom description to any onlooker.
+        var look = h.registry.describeMobOnLook(ROOM_A, "wolf");
+        assertTrue(look.isPresent() && look.get().contains("A shaggy grey wolf."),
+            "LOOK shows the custom description when set");
+    }
+
+    @Test
+    void describeCompanion_queryShowsHint_thenCurrentDescription() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult none = h.registry.describeCompanion(owner, "wolf", "");
+        assertNull(none.updatedSource(), "A query changes no state");
+        assertTrue(containsText(none, "no custom description set"),
+            "The owner is hinted when no description is set");
+
+        owner = h.registry.describeCompanion(owner, "wolf", "A shaggy grey wolf.").updatedSource();
+        GameActionResult query = h.registry.describeCompanion(owner, "wolf", "");
+        assertNull(query.updatedSource(), "A query changes no state");
+        assertTrue(containsText(query, "A shaggy grey wolf."),
+            "The owner sees the current description when one is set");
+    }
+
+    @Test
+    void describeCompanion_clearRevertsToGenericLook() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+        owner = h.registry.describeCompanion(owner, "wolf", "A shaggy grey wolf.").updatedSource();
+
+        GameActionResult cleared = h.registry.describeCompanion(owner, "wolf", "CLEAR");
+        assertNotNull(cleared.updatedSource(), "Clearing returns the updated owner");
+        assertTrue(cleared.updatedSource().getTamedPetDescriptions().get(0) == null,
+            "The description is cleared on the owner's record");
+
+        var look = h.registry.describeMobOnLook(ROOM_A, "wolf");
+        assertTrue(look.isPresent() && look.get().get(0).contains("nothing special"),
+            "LOOK reverts to the generic line once the description is cleared");
+    }
+
+    @Test
+    void describeCompanion_clearWithNothingSetIsRejected() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult result = h.registry.describeCompanion(owner, "wolf", "NONE");
+        assertNull(result.updatedSource(), "Clearing an already-blank description changes no state");
+        assertTrue(containsText(result, "no custom description to clear"), "A clear error is shown");
+    }
+
+    @Test
+    void describeCompanion_rejectsTooLongDescription() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        String tooLong = "x".repeat(MobRegistry.MAX_PET_DESCRIPTION_LENGTH + 1);
+        GameActionResult result = h.registry.describeCompanion(owner, "wolf", tooLong);
+        assertNull(result.updatedSource(), "An over-long description is rejected");
+        assertTrue(containsText(result, "too long"), "The length limit is explained");
+    }
+
+    @Test
+    void describeCompanion_rejectsUnknownCompanion() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        GameActionResult result = h.registry.describeCompanion(owner, "bear", "A grizzly.");
+        assertNull(result.updatedSource(), "Describing a companion you do not own changes no state");
+        assertTrue(containsText(result, "no companion"), "A clear error is shown");
+    }
+
+    @Test
+    void describeCompanion_persistsAcrossReSpawnOnLogin() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+        h.registry.describeCompanion(owner, "wolf", "A shaggy grey wolf.");
+
+        Player reloaded = h.reload(tamer.getUsername());
+        // Simulate a fresh login into a new registry with no live pets.
+        Harness fresh = harness(reloaded, charmable(WOLF_ID, "Wolf", ROOM_A));
+        fresh.registry.spawnTamedPets(reloaded, ROOM_A);
+
+        var look = fresh.registry.describeMobOnLook(ROOM_A, "wolf");
+        assertTrue(look.isPresent() && look.get().contains("A shaggy grey wolf."),
+            "A re-spawned companion keeps its custom description on next login");
+    }
+
+    @Test
+    void ownsCompanionMatching_onlyTrueForOwnLiveCompanion() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+
+        assertTrue(h.registry.ownsCompanionMatching(owner, "wolf"),
+            "A player's own companion matches by kind");
+        assertFalse(h.registry.ownsCompanionMatching(owner, "bear"),
+            "A token that names no companion does not match");
+        assertFalse(h.registry.ownsCompanionMatching(tamer("stranger"), "wolf"),
+            "Another player does not own this companion");
+    }
+
     // ── stubs ─────────────────────────────────────────────────────────
 
     private record StubMobTemplateRepository(List<MobTemplate> templates)

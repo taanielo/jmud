@@ -11,26 +11,34 @@ import org.jspecify.annotations.Nullable;
 /**
  * Holds the mobs a player has permanently tamed as companions (see the TAME command).
  *
- * <p>Each entry pairs a mob-template id with an optional custom display name (see the NAME command).
- * Duplicates are allowed — a player may tame two mobs of the same kind, and a custom name lets them
- * tell such companions apart. The collection is persisted on the {@link Player} so tamed companions
- * (and their names) survive logout/login and are re-spawned into the world when their owner is next
+ * <p>Each entry pairs a mob-template id with an optional custom display name (see the NAME command)
+ * and an optional custom roleplay description (see the DESCRIBE command). Duplicates are allowed — a
+ * player may tame two mobs of the same kind, and a custom name lets them tell such companions apart.
+ * The collection is persisted on the {@link Player} so tamed companions (and their names and
+ * descriptions) survive logout/login and are re-spawned into the world when their owner is next
  * online.
  *
- * <p>The persisted JSON shape is two parallel lists: {@code tamedPets} (template ids, the original
- * bare-string list) and an optional {@code tamedPetNames} (custom names, {@code null} where a
- * companion is unnamed). Older save files without {@code tamedPetNames} load as all-unnamed, so this
- * component is backward-compatible with pre-naming player records.
+ * <p>The persisted JSON shape is three parallel lists: {@code tamedPets} (template ids, the original
+ * bare-string list), an optional {@code tamedPetNames} (custom names, {@code null} where a companion
+ * is unnamed), and an optional {@code tamedPetDescriptions} (custom descriptions, {@code null} where
+ * a companion has no custom description). Older save files without the optional lists load as
+ * all-unnamed / all-undescribed, so this component is backward-compatible with pre-naming and
+ * pre-describe player records.
  */
 public class PlayerPets {
 
     /**
-     * A single tamed companion: its mob-template id plus an optional custom display name.
+     * A single tamed companion: its mob-template id plus an optional custom display name and an
+     * optional custom roleplay description.
      *
-     * @param templateId the tamed mob's template id; must not be blank
-     * @param customName the owner-assigned display name, or {@code null} when the companion is unnamed
+     * @param templateId        the tamed mob's template id; must not be blank
+     * @param customName        the owner-assigned display name, or {@code null} when the companion is
+     *                          unnamed
+     * @param customDescription the owner-assigned roleplay description shown on LOOK, or {@code null}
+     *                          when the companion has no custom description
      */
-    public record TamedPet(String templateId, @Nullable String customName) {
+    public record TamedPet(
+        String templateId, @Nullable String customName, @Nullable String customDescription) {
         public TamedPet {
             Objects.requireNonNull(templateId, "templateId is required");
             if (templateId.isBlank()) {
@@ -39,11 +47,19 @@ public class PlayerPets {
             if (customName != null && customName.isBlank()) {
                 customName = null;
             }
+            if (customDescription != null && customDescription.isBlank()) {
+                customDescription = null;
+            }
         }
 
         /** Returns the custom display name if one is set, otherwise empty. */
         public Optional<String> name() {
             return Optional.ofNullable(customName);
+        }
+
+        /** Returns the custom roleplay description if one is set, otherwise empty. */
+        public Optional<String> description() {
+            return Optional.ofNullable(customDescription);
         }
     }
 
@@ -67,16 +83,24 @@ public class PlayerPets {
      * @param customNames      the parallel custom names ({@code null} entries for unnamed companions);
      *                         may be {@code null}/shorter than {@code tamedTemplateIds} for older save
      *                         files, in which case the missing names default to unnamed
+     * @param customDescriptions the parallel custom descriptions ({@code null} entries for companions
+     *                         with no custom description); may be {@code null}/shorter than
+     *                         {@code tamedTemplateIds} for older save files, in which case the missing
+     *                         descriptions default to none
      * @return the reconstructed component
      */
     public static PlayerPets fromPersisted(
-        @Nullable List<String> tamedTemplateIds, @Nullable List<String> customNames) {
+        @Nullable List<String> tamedTemplateIds,
+        @Nullable List<String> customNames,
+        @Nullable List<String> customDescriptions) {
         List<String> ids = Objects.requireNonNullElse(tamedTemplateIds, List.of());
         List<String> names = Objects.requireNonNullElse(customNames, List.of());
+        List<String> descriptions = Objects.requireNonNullElse(customDescriptions, List.of());
         List<TamedPet> entries = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
             String name = i < names.size() ? names.get(i) : null;
-            entries.add(new TamedPet(ids.get(i), name));
+            String description = i < descriptions.size() ? descriptions.get(i) : null;
+            entries.add(new TamedPet(ids.get(i), name, description));
         }
         return new PlayerPets(entries);
     }
@@ -99,6 +123,19 @@ public class PlayerPets {
             names.add(pet.customName());
         }
         return names;
+    }
+
+    /**
+     * Returns the parallel custom descriptions, in tame order, with a {@code null} element for each
+     * companion that has no custom description. Used for persistence alongside
+     * {@link #tamedTemplateIds()}.
+     */
+    public List<String> customDescriptions() {
+        List<String> descriptions = new ArrayList<>(pets.size());
+        for (TamedPet pet : pets) {
+            descriptions.add(pet.customDescription());
+        }
+        return descriptions;
     }
 
     /**
@@ -126,7 +163,7 @@ public class PlayerPets {
             throw new IllegalArgumentException("templateId must not be blank");
         }
         List<TamedPet> next = new ArrayList<>(pets);
-        next.add(new TamedPet(templateId, null));
+        next.add(new TamedPet(templateId, null, null));
         return new PlayerPets(next);
     }
 
@@ -213,7 +250,49 @@ public class PlayerPets {
             return this;
         }
         List<TamedPet> next = new ArrayList<>(pets);
-        next.set(target, new TamedPet(templateId, newName));
+        // Preserve any existing custom description when renaming.
+        next.set(target, new TamedPet(templateId, newName, pets.get(target).customDescription()));
+        return new PlayerPets(next);
+    }
+
+    /**
+     * Returns a copy of this component with a custom description assigned to (or cleared from) one
+     * companion of the given template. The target companion is matched by its current custom name:
+     * when {@code customName} is non-{@code null} the entry carrying that name is updated, otherwise
+     * the first entry of the template that is still unnamed is updated. The companion's custom name is
+     * preserved. Returns this instance unchanged when no matching companion exists.
+     *
+     * @param templateId     the template of the companion to describe
+     * @param customName     the companion's current custom name, or {@code null} to target the first
+     *                       unnamed companion of the template
+     * @param newDescription the new custom description to assign, or {@code null}/blank to clear it
+     */
+    public PlayerPets withDescription(
+        String templateId, @Nullable String customName, @Nullable String newDescription) {
+        Objects.requireNonNull(templateId, "templateId is required");
+        int target = -1;
+        for (int i = 0; i < pets.size(); i++) {
+            TamedPet pet = pets.get(i);
+            if (!pet.templateId().equals(templateId)) {
+                continue;
+            }
+            if (customName != null) {
+                if (customName.equals(pet.customName())) {
+                    target = i;
+                    break;
+                }
+            } else if (pet.customName() == null) {
+                target = i;
+                break;
+            }
+        }
+        if (target < 0) {
+            return this;
+        }
+        List<TamedPet> next = new ArrayList<>(pets);
+        // Preserve the existing custom name; a blank/null description clears it via the record's canonical
+        // constructor normalisation.
+        next.set(target, new TamedPet(templateId, pets.get(target).customName(), newDescription));
         return new PlayerPets(next);
     }
 

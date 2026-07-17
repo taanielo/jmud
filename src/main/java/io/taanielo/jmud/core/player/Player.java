@@ -191,7 +191,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -235,7 +235,8 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("description") String description,
         @JsonProperty("tamedPetNames") List<String> tamedPetNames,
         @JsonProperty("briefModeEnabled") Boolean briefModeEnabled,
-        @JsonProperty("activeDailyQuest") ActiveQuest activeDailyQuest
+        @JsonProperty("activeDailyQuest") ActiveQuest activeDailyQuest,
+        @JsonProperty("tamedPetDescriptions") List<String> tamedPetDescriptions
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId, description),
@@ -255,7 +256,7 @@ public class Player implements EffectTarget, Combatant {
             new PlayerAliases(aliases),
             new PlayerMailbox(mailbox),
             sustenance == null ? PlayerSustenance.defaults() : sustenance,
-            PlayerPets.fromPersisted(tamedPets, tamedPetNames),
+            PlayerPets.fromPersisted(tamedPets, tamedPetNames, tamedPetDescriptions),
             PlayerReputation.fromStringMap(reputation),
             PlayerAchievements.fromStringMap(achievements),
             new PlayerExploration(exploredRooms),
@@ -498,6 +499,17 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("tamedPetNames")
     public List<String> getTamedPetNames() {
         return pets.customNames();
+    }
+
+    /**
+     * Returns the parallel custom descriptions of the tamed companions (see the DESCRIBE command),
+     * with a {@code null} entry for each companion that has no custom description, for JSON
+     * serialisation alongside {@link #getTamedPets()}. Older save files omit this property and load as
+     * all-undescribed.
+     */
+    @JsonProperty("tamedPetDescriptions")
+    public List<String> getTamedPetDescriptions() {
+        return pets.customDescriptions();
     }
 
     @JsonProperty("reputation")
@@ -1210,7 +1222,8 @@ public class Player implements EffectTarget, Combatant {
             identity.description().isEmpty() ? null : identity.description(),
             pets.customNames(),
             preferences.briefModeEnabled(),
-            activeDailyQuest
+            activeDailyQuest,
+            pets.customDescriptions()
         );
     }
 
