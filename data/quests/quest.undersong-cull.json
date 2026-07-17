@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "undersong-cull",
+  "name": "Answer the Humming Vault",
+  "description": "The stair down from the Marshal's last stand does not bottom out in more silence but in its inversion: a low, wordless hum with no throat behind it, rising out of the living stone and felt in the teeth before it is ever heard. Where the descent opens into the Humming Vault the note has learned a shape, and that shape walks. Hollow cantors — husks of the Choir's imitators, throats calcified open around a tone they never truly held — stand the vault and turn toward you the moment you set foot in it, mouthing the deep hum back at the stone that taught it to them. Break seven of the cantors in the Humming Vault before the note settles into your own bones, and the drowned refrains and throats below may open to one who can still tell the source from its echo.",
+  "target_mob_id": "undersong-hollow-cantor",
+  "required_kills": 7,
+  "gold_reward": 300,
+  "xp_reward": 750,
+  "recommended_level": 65
+}
