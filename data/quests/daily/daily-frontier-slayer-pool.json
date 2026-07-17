@@ -1,0 +1,53 @@
+{
+  "schema_version": 5,
+  "type": "daily",
+  "pool_id": "frontier-slayer",
+  "name": "Daily Frontier Slayer",
+  "quests": [
+    {
+      "id": "daily-frontier-tide-crabs",
+      "name": "Daily Frontier Slayer: Tide Crabs",
+      "description": "The Shrouded Isle shore crawls with tide crabs. Clear the beach.",
+      "target_mob_id": "tide-crab",
+      "required_kills": 8,
+      "gold_reward": 210,
+      "xp_reward": 420
+    },
+    {
+      "id": "daily-frontier-drowned-sailors",
+      "name": "Daily Frontier Slayer: Drowned Sailors",
+      "description": "Drowned sailors haunt the wreck. Put the dead to rest.",
+      "target_mob_id": "drowned-sailor",
+      "required_kills": 6,
+      "gold_reward": 280,
+      "xp_reward": 560
+    },
+    {
+      "id": "daily-frontier-frost-imps",
+      "name": "Daily Frontier Slayer: Frost Imps",
+      "description": "Frost imps swarm the Frozen Peaks foothills. Scatter them.",
+      "target_mob_id": "frost-imp",
+      "required_kills": 7,
+      "gold_reward": 245,
+      "xp_reward": 490
+    },
+    {
+      "id": "daily-frontier-ice-elementals",
+      "name": "Daily Frontier Slayer: Ice Elementals",
+      "description": "Ice elementals gather on the glacier. Shatter them.",
+      "target_mob_id": "ice-elemental",
+      "required_kills": 6,
+      "gold_reward": 360,
+      "xp_reward": 720
+    },
+    {
+      "id": "daily-frontier-frost-giants",
+      "name": "Daily Frontier Slayer: Frost Giants",
+      "description": "Frost giants stalk the high ridge. Bring them low.",
+      "target_mob_id": "frost-giant",
+      "required_kills": 5,
+      "gold_reward": 490,
+      "xp_reward": 980
+    }
+  ]
+}
