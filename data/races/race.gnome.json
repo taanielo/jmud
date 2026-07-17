@@ -1,0 +1,16 @@
+{
+  "schema_version": 4,
+  "id": "gnome",
+  "name": "Gnome",
+  "healing": {
+    "base_modifier": 2
+  },
+  "carry_base": 35,
+  "mana_modifier": 5,
+  "attack_modifier": -2,
+  "attributes": {
+    "str": -3,
+    "wis": 3
+  },
+  "description": "Small, frail, and preternaturally wise, gnomes possess the finest healer's instincts in the world and a keen sense for restorative magic. They mend wounds and channel nature's power like no other, but their spindly frames carry almost nothing and leave them hopeless in a straight fight."
+}

@@ -131,6 +131,7 @@ buff/debuff/HoT abilities (`garrote`, `evasive-maneuvers`, `mana-shield`, `bone-
 |---|---|---|---|---|
 | dwarf | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
 | elf | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
+| gnome | ✅ #679 | ✅ #679 | ✅ #679 | ✅ #679 |
 | halfling | ✅ #615 | ✅ #615 | ✅ #615 | ✅ #615 |
 | human | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
 | orc | ✅ | ✅ #521 | ✅ #524 | ✅ #554 |
@@ -161,6 +162,21 @@ caster int/wis-build, agi-build) is one race's full package a superset of anothe
   a pure-martial agi build (rogue backstab/crit, ranger marksman) — neither package is a
   superset of the other. vs. the str-based dwarf/orc/troll it competes on a different
   axis entirely.
+- **gnome** (#679) — the wisdom/healing support caster, closing the last archetype gap
+  (cleric/druid/shaman had no race built around their wisdom stat): the highest wisdom
+  bonus in the game (`wis +3`, tripling dwarf's incidental `+1`), best-in-class
+  `healing +2` (tying troll), a modest `mana +5`, paid for with the steepest strength
+  penalty of any race (`str -3`), `attack -2`, and the lightest carry in the game
+  (`carry 35`); *no* `int` or `agi` upside. vs. **dwarf**: dwarf is far tankier
+  (`armor +2`, carry 100) and its `wis +1` is a side dish to a str/armour tank kit,
+  while gnome triples that wisdom and adds a `healing +2` dwarf lacks — dwarf wins
+  durability, gnome wins support/healing, neither dominates. vs. **elf**: elf's
+  `mana +10`/`agi +2`/carry 40 all beat gnome's smaller numbers and elf owns the arcane
+  `int +2`, but elf's `healing -2` is the opposite sign of gnome's `+2` and elf has zero
+  wisdom — elf stays the mage/necromancer pick, gnome the cleric/druid/shaman pick,
+  neither package a superset. vs. **troll**: both tie on `healing +2`, but troll's
+  positive `str +3`/carry 80 build it around melee attrition while gnome's `str -3` makes
+  it the worst melee race in the game — same headline healing number, opposite archetype.
 
 ## Areas
 
