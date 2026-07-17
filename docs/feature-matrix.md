@@ -172,6 +172,7 @@ game-designer should propose closing.
 | PvP (duels, rankings, arena events) | ✅ | none known |
 | World events (timed rare-elite spawns) | ✅ #585 | none known |
 | Pets (tame/summon) | ✅ | custom companion names ✅ #571 · custom companion descriptions ✅ #623 |
+| Mounts (`MOUNT`/`DISMOUNT`, per-step move-point discount) | ✅ #494 #495 | tiered stable stock: sturdy-pony (150g, -1) · swift-warhorse (600g, -2) · militia war-charger (2,500g, -3, `min_reputation: 20` on the now-`faction_id: militia` stable, mirroring the armory's capstone gates) — a reputation-gated aspirational mount for out-levelled players ✅ #631 |
 | Weather & world ambience | ✅ | none known |
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |
 | Admin/wizard tooling | ✅ | none known |

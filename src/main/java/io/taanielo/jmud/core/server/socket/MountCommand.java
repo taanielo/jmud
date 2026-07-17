@@ -34,7 +34,9 @@ public class MountCommand extends RegistrableCommand {
                  While mounted outdoors, each step costs fewer move points, so you can travel
                  farther before you must REST. You cannot mount indoors or underground, and you are
                  thrown from the saddle the moment you enter combat or ride into an enclosed space.
-                 Use DISMOUNT to climb down. Your SCORE shows the mount you are riding.\
+                 Use DISMOUNT to climb down. Your SCORE shows the mount you are riding.
+                 Stables sell tiered mounts: better steeds carry a steeper move-point discount, and
+                 the finest are reserved for proven allies who have earned a faction's standing.\
                """;
     }
 
