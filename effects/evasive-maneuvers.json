@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "evasive-maneuvers",
+  "name": "Evasive Maneuvers",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 8
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": 2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "You settle into a weaving, evasive footwork, reading each threat and slipping clear before it can land."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} settles into a weaving, evasive footwork, light on their feet and hard to pin down."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Your evasive footwork winds down and you plant your feet once more."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name}'s evasive footwork winds down."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is moving in a weaving, evasive footwork, slipping clear of blows."
+    }
+  ]
+}

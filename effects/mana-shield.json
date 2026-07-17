@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "id": "mana-shield",
+  "name": "Mana Shield",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 9
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A shimmering shield of raw mana wraps your body, drinking in blows meant for your flesh."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A shimmering shield of raw mana wraps around {name}."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Your mana shield flickers out, its reserves spent."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The mana shield around {name} flickers out."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wrapped in a shimmering shield of raw mana."
+    }
+  ]
+}

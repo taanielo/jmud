@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.garrote",
+  "name": "garrote",
+  "type": "SKILL",
+  "level": 60,
+  "cost": {
+    "move": 14
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["garotte", "choke", "strangle"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 11
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "garrote"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loop a wire around {target}'s throat and wrench it tight, choking the fight and every cry from them."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} loops a wire around your throat and wrenches it tight, choking off your breath and your voice!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} loops a garrote around {target}'s throat and wrenches it tight."
+    }
+  ]
+}

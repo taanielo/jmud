@@ -106,6 +106,25 @@ first AoE — a room-wide burst of holy damage). Ten new status effects back the
 `spell.consecration` reuses the AoE direct-damage pipeline. `HELP <class>` and `TRAIN LIST` pick these
 up automatically from `trainable_ability_ids`.
 
+Legendary tier (#665). Every class now has a sixth trainable ability gated at **level 60**, landing
+mid-Unsung (57-64) one zone before the level-72 Undersong cap, so the entire 45-72 endgame stretch
+opened up by The Unsung and The Undersong is no longer flat past the grandmaster tier. Each legendary
+ability introduces a new mechanic for its class rather than a bigger number: warrior `skill.whirlwind`
+(the warrior's first AoE — a spinning strike across every foe), adventurer `skill.field-dressing` (the
+generalist's first targeted-ally heal, a wound-binding heal-over-time), rogue `skill.garrote` (a
+choking silence/control debuff distinct from ambush's daze), ranger `skill.evasive-maneuvers` (a
+personal evasion/defense self-buff), mage `spell.mana-shield` (a self-buff damage-mitigation barrier
+distinct from stoneskin's flat armor), necromancer `spell.bone-shield` (the necromancer's own personal
+defensive buff), cleric `spell.holy-nova` (the cleric's first AoE — a bursting nova of holy damage),
+druid `spell.hurricane` (the druid's first AoE — a storm of nature damage), shaman `spell.chain-heal`
+(a direct heal-the-whole-group spell to pair with the totems), bard `spell.siren-song` (the bard's
+first AoE — a mind-assailing song against every foe) and paladin `spell.avenging-wrath` (a self-buff
+spiking the paladin's own damage and healing). Six new status effects back the
+buff/debuff/HoT abilities (`garrote`, `evasive-maneuvers`, `mana-shield`, `bone-shield`,
+`field-dressing`, `avenging-wrath`); the four AoE abilities (`skill.whirlwind`, `spell.holy-nova`,
+`spell.hurricane`, `spell.siren-song`) reuse the AoE direct-damage pipeline. `HELP <class>` and
+`TRAIN LIST` pick these up automatically from `trainable_ability_ids`.
+
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |

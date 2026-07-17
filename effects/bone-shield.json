@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "bone-shield",
+  "name": "Bone Shield",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "armor",
+      "op": "add",
+      "amount": 6
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A whirling cage of bone shards rises to orbit your body, battering aside the blows meant to fell you."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A whirling cage of bone shards rises to orbit {name}."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The orbiting bone shards crumble to dust, their guard spent."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The bone shards orbiting {name} crumble to dust."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is guarded by a whirling cage of orbiting bone shards."
+    }
+  ]
+}

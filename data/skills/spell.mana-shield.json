@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.mana-shield",
+  "name": "mana shield",
+  "type": "SPELL",
+  "level": 60,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["manashield", "mshield"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "mana-shield"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You weave your raw mana into a shimmering shield that drinks in blows meant for your flesh."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} weaves a shimmering mana shield across your body that drinks in incoming blows."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A shimmering mana shield coalesces around {target}."
+    }
+  ]
+}
