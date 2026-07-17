@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "frozen-peaks-quartermaster-welcome",
+  "npc_id": "frozen-peaks-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Cold enough to crack a blade up here. I keep a forge and a full pack for anyone climbing higher. What do you need?",
+      "responses": [
+        { "text": "Can you fix my gear?", "target": "repair" },
+        { "text": "What do you sell?", "target": "wares" },
+        { "text": "Just passing through.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "Aye, bring your armor and blades to me and I'll mend, forge, or break them down — same as any smith in town, only closer to the ice.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Good to know.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "Potions, healing scrolls, a warm meal, oil for your lamp. LIST to see it all. No sense freezing to death for want of a torch.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "Thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Keep your footing on the ice.",
+      "responses": []
+    }
+  }
+}

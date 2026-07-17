@@ -1,0 +1,15 @@
+{
+  "schema_version": 4,
+  "id": "bonelight-quartermaster",
+  "name": "Quartermaster Ossa",
+  "max_hp": 9999,
+  "xp_reward": 0,
+  "attack_id": null,
+  "aggressive": false,
+  "tags": ["npc", "shopkeeper", "blacksmith"],
+  "spawn_room_id": "bonelight-choir-descent",
+  "max_count": 1,
+  "respawn_ticks": 0,
+  "loot": [],
+  "dialogue_id": "bonelight-quartermaster-welcome"
+}
