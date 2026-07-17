@@ -120,6 +120,30 @@
       "maximum": 100,
       "default": 0,
       "description": "Percentage chance (0-100) that this mob parries an otherwise-landing player MELEE attack: it fully negates that swing's damage and ripostes the attacker with its own attack (attack_id). Only author a non-zero value on defensively trained melee mobs (guards, elite humanoid combatants, boss-tier fighters). The effective chance is clamped to combat's parry bound (MAX_PARRY_CHANCE) at resolution time. Ranged (SHOOT), AoE-spell, and summoned-pet damage never roll this. Omit or set 0 for ordinary mobs, which never parry."
+    },
+    "resistances": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "propertyNames": {
+        "enum": ["fire", "cold", "poison", "FIRE", "COLD", "POISON"]
+      },
+      "description": "Optional per-DamageType damage reduction (percent 0-100) applied to an incoming typed ability hit, e.g. {\"cold\": 50} on an ice mob halves an incoming cold spell. Keys match DamageType names case-insensitively (fire/cold/poison). PHYSICAL/untyped damage is never reduced. The effective reduction is clamped to combat's max_resistance_percent at resolution time so a resisted hit is never fully negated. Omit for a mob that resists nothing (today's behaviour)."
+    },
+    "vulnerabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 200
+      },
+      "propertyNames": {
+        "enum": ["fire", "cold", "poison", "FIRE", "COLD", "POISON"]
+      },
+      "description": "Optional per-DamageType damage amplification (percent 0-200) an incoming typed ability hit deals to this mob, e.g. {\"fire\": 50} on an ice mob makes an incoming fire spell deal 50% more. Keys match DamageType names case-insensitively. PHYSICAL/untyped damage is never amplified. Omit for a mob with no elemental weakness. Author resistances and vulnerabilities as a believable pair (an ice mob resists cold and is weak to fire), never as a strict upgrade."
     }
   }
 }

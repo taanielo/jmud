@@ -23,7 +23,8 @@ public class AbilityMapper {
                 effect.stat(),
                 effect.operation(),
                 effect.amount(),
-                effect.effectId()
+                effect.effectId(),
+                effect.damageType()
             ))
             .toList();
         return new AbilityDto(
@@ -91,7 +92,8 @@ public class AbilityMapper {
                 Objects.requireNonNull(dto.stat(), "Vitals effect stat is required"),
                 Objects.requireNonNull(dto.operation(), "Vitals effect operation is required"),
                 dto.amount(),
-                null
+                null,
+                dto.damageType()
             );
         }
         return new AbilityEffect(

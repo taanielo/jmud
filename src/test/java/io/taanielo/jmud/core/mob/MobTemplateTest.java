@@ -7,9 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.TimeOfDay;
 
@@ -103,5 +105,54 @@ class MobTemplateTest {
             MobId.of("mob.guard"), "Town Guard", 20, null, null, false,
             List.of(), SPAWN_ROOM, 1, 30, 5, null, List.of(), false, null, null, false,
             null, null, false, false, 101));
+    }
+
+    private MobTemplate elementalTemplate(
+        Map<DamageType, Integer> resistances, Map<DamageType, Integer> vulnerabilities) {
+        return new MobTemplate(
+            MobId.of("mob.ice"), "Frost Wyrm", 200, null, null, false,
+            List.of(), SPAWN_ROOM, 1, 30, 5, null, List.of(), false, null, null, false,
+            null, null, false, false, 0, resistances, vulnerabilities);
+    }
+
+    @Test
+    void resistancesAndVulnerabilitiesDefaultToEmptyViaLegacyConstructor() {
+        MobTemplate mobTemplate = template(30, null);
+
+        assertEquals(0, mobTemplate.resistancePercent(DamageType.FIRE),
+            "a template built via the pre-elemental constructor resists nothing");
+        assertEquals(0, mobTemplate.vulnerabilityPercent(DamageType.COLD),
+            "a template built via the pre-elemental constructor is weak to nothing");
+    }
+
+    @Test
+    void elementalPercentsAreReportedForAuthoredTypes() {
+        MobTemplate iceMob = elementalTemplate(
+            Map.of(DamageType.COLD, 50), Map.of(DamageType.FIRE, 50));
+
+        assertEquals(50, iceMob.resistancePercent(DamageType.COLD));
+        assertEquals(0, iceMob.resistancePercent(DamageType.FIRE));
+        assertEquals(50, iceMob.vulnerabilityPercent(DamageType.FIRE));
+        assertEquals(0, iceMob.vulnerabilityPercent(DamageType.POISON));
+        assertEquals(0, iceMob.resistancePercent(DamageType.PHYSICAL),
+            "physical damage is never resisted");
+    }
+
+    @Test
+    void rejectsResistancePercentAbove100() {
+        assertThrows(IllegalArgumentException.class,
+            () -> elementalTemplate(Map.of(DamageType.FIRE, 101), Map.of()));
+    }
+
+    @Test
+    void rejectsVulnerabilityPercentAboveCap() {
+        assertThrows(IllegalArgumentException.class,
+            () -> elementalTemplate(Map.of(), Map.of(DamageType.FIRE, MobTemplate.MAX_VULNERABILITY_PERCENT + 1)));
+    }
+
+    @Test
+    void rejectsPhysicalDamageTypeAsElementalKey() {
+        assertThrows(IllegalArgumentException.class,
+            () -> elementalTemplate(Map.of(DamageType.PHYSICAL, 20), Map.of()));
     }
 }

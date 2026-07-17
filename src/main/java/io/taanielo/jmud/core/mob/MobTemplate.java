@@ -1,10 +1,12 @@
 package io.taanielo.jmud.core.mob;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.world.RoomId;
@@ -64,6 +66,18 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                  effective chance is clamped to
  *                  {@code [CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE]} at
  *                  resolution time, mirroring the player-side parry bound.
+ * @param resistances per-{@link DamageType} damage reduction, as a percent in {@code [0, 100]}, this
+ *                  mob applies to an incoming <em>typed</em> (non-{@link DamageType#PHYSICAL}) ability
+ *                  hit — e.g. {@code {COLD: 50}} on an ice mob halves an incoming cold spell. Always
+ *                  non-null, defaulting to an empty map (no resistance) so existing mob data is
+ *                  unaffected. Physical/untyped damage is never reduced. The effective reduction is
+ *                  clamped to {@code CombatSettings.maxResistancePercent()} at resolution time so a
+ *                  resisted hit is never fully negated.
+ * @param vulnerabilities per-{@link DamageType} damage amplification, as a percent in
+ *                  {@code [0, MAX_VULNERABILITY_PERCENT]}, this mob suffers from an incoming typed
+ *                  ability hit — e.g. {@code {FIRE: 50}} on an ice mob makes an incoming fire spell
+ *                  deal 50% more damage. Always non-null, defaulting to an empty map (no
+ *                  vulnerability). Physical/untyped damage is never amplified.
  */
 public record MobTemplate(
     MobId id,
@@ -87,8 +101,18 @@ public record MobTemplate(
     @Nullable FactionId factionId,
     boolean worldBoss,
     boolean worldEvent,
-    int parryChancePercent
+    int parryChancePercent,
+    Map<DamageType, Integer> resistances,
+    Map<DamageType, Integer> vulnerabilities
 ) {
+
+    /**
+     * Upper bound (as a percent) on how much a mob's vulnerability may amplify an incoming typed
+     * ability hit. Unlike resistance — which is floored so a resisted hit always lands — vulnerability
+     * rewards correct play, so it is only generously capped to keep authored data sane.
+     */
+    public static final int MAX_VULNERABILITY_PERCENT = 200;
+
     public MobTemplate {
         if (maxHp <= 0) {
             throw new IllegalArgumentException("Mob maxHp must be positive");
@@ -113,6 +137,26 @@ public record MobTemplate(
         }
         lootTable = List.copyOf(lootTable);
         tags = tags == null ? List.of() : List.copyOf(tags);
+        resistances = normalizeElementalMap(resistances, 100, "resistance");
+        vulnerabilities = normalizeElementalMap(vulnerabilities, MAX_VULNERABILITY_PERCENT, "vulnerability");
+    }
+
+    private static Map<DamageType, Integer> normalizeElementalMap(
+        @Nullable Map<DamageType, Integer> source, int max, String label) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        for (Map.Entry<DamageType, Integer> entry : source.entrySet()) {
+            if (entry.getKey() == DamageType.PHYSICAL) {
+                throw new IllegalArgumentException("Mob " + label + " cannot target PHYSICAL damage");
+            }
+            int value = entry.getValue();
+            if (value < 0 || value > max) {
+                throw new IllegalArgumentException(
+                    "Mob " + label + " percent must be in [0, " + max + "]");
+            }
+        }
+        return Map.copyOf(source);
     }
 
     /**
@@ -316,7 +360,67 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, dialogueId, factionId, worldBoss, worldEvent, 0);
+            charmable, dialogueId, factionId, worldBoss, worldEvent, 0, Map.of(), Map.of());
+    }
+
+    /**
+     * Convenience constructor for callers that specify a parry chance but no elemental
+     * resistances/vulnerabilities; defaults {@link #resistances()} and {@link #vulnerabilities()} to
+     * empty maps (a mob that resists and is weak to nothing). Preserves the pre-elemental constructor
+     * arity so existing callers and the JSON mapper remain source-compatible.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of());
+    }
+
+    /**
+     * Returns the resistance percent this mob applies to an incoming ability hit of the given
+     * {@link DamageType}, or {@code 0} when it has no resistance to that type (or the type is
+     * {@link DamageType#PHYSICAL}). The value is <em>not</em> pre-clamped to the combat cap; callers
+     * apply {@code CombatSettings.maxResistancePercent()} at resolution time.
+     *
+     * @param type the incoming damage type
+     * @return the authored resistance percent for {@code type}, or {@code 0}
+     */
+    public int resistancePercent(DamageType type) {
+        return resistances.getOrDefault(type, 0);
+    }
+
+    /**
+     * Returns the vulnerability percent by which this mob amplifies an incoming ability hit of the
+     * given {@link DamageType}, or {@code 0} when it has no vulnerability to that type (or the type is
+     * {@link DamageType#PHYSICAL}).
+     *
+     * @param type the incoming damage type
+     * @return the authored vulnerability percent for {@code type}, or {@code 0}
+     */
+    public int vulnerabilityPercent(DamageType type) {
+        return vulnerabilities.getOrDefault(type, 0);
     }
 
     /**

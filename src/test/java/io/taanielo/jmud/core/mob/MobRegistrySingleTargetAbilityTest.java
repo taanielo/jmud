@@ -35,6 +35,7 @@ import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -111,9 +112,124 @@ class MobRegistrySingleTargetAbilityTest {
         List.of()
     );
 
+    /** fire-bolt: FIRE-typed HARMFUL spell, 4 mana, 10 fire damage. */
+    private static final Ability FIRE_BOLT = new AbilityDefinition(
+        AbilityId.of("spell.fire-bolt"),
+        "fire-bolt",
+        AbilityType.SPELL,
+        1,
+        new AbilityCost(4, 0),
+        new AbilityCooldown(3),
+        AbilityTargeting.HARMFUL,
+        List.of(),
+        List.of(new AbilityEffect(
+            AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 10, null, "FIRE")),
+        List.of()
+    );
+
     private Player player(String name) {
         User user = User.of(Username.of(name), Password.hash("pw", 1));
         return Player.of(user, "%hp> ");
+    }
+
+    private MobRegistry buildRegistry(
+        Player caster, int mobHp, RoomId mobRoom, List<String> tags, CombatRandom random,
+        Map<DamageType, Integer> resistances,
+        Map<DamageType, Integer> vulnerabilities) {
+        MobTemplate template = new MobTemplate(
+            MobId.of("mob.goblin"),
+            "Goblin",
+            mobHp,
+            UNARMED,
+            null,
+            false,
+            List.of(),
+            mobRoom,
+            1,
+            10,
+            5,
+            null,
+            tags,
+            false,
+            null,
+            null,
+            false,
+            null,
+            null,
+            false,
+            false,
+            0,
+            resistances,
+            vulnerabilities
+        );
+        MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
+        AttackRepository attackRepo = new StubAttackRepository(Map.of(UNARMED, UNARMED_MELEE));
+        ItemRepository itemRepo = new StubItemRepository();
+
+        RoomService roomService = new RoomService(new StubRoomRepository(), ROOM_A);
+        roomService.ensurePlayerLocation(caster.getUsername());
+
+        StubPlayerRepository playerRepo = new StubPlayerRepository(caster);
+        PlayerEventBus bus = new PlayerEventBus();
+
+        MobRegistry registry = new MobRegistry(
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, random);
+        registry.init();
+        return registry;
+    }
+
+    @Test
+    void typedSpell_onResistantMob_dealsReducedDamageWithQualifier() {
+        Player caster = player("merlin");
+        // Hit roll 10 (lands), crit roll 100 (no crit): a clean 10-damage fire hit.
+        MobRegistry registry = buildRegistry(caster, 100, ROOM_A, List.of(), new ScriptedRandom(10, 100),
+            Map.of(DamageType.FIRE, 50), Map.of());
+
+        GameActionResult result =
+            registry.processPlayerSingleTargetAbility(caster, FIRE_BOLT, "goblin", ROOM_A);
+
+        // 50% fire resistance halves the 10 damage to 5.
+        assertEquals(95, onlyMob(registry).currentHp(),
+            "A 50% fire-resistant mob should take half of the fire spell's damage");
+        assertTrue(containsText(result, "for 5 damage"), "The strike should report the reduced damage");
+        assertTrue(containsText(result, "sizzle weakly"),
+            "A resisted fire hit should carry a resist qualifier so the matchup is legible");
+    }
+
+    @Test
+    void typedSpell_onVulnerableMob_dealsIncreasedDamageWithQualifier() {
+        Player caster = player("merlin");
+        MobRegistry registry = buildRegistry(caster, 100, ROOM_A, List.of(), new ScriptedRandom(10, 100),
+            Map.of(), Map.of(DamageType.FIRE, 50));
+
+        GameActionResult result =
+            registry.processPlayerSingleTargetAbility(caster, FIRE_BOLT, "goblin", ROOM_A);
+
+        // 50% fire vulnerability raises the 10 damage to 15.
+        assertEquals(85, onlyMob(registry).currentHp(),
+            "A fire-vulnerable mob should take amplified fire damage");
+        assertTrue(containsText(result, "for 15 damage"), "The strike should report the amplified damage");
+        assertTrue(containsText(result, "roar hungrily"),
+            "A vulnerable fire hit should carry a vulnerability qualifier");
+    }
+
+    @Test
+    void untypedSpell_isUnaffectedByMobResistanceOrVulnerability() {
+        Player caster = player("merlin");
+        // FIREBALL is untyped (physical); a fire resistance/vulnerability entry must not touch it.
+        MobRegistry registry = buildRegistry(caster, 100, ROOM_A, List.of(), new ScriptedRandom(10, 100),
+            Map.of(DamageType.FIRE, 50),
+            Map.of(DamageType.COLD, 50));
+
+        GameActionResult result =
+            registry.processPlayerSingleTargetAbility(caster, FIREBALL, "goblin", ROOM_A);
+
+        assertEquals(95, onlyMob(registry).currentHp(),
+            "An untyped spell deals its flat damage regardless of a mob's elemental entries");
+        assertTrue(containsText(result, "for 5 damage"), "Untyped damage is neither reduced nor amplified");
+        assertFalse(containsText(result, "sizzle weakly"),
+            "An untyped hit carries no elemental qualifier");
     }
 
     private MobRegistry buildRegistry(Player caster, int mobHp, RoomId mobRoom, List<String> tags) {
