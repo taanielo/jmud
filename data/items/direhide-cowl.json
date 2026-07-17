@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "direhide-cowl",
+  "name": "Direhide Cowl",
+  "description": "A master leatherworker's cowl, its dire-wolf hide stiffened with troll-tooth studs. It guards the skull and lends the wearer a predator's resilience.",
+  "attributes": {
+    "stats": {
+      "ac": 5,
+      "hp": 8
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "head",
+  "weight": 3,
+  "value": 150,
+  "attack_ref": null
+}

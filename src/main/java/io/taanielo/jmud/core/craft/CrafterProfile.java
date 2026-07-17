@@ -44,6 +44,12 @@ public record CrafterProfile(
             ProfessionId.COOKING);
     }
 
+    /** Returns the leatherworker profile used by the {@code TAN} command. */
+    public static CrafterProfile leatherworker() {
+        return new CrafterProfile("leatherworker", "TAN", "tan", "tans your hides into",
+            ProfessionId.LEATHERWORKING);
+    }
+
     /** Returns the action verb with its first letter capitalized (e.g. {@code "Craft"}, {@code "Brew"}). */
     public String capitalizedVerb() {
         if (verb.isEmpty()) {

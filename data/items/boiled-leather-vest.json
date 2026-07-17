@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "boiled-leather-vest",
+  "name": "Boiled Leather Vest",
+  "description": "A vest of wolf pelts boiled hard and lacquered into supple plates. It turns a blade as well as banded iron at a fraction of the weight.",
+  "attributes": {
+    "stats": {
+      "ac": 7
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 6,
+  "value": 90,
+  "attack_ref": null
+}

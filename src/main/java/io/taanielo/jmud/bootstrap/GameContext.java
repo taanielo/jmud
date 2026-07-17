@@ -253,6 +253,7 @@ public record GameContext(
     CraftingService craftingService,
     CraftingService alchemyService,
     CraftingService cookingService,
+    CraftingService leatherworkingService,
     SalvageService salvageService,
     EnchantingService enchantingService,
     ResourceGatheringService resourceGatheringService,
@@ -421,6 +422,7 @@ public record GameContext(
         CraftingService craftingService = createCraftingService(itemRepository);
         CraftingService alchemyService = createAlchemyService(itemRepository);
         CraftingService cookingService = createCookingService(itemRepository);
+        CraftingService leatherworkingService = createLeatherworkingService(itemRepository);
         SalvageService salvageService = createSalvageService(itemRepository);
         EnchantingService enchantingService =
             createEnchantingService(itemRepository, affixRepository, itemAffixService);
@@ -625,6 +627,7 @@ public record GameContext(
             craftingService,
             alchemyService,
             cookingService,
+            leatherworkingService,
             salvageService,
             enchantingService,
             resourceGatheringService,
@@ -745,7 +748,8 @@ public record GameContext(
                 List.<RecipeRepository>of(
                     new JsonRecipeRepository(),
                     new JsonRecipeRepository(Path.of("data"), "recipes/alchemy"),
-                    new JsonRecipeRepository(Path.of("data"), "recipes/cooking")),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/cooking"),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/leatherworking")),
                 new JsonResourceNodeRepository(),
                 new JsonNewbieKitRepository(),
                 new JsonSalvageTierRepository(),
@@ -920,6 +924,17 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository, CrafterProfile.cook());
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize cooking service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createLeatherworkingService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes =
+                new JsonRecipeRepository(Path.of("data"), "recipes/leatherworking").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.leatherworker());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize leatherworking service: " + e.getMessage(), e);
         }
     }
 

@@ -163,6 +163,7 @@ public class SocketCommandRegistry {
         new BrewCommand(registry);
         new CookCommand(registry);
         new EnchantCommand(registry);
+        new TanCommand(registry);
         new GatherCommand(registry);
         new QuestCommand(registry);
         new DailyQuestCommand(registry);
