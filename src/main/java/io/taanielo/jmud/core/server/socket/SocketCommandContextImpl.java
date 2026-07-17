@@ -259,6 +259,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.areaMapService() != null) {
             this.gameActionService.setAreaMapService(context.areaMapService());
         }
+        if (context.areaWaypointService() != null) {
+            this.gameActionService.setAreaWaypointService(context.areaWaypointService());
+        }
         this.gameActionService.setOnlinePlayerLookup(
             username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
     }
@@ -2755,6 +2758,23 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLines(look.lines());
             writeRoomOccupantLines(look.room());
         }
+        sendPrompt();
+    }
+
+    @Override
+    public void bind(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to bind.");
+            return;
+        }
+        Player player = session.getPlayer();
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty()) {
+            writeLineWithPrompt(gameActionService.describeBindPoint(player));
+            return;
+        }
+        GameActionResult result = gameActionService.bind(player);
+        deliverResult(result);
         sendPrompt();
     }
 

@@ -25,6 +25,12 @@ public class PlayerIdentity {
      * case-insensitive via {@code Username}. Blank strings normalise to {@code null}.
      */
     private final @Nullable String spouse;
+    /**
+     * Id (value form) of the room the player has anchored their recall/respawn point to via the BIND
+     * command, or {@code null} when they have never bound (in which case recall/respawn fall back to
+     * the world's default starting room, Greystone Town). Blank strings normalise to {@code null}.
+     */
+    private final @Nullable String boundRoomId;
 
     public PlayerIdentity(User user, int level, long experience, RaceId race, ClassId classId) {
         this(user, level, experience, race, classId, "");
@@ -43,6 +49,19 @@ public class PlayerIdentity {
         String description,
         @Nullable String spouse
     ) {
+        this(user, level, experience, race, classId, description, spouse, null);
+    }
+
+    public PlayerIdentity(
+        User user,
+        int level,
+        long experience,
+        RaceId race,
+        ClassId classId,
+        String description,
+        @Nullable String spouse,
+        @Nullable String boundRoomId
+    ) {
         this.user = Objects.requireNonNull(user, "User is required");
         this.level = level;
         this.experience = experience;
@@ -50,6 +69,7 @@ public class PlayerIdentity {
         this.classId = Objects.requireNonNullElse(classId, ClassId.of("adventurer"));
         this.description = Objects.requireNonNullElse(description, "").trim();
         this.spouse = spouse == null || spouse.isBlank() ? null : spouse.trim();
+        this.boundRoomId = boundRoomId == null || boundRoomId.isBlank() ? null : boundRoomId.trim();
     }
 
     public User user() {
@@ -87,20 +107,29 @@ public class PlayerIdentity {
         return spouse;
     }
 
+    /**
+     * Returns the id (value form) of the room this player has bound their recall/respawn point to via
+     * the BIND command, or {@code null} when they have never bound (recall/respawn then default to the
+     * world's starting room).
+     */
+    public @Nullable String boundRoomId() {
+        return boundRoomId;
+    }
+
     public PlayerIdentity withLevel(int nextLevel) {
-        return new PlayerIdentity(user, nextLevel, experience, race, classId, description, spouse);
+        return new PlayerIdentity(user, nextLevel, experience, race, classId, description, spouse, boundRoomId);
     }
 
     public PlayerIdentity withExperience(long nextExperience) {
-        return new PlayerIdentity(user, level, nextExperience, race, classId, description, spouse);
+        return new PlayerIdentity(user, level, nextExperience, race, classId, description, spouse, boundRoomId);
     }
 
     public PlayerIdentity withRace(RaceId nextRace) {
-        return new PlayerIdentity(user, level, experience, nextRace, classId, description, spouse);
+        return new PlayerIdentity(user, level, experience, nextRace, classId, description, spouse, boundRoomId);
     }
 
     public PlayerIdentity withClassId(ClassId nextClassId) {
-        return new PlayerIdentity(user, level, experience, race, nextClassId, description, spouse);
+        return new PlayerIdentity(user, level, experience, race, nextClassId, description, spouse, boundRoomId);
     }
 
     /**
@@ -110,7 +139,7 @@ public class PlayerIdentity {
      * @param newDescription the new description text, or {@code null}/blank to clear
      */
     public PlayerIdentity withDescription(String newDescription) {
-        return new PlayerIdentity(user, level, experience, race, classId, newDescription, spouse);
+        return new PlayerIdentity(user, level, experience, race, classId, newDescription, spouse, boundRoomId);
     }
 
     /**
@@ -120,6 +149,16 @@ public class PlayerIdentity {
      * @param newSpouse the spouse's username display value, or {@code null}/blank to clear the bond
      */
     public PlayerIdentity withSpouse(@Nullable String newSpouse) {
-        return new PlayerIdentity(user, level, experience, race, classId, description, newSpouse);
+        return new PlayerIdentity(user, level, experience, race, classId, description, newSpouse, boundRoomId);
+    }
+
+    /**
+     * Returns a copy of this identity anchored to the given recall/respawn room, or unbound when
+     * {@code newBoundRoomId} is {@code null}/blank (recall/respawn then default to the starting room).
+     *
+     * @param newBoundRoomId the bound room id value, or {@code null}/blank to clear the anchor
+     */
+    public PlayerIdentity withBoundRoomId(@Nullable String newBoundRoomId) {
+        return new PlayerIdentity(user, level, experience, race, classId, description, spouse, newBoundRoomId);
     }
 }

@@ -149,6 +149,7 @@ public class SocketCommandRegistry {
         new AcceptCommand(registry);
         new FleeCommand(registry);
         new RecallCommand(registry);
+        new BindCommand(registry);
         new RestCommand(registry);
         new WakeCommand(registry);
         new AnsiCommand(registry);

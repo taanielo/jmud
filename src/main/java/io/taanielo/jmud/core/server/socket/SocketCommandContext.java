@@ -404,6 +404,17 @@ public interface SocketCommandContext extends Client {
     default void recall() {}
 
     /**
+     * Handles the {@code BIND} command: with no argument reports the player's current recall/respawn
+     * anchor; with any argument (e.g. {@code HERE}) anchors it to the waypoint room of the player's
+     * current area, if they are standing in one and out of combat.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code BIND} (blank means "report current bind point")
+     */
+    default void bind(String args) {}
+
+    /**
      * Assesses the danger of a mob in the same room and prints a qualitative tier message.
      *
      * <p>The default implementation is a no-op so that existing test stubs

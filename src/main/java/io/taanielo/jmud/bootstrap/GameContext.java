@@ -190,6 +190,7 @@ import io.taanielo.jmud.core.world.WorldClockSettings;
 import io.taanielo.jmud.core.world.area.AreaConsistencyChecker;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.AreaWaypointService;
 import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
 import io.taanielo.jmud.core.world.repository.ItemCatalog;
@@ -268,6 +269,7 @@ public record GameContext(
     NotesService notesService,
     PlayerSessionRegistry playerSessionRegistry,
     AreaMapService areaMapService,
+    AreaWaypointService areaWaypointService,
     AreaConsistencyChecker areaConsistencyChecker,
     ContentCompletenessChecker contentCompletenessChecker,
     ShutdownHandle shutdownHandle
@@ -307,6 +309,7 @@ public record GameContext(
         MapService mapService = new MapService(roomRepository);
         AreaRepository areaRepository = createAreaRepository();
         AreaMapService areaMapService = new AreaMapService(areaRepository);
+        AreaWaypointService areaWaypointService = new AreaWaypointService(areaRepository);
         AreaConsistencyChecker areaConsistencyChecker =
             createAreaConsistencyChecker(areaRepository, roomRepository, itemRepository);
         MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
@@ -658,6 +661,7 @@ public record GameContext(
             notesService,
             playerSessionRegistry,
             areaMapService,
+            areaWaypointService,
             areaConsistencyChecker,
             contentCompletenessChecker,
             shutdownHandle
