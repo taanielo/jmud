@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "skill.evasive-maneuvers",
+  "name": "evasive maneuvers",
+  "type": "SKILL",
+  "level": 60,
+  "cost": {
+    "move": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["evasivemaneuvers", "evade", "evasion"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "evasive-maneuvers"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You break into a weaving, evasive footwork, slipping and rolling clear of blows before they can land."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} breaks into a weaving, evasive footwork, slipping light-footed around every threat."
+    }
+  ]
+}

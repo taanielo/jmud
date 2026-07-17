@@ -10,6 +10,6 @@
   "attribute_bonuses": { "str": 1, "int": 1 },
   "attribute_gains": { "str": "every_3_levels", "int": "every_3_levels" },
   "ability_ids": ["skill.bash", "spell.heal"],
-  "trainable_ability_ids": ["skill.second-wind", "spell.bless", "skill.overpower", "skill.disarming-strike", "skill.brace"],
-  "description": "A forgiving jack-of-all-trades for new players. Adventurers mix a warrior's bash with a self-heal, so they can both fight and patch themselves up while learning the ropes, and at level 15 learn overpower, a heavy driving blow, then at level 30 a disarming strike that fouls a foe's grip and weakens their attacks, and at level 45 brace, a reactive defensive stance that raises their guard to weather a heavy assault."
+  "trainable_ability_ids": ["skill.second-wind", "spell.bless", "skill.overpower", "skill.disarming-strike", "skill.brace", "skill.field-dressing"],
+  "description": "A forgiving jack-of-all-trades for new players. Adventurers mix a warrior's bash with a self-heal, so they can both fight and patch themselves up while learning the ropes, and at level 15 learn overpower, a heavy driving blow, then at level 30 a disarming strike that fouls a foe's grip and weakens their attacks, and at level 45 brace, a reactive defensive stance that raises their guard to weather a heavy assault, then at level 60 field dressing, the generalist's first help-a-teammate tool: a bound wound on an ally that mends them steadily over the coming moments."
 }

@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.bone-shield",
+  "name": "bone shield",
+  "type": "SPELL",
+  "level": 60,
+  "cost": {
+    "mana": 11
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["boneshield", "bshield"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "bone-shield"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call up a whirling cage of bone shards that orbit your body and turn aside the blows meant to fell you."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls up a whirling cage of bone shards that orbit and guard your body."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A whirling cage of bone shards rises to orbit and guard {target}."
+    }
+  ]
+}
