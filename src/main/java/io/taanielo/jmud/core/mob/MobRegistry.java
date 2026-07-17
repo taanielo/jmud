@@ -2246,10 +2246,22 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (token == null || token.isBlank()) {
             return Optional.empty();
         }
-        MobInstance mob = findMobByName(getMobsInRoom(roomId), token);
-        if (mob == null) {
+        String normalized = token.trim().toLowerCase(Locale.ROOT);
+        List<MobInstance> matches = getMobsInRoom(roomId).stream()
+            .filter(m -> nameMatches(m.displayName(), normalized) || nameMatches(m.template().name(), normalized))
+            .toList();
+        if (matches.isEmpty()) {
             return Optional.empty();
         }
+        // Several mobs in the room may match the token — e.g. a tamed companion carrying a custom
+        // description standing beside a wild mob of the same species freshly spawned at start-up.
+        // Prefer a match with a custom description so a described pet's text is shown deterministically
+        // rather than depending on the (unordered) mob-instance iteration order, which otherwise makes
+        // LOOK non-deterministic when a wild same-species mob shares the room.
+        MobInstance mob = matches.stream()
+            .filter(m -> m.customDescription() != null)
+            .findFirst()
+            .orElse(matches.get(0));
         String description = mob.customDescription();
         if (description != null) {
             return Optional.of(List.of(description));

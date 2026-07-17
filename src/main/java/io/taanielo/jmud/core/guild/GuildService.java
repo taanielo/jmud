@@ -35,10 +35,24 @@ public class GuildService {
     public static final int CREATION_COST_GOLD = 100;
 
     /**
-     * Maximum number of items a guild's shared vault may hold. Larger than a personal bank vault since
-     * it is pooled across the whole roster.
+     * Base shared-vault capacity for a fresh (level 1) guild, in item slots. Larger than a personal bank
+     * vault since it is pooled across the whole roster. Higher {@link GuildLevel}s scale the effective
+     * cap above this base — see {@link #vaultCapacity(Guild)}.
      */
-    public static final int VAULT_CAPACITY = 40;
+    public static final int VAULT_CAPACITY = GuildLevel.ONE.vaultCapacity();
+
+    /**
+     * Returns the shared item-vault capacity for the given guild, scaled by its current
+     * {@link Guild#level() level}. A fresh level-1 guild keeps the flat {@link #VAULT_CAPACITY} cap;
+     * every level above one unlocks more slots, up to the level-5 cap.
+     *
+     * @param guild the guild whose vault capacity to resolve
+     * @return the maximum number of items the guild's shared vault may hold at its current level
+     */
+    public static int vaultCapacity(Guild guild) {
+        Objects.requireNonNull(guild, "guild is required");
+        return guild.level().vaultCapacity();
+    }
 
     /** Minimum guild name length, in characters. */
     public static final int MIN_NAME_LENGTH = 3;
@@ -407,8 +421,8 @@ public class GuildService {
 
     /**
      * Stores {@code item} from a member into their guild's shared item vault. Validates that the caller
-     * is in a guild and that the vault is not already at {@link #VAULT_CAPACITY} capacity, then persists
-     * the updated guild.
+     * is in a guild and that the vault is not already at its level-scaled {@link #vaultCapacity(Guild)}
+     * capacity, then persists the updated guild.
      *
      * <p>This service only mutates the vault; the caller is responsible for removing the same item from
      * the acting player's inventory (unequipping it first if worn) in the same command so the item is
@@ -425,7 +439,7 @@ public class GuildService {
         if (guild == null) {
             return GuildResult.failure("You are not in a guild.");
         }
-        if (guild.vaultedItems().size() >= VAULT_CAPACITY) {
+        if (guild.vaultedItems().size() >= vaultCapacity(guild)) {
             return GuildResult.failure("The " + guild.name() + " vault is full.");
         }
         Guild updated = guild.withVaultedItem(new VaultedItem(item, member));

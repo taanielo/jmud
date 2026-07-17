@@ -484,6 +484,28 @@ class MobRegistryTameTest {
     }
 
     @Test
+    void describeMobOnLook_prefersDescribedCompanionOverWildSameSpecies() {
+        Player tamer = tamer("beastmaster");
+        Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));
+        Player owner = h.registry.processTame(tamer, "wolf", ROOM_A).updatedSource();
+        h.registry.describeCompanion(owner, "wolf", "A shaggy grey wolf.");
+        Player reloaded = h.reload(tamer.getUsername());
+
+        // The fresh registry's init() spawns a live WILD Wolf into ROOM_A; spawning the tamed
+        // companion puts a described Wolf beside it, so LOOK "wolf" has two live matches. The
+        // described companion must win regardless of mob-instance iteration order.
+        Harness fresh = harness(reloaded, charmable(WOLF_ID, "Wolf", ROOM_A));
+        fresh.registry.spawnTamedPets(reloaded, ROOM_A);
+        assertEquals(2, fresh.registry.getMobsInRoom(ROOM_A).stream()
+                .filter(m -> m.template().name().equalsIgnoreCase("Wolf")).count(),
+            "a wild and a tamed wolf should share the room for this scenario");
+
+        var look = fresh.registry.describeMobOnLook(ROOM_A, "wolf");
+        assertTrue(look.isPresent() && look.get().contains("A shaggy grey wolf."),
+            "LOOK prefers the described companion over a wild same-species mob in the room");
+    }
+
+    @Test
     void ownsCompanionMatching_onlyTrueForOwnLiveCompanion() {
         Player tamer = tamer("beastmaster");
         Harness h = harness(tamer, charmable(WOLF_ID, "Wolf", ROOM_A));

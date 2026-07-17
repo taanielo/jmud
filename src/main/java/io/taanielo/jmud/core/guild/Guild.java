@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import io.taanielo.jmud.core.authentication.Username;
 
@@ -23,6 +24,12 @@ import io.taanielo.jmud.core.authentication.Username;
  * members. Like the treasury, items are moved rather than copied — every store/claim is matched by the
  * caller adding or removing the same item from a player's inventory, so no item is ever duplicated or
  * destroyed.
+ *
+ * <p>{@code lifetimeDepositedGold} is the running total of every gold piece ever paid into the treasury
+ * via {@code GUILD DEPOSIT} over the guild's whole lifetime. It only ever increases — withdrawals do not
+ * reduce it — and drives the guild's {@link #level() level}, which in turn scales the shared vault's
+ * capacity. It is a "how much has this guild ever raised" counter, distinct from the current
+ * {@code treasuryGold} balance.
  */
 public record Guild(
     GuildId id,
@@ -30,7 +37,8 @@ public record Guild(
     Username leaderId,
     List<GuildMember> members,
     int treasuryGold,
-    List<VaultedItem> vaultedItems
+    List<VaultedItem> vaultedItems,
+    int lifetimeDepositedGold
 ) {
 
     public Guild {
@@ -40,6 +48,9 @@ public record Guild(
         members = List.copyOf(Objects.requireNonNull(members, "Guild members are required"));
         if (treasuryGold < 0) {
             throw new IllegalArgumentException("Guild treasuryGold must not be negative");
+        }
+        if (lifetimeDepositedGold < 0) {
+            throw new IllegalArgumentException("Guild lifetimeDepositedGold must not be negative");
         }
         vaultedItems = List.copyOf(Objects.requireNonNull(vaultedItems, "Guild vaultedItems are required"));
     }
@@ -54,7 +65,30 @@ public record Guild(
      * @return the newly created guild
      */
     public static Guild found(GuildId id, String name, Username leader) {
-        return new Guild(id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of());
+        return new Guild(
+            id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of(), 0);
+    }
+
+    /**
+     * Returns the guild's current progression {@link GuildLevel}, derived purely from
+     * {@link #lifetimeDepositedGold()}. Never stored; always recomputed on read.
+     *
+     * @return the guild's level (never below {@link GuildLevel#ONE})
+     */
+    public GuildLevel level() {
+        return GuildLevel.forLifetimeGold(lifetimeDepositedGold);
+    }
+
+    /**
+     * Returns the lifetime deposited gold required to reach the next {@link GuildLevel}, or empty when
+     * the guild is already at the top level.
+     *
+     * @return the next level's threshold in lifetime gold, or empty at max level
+     */
+    public OptionalInt nextLevelThreshold() {
+        return level().next()
+            .map(next -> OptionalInt.of(next.threshold()))
+            .orElseGet(OptionalInt::empty);
     }
 
     /** Returns {@code true} when the given player is the guild leader. */
@@ -106,7 +140,7 @@ public record Guild(
         int nextOrder = members.stream().mapToInt(GuildMember::joinOrder).max().orElse(-1) + 1;
         List<GuildMember> next = new ArrayList<>(members);
         next.add(new GuildMember(username, GuildRank.MEMBER, nextOrder));
-        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems);
+        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold);
     }
 
     /**
@@ -126,7 +160,8 @@ public record Guild(
             .filter(m -> !m.username().equals(username))
             .toList());
         if (remaining.isEmpty()) {
-            return new Guild(id, name, leaderId, List.of(), treasuryGold, vaultedItems);
+            return new Guild(
+                id, name, leaderId, List.of(), treasuryGold, vaultedItems, lifetimeDepositedGold);
         }
         Username newLeader = leaderId;
         if (leaderId.equals(username)) {
@@ -138,7 +173,8 @@ public record Guild(
                 .map(m -> m.username().equals(successor.username()) ? m.withRank(GuildRank.LEADER) : m)
                 .toList();
         }
-        return new Guild(id, name, newLeader, remaining, treasuryGold, vaultedItems);
+        return new Guild(
+            id, name, newLeader, remaining, treasuryGold, vaultedItems, lifetimeDepositedGold);
     }
 
     /**
@@ -159,11 +195,12 @@ public record Guild(
         List<GuildMember> next = members.stream()
             .map(m -> m.username().equals(username) ? m.withRank(newRank) : m)
             .toList();
-        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems);
+        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold);
     }
 
     /**
-     * Returns a copy of this guild whose treasury has been increased by {@code amount}.
+     * Returns a copy of this guild whose treasury has been increased by {@code amount}. The same amount
+     * is also added to {@link #lifetimeDepositedGold()}, which drives the guild's {@link #level() level}.
      *
      * @param amount the non-negative amount of gold to add to the treasury
      * @return the updated guild
@@ -173,11 +210,14 @@ public record Guild(
         if (amount < 0) {
             throw new IllegalArgumentException("Deposit amount must not be negative");
         }
-        return new Guild(id, name, leaderId, members, treasuryGold + amount, vaultedItems);
+        return new Guild(
+            id, name, leaderId, members, treasuryGold + amount, vaultedItems,
+            lifetimeDepositedGold + amount);
     }
 
     /**
-     * Returns a copy of this guild whose treasury has been decreased by {@code amount}.
+     * Returns a copy of this guild whose treasury has been decreased by {@code amount}. Withdrawals
+     * never affect {@link #lifetimeDepositedGold()}, so a guild's level can never drop.
      *
      * @param amount the non-negative amount of gold to remove from the treasury
      * @return the updated guild
@@ -190,7 +230,8 @@ public record Guild(
         if (amount > treasuryGold) {
             throw new IllegalArgumentException("Withdraw amount exceeds treasury balance");
         }
-        return new Guild(id, name, leaderId, members, treasuryGold - amount, vaultedItems);
+        return new Guild(
+            id, name, leaderId, members, treasuryGold - amount, vaultedItems, lifetimeDepositedGold);
     }
 
     /**
@@ -203,7 +244,7 @@ public record Guild(
         Objects.requireNonNull(vaulted, "vaulted is required");
         List<VaultedItem> next = new ArrayList<>(vaultedItems);
         next.add(vaulted);
-        return new Guild(id, name, leaderId, members, treasuryGold, next);
+        return new Guild(id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold);
     }
 
     /**
@@ -221,6 +262,6 @@ public record Guild(
         }
         List<VaultedItem> next = new ArrayList<>(vaultedItems);
         next.remove(index);
-        return new Guild(id, name, leaderId, members, treasuryGold, next);
+        return new Guild(id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold);
     }
 }

@@ -137,6 +137,57 @@ class GuildTest {
     }
 
     @Test
+    void foundedGuildIsLevelOneWithNoLifetimeDeposits() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertEquals(0, guild.lifetimeDepositedGold());
+        assertEquals(GuildLevel.ONE, guild.level());
+        assertEquals(500, guild.nextLevelThreshold().getAsInt());
+    }
+
+    @Test
+    void depositAccumulatesLifetimeGoldAndRaisesLevel() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .depositTreasury(300)
+            .depositTreasury(300);
+
+        assertEquals(600, guild.treasuryGold());
+        assertEquals(600, guild.lifetimeDepositedGold());
+        assertEquals(GuildLevel.TWO, guild.level());
+        assertEquals(2_000, guild.nextLevelThreshold().getAsInt());
+    }
+
+    @Test
+    void withdrawDoesNotReduceLifetimeGoldOrLevel() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .depositTreasury(600)
+            .withdrawTreasury(600);
+
+        assertEquals(0, guild.treasuryGold());
+        assertEquals(600, guild.lifetimeDepositedGold());
+        assertEquals(GuildLevel.TWO, guild.level());
+    }
+
+    @Test
+    void maxLevelGuildHasNoNextThreshold() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .depositTreasury(15_000);
+
+        assertEquals(GuildLevel.FIVE, guild.level());
+        assertTrue(guild.nextLevelThreshold().isEmpty());
+    }
+
+    @Test
+    void lifetimeGoldSurvivesRosterChanges() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .depositTreasury(700)
+            .withMember(BOB);
+
+        assertEquals(700, guild.withoutMember(BOB).lifetimeDepositedGold());
+        assertEquals(700, guild.withMemberRank(BOB, GuildRank.OFFICER).lifetimeDepositedGold());
+    }
+
+    @Test
     void foundedGuildHasEmptyVault() {
         Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
 

@@ -43,9 +43,16 @@ import io.taanielo.jmud.core.world.dto.ItemMapper;
 @Slf4j
 public class JsonGuildRepository implements GuildRepository, AutoCloseable {
 
-    /** Latest schema written. Version 2 adds the additive shared item vault ({@code vaultedItems}). */
-    private static final int SCHEMA_VERSION = 2;
-    /** Oldest schema still readable; v1 files (pre-vault) load with an empty vault. */
+    /**
+     * Latest schema written. Version 2 adds the additive shared item vault ({@code vaultedItems}).
+     * Version 3 adds the additive lifetime-deposit counter ({@code lifetimeDepositedGold}) that drives
+     * a guild's level and scaled vault capacity.
+     */
+    private static final int SCHEMA_VERSION = 3;
+    /**
+     * Oldest schema still readable; v1 files (pre-vault) load with an empty vault, and v1/v2 files
+     * (pre-lifetime) load with {@code lifetimeDepositedGold = 0}, i.e. at level 1.
+     */
     private static final int MIN_SCHEMA_VERSION = 1;
     private static final String GUILDS_DIR = "guilds";
     private static final long IDLE_POLL_MILLIS = 25;
@@ -175,7 +182,8 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 Username.of(Objects.requireNonNull(dto.leaderId(), "Guild leaderId is required")),
                 members,
                 Math.max(0, dto.treasuryGold()),
-                vaultedItems);
+                vaultedItems,
+                Math.max(0, dto.lifetimeDepositedGold()));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new GuildRepositoryException("Invalid guild data in " + path + ": " + e.getMessage(), e);
         }
@@ -246,7 +254,7 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 .toList();
             GuildDto dto = new GuildDto(
                 SCHEMA_VERSION, guild.id().value(), guild.name(), guild.leaderId().getValue(),
-                memberDtos, guild.treasuryGold(), vaultDtos);
+                memberDtos, guild.treasuryGold(), vaultDtos, guild.lifetimeDepositedGold());
             objectMapper.writeValue(tmp.toFile(), dto);
             Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {

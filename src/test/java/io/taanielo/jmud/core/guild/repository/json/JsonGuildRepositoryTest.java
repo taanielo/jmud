@@ -15,6 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildId;
+import io.taanielo.jmud.core.guild.GuildLevel;
 import io.taanielo.jmud.core.guild.GuildRank;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.world.Item;
@@ -100,6 +101,61 @@ class JsonGuildRepositoryTest {
             assertEquals(BOB, vaulted.depositor());
         } finally {
             reopened.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsLifetimeDepositedGold(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-4.json");
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild guild = Guild.found(GuildId.of("g-4"), "Ironclad", ALICE)
+                .depositTreasury(700)
+                .withdrawTreasury(200);
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = reopened.loadAll().get(0);
+            assertEquals(500, g.treasuryGold());
+            assertEquals(700, g.lifetimeDepositedGold());
+            assertEquals(GuildLevel.TWO, g.level());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void loadsLegacyV2GuildFileAtLevelOne(@TempDir Path dataRoot) throws Exception {
+        Path guildsDir = dataRoot.resolve("guilds");
+        Files.createDirectories(guildsDir);
+        String legacy = """
+            {
+              "schema_version": 2,
+              "id": "g-v2",
+              "name": "Silverhand",
+              "leader_id": "Alice",
+              "members": [
+                { "username": "Alice", "rank": "LEADER", "join_order": 0 }
+              ],
+              "treasury_gold": 900,
+              "vaulted_items": []
+            }
+            """;
+        Files.writeString(guildsDir.resolve("g-v2.json"), legacy);
+
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = repository.loadAll().get(0);
+            assertEquals(900, g.treasuryGold());
+            assertEquals(0, g.lifetimeDepositedGold());
+            assertEquals(GuildLevel.ONE, g.level());
+        } finally {
+            repository.close();
         }
     }
 

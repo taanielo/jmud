@@ -70,7 +70,15 @@ public class GuildCommand extends RegistrableCommand {
              + "  GUILD VAULT            — list items in the guild's shared item vault\n"
              + "  GUILD STORE <item>     — deposit an item into the guild vault (any member)\n"
              + "  GUILD CLAIM <item>     — take an item from the guild vault (leader or officer)\n"
-             + "  GUILD <message>        — chat to online guildmates (or use GC <message>)";
+             + "  GUILD <message>        — chat to online guildmates (or use GC <message>)\n"
+             + "\n"
+             + "Guild levels (1-5): every gold piece deposited via GUILD DEPOSIT adds to the guild's\n"
+             + "lifetime deposited total (withdrawals never reduce it). Crossing a threshold raises the\n"
+             + "guild's level, and each level above 1 grows the shared item vault by 10 slots:\n"
+             + "  level 1 (0 gold) — 40 slots      level 4 (5,000 gold) — 70 slots\n"
+             + "  level 2 (500 gold) — 50 slots    level 5 (15,000 gold) — 80 slots\n"
+             + "  level 3 (2,000 gold) — 60 slots\n"
+             + "GUILD and GUILD VAULT show your level, lifetime total, and progress to the next level.";
     }
 
     @Override
