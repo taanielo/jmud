@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "id": "frozen-peaks-shop",
+  "name": "Quartermaster Sigrun",
+  "room_id": "frozen-peaks-foothills",
+  "stock": [
+    {"item_id": "health-potion"},
+    {"item_id": "mana-potion"},
+    {"item_id": "cure-potion"},
+    {"item_id": "scroll-of-healing"},
+    {"item_id": "scroll-of-recall"},
+    {"item_id": "bread"},
+    {"item_id": "meat"},
+    {"item_id": "water"},
+    {"item_id": "ale"},
+    {"item_id": "torch"},
+    {"item_id": "lantern"}
+  ],
+  "sell_ratio": 0.5
+}

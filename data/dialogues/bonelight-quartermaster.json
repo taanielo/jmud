@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "bonelight-quartermaster-welcome",
+  "npc_id": "bonelight-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "The Choir hums on whether or not you're ready for it. Better that you are. Forge and pack are both open — what do you need?",
+      "responses": [
+        { "text": "Can you mend my gear?", "target": "repair" },
+        { "text": "What do you sell?", "target": "wares" },
+        { "text": "Later, perhaps.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "Bring your arms and armor and I'll repair, forge, or salvage them. No pilgrim of mine walks into that ossuary with a cracked breastplate.",
+      "responses": [
+        { "text": "And your wares?", "target": "wares" },
+        { "text": "My thanks.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "Healing and mana draughts, cure-potions, elixirs of vigor, food and light. LIST what I keep. The dead down there feel no hunger — you still do.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "Thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "May the note pass you over.",
+      "responses": []
+    }
+  }
+}
