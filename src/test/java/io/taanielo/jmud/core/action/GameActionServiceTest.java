@@ -80,6 +80,7 @@ import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaId;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.AreaWaypointService;
 import io.taanielo.jmud.core.world.area.WorldAtlas;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -1743,6 +1744,163 @@ class GameActionServiceTest {
             assertFalse(result.metadata().containsKey("recalled"));
             assertNull(result.updatedSource(), "Scroll must not be consumed when recall is on cooldown");
             assertTrue(result.messages().getFirst().text().contains("recovering"));
+        }
+    }
+
+    // ── bind ───────────────────────────────────────────────────────────────
+
+    @Nested
+    class BindTests {
+
+        private static final RoomId ROOM_TOWN = RoomId.of("town");
+        private static final RoomId ROOM_WAYPOINT = RoomId.of("haven-gate");
+        private static final RoomId ROOM_DEEP = RoomId.of("haven-depths");
+
+        private RoomService bindRoomService;
+        private boolean inCombat;
+        private GameActionService bindService;
+        private Player player;
+
+        @BeforeEach
+        void setUpBind() {
+            Room town = new Room(
+                ROOM_TOWN, "Town Square", "The town square.",
+                Map.of(Direction.NORTH, ROOM_WAYPOINT), List.of(), List.of()
+            );
+            Room gate = new Room(
+                ROOM_WAYPOINT, "Haven Gate", "The entrance to Haven.",
+                Map.of(Direction.SOUTH, ROOM_TOWN, Direction.NORTH, ROOM_DEEP), List.of(), List.of()
+            );
+            Room depths = new Room(
+                ROOM_DEEP, "Haven Depths", "Deep within Haven.",
+                Map.of(Direction.SOUTH, ROOM_WAYPOINT), List.of(), List.of()
+            );
+            bindRoomService = new RoomService(
+                new TestRoomRepository(Map.of(ROOM_TOWN, town, ROOM_WAYPOINT, gate, ROOM_DEEP, depths)),
+                ROOM_TOWN
+            );
+            inCombat = false;
+            player = player("pilgrim");
+            bindRoomService.ensurePlayerLocation(player.getUsername());
+
+            bindService = new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                bindRoomService,
+                (source, input) -> Optional.empty(),
+                new CooldownTracker(new CooldownSystem()),
+                testEncumbranceService(),
+                p -> inCombat
+            );
+            bindService.setAreaWaypointService(havenWaypointService());
+        }
+
+        private AreaWaypointService havenWaypointService() {
+            Area haven = new Area(
+                AreaId.of("haven"), "Haven",
+                List.of(ROOM_WAYPOINT, ROOM_DEEP), List.of(), List.of("HAVEN ART"),
+                new io.taanielo.jmud.core.world.area.LevelRange(1, 5));
+            AreaRepository areas = new AreaRepository() {
+                @Override
+                public List<Area> findAll() {
+                    return List.of(haven);
+                }
+
+                @Override
+                public Optional<Area> findById(AreaId id) {
+                    return haven.id().equals(id) ? Optional.of(haven) : Optional.empty();
+                }
+
+                @Override
+                public Optional<WorldAtlas> findAtlas() {
+                    return Optional.empty();
+                }
+            };
+            return new AreaWaypointService(areas);
+        }
+
+        @Test
+        void bindWithNoArgsReportsDefaultWhenNeverBound() {
+            String status = bindService.describeBindPoint(player);
+
+            assertTrue(status.contains("Greystone Town (default)"), status);
+        }
+
+        @Test
+        void bindAtWaypointSetsAnchorAndConfirms() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+
+            GameActionResult result = bindService.bind(player);
+
+            assertTrue(result.metadata().containsKey("bound"));
+            assertNotNull(result.updatedSource());
+            assertEquals(ROOM_WAYPOINT.getValue(), result.updatedSource().boundRoomId());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("Haven")), "confirmation names the area");
+        }
+
+        @Test
+        void reportAfterBindNamesTheBoundArea() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            Player bound = bindService.bind(player).updatedSource();
+
+            String status = bindService.describeBindPoint(bound);
+
+            assertTrue(status.contains("Haven"), status);
+        }
+
+        @Test
+        void recallReturnsToBoundWaypointInsteadOfTown() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            Player bound = bindService.bind(player).updatedSource();
+            // Walk deeper, then recall — should land at the bound waypoint, not the starting town.
+            bindRoomService.move(bound.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_DEEP, bindRoomService.findPlayerLocation(bound.getUsername()).orElseThrow());
+
+            GameActionResult result = bindService.recall(bound);
+
+            assertTrue(result.metadata().containsKey("recalled"));
+            assertEquals(ROOM_WAYPOINT, bindRoomService.findPlayerLocation(bound.getUsername()).orElseThrow());
+        }
+
+        @Test
+        void recallWithoutBindingStillReturnsToStartingTown() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_WAYPOINT, bindRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+
+            GameActionResult result = bindService.recall(player);
+
+            assertTrue(result.metadata().containsKey("recalled"));
+            assertEquals(ROOM_TOWN, bindRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+        }
+
+        @Test
+        void bindOutsideAWaypointRoomFails() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_DEEP, bindRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+
+            GameActionResult result = bindService.bind(player);
+
+            assertFalse(result.metadata().containsKey("bound"));
+            assertNull(result.updatedSource());
+            assertTrue(result.messages().getFirst().text().contains("waypoint"));
+        }
+
+        @Test
+        void bindWhileInCombatFails() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            inCombat = true;
+
+            GameActionResult result = bindService.bind(player);
+
+            assertFalse(result.metadata().containsKey("bound"));
+            assertNull(result.updatedSource());
+            assertTrue(result.messages().getFirst().text().contains("FLEE"));
         }
     }
 

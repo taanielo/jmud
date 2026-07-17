@@ -149,9 +149,30 @@ public class PlayerLocationService {
      * @return the starting room id
      */
     public RoomId respawnPlayer(Username username) {
+        return respawnPlayer(username, null);
+    }
+
+    /**
+     * Moves the player to their preferred respawn room when one is supplied and still resolves,
+     * otherwise to the world's default starting room.
+     *
+     * <p>Used by RECALL and death respawn to honour a player's BIND anchor while degrading gracefully:
+     * a {@code null} preference, or a preferred room that no longer exists (e.g. removed or renamed in
+     * a later data change), both fall back to {@code startingRoomId} so the player is never stranded.
+     * Tick-thread only (AGENTS.md §5).
+     *
+     * @param username        the player to respawn
+     * @param preferredRoomId the player's bound respawn room, or {@code null} to use the default
+     * @return the room id the player was actually placed into
+     */
+    public RoomId respawnPlayer(Username username, @Nullable RoomId preferredRoomId) {
         Objects.requireNonNull(username, "Username is required");
-        playerLocations.put(username, startingRoomId);
-        return startingRoomId;
+        RoomId destination = startingRoomId;
+        if (preferredRoomId != null && findRoom(preferredRoomId).isPresent()) {
+            destination = preferredRoomId;
+        }
+        playerLocations.put(username, destination);
+        return destination;
     }
 
     /**

@@ -73,7 +73,9 @@ import io.taanielo.jmud.core.world.ItemIdentificationService;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaMapService;
+import io.taanielo.jmud.core.world.area.AreaWaypointService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
@@ -167,6 +169,13 @@ public class GameActionService {
      * while absent, reading a map reports that its markings cannot be made out.
      */
     private @Nullable AreaMapService areaMapService;
+    /**
+     * Optional resolver of area waypoints, used by {@link #bind} to check whether a player is standing
+     * in a zone's entrance room. {@code null} until the composition root wires it via
+     * {@link #setAreaWaypointService(AreaWaypointService)}; while absent, BIND reports that binding is
+     * unavailable.
+     */
+    private @Nullable AreaWaypointService areaWaypointService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -179,6 +188,8 @@ public class GameActionService {
     private static final ItemId RECALL_SCROLL_ID = ItemId.of("scroll-of-recall");
     /** Metadata key set by {@link #recall} on a successful teleport. */
     private static final String RECALL_METADATA_KEY = "recalled";
+    /** Metadata key set by {@link #bind} on a successful anchor change. */
+    private static final String BIND_METADATA_KEY = "bound";
     /** Ability id of the rogue BACKSTAB skill, which gains a bonus when opened from stealth. */
     private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
     /** Ability id of the Cleric RESURRECTION spell, resolved by dedicated logic in {@link #resurrect}. */
@@ -484,6 +495,19 @@ public class GameActionService {
     }
 
     /**
+     * Injects the resolver used by {@link #bind} to check whether the player's current room is a
+     * zone's waypoint (entrance) room.
+     *
+     * <p>Called once by the composition root. When absent, BIND reports that anchoring a recall point
+     * is unavailable.
+     *
+     * @param areaWaypointService the shared area waypoint resolver
+     */
+    public void setAreaWaypointService(AreaWaypointService areaWaypointService) {
+        this.areaWaypointService = Objects.requireNonNull(areaWaypointService, "Area waypoint service is required");
+    }
+
+    /**
      * Injects the shared party registry used by {@link #resurrect} to verify party membership.
      *
      * <p>Called once by the composition root so every per-session service references the same
@@ -677,11 +701,11 @@ public class GameActionService {
         }
         RoomService.LookResult currentLook = roomService.look(source.getUsername());
         Room oldRoom = currentLook.room();
-        var destinationId = roomService.respawnPlayer(source.getUsername());
+        var destinationId = roomService.respawnPlayer(source.getUsername(), boundRoomIdOf(source));
         cooldownTracker.startCooldown(RECALL_COOLDOWN_KEY, RECALL_COOLDOWN_TICKS);
 
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You recall to town in a flash of light."));
+        messages.add(GameMessage.toSource("You recall to your bind point in a flash of light."));
         String playerName = source.getUsername().getValue();
         if (oldRoom != null && !oldRoom.getId().equals(destinationId)) {
             messages.add(GameMessage.toRoomAt(
@@ -691,6 +715,92 @@ public class GameActionService {
             destinationId, source.getUsername(), playerName + " arrives in a flash of light."));
 
         return new GameActionResult(null, null, messages, Map.of(RECALL_METADATA_KEY, true));
+    }
+
+    /**
+     * Resolves the player's preferred RECALL/respawn room from their BIND anchor, or {@code null} when
+     * they have never bound (so the caller falls back to the default starting room).
+     *
+     * @param source the player whose bind anchor to resolve
+     * @return the bound {@link RoomId}, or {@code null} when unbound
+     */
+    private @Nullable RoomId boundRoomIdOf(Player source) {
+        String bound = source.boundRoomId();
+        return bound == null || bound.isBlank() ? null : RoomId.of(bound);
+    }
+
+    /**
+     * Anchors the player's personal RECALL/respawn point to the waypoint (entrance) room of their
+     * current area, so subsequent recalls and death respawns return them here instead of the default
+     * starting town.
+     *
+     * <p>Mirrors {@link #recall}'s guards: binding is rejected while dueling or in active combat (the
+     * player should FLEE first). It further requires the player to be standing in an area's waypoint
+     * room — the room already used as that zone's entrance ({@code room_ids[0]}) — so a player must
+     * reach a zone under their own power before anchoring to it. This preserves the corpse-run risk
+     * inside a zone; only the tax of walking the whole world back from town is removed. Binding never
+     * moves the player and has no cooldown.
+     *
+     * <p>On success the returned {@link GameActionResult#updatedSource()} carries the player with the
+     * new anchor (persisted by the caller) and metadata key {@code "bound"}. Every rejection returns a
+     * specific message and leaves the existing anchor untouched. Tick-thread only (AGENTS.md §5).
+     *
+     * @param source the player attempting to bind
+     * @return a success result with the re-anchored player, or an error result describing the rejection
+     */
+    public GameActionResult bind(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        if (duelService.isDueling(source.getUsername())) {
+            return GameActionResult.error("You cannot bind while dueling!");
+        }
+        if (inCombatCheck.test(source)) {
+            return GameActionResult.error("You are in combat! You must FLEE before you can bind.");
+        }
+        if (areaWaypointService == null) {
+            return GameActionResult.error("You cannot anchor your recall point here.");
+        }
+        RoomId currentRoom = roomService.findPlayerLocation(source.getUsername()).orElse(null);
+        if (currentRoom == null) {
+            return GameActionResult.error("You are nowhere; there is nothing to bind to.");
+        }
+        Area area = areaWaypointService.findAreaByWaypoint(currentRoom).orElse(null);
+        if (area == null) {
+            return GameActionResult.error(
+                "You can only BIND at a zone's waypoint — the entrance room of an area. "
+                    + "Travel to one and try again.");
+        }
+        Player bound = source.withBoundRoomId(currentRoom.getValue());
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You anchor your recall point to " + area.name() + ". You will now recall here."));
+        return new GameActionResult(bound, null, messages, Map.of(BIND_METADATA_KEY, true));
+    }
+
+    /**
+     * Describes where the player's RECALL/respawn currently sends them, for the bare {@code BIND}
+     * report with no argument.
+     *
+     * <p>When the player has bound to an area waypoint the message names that area; when the bound
+     * room can no longer be resolved to a known area (e.g. removed in a later data change) it reports
+     * the raw room id; when unbound it reports the default of Greystone Town.
+     *
+     * @param source the player whose bind point to describe
+     * @return a single-line, player-facing status message
+     */
+    public String describeBindPoint(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        RoomId boundRoom = boundRoomIdOf(source);
+        if (boundRoom == null) {
+            return "Your recall point is set to Greystone Town (default).";
+        }
+        String label = boundRoom.getValue();
+        if (areaWaypointService != null) {
+            Area area = areaWaypointService.findAreaByWaypoint(boundRoom).orElse(null);
+            if (area != null) {
+                label = area.name();
+            }
+        }
+        return "Your recall point is bound to " + label + ".";
     }
 
     /**

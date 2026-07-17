@@ -112,6 +112,34 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsBoundRoomId() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("anchored"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withBoundRoomId("undersong-descent");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals("undersong-descent", loaded.get().boundRoomId());
+        assertEquals("undersong-descent", loaded.get().getBoundRoomId());
+    }
+
+    @Test
+    void unboundPlayerLoadsWithNoBoundRoom() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("wanderer"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertNull(loaded.get().getBoundRoomId());
+        assertNull(loaded.get().boundRoomId());
+    }
+
+    @Test
     void unmarriedPlayerLoadsWithNoSpouse() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("single"), Password.hash("pw", 1000));

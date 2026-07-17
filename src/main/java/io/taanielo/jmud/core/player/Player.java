@@ -191,7 +191,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -238,10 +238,11 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("activeDailyQuest") ActiveQuest activeDailyQuest,
         @JsonProperty("tamedPetDescriptions") List<String> tamedPetDescriptions,
         @JsonProperty("vaultTier") Integer vaultTier,
-        @JsonProperty("spouse") String spouse
+        @JsonProperty("spouse") String spouse,
+        @JsonProperty("boundRoomId") String boundRoomId
     ) {
         this(
-            new PlayerIdentity(user, level, experience, race, classId, description, spouse),
+            new PlayerIdentity(user, level, experience, race, classId, description, spouse, boundRoomId),
             new PlayerCombatState(vitals, effects, dead),
             new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled, briefModeEnabled),
             new PlayerAbilities(learnedAbilities),
@@ -416,6 +417,18 @@ public class Player implements EffectTarget, Combatant {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public String getSpouse() {
         return identity.spouse();
+    }
+
+    /**
+     * Returns the id (value form) of the room this player has bound their recall/respawn point to via
+     * the BIND command for JSON serialisation, or {@code null} when they have never bound (in which
+     * case the field is omitted from save files, so existing saves deserialise unaffected and keep
+     * recalling to the default starting room).
+     */
+    @JsonProperty("boundRoomId")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getBoundRoomId() {
+        return identity.boundRoomId();
     }
 
     @JsonProperty("dead")
@@ -1124,6 +1137,25 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns the id (value form) of the room this player has bound their recall/respawn point to via
+     * the BIND command, or {@code null} when they have never bound.
+     */
+    @JsonIgnore
+    public String boundRoomId() {
+        return identity.boundRoomId();
+    }
+
+    /**
+     * Returns a copy of this player anchored to the given recall/respawn room, or unbound when
+     * {@code newBoundRoomId} is {@code null}/blank (recall/respawn then default to the starting room).
+     *
+     * @param newBoundRoomId the bound room id value, or {@code null}/blank to clear the anchor
+     */
+    public Player withBoundRoomId(String newBoundRoomId) {
+        return withIdentity(identity.withBoundRoomId(newBoundRoomId));
+    }
+
+    /**
      * Returns a copy of this player with the resting flag set to the given value.
      *
      * <p>The resting state is in-memory only and is never persisted.
@@ -1276,7 +1308,8 @@ public class Player implements EffectTarget, Combatant {
             activeDailyQuest,
             pets.customDescriptions(),
             vault.capacityTier(),
-            identity.spouse()
+            identity.spouse(),
+            identity.boundRoomId()
         );
     }
 
