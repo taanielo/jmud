@@ -41,6 +41,7 @@ import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
+import io.taanielo.jmud.core.combat.ParryResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.ShieldBlockResolver;
@@ -160,6 +161,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * a no-op (no block possible) until the composition root injects the real resolver.
      */
     private ShieldBlockResolver shieldBlockResolver = ShieldBlockResolver.noOp();
+    /**
+     * Resolves whether a defending player wielding a melee weapon parries a mob's landing melee swing
+     * (taking zero damage) and ripostes the mob for their mainhand weapon's damage. Defaults to a
+     * no-op (no parry possible) until the composition root injects the real resolver. A mob's own
+     * attack is never parried by the mob (v1 scope limit).
+     */
+    private ParryResolver parryResolver = ParryResolver.noOp();
     /**
      * Optional worded-damage verb table. When set, a mob's hit message can substitute {@code {verb}}
      * with the classic-MUD damage tier (e.g. "MAULS") resolved from the damage dealt as a percentage
@@ -340,6 +348,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Registers the resolver that lets a player wielding a melee weapon parry a mob's landing melee
+     * swing and riposte the mob, mirroring the PvP {@link io.taanielo.jmud.core.combat.CombatEngine}.
+     * When not set, a no-op resolver leaves mob swings unparryable. A mob never parries a player's own
+     * attack in this iteration (documented v1 scope limit).
+     *
+     * @param parryResolver the parry resolver; must not be null
+     */
+    public void setParryResolver(ParryResolver parryResolver) {
+        this.parryResolver = Objects.requireNonNull(parryResolver, "Parry resolver is required");
+    }
+
+    /**
      * Registers the worded-damage verb table used to substitute {@code {verb}} in a mob's hit message
      * with the classic-MUD damage tier (e.g. "MAULS"). When not set, {@code {verb}} renders empty.
      *
@@ -430,6 +450,40 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     private String playerMissMessage(MobInstance mob) {
         return "You swing at the " + mob.template().name() + " but miss.";
+    }
+
+    /**
+     * Builds the self-facing line shown to a player who has parried a mob's melee swing and riposted
+     * it, so the zero-damage swing and the free counter-strike are both explained. Uses the
+     * worded-damage verb table (and the target-condition table for the mob's remaining health) when
+     * available, mirroring {@link #playerStrikeMessage}; otherwise falls back to a numeric line.
+     *
+     * @param mob           the mob whose swing was parried and which now takes the riposte
+     * @param riposteDamage the damage the player's riposte dealt to the mob
+     * @param remaining     the mob's remaining HP after the riposte
+     * @return the parry/riposte message text to show the defending player
+     */
+    private String playerParryMessage(MobInstance mob, int riposteDamage, int remaining) {
+        String mobName = mob.template().name();
+        if (damageVerbTable == null) {
+            return "You parry the " + mobName + "'s attack and riposte for " + riposteDamage
+                + " damage. (" + remaining + " HP remaining)";
+        }
+        int maxHp = mob.template().maxHp();
+        DamageVerb verb = damageVerbTable.verbFor(Math.max(1, riposteDamage), maxHp);
+        StringBuilder text = new StringBuilder("You parry the ")
+            .append(mobName)
+            .append("'s attack and ")
+            .append(verb.secondPerson())
+            .append(" it in return!");
+        if (targetConditionTable != null && remaining > 0) {
+            text.append(" The ")
+                .append(mobName)
+                .append(' ')
+                .append(targetConditionTable.describe(remaining, maxHp))
+                .append('.');
+        }
+        return text.toString();
     }
 
     /**
@@ -568,10 +622,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
     /**
      * The outcome of a mob's melee attack against a player: whether it landed, whether a shield
-     * blocked it (reducing damage), and the final damage dealt after block and elemental-resistance
-     * mitigation (zero on a miss).
+     * blocked it (reducing damage), the final damage dealt to the player after block and
+     * elemental-resistance mitigation (zero on a miss or a parry), whether the player parried the
+     * swing (taking zero damage) and, when parried, the riposte damage the player deals back to the
+     * mob.
      */
-    private record MobAttackOutcome(boolean hit, boolean blocked, int damage) {
+    private record MobAttackOutcome(boolean hit, boolean blocked, int damage, boolean parried, int riposteDamage) {
     }
 
     /**
@@ -598,7 +654,19 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             CombatSettings.baseHitChance() + attack.hitBonus() - defenderAc,
             CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
         if (random.roll(1, 100) > hitChance) {
-            return new MobAttackOutcome(false, false, 0);
+            return new MobAttackOutcome(false, false, 0, false, 0);
+        }
+        // Parry takes precedence over the shield block: a player wielding a melee weapon may fully
+        // avoid the mob's melee swing (zero damage) and riposte the mob with their mainhand weapon.
+        // Ranged mob attacks are never parried. Only roll when a parry is possible so a non-parrying
+        // defender leaves the RNG stream — and every legacy result — unchanged. Mobs never parry the
+        // player's own attack (documented v1 scope limit).
+        ParryResolver.Parry parry = attack.isRanged()
+            ? ParryResolver.Parry.none()
+            : parryResolver.resolve(target);
+        if (parry.canParry() && random.roll(1, 100) <= clamp(parry.chancePercent(), 0, 100)) {
+            int riposte = rollDamage(parry.riposteAttack(), target);
+            return new MobAttackOutcome(true, false, 0, true, riposte);
         }
         int damage = rollDamage(attack);
         boolean blocked = false;
@@ -611,7 +679,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             }
         }
         damage = mitigateForDefender(damage, target, attack.damageType());
-        return new MobAttackOutcome(true, blocked, damage);
+        return new MobAttackOutcome(true, blocked, damage, false, 0);
     }
 
     private static int clamp(int value, int min, int max) {
@@ -2833,6 +2901,41 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (playerChanged) {
                 saveOrLog(missedPlayer);
             }
+            playerEventBus.publish(targetUsername,
+                new GameActionResult(publishedSource, null, messages));
+            return;
+        }
+
+        if (outcome.parried()) {
+            // The player parried the mob's melee swing: they take zero damage and riposte the mob with
+            // their mainhand weapon. Being drawn into combat still throws a rider from their mount and
+            // shows the first-engagement lunge, mirroring a landing hit's non-damage side effects.
+            List<GameMessage> messages = new ArrayList<>();
+            Player parriedPlayer = target;
+            boolean playerChanged = false;
+            if (parriedPlayer.isMounted()) {
+                String mountName = parriedPlayer.mount().mountName();
+                parriedPlayer = parriedPlayer.withMount(PlayerMount.dismounted());
+                playerChanged = true;
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
+            }
+            if (firstEngagement && !useSpecial) {
+                messages.add(GameMessage.toSource(firstEngagementMessage(mob, packJoin)));
+            }
+            int riposteDamage = outcome.riposteDamage();
+            int remaining = mob.takeDamage(riposteDamage);
+            messages.add(GameMessage.toSource(playerParryMessage(mob, riposteDamage, remaining)));
+            if (!mob.isAlive()) {
+                // A riposte can slay the mob outright — award the kill in memory so any mount change is
+                // preserved through the reward path, exactly as a normal player kill would.
+                parriedPlayer = applyMobKillRewards(mob, parriedPlayer, mob.roomId(), messages);
+                playerChanged = true;
+            }
+            if (playerChanged) {
+                saveOrLog(parriedPlayer);
+            }
+            Player publishedSource = playerChanged ? parriedPlayer : null;
             playerEventBus.publish(targetUsername,
                 new GameActionResult(publishedSource, null, messages));
             return;

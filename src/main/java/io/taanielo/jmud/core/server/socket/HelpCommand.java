@@ -105,6 +105,16 @@ public class HelpCommand extends RegistrableCommand {
         "  So gear up for the fight you are actually in: better armour, a shield, and agility make",
         "  you harder to hit and harder to hurt against mobs, not merely in the arena.",
         "",
+        "  PARRY is the shieldless defender's answer. If you are wielding a melee weapon in your main",
+        "  hand — a two-hander, a dual-wield main weapon, or any blade a caster carries — you have a",
+        "  chance, scaled by your agility, to PARRY an incoming melee hit outright. A parried blow",
+        "  deals you zero damage (it is checked before, and instead of, a shield block on that swing)",
+        "  and you immediately RIPOSTE: a free counter-strike with your own weapon, mitigated by your",
+        "  foe's armour just like a normal hit. This is why some hits land for nothing and answer",
+        "  with a sudden blow of your own. Parry never triggers on a ranged shot, and unarmed",
+        "  defenders cannot parry. (For now, monsters cannot parry your attacks — only you parry",
+        "  theirs.)",
+        "",
         "  Watch the company a monster keeps. Some creatures run in PACKS: a solo-looking pull can",
         "  wake its neighbours. Strike one wolf in a den and the rest snarl and lunge to its",
         "  defence, piling onto you as extra attackers. Thin the pack before you commit — a stealth",
@@ -132,7 +142,9 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("armor", COMBAT_TOPIC),
         Map.entry("shield", COMBAT_TOPIC),
         Map.entry("shields", COMBAT_TOPIC),
-        Map.entry("block", COMBAT_TOPIC)
+        Map.entry("block", COMBAT_TOPIC),
+        Map.entry("parry", COMBAT_TOPIC),
+        Map.entry("riposte", COMBAT_TOPIC)
     );
 
     private final SocketCommandRegistry registry;

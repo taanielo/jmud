@@ -90,4 +90,19 @@ public class CombatAttributeBonusResolver {
         Objects.requireNonNull(attacker, "Attacker is required");
         return Math.floorDiv(attributesOf(attacker).agilityModifier(), 2);
     }
+
+    /**
+     * Returns the raw percentage-point parry chance a defender derives from agility,
+     * {@code (AGI - 10)}, before it is clamped to
+     * {@code [CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE]} by
+     * {@link ParryResolver}. A baseline-agility defender yields {@code 0} (never parries); a
+     * below-baseline defender yields a negative value that clamps back to the floor.
+     *
+     * @param defender the defending combatant
+     * @return the agility parry-chance term (signed, unclamped)
+     */
+    public int parryChanceBonus(Player defender) {
+        Objects.requireNonNull(defender, "Defender is required");
+        return attributesOf(defender).agilityModifier();
+    }
 }
