@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "interval-threshold",
+  "name": "The Threshold of the Gap",
+  "description": "The First Hum is broken, and where it stood the air keeps the shape of it a moment longer than it should, the way a struck bell holds its ring after the clapper stills. You did not climb down here; you fell through that lingering shape, through the mouth the tone leaves behind when it breaks, and came out the far side into the place the whole doctrine of sound never had a name for. This is not deeper than the source. There is nothing deeper than the source. This is beside it, in the hair's-breadth pause the Hum needed between one pulse and the next to be a pulse at all — the gap that made the note a note. The chamber is a held, arrested stillness, neither the Choir's demanded chord nor the Unsung's cut silence nor the source's wordless drone, but the measured rest that let all three take turns existing. Nothing here is sounding. Nothing here is silent either, the way an indrawn breath is not silence. It is a presence that simply has not arrived yet, poised one beat short of everything, and it has been waiting in that unarrived beat, patient and unheard, for exactly as long as the Hum above it has been sounding. As you steady yourself, you understand that you are the first heartbeat this place has ever borrowed a rhythm from, and it has noticed.",
+  "item_ids": [],
+  "exits": {
+    "up": "undersong-source",
+    "down": "interval-hollow-measure"
+  },
+  "min_level": 73,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The lingering shape of the broken Hum flexes overhead, and for a heartbeat the whole threshold seems about to sound and then, deliberately, does not.",
+    "The cold here does not roll or race; it simply is, held at the exact edge of your skin like a note poised on the lip of being struck.",
+    "Somewhere ahead, something shifts a fraction and stops, as if it had almost completed a gesture and was waiting for your pulse to lend it the beat to finish."
+  ]
+}

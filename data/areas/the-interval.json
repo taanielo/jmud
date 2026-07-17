@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "the-interval",
+  "name": "The Interval",
+  "room_ids": [
+    "interval-threshold",
+    "interval-hollow-measure",
+    "interval-grace-notes",
+    "interval-held-breath",
+    "interval-last-beat",
+    "interval-the-fermata"
+  ],
+  "connections": [
+    "the-undersong"
+  ],
+  "level_range": {
+    "min": 73,
+    "max": 80
+  },
+  "ascii_map": [
+    "         ... THE INTERVAL ...",
+    "",
+    "              The Undersong",
+    "                   ^",
+    "                   |",
+    "              [Threshold]",
+    "                   |",
+    "  [Grace Notes]--[Hollow Measure]--[Held Breath]",
+    "                   |",
+    "              [Last Beat]",
+    "                   |",
+    "              [The Fermata]",
+    "",
+    "   Not a place deeper than the source but beside it,",
+    "   in the held pause between one pulse of the Hum and",
+    "   the next — the gap that made the note a note, where",
+    "   something has waited, patient and unsounded, for as",
+    "   long as the Hum has been sounding."
+  ]
+}

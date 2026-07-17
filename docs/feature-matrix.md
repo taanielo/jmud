@@ -185,6 +185,7 @@ a validator rule, not a manual checkbox.
 | The Bonelight Choir (`bonelight-choir`) | ✅ #608 | ✅ (bonelight-cull, bonelight-choir #609) | ✅ #608 |
 | The Unsung (`the-unsung`) | ✅ #633 | ✅ (unsung-cull, unsung-last-stand #634) | ✅ #633 |
 | The Undersong (`the-undersong`) | ✅ #655 | ✅ (undersong-cull, undersong-source #656) | ✅ #655 |
+| The Interval (`the-interval`) | ✅ #671 | 🔨 (quest chain #672) | ✅ #671 |
 
 ## Systems
 

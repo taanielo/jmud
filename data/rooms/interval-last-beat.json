@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "interval-last-beat",
+  "name": "The Last Beat Before the Rest",
+  "description": "The measure steps down a final time into a long, narrow chamber poised on the very edge of a beat that has not landed. You can feel how close it is: the whole room leans forward into the coming stroke, the ruled lines of the floor crowding toward a single point ahead where the count is about to fall — and then does not, and then does not, and then does not, held one instant short of the downbeat for longer than the world has existed. This is the last beat before the rest, the arrested moment where everything the Hum was building toward hangs unresolved, and the tension of it is a physical pressure, a cold that grips rather than drowns, the cold of a thing wound tight and refusing to release. Your heartbeat is very loud here. The room has been waiting for a rhythm strong enough and near enough to finish the measure, and yours is the first that has ever come this deep into the gap, and you can feel the whole arrested count gathering toward you, ready to fall the instant you give it leave. Ahead, where the beat means to land, a wider chamber opens, and something in it is already lifting toward the stroke it has held for an eternity — the resolution the Hum never reached, waiting in the fermata beyond. The way back leads up to the hollow measure.",
+  "item_ids": [],
+  "exits": {
+    "up": "interval-hollow-measure",
+    "down": "interval-the-fermata"
+  },
+  "min_level": 76,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The whole chamber leans a fraction further toward the unlanded beat, and your heart lurches in your chest as if trying to fall with it.",
+    "Frost cracks in a long line down the crowding floor, racing toward the point where the beat means to land, and stops dead just short of it.",
+    "A pressure builds behind the far chamber's mouth, the sense of an enormous held stroke drawing back the way a hammer draws back, and then it settles again, unresolved."
+  ]
+}

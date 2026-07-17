@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.interval-held-note",
+  "name": "an unreleased breath",
+  "min_damage": 68,
+  "max_damage": 94,
+  "hit_bonus": 9,
+  "crit_bonus": 8,
+  "damage_bonus": 18,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 72
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The held note presses its unreleased breath against your chest and refuses to let go, and the cold of the drawn-in air floods your own lungs until they lock mid-breath, unable to fill or empty. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The held note leans the whole weight of its arrested breath toward you and the still cold air surges in, and you force one shallow breath through the pressure and slip free before your lungs can seize."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The held note bends its entire unreleased breath down onto you alone, and the cold of the world's first indrawn breath clamps your chest shut so completely that for one endless moment you cannot remember how to breathe at all! The blow {verb} you!"
+    }
+  ]
+}
