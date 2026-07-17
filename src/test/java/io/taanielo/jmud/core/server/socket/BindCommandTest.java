@@ -125,5 +125,7 @@ class BindCommandTest {
         @Override public void sendInventory() {}
         @Override public void sendEquipment() {}
         @Override public void sendMessage(io.taanielo.jmud.core.messaging.Message m) {}
+        @Override public void close() {}
+        @Override public void run() {}
     }
 }
