@@ -144,6 +144,8 @@ public class SocketCommandRegistry {
         new ConsiderCommand(registry);
         new DuelCommand(registry);
         new TradeCommand(registry);
+        new MarryCommand(registry);
+        new SpouseTellCommand(registry);
         new AcceptCommand(registry);
         new FleeCommand(registry);
         new RecallCommand(registry);

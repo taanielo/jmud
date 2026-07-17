@@ -169,6 +169,9 @@ public class ScoreCommand extends RegistrableCommand {
         context.writeLineSafe(String.format("Gold  : %d", player.getGold()));
         context.writeLineSafe(String.format("Kills : %d", player.getTotalKills()));
         context.writeLineSafe(String.format("Duels : %dW / %dL", player.getDuelWins(), player.getDuelLosses()));
+        if (player.isMarried()) {
+            context.writeLineSafe("Spouse: Married to " + player.spouse());
+        }
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
         context.writeLineSafe("Profs : " + formatProficiencies(player.proficiencies()));

@@ -640,6 +640,46 @@ public interface SocketCommandContext extends Client {
     default void executeTrade(String args) {}
 
     /**
+     * Executes a MARRY sub-command: a player name to propose, {@code ACCEPT}, {@code DECLINE},
+     * {@code DIVORCE}, {@code TELL <message>}, or empty/{@code STATUS} to report current state.
+     *
+     * <p>Manages the purely-opt-in, mechanically-inert marriage bond between two players. Proposals
+     * are held in the transient marriage registry; the accepted bond is persisted on both
+     * {@link Player} records. All validation and state changes run here on the tick thread.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ACCEPT"} or {@code "Alice"})
+     */
+    default void executeMarry(String args) {}
+
+    /**
+     * Sends a private {@code SPOUSETELL} message to the caller's spouse (see the MARRY command),
+     * wherever they are in the world. Delivery is exempt from {@code IGNORE}. Fails with a clear
+     * message when the caller is unmarried, their spouse is offline, or the message is blank.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param message the message to send to the spouse
+     */
+    default void spouseTell(String message) {}
+
+    /**
+     * Returns the {@code WHO}/roster marital-status suffix for the given online player, e.g.
+     * {@code " (Married to Alice)"}, or an empty string when they are unmarried. Used by {@code WHO}
+     * to annotate each name.
+     *
+     * <p>The default implementation returns an empty string so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player whose marital-status tag to resolve
+     * @return the marriage suffix with a leading space, or {@code ""}
+     */
+    default String marriedTag(Username username) {
+        return "";
+    }
+
+    /**
      * Executes a PARTY sub-command (FORM, INVITE, ACCEPT, DECLINE, LEAVE, DISBAND, or empty).
      *
      * <p>Manages in-memory party groups that share XP on mob kills and display

@@ -191,7 +191,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -237,10 +237,11 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("briefModeEnabled") Boolean briefModeEnabled,
         @JsonProperty("activeDailyQuest") ActiveQuest activeDailyQuest,
         @JsonProperty("tamedPetDescriptions") List<String> tamedPetDescriptions,
-        @JsonProperty("vaultTier") Integer vaultTier
+        @JsonProperty("vaultTier") Integer vaultTier,
+        @JsonProperty("spouse") String spouse
     ) {
         this(
-            new PlayerIdentity(user, level, experience, race, classId, description),
+            new PlayerIdentity(user, level, experience, race, classId, description, spouse),
             new PlayerCombatState(vitals, effects, dead),
             new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled, briefModeEnabled),
             new PlayerAbilities(learnedAbilities),
@@ -404,6 +405,17 @@ public class Player implements EffectTarget, Combatant {
     public String getDescription() {
         String description = identity.description();
         return description.isEmpty() ? null : description;
+    }
+
+    /**
+     * Returns the username of this player's spouse (see the MARRY command) for JSON serialisation, or
+     * {@code null} when the player is unmarried (in which case the field is omitted from save files, so
+     * existing saves deserialise unaffected).
+     */
+    @JsonProperty("spouse")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getSpouse() {
+        return identity.spouse();
     }
 
     @JsonProperty("dead")
@@ -1085,6 +1097,33 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns the username of this player's spouse (see the MARRY command), or {@code null} when the
+     * player is unmarried.
+     */
+    @JsonIgnore
+    public String spouse() {
+        return identity.spouse();
+    }
+
+    /**
+     * Returns {@code true} when this player is currently married.
+     */
+    @JsonIgnore
+    public boolean isMarried() {
+        return identity.spouse() != null;
+    }
+
+    /**
+     * Returns a copy of this player bonded to the given spouse, or unmarried when {@code newSpouse}
+     * is {@code null}/blank.
+     *
+     * @param newSpouse the spouse's username display value, or {@code null}/blank to end the bond
+     */
+    public Player withSpouse(String newSpouse) {
+        return withIdentity(identity.withSpouse(newSpouse));
+    }
+
+    /**
      * Returns a copy of this player with the resting flag set to the given value.
      *
      * <p>The resting state is in-memory only and is never persisted.
@@ -1236,7 +1275,8 @@ public class Player implements EffectTarget, Combatant {
             preferences.briefModeEnabled(),
             activeDailyQuest,
             pets.customDescriptions(),
-            vault.capacityTier()
+            vault.capacityTier(),
+            identity.spouse()
         );
     }
 

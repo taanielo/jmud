@@ -169,6 +169,36 @@ class ScoreCommandTest {
     }
 
     @Test
+    void showsSpouseLineWhenMarried() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty()).withSpouse("Guinevere");
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Spouse: Married to Guinevere")),
+            "Expected 'Spouse: Married to Guinevere' in output, got: " + context.lines);
+    }
+
+    @Test
+    void doesNotShowSpouseLineWhenUnmarried() {
+        EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
+        RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();
+
+        Player player = makePlayer(PlayerEquipment.empty());
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(equipmentResolver, raceResolver);
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertFalse(context.lines.stream().anyMatch(l -> l.startsWith("Spouse:")),
+            "No Spouse line expected when unmarried, got: " + context.lines);
+    }
+
+    @Test
     void doesNotShowTitlesLineWhenNoneEarned() {
         EquipmentArmorResolver equipmentResolver = EquipmentArmorResolver.noOp();
         RaceArmorBonusResolver raceResolver = RaceArmorBonusResolver.noOp();

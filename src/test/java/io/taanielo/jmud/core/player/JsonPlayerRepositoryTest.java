@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.player;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -93,6 +94,35 @@ class JsonPlayerRepositoryTest {
         assertTrue(loaded.isPresent());
         assertEquals(List.of("alice", "bob"), loaded.get().getFriends());
         assertTrue(loaded.get().friendList().has("Alice"));
+    }
+
+    @Test
+    void savesAndLoadsSpouse() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("romeo"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withSpouse("Juliet");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().isMarried());
+        assertEquals("Juliet", loaded.get().spouse());
+        assertEquals("Juliet", loaded.get().getSpouse());
+    }
+
+    @Test
+    void unmarriedPlayerLoadsWithNoSpouse() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("single"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertFalse(loaded.get().isMarried());
+        assertNull(loaded.get().getSpouse());
     }
 
     @Test
