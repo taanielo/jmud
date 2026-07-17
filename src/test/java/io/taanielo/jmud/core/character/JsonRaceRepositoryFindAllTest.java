@@ -22,7 +22,7 @@ import io.taanielo.jmud.core.character.repository.json.JsonRaceRepository;
 class JsonRaceRepositoryFindAllTest {
 
     @Test
-    void findAll_returnsAllSixRaces() throws RaceRepositoryException {
+    void findAll_returnsAllSevenRaces() throws RaceRepositoryException {
         JsonRaceRepository repo = new JsonRaceRepository(Path.of("data"));
 
         List<Race> races = repo.findAll();
@@ -38,7 +38,8 @@ class JsonRaceRepositoryFindAllTest {
         assertTrue(ids.contains("dwarf"), "Expected 'dwarf' race");
         assertTrue(ids.contains("orc"), "Expected 'orc' race");
         assertTrue(ids.contains("halfling"), "Expected 'halfling' race");
-        assertEquals(6, races.size(), "Expected exactly 6 races");
+        assertTrue(ids.contains("gnome"), "Expected 'gnome' race");
+        assertEquals(7, races.size(), "Expected exactly 7 races");
     }
 
     @Test
