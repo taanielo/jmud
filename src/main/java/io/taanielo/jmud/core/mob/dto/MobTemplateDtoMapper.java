@@ -1,9 +1,12 @@
 package io.taanielo.jmud.core.mob.dto;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.mob.GoldDrop;
@@ -40,6 +43,9 @@ public class MobTemplateDtoMapper {
         boolean worldBoss = dto.worldBoss() != null && dto.worldBoss();
         boolean worldEvent = dto.worldEvent() != null && dto.worldEvent();
         int parryChancePercent = dto.parryChance() == null ? 0 : dto.parryChance();
+        Map<DamageType, Integer> resistances = toElementalMap(dto.resistances(), dto.id(), "resistances");
+        Map<DamageType, Integer> vulnerabilities =
+            toElementalMap(dto.vulnerabilities(), dto.id(), "vulnerabilities");
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -62,7 +68,36 @@ public class MobTemplateDtoMapper {
             factionId,
             worldBoss,
             worldEvent,
-            parryChancePercent
+            parryChancePercent,
+            resistances,
+            vulnerabilities
         );
+    }
+
+    /**
+     * Converts a raw {@code {"fire": 50}} JSON object into a {@link DamageType}-keyed map, resolving
+     * each key case-insensitively via {@link DamageType#fromString(String)}. An absent object yields an
+     * empty map (today's behaviour). An unrecognised or {@code physical} key is rejected so authoring
+     * typos surface at load rather than silently doing nothing.
+     */
+    private Map<DamageType, Integer> toElementalMap(
+        Map<String, Integer> raw, String mobId, String field) {
+        if (raw == null || raw.isEmpty()) {
+            return Map.of();
+        }
+        Map<DamageType, Integer> result = new EnumMap<>(DamageType.class);
+        for (Map.Entry<String, Integer> entry : raw.entrySet()) {
+            DamageType type = DamageType.fromString(entry.getKey());
+            if (type == DamageType.PHYSICAL) {
+                throw new IllegalArgumentException("Mob '" + mobId + "' has an invalid " + field
+                    + " damage type '" + entry.getKey() + "' (expected fire/cold/poison)");
+            }
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException("Mob '" + mobId + "' has a null " + field
+                    + " percent for '" + entry.getKey() + "'");
+            }
+            result.put(type, entry.getValue());
+        }
+        return result;
     }
 }

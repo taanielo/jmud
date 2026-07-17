@@ -35,6 +35,7 @@ import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.CombatSettings;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -77,9 +78,99 @@ class MobRegistryAoeSpellTest {
         List.of()
     );
 
+    /** frost-storm: COLD-typed AoE spell, base 4 mana + 2 per target, 10 cold damage per target. */
+    private static final Ability FROST_STORM = new AbilityDefinition(
+        AbilityId.of("spell.frost-storm"),
+        "frost-storm",
+        AbilityType.SPELL,
+        1,
+        new AbilityCost(4, 0, 2),
+        new AbilityCooldown(4),
+        AbilityTargeting.AoE,
+        List.of(),
+        List.of(new AbilityEffect(
+            AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 10, null, "COLD")),
+        List.of()
+    );
+
     private Player mage(String name) {
         User user = User.of(Username.of(name), Password.hash("pw", 1));
         return Player.of(user, "%hp> ");
+    }
+
+    private MobRegistry buildElementalRegistry(
+        Player caster, int mobHp, RoomId mobRoom, CombatRandom random,
+        Map<DamageType, Integer> resistances, Map<DamageType, Integer> vulnerabilities) {
+        MobTemplate template = new MobTemplate(
+            MobId.of("mob.goblin"),
+            "Goblin",
+            mobHp,
+            UNARMED,
+            null,
+            false,
+            List.of(),
+            mobRoom,
+            1,
+            10,
+            5,
+            null,
+            null,
+            false,
+            null,
+            null,
+            false,
+            null,
+            null,
+            false,
+            false,
+            0,
+            resistances,
+            vulnerabilities
+        );
+        MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
+        AttackRepository attackRepo = new StubAttackRepository(Map.of(UNARMED, UNARMED_MELEE));
+        ItemRepository itemRepo = new StubItemRepository();
+
+        RoomService roomService = new RoomService(new StubRoomRepository(), ROOM_A);
+        roomService.ensurePlayerLocation(caster.getUsername());
+
+        StubPlayerRepository playerRepo = new StubPlayerRepository(caster);
+        PlayerEventBus bus = new PlayerEventBus();
+
+        MobRegistry registry = new MobRegistry(
+            templateRepo, itemRepo, attackRepo, roomService, playerRepo,
+            MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus, random);
+        registry.init();
+        return registry;
+    }
+
+    @Test
+    void typedAoeSpell_onResistantMob_dealsReducedDamage() {
+        Player caster = mage("merlin");
+        // Hit roll 10 (lands), crit roll 100 (no crit): a clean 10-damage cold hit.
+        MobRegistry registry = buildElementalRegistry(caster, 100, ROOM_A, new ScriptedRandom(10, 100),
+            Map.of(DamageType.COLD, 50), Map.of());
+
+        GameActionResult result = registry.processPlayerAoeSpell(caster, FROST_STORM, ROOM_A);
+
+        assertEquals(95, registry.getMobsInRoom(ROOM_A).get(0).currentHp(),
+            "A 50% cold-resistant mob should take half of the AoE cold damage");
+        assertTrue(containsText(result, "for 5 damage"), "The AoE strike should report the reduced damage");
+        assertTrue(containsText(result, "barely bites"),
+            "A resisted cold AoE hit should carry a resist qualifier");
+    }
+
+    @Test
+    void typedAoeSpell_onVulnerableMob_dealsIncreasedDamage() {
+        Player caster = mage("merlin");
+        MobRegistry registry = buildElementalRegistry(caster, 100, ROOM_A, new ScriptedRandom(10, 100),
+            Map.of(), Map.of(DamageType.COLD, 50));
+
+        GameActionResult result = registry.processPlayerAoeSpell(caster, FROST_STORM, ROOM_A);
+
+        assertEquals(85, registry.getMobsInRoom(ROOM_A).get(0).currentHp(),
+            "A cold-vulnerable mob should take amplified AoE cold damage");
+        assertTrue(containsText(result, "for 15 damage"), "The AoE strike should report the amplified damage");
     }
 
     private MobRegistry buildRegistry(Player caster, int mobHp, int mobCount, RoomId mobRoom) {

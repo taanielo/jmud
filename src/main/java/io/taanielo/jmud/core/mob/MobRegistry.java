@@ -1966,6 +1966,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 "You lack the mana to unleash " + spell.name() + " (" + scaledMana + " needed).");
         }
         int baseDamage = abilityHpDamage(spell);
+        DamageType damageType = abilityDamageType(spell);
 
         Player updated = caster.withVitals(caster.getVitals().consumeMana(scaledMana));
 
@@ -1998,10 +1999,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 }
                 continue;
             }
-            int damage = outcome.damage();
+            // Apply this mob's elemental resistance/vulnerability for the spell's damage type
+            // (untyped/physical spells are unaffected) before the hit lands.
+            ElementalOutcome elemental = applyMobElemental(outcome.damage(), mob, damageType);
+            int damage = elemental.damage();
+            String qualifier = elementalQualifier(damageType, elemental.reaction());
             int remaining = mob.takeDamage(damage);
             messages.add(GameMessage.toSource(
-                aoeStrikeMessage(spell, mobName, damage, remaining, outcome.crit())));
+                aoeStrikeMessage(spell, mobName, damage, remaining, outcome.crit(), qualifier)));
             if (!mob.isAlive()) {
                 updated = applyMobKillRewards(mob, updated, roomId, messages);
                 continue;
@@ -2041,6 +2046,109 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Returns the elemental {@link DamageType} a harmful ability's damage carries, parsed from the
+     * (raw-string) {@code damageType} tag on its first damaging {@code VITALS} effect that declares
+     * one. Abilities with no tagged effect deal {@link DamageType#PHYSICAL} (untyped) damage, which is
+     * never resisted or amplified by a mob's elemental resistance/vulnerability — so today's untyped
+     * spells and every melee/ranged attack are unaffected.
+     *
+     * @param ability the harmful ability
+     * @return the ability's damage type, or {@link DamageType#PHYSICAL} when untyped
+     */
+    private static DamageType abilityDamageType(Ability ability) {
+        for (AbilityEffect effect : ability.effects()) {
+            if (effect.kind() == AbilityEffectKind.VITALS
+                && effect.stat() == AbilityStat.HP
+                && effect.operation() == AbilityOperation.DECREASE) {
+                DamageType type = DamageType.fromString(effect.damageType());
+                if (type != DamageType.PHYSICAL) {
+                    return type;
+                }
+            }
+        }
+        return DamageType.PHYSICAL;
+    }
+
+    /**
+     * How a mob's elemental identity reacted to an incoming typed ability hit: it resisted the
+     * element (took reduced damage), was vulnerable to it (took extra damage), or was unaffected
+     * (untyped damage, or a type it neither resists nor is weak to).
+     */
+    private enum ElementalReaction {
+        NONE, RESISTED, VULNERABLE
+    }
+
+    /**
+     * The result of applying a mob's elemental resistance/vulnerability to a rolled ability hit: the
+     * adjusted damage (never below 1) and which reaction, if any, occurred (used to narrate the hit).
+     */
+    private record ElementalOutcome(int damage, ElementalReaction reaction) {
+    }
+
+    /**
+     * Applies the target mob's elemental resistance or vulnerability for the given {@link DamageType}
+     * to a rolled ability hit, mirroring the player-side equipment mitigation in
+     * {@link #mitigateForDefender}. Untyped/{@link DamageType#PHYSICAL} damage is returned unchanged so
+     * melee, ranged, and untagged spells behave exactly as before. Resistance is capped at
+     * {@link CombatSettings#maxResistancePercent()} so a resisted hit always lands for at least a
+     * fraction of its rolled damage (never fully negated); vulnerability is capped generously at
+     * {@link MobTemplate#MAX_VULNERABILITY_PERCENT}. Rounding matches the equipment path
+     * ({@link Math#round}) and the result is floored at 1.
+     *
+     * @param rawDamage the rolled (post-crit) damage before elemental adjustment, at least 1
+     * @param mob       the target mob whose elemental identity applies
+     * @param type      the incoming ability's damage type
+     * @return the adjusted damage and the reaction that occurred
+     */
+    private ElementalOutcome applyMobElemental(int rawDamage, MobInstance mob, DamageType type) {
+        if (!type.isResistible()) {
+            return new ElementalOutcome(rawDamage, ElementalReaction.NONE);
+        }
+        MobTemplate template = mob.template();
+        int resist = template.resistancePercent(type);
+        if (resist > 0) {
+            int capped = Math.min(resist, CombatSettings.maxResistancePercent());
+            int adjusted = Math.max(1, (int) Math.round(rawDamage * ((100 - capped) / 100.0)));
+            return new ElementalOutcome(adjusted, ElementalReaction.RESISTED);
+        }
+        int vuln = template.vulnerabilityPercent(type);
+        if (vuln > 0) {
+            int capped = Math.min(vuln, MobTemplate.MAX_VULNERABILITY_PERCENT);
+            int adjusted = Math.max(1, (int) Math.round(rawDamage * ((100 + capped) / 100.0)));
+            return new ElementalOutcome(adjusted, ElementalReaction.VULNERABLE);
+        }
+        return new ElementalOutcome(rawDamage, ElementalReaction.NONE);
+    }
+
+    /**
+     * Builds the short strike-message qualifier that makes a mob's elemental reaction legible to the
+     * caster (e.g. "The flames sizzle weakly against its resilient hide — " for a resisted fire hit),
+     * so players learn a matchup without consulting a spreadsheet. Returns an empty string for
+     * {@link ElementalReaction#NONE}.
+     *
+     * @param type     the incoming damage type
+     * @param reaction the reaction the mob's elemental identity produced
+     * @return a qualifier prefix (with trailing separator), or an empty string when there is no reaction
+     */
+    private static String elementalQualifier(DamageType type, ElementalReaction reaction) {
+        return switch (reaction) {
+            case NONE -> "";
+            case RESISTED -> switch (type) {
+                case FIRE -> "The flames sizzle weakly against its resilient hide — ";
+                case COLD -> "The frost barely bites its hardened form — ";
+                case POISON -> "The venom struggles against its resilient blood — ";
+                case PHYSICAL -> "";
+            };
+            case VULNERABLE -> switch (type) {
+                case FIRE -> "The flames roar hungrily against it — ";
+                case COLD -> "The frost sinks deep into it — ";
+                case POISON -> "The venom courses freely through it — ";
+                case PHYSICAL -> "";
+            };
+        };
+    }
+
+    /**
      * Builds the per-target line shown to a caster whose AoE spell landed on a mob, mirroring the
      * melee/ranged strike phrasing. A critical hit is prefixed with a "critical hit!" notice so a
      * crit reads distinctly from a normal strike.
@@ -2050,12 +2158,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param damage    the damage this target took
      * @param remaining the target's HP after the strike
      * @param crit      whether this target was struck for a critical hit
+     * @param qualifier an elemental resist/vulnerability prefix (empty when the hit was neither)
      * @return the message text to show the caster for this target
      */
     private static String aoeStrikeMessage(
-        Ability spell, String mobName, int damage, int remaining, boolean crit) {
+        Ability spell, String mobName, int damage, int remaining, boolean crit, String qualifier) {
         String critPrefix = crit ? "A critical hit! " : "";
-        return critPrefix + "Your " + spell.name() + " strikes the " + mobName + " for "
+        return qualifier + critPrefix + "Your " + spell.name() + " strikes the " + mobName + " for "
             + damage + " damage. (" + remaining + " HP remaining)";
     }
 
@@ -2154,6 +2263,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             caster.getVitals().consumeMana(cost.mana()).consumeMove(cost.move()));
 
         int baseDamage = abilityHpDamage(ability);
+        DamageType damageType = abilityDamageType(ability);
         String mobName = mob.template().name();
         boolean struckFromStealth = caster.isStealthActive();
         List<GameMessage> messages = new ArrayList<>();
@@ -2179,9 +2289,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 "Your strike from the shadows lands with deadly precision (+"
                     + STEALTH_BACKSTAB_BONUS_DAMAGE + " damage)!"));
         }
+        // Apply the target mob's elemental resistance/vulnerability for this ability's damage type
+        // (untyped/physical abilities are unaffected) before the hit lands.
+        ElementalOutcome elemental = applyMobElemental(damage, mob, damageType);
+        damage = elemental.damage();
+        String qualifier = elementalQualifier(damageType, elemental.reaction());
         int remaining = mob.takeDamage(damage);
         messages.add(GameMessage.toSource(
-            singleTargetStrikeMessage(ability, mobName, damage, remaining, outcome.crit())));
+            singleTargetStrikeMessage(ability, mobName, damage, remaining, outcome.crit(), qualifier)));
         updated = breakStealthAfterStrike(updated, struckFromStealth, mobName, roomId, messages);
         if (!mob.isAlive()) {
             updated = applyMobKillRewards(mob, updated, roomId, messages);
@@ -2233,12 +2348,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param damage    the damage this strike dealt
      * @param remaining the mob's HP after the strike
      * @param crit      whether this strike was a critical hit
+     * @param qualifier an elemental resist/vulnerability prefix (empty when the hit was neither)
      * @return the message text to show the caster
      */
     private static String singleTargetStrikeMessage(
-        Ability ability, String mobName, int damage, int remaining, boolean crit) {
+        Ability ability, String mobName, int damage, int remaining, boolean crit, String qualifier) {
         String critPrefix = crit ? "A critical hit! " : "";
-        return critPrefix + "Your " + ability.name() + " strikes the " + mobName + " for "
+        return qualifier + critPrefix + "Your " + ability.name() + " strikes the " + mobName + " for "
             + damage + " damage. (" + remaining + " HP remaining)";
     }
 

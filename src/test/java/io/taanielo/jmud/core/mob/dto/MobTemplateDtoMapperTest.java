@@ -5,7 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
+
+import io.taanielo.jmud.core.combat.DamageType;
+import io.taanielo.jmud.core.mob.MobTemplate;
 
 class MobTemplateDtoMapperTest {
 
@@ -15,12 +20,12 @@ class MobTemplateDtoMapperTest {
     void worldEventFlagIsMapped() {
         MobTemplateDto absent = new MobTemplateDto(
             4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, 5, null, null, null, null, null, null, null, null, null, null);
+            1, 10, 5, null, null, null, null, null, null, null, null, null, null, null, null);
         assertFalse(mapper.toDomain(absent).worldEvent(), "world_event defaults to false when absent");
 
         MobTemplateDto present = new MobTemplateDto(
             4, "event-mob", "Event Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, 5, null, null, null, null, null, null, null, null, true, null);
+            1, 10, 5, null, null, null, null, null, null, null, null, true, null, null, null);
         assertTrue(mapper.toDomain(present).worldEvent(), "world_event=true maps to a world-event template");
     }
 
@@ -28,14 +33,14 @@ class MobTemplateDtoMapperTest {
     void parryChanceDefaultsToZeroWhenAbsentAndIsMappedWhenPresent() {
         MobTemplateDto absent = new MobTemplateDto(
             4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, 5, null, null, null, null, null, null, null, null, null, null);
+            1, 10, 5, null, null, null, null, null, null, null, null, null, null, null, null);
         assertEquals(0, mapper.toDomain(absent).parryChancePercent(),
             "parry_chance defaults to 0 when absent, so existing mob data never parries");
         assertFalse(mapper.toDomain(absent).canParry(), "a mob with no parry_chance cannot parry");
 
         MobTemplateDto present = new MobTemplateDto(
             4, "guard", "Town Guard", 10, null, null, false, null, null, "room-1",
-            1, 10, 5, null, null, null, null, null, null, null, null, null, 20);
+            1, 10, 5, null, null, null, null, null, null, null, null, null, 20, null, null);
         assertEquals(20, mapper.toDomain(present).parryChancePercent(),
             "parry_chance=20 maps onto the template's parry chance");
         assertTrue(mapper.toDomain(present).canParry(), "a mob with a positive parry_chance can parry");
@@ -45,7 +50,7 @@ class MobTemplateDtoMapperTest {
     void missingXpRewardFailsWithActionableMessage() {
         MobTemplateDto dto = new MobTemplateDto(
             4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, null, null, null, null, null, null, null, null, null, null, null);
+            1, 10, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         IllegalArgumentException ex =
             assertThrows(IllegalArgumentException.class, () -> mapper.toDomain(dto));
@@ -60,8 +65,45 @@ class MobTemplateDtoMapperTest {
     void explicitXpRewardIsHonoured() {
         MobTemplateDto dto = new MobTemplateDto(
             4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
-            1, 10, 42, null, null, null, null, null, null, null, null, null, null);
+            1, 10, 42, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertEquals(42, mapper.toDomain(dto).xpReward());
+    }
+
+    @Test
+    void resistancesAndVulnerabilitiesDefaultToEmptyWhenAbsent() {
+        MobTemplateDto dto = new MobTemplateDto(
+            4, "test-mob", "Test Mob", 10, null, null, false, null, null, "room-1",
+            1, 10, 5, null, null, null, null, null, null, null, null, null, null, null, null);
+        MobTemplate template = mapper.toDomain(dto);
+        assertEquals(0, template.resistancePercent(DamageType.FIRE),
+            "an absent resistances object leaves the mob resisting nothing");
+        assertEquals(0, template.vulnerabilityPercent(DamageType.COLD),
+            "an absent vulnerabilities object leaves the mob vulnerable to nothing");
+    }
+
+    @Test
+    void resistancesAndVulnerabilitiesAreParsedCaseInsensitively() {
+        MobTemplateDto dto = new MobTemplateDto(
+            4, "ice-mob", "Ice Mob", 10, null, null, false, null, null, "room-1",
+            1, 10, 5, null, null, null, null, null, null, null, null, null, null,
+            Map.of("cold", 50), Map.of("FIRE", 50));
+        MobTemplate template = mapper.toDomain(dto);
+        assertEquals(50, template.resistancePercent(DamageType.COLD),
+            "cold resistance is parsed case-insensitively onto DamageType.COLD");
+        assertEquals(50, template.vulnerabilityPercent(DamageType.FIRE),
+            "fire vulnerability is parsed case-insensitively onto DamageType.FIRE");
+    }
+
+    @Test
+    void unknownDamageTypeKeyIsRejected() {
+        MobTemplateDto dto = new MobTemplateDto(
+            4, "bad-mob", "Bad Mob", 10, null, null, false, null, null, "room-1",
+            1, 10, 5, null, null, null, null, null, null, null, null, null, null,
+            Map.of("lightning", 50), null);
+        IllegalArgumentException ex =
+            assertThrows(IllegalArgumentException.class, () -> mapper.toDomain(dto));
+        assertTrue(ex.getMessage().contains("lightning"),
+            "message should name the offending damage type, got: " + ex.getMessage());
     }
 }

@@ -17,7 +17,8 @@
       "kind": "VITALS",
       "stat": "HP",
       "operation": "DECREASE",
-      "amount": 9
+      "amount": 9,
+      "damage_type": "FIRE"
     }
   ],
   "messages": [

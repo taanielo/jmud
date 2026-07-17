@@ -9,6 +9,7 @@ public record AbilityEffectDto(
     AbilityStat stat,
     AbilityOperation operation,
     Integer amount,
-    String effectId
+    String effectId,
+    String damageType
 ) {
 }

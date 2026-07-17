@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.mob.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public record MobTemplateDto(
     int schemaVersion,
@@ -25,6 +26,8 @@ public record MobTemplateDto(
     String factionId,
     Boolean worldBoss,
     Boolean worldEvent,
-    Integer parryChance
+    Integer parryChance,
+    Map<String, Integer> resistances,
+    Map<String, Integer> vulnerabilities
 ) {
 }

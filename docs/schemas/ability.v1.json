@@ -96,6 +96,11 @@
           "effect_id": {
             "type": "string",
             "pattern": "^[a-z0-9._-]+$"
+          },
+          "damage_type": {
+            "type": "string",
+            "enum": ["FIRE", "COLD", "POISON"],
+            "description": "Optional elemental type of a damaging VITALS effect (case-insensitive). Omitted means untyped/physical: never resisted or amplified by a mob's elemental resistance/vulnerability. Only meaningful on a VITALS HP DECREASE effect."
           }
         },
         "allOf": [

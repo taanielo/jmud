@@ -46,6 +46,9 @@ Two enforcement tiers per item:
   **live** in `--validate-data` (#530): a non-null `attack_id` and every loot `item_id` must resolve
 - [V] Assigned spawn room that exists — **live** in `--validate-data` (#530)
 - [M] Sits on the area's difficulty curve (CONSIDER gives sane advice)
+- [M] Elemental identity (if any) is a believable resistance/vulnerability pair, not a strict upgrade
+  (an ice mob resists cold and is weak to fire, never resists everything) — judgment-based, tracked per
+  mob in the matrix rather than `--validate-data`
 
 ## Area / zone
 

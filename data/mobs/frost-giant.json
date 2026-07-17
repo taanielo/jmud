@@ -14,5 +14,11 @@
   "gold_drop": {
     "min": 20,
     "max": 45
+  },
+  "resistances": {
+    "cold": 50
+  },
+  "vulnerabilities": {
+    "fire": 50
   }
 }
