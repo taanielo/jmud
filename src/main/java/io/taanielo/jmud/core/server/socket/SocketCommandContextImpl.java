@@ -1444,6 +1444,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (handleAoeCastIfApplicable(match, args, player)) {
             return;
         }
+        if (handleHarmfulMobCastIfApplicable(match, args, player)) {
+            return;
+        }
         GameActionResult result = gameActionService.useAbility(player, args);
         auditAbilityUse(match, result, args);
         deliverResult(result);
@@ -1513,10 +1516,72 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (handleAoeCastIfApplicable(match, args, player)) {
             return;
         }
+        if (handleHarmfulMobCastIfApplicable(match, args, player)) {
+            return;
+        }
         GameActionResult result = gameActionService.useAbility(player, args);
         auditAbilityUse(match, result, args);
         deliverResult(result);
         sendPrompt();
+    }
+
+    /**
+     * Routes a harmful single-target spell or skill (targeting {@link AbilityTargeting#HARMFUL},
+     * {@link AbilityTargeting#HARMFUL_OPENER}, or {@link AbilityTargeting#HARMFUL_UNDEAD}) to the mob
+     * layer when the named target is a mob in the caster's room, so {@code CAST <spell> <mob>} /
+     * {@code USE <skill> <mob>} strike a monster exactly as {@code KILL}/{@code ATTACK} do (issue
+     * #651). The same abilities aimed at another <em>player</em> (duels/PvP) do not match a mob and are
+     * left to {@link GameActionService#useAbility(Player, String)} unchanged, so this returns
+     * {@code false} for them and the caller proceeds normally.
+     *
+     * <p>Enforces the ability's cooldown through the same per-session tracker the ability engine uses,
+     * checked only once a mob target is confirmed (so an on-cooldown ability aimed at a player still
+     * falls through to the generic path) and started only when the cast actually resolved (a non-null
+     * updated source signals the cost was spent, distinguishing it from a validation rejection).
+     *
+     * @param match  the resolved ability match, or {@code null} when the input matched no ability
+     * @param args   the raw command arguments, forwarded to the audit log
+     * @param player the casting player
+     * @return {@code true} when the input named a mob target and has been fully handled here
+     */
+    private boolean handleHarmfulMobCastIfApplicable(AbilityMatch match, String args, Player player) {
+        if (match == null) {
+            return false;
+        }
+        AbilityTargeting targeting = match.ability().targeting();
+        if (targeting != AbilityTargeting.HARMFUL
+            && targeting != AbilityTargeting.HARMFUL_OPENER
+            && targeting != AbilityTargeting.HARMFUL_UNDEAD) {
+            return false;
+        }
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            return false;
+        }
+        Ability ability = match.ability();
+        String targetInput = match.remainingTarget();
+        if (!context.mobRegistry().hasAttackableMob(roomIdOpt.get(), targetInput)) {
+            // No matching mob — leave player targets (duels/PvP) to the generic ability path.
+            return false;
+        }
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(ability.id())) {
+            writeLineWithPrompt("Ability is on cooldown ("
+                + cooldowns.remainingTicks(ability.id()) + " ticks remaining).");
+            return true;
+        }
+        GameActionResult result = context.mobRegistry()
+            .processPlayerSingleTargetAbility(player, ability, targetInput, roomIdOpt.get());
+        if (result.updatedSource() != null && ability.cooldown().ticks() > 0) {
+            cooldowns.startCooldown(ability.id(), ability.cooldown().ticks());
+        }
+        auditAbilityUse(match, result, args);
+        deliverResult(result);
+        sendPrompt();
+        return true;
     }
 
     @Override

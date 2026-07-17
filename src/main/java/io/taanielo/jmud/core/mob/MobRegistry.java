@@ -20,10 +20,13 @@ import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityCost;
 import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityOperation;
 import io.taanielo.jmud.core.ability.AbilityStat;
+import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.achievement.Achievement;
 import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.action.GameActionResult;
@@ -197,6 +200,16 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
     /** Data tag marking a mob that never flees regardless of how badly wounded it is. */
     private static final String FEARLESS_TAG = "fearless";
+
+    /** Ability id of the rogue BACKSTAB skill, which gains bonus damage when opened from stealth. */
+    private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
+
+    /**
+     * Extra flat damage a BACKSTAB deals when the attacker strikes a mob from stealth, mirroring the
+     * PvP path in {@link io.taanielo.jmud.core.action.GameActionService}. Applied after the hit/crit
+     * roll so, like PvP, the crit multiplier scales only the ability's own damage, not this bonus.
+     */
+    private static final int STEALTH_BACKSTAB_BONUS_DAMAGE = 10;
 
     /**
      * Data tag marking a <em>pack</em> mob. A pack mob never starts a fresh fight on its own: it
@@ -1952,7 +1965,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return GameActionResult.error(
                 "You lack the mana to unleash " + spell.name() + " (" + scaledMana + " needed).");
         }
-        int baseDamage = aoeSpellDamage(spell);
+        int baseDamage = abilityHpDamage(spell);
 
         Player updated = caster.withVitals(caster.getVitals().consumeMana(scaledMana));
 
@@ -2006,16 +2019,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
-     * Returns the damage an AoE spell deals to each target: the sum of its HP-decreasing
-     * {@link io.taanielo.jmud.core.ability.AbilityEffectKind#VITALS} effects. Non-damage effects
-     * (status effects, cures) are ignored on the mob path, which has no persistent effect model.
+     * Returns the damage a harmful ability deals to a mob target: the sum of its HP-decreasing
+     * {@link io.taanielo.jmud.core.ability.AbilityEffectKind#VITALS} effects. Shared by the
+     * area-of-effect ({@link #processPlayerAoeSpell}) and single-target
+     * ({@link #processPlayerSingleTargetAbility}) mob paths. Non-damage effects (status effects,
+     * cures) are ignored on the mob path, which has no persistent effect model.
      *
-     * @param spell the AoE spell
-     * @return the per-target damage (zero when the spell defines no HP-decrease effect)
+     * @param ability the harmful ability
+     * @return the damage (zero when the ability defines no HP-decrease effect)
      */
-    private static int aoeSpellDamage(Ability spell) {
+    private static int abilityHpDamage(Ability ability) {
         int damage = 0;
-        for (AbilityEffect effect : spell.effects()) {
+        for (AbilityEffect effect : ability.effects()) {
             if (effect.kind() == AbilityEffectKind.VITALS
                 && effect.stat() == AbilityStat.HP
                 && effect.operation() == AbilityOperation.DECREASE) {
@@ -2054,6 +2069,190 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     private static String aoeMissMessage(Ability spell, String mobName) {
         return "Your " + spell.name() + " crackles harmlessly past the " + mobName + ".";
+    }
+
+    /**
+     * Returns whether a live, attackable mob matching {@code nameInput} is present in {@code roomId},
+     * so the CAST/USE command routing can decide whether a harmful single-target ability names a mob
+     * (routed here) or a player (left to the generic ability path for duels/PvP). A pet or an
+     * {@code "npc"}-tagged mob is not attackable and does not match, so naming one falls through to the
+     * generic path exactly as it does today.
+     *
+     * @param roomId    the room to search
+     * @param nameInput the raw target-name input typed after the ability
+     * @return {@code true} when an attackable mob in the room matches the name
+     */
+    public boolean hasAttackableMob(RoomId roomId, String nameInput) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (nameInput == null || nameInput.isBlank()) {
+            return false;
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), nameInput);
+        return mob != null && !mob.isPet() && !mob.template().hasTag("npc");
+    }
+
+    /**
+     * Processes a harmful single-target ability (a {@link AbilityTargeting#HARMFUL},
+     * {@link AbilityTargeting#HARMFUL_OPENER}, or {@link AbilityTargeting#HARMFUL_UNDEAD} spell or
+     * skill) cast at a mob in the caster's room, mirroring {@link #processPlayerAoeSpell} for a single
+     * target. Backs {@code CAST <ability> <mob>} / {@code USE <ability> <mob>} against a monster; the
+     * generic ability engine ({@code GameActionService.useAbility}) still owns the same abilities aimed
+     * at another <em>player</em> (duels/PvP), so this path is entered only when the named target is a
+     * mob (see {@link #hasAttackableMob}).
+     *
+     * <p>All mutation runs on the tick thread via the caster's command queue (AGENTS.md §5). The strike
+     * rolls to hit and crit through the same seeded {@link #resolveHit} used by melee, ranged, and AoE
+     * (a single-target ability can therefore miss or crit, not just land a flat number). Damage is the
+     * sum of the ability's HP-decreasing {@code VITALS} effects ({@link #abilityHpDamage}). A killing
+     * blow awards the normal kill rewards (loot, XP, gold, quest credit, reputation, achievements)
+     * through {@link #applyMobKillRewards}. The ability's mana/move cost is deducted on any resolved
+     * cast (hit or miss) and folded into the returned {@link GameActionResult#updatedSource()}; a
+     * validation failure (no target, undead gate, opener gate, or insufficient resources) spends
+     * nothing and returns an error with no {@code updatedSource}, so the caller starts no cooldown.
+     *
+     * <p>{@link AbilityTargeting#HARMFUL_UNDEAD} gates on the mob's {@code "undead"} tag; a
+     * {@link AbilityTargeting#HARMFUL_OPENER} refuses when the caster is already engaged in combat and,
+     * when opened from stealth, deals {@link #STEALTH_BACKSTAB_BONUS_DAMAGE} bonus damage before
+     * breaking stealth — matching the PvP behaviour in
+     * {@link io.taanielo.jmud.core.action.GameActionService}.
+     *
+     * @param caster      the casting player
+     * @param ability     the resolved harmful single-target ability
+     * @param targetInput the raw mob-name input naming the target
+     * @param roomId      the caster's current room
+     * @return result whose {@code updatedSource} is the caster with cost (and any kill rewards) applied
+     *         on a resolved cast, plus strike/miss messages; or an error with no state change
+     */
+    public GameActionResult processPlayerSingleTargetAbility(
+        Player caster, Ability ability, String targetInput, RoomId roomId) {
+        Objects.requireNonNull(caster, "Caster is required");
+        Objects.requireNonNull(ability, "Ability is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (targetInput == null || targetInput.isBlank()) {
+            return GameActionResult.error("You must specify a target.");
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), targetInput);
+        if (mob == null || !mob.isAlive() || mob.isPet() || mob.template().hasTag("npc")) {
+            return GameActionResult.error("No such target here.");
+        }
+        // Opener gate: a HARMFUL_OPENER (backstab) may only start a fight, never continue one.
+        if (ability.targeting() == AbilityTargeting.HARMFUL_OPENER
+            && isInCombat(caster.getUsername())) {
+            return GameActionResult.error(
+                "You can only backstab as an opener — you are already in combat.");
+        }
+        // Undead gate: HARMFUL_UNDEAD (holy damage) only affects undead-tagged mobs.
+        if (ability.targeting() == AbilityTargeting.HARMFUL_UNDEAD
+            && !mob.template().hasTag("undead")) {
+            return GameActionResult.error("Your holy power has no effect on that creature.");
+        }
+        AbilityCost cost = ability.cost();
+        if (caster.getVitals().mana() < cost.mana() || caster.getVitals().move() < cost.move()) {
+            return GameActionResult.error("You lack the resources to use that ability.");
+        }
+        Player updated = caster.withVitals(
+            caster.getVitals().consumeMana(cost.mana()).consumeMove(cost.move()));
+
+        int baseDamage = abilityHpDamage(ability);
+        String mobName = mob.template().name();
+        boolean struckFromStealth = caster.isStealthActive();
+        List<GameMessage> messages = new ArrayList<>();
+
+        // The strike rolls hit and crit through the same seeded resolution as a melee swing, ranged
+        // shot, and AoE spell (issue #651): a single-target ability can miss a mob or crit it.
+        HitOutcome outcome = resolveSpellHit(caster, baseDamage);
+        if (!outcome.hit()) {
+            messages.add(GameMessage.toSource(singleTargetMissMessage(ability, mobName)));
+            // A missed strike still engages the mob, exactly as a missed melee swing does.
+            mob.engage(caster.getUsername());
+            playerCombatTargets.put(caster.getUsername(), mob.instanceId());
+            updated = breakStealthAfterStrike(updated, struckFromStealth, mobName, roomId, messages);
+            return new GameActionResult(updated, null, messages);
+        }
+        int damage = outcome.damage();
+        // Stealth opener bonus (backstab): a strike from the shadows adds flat bonus damage before it
+        // lands, matching the PvP path (the crit multiplier has already been applied to the ability's
+        // own damage, so the bonus itself is never doubled).
+        if (struckFromStealth && BACKSTAB_ABILITY_ID.equals(ability.id())) {
+            damage += STEALTH_BACKSTAB_BONUS_DAMAGE;
+            messages.add(GameMessage.toSource(
+                "Your strike from the shadows lands with deadly precision (+"
+                    + STEALTH_BACKSTAB_BONUS_DAMAGE + " damage)!"));
+        }
+        int remaining = mob.takeDamage(damage);
+        messages.add(GameMessage.toSource(
+            singleTargetStrikeMessage(ability, mobName, damage, remaining, outcome.crit())));
+        updated = breakStealthAfterStrike(updated, struckFromStealth, mobName, roomId, messages);
+        if (!mob.isAlive()) {
+            updated = applyMobKillRewards(mob, updated, roomId, messages);
+            return new GameActionResult(updated, null, messages);
+        }
+        mob.engage(caster.getUsername());
+        playerCombatTargets.put(caster.getUsername(), mob.instanceId());
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Breaks a caster's stealth after a harmful single-target strike lands or misses a mob, mirroring
+     * the PvP behaviour where any deliberate ability use against a distinct target emerges the caster
+     * from the shadows. A no-op (returning the caster unchanged) when the caster was not stealthed.
+     *
+     * @param caster            the (cost-charged) caster
+     * @param struckFromStealth whether the caster was stealthed when the strike resolved
+     * @param mobName           the struck mob's display name, used in the room broadcast
+     * @param roomId            the caster's room, whose other players see the reveal
+     * @param messages          the mutable self-facing message list to append the reveal notice to
+     * @return the caster with stealth cleared, or unchanged when not stealthed
+     */
+    private Player breakStealthAfterStrike(
+        Player caster, boolean struckFromStealth, String mobName, RoomId roomId, List<GameMessage> messages) {
+        if (!struckFromStealth) {
+            return caster;
+        }
+        Player revealed = caster.withStealth(false);
+        messages.add(GameMessage.toSource("You emerge from the shadows."));
+        String casterName = caster.getUsername().getValue();
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(caster.getUsername())) {
+                continue;
+            }
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource(casterName + " emerges from the shadows and strikes the "
+                    + mobName + "!"))));
+        }
+        return revealed;
+    }
+
+    /**
+     * Builds the self-facing line shown to a caster whose harmful single-target ability landed on a
+     * mob, mirroring the AoE/melee/ranged strike phrasing. A critical hit is prefixed with a "critical
+     * hit!" notice so a crit reads distinctly from a normal strike.
+     *
+     * @param ability   the ability being used
+     * @param mobName   the struck mob's display name
+     * @param damage    the damage this strike dealt
+     * @param remaining the mob's HP after the strike
+     * @param crit      whether this strike was a critical hit
+     * @return the message text to show the caster
+     */
+    private static String singleTargetStrikeMessage(
+        Ability ability, String mobName, int damage, int remaining, boolean crit) {
+        String critPrefix = crit ? "A critical hit! " : "";
+        return critPrefix + "Your " + ability.name() + " strikes the " + mobName + " for "
+            + damage + " damage. (" + remaining + " HP remaining)";
+    }
+
+    /**
+     * Builds the self-facing line shown to a caster whose harmful single-target ability missed a mob
+     * outright, so a single-target ability can miss rather than always landing for a flat amount
+     * (issue #651).
+     *
+     * @param ability the ability being used
+     * @param mobName the missed mob's display name
+     * @return the miss message text to show the caster
+     */
+    private static String singleTargetMissMessage(Ability ability, String mobName) {
+        return "Your " + ability.name() + " fails to connect with the " + mobName + ".";
     }
 
     /**
