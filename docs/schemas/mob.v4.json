@@ -113,6 +113,13 @@
     "faction_id": {
       "type": ["string", "null"],
       "description": "Optional id of a faction (data/factions/) this mob belongs to. Slaying the mob shifts the killer's reputation with the faction, and the faction's hostility rules govern whether it engages a given player. Omit for faction-neutral mobs."
+    },
+    "parry_chance": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0,
+      "description": "Percentage chance (0-100) that this mob parries an otherwise-landing player MELEE attack: it fully negates that swing's damage and ripostes the attacker with its own attack (attack_id). Only author a non-zero value on defensively trained melee mobs (guards, elite humanoid combatants, boss-tier fighters). The effective chance is clamped to combat's parry bound (MAX_PARRY_CHANCE) at resolution time. Ranged (SHOOT), AoE-spell, and summoned-pet damage never roll this. Omit or set 0 for ordinary mobs, which never parry."
     }
   }
 }

@@ -54,6 +54,16 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                  window a scheduled world event is open. Combine with {@link #worldBoss()} to reuse
  *                  the world-boss kill path (server-wide death announcement and guaranteed
  *                  rare-or-higher drop). Defaults to {@code false} for ordinary mobs.
+ * @param parryChancePercent percentage chance, in {@code [0, 100]}, that this mob parries an
+ *                  otherwise-landing player <em>melee</em> attack — fully negating that swing's
+ *                  damage and riposting the attacker with its own attack. Only a subset of
+ *                  deliberately authored, defensively trained melee mobs (armoured guards, trained
+ *                  humanoid combatants, boss-tier elites) carry a non-zero value; it defaults to
+ *                  {@code 0} so ordinary mobs never parry and existing data is unaffected. Ranged,
+ *                  AoE-spell, and summoned-pet damage against the mob never rolls this check. The
+ *                  effective chance is clamped to
+ *                  {@code [CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE]} at
+ *                  resolution time, mirroring the player-side parry bound.
  */
 public record MobTemplate(
     MobId id,
@@ -76,7 +86,8 @@ public record MobTemplate(
     @Nullable DialogueId dialogueId,
     @Nullable FactionId factionId,
     boolean worldBoss,
-    boolean worldEvent
+    boolean worldEvent,
+    int parryChancePercent
 ) {
     public MobTemplate {
         if (maxHp <= 0) {
@@ -96,6 +107,9 @@ public record MobTemplate(
         }
         if (summonDurationTicks != null && summonDurationTicks <= 0) {
             throw new IllegalArgumentException("Mob summonDurationTicks must be positive");
+        }
+        if (parryChancePercent < 0 || parryChancePercent > 100) {
+            throw new IllegalArgumentException("Mob parryChancePercent must be in [0, 100]");
         }
         lootTable = List.copyOf(lootTable);
         tags = tags == null ? List.of() : List.copyOf(tags);
@@ -268,7 +282,51 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, dialogueId, factionId, worldBoss, false);
+            charmable, dialogueId, factionId, worldBoss, false, 0);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a world-event flag but do not fight
+     * defensively; defaults {@link #parryChancePercent()} to {@code 0} (a mob that never parries a
+     * player's melee attack). This preserves the pre-parry constructor arity so existing callers and
+     * the JSON mapper remain source-compatible.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, 0);
+    }
+
+    /**
+     * Returns whether this mob is authored to fight defensively — i.e. carries a non-zero
+     * {@link #parryChancePercent()} and can therefore parry a player's melee attack.
+     *
+     * @return {@code true} when {@link #parryChancePercent()} is positive
+     */
+    public boolean canParry() {
+        return parryChancePercent > 0;
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */
