@@ -48,6 +48,7 @@ import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bank.BankTransactionResult;
+import io.taanielo.jmud.core.bank.VaultUpgradeTier;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.craft.CraftOutcome;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
@@ -4570,11 +4571,40 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
-        int capacity = context.bankService().vaultCapacity();
-        for (String line : VaultListing.format(player.getBankedItems(), capacity, session.getTextStyler())) {
+        int capacity = context.bankService().effectiveVaultCapacity(player);
+        String upgradeHint = vaultUpgradeHint(player);
+        for (String line : VaultListing.format(
+                player.getBankedItems(), capacity, session.getTextStyler(), upgradeHint)) {
             connection.writeLine(line);
         }
         sendPrompt();
+    }
+
+    @Override
+    public void upgradeVault() {
+        if (!bankReady()) {
+            return;
+        }
+        Player player = session.getPlayer();
+        BankTransactionResult result = context.bankService().upgradeVault(player);
+        if (result.success()) {
+            session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    /**
+     * Builds the "next vault upgrade" hint line for the {@code VAULT} listing, or {@code null} when
+     * the player is already at the top tier.
+     */
+    private String vaultUpgradeHint(Player player) {
+        VaultUpgradeTier current = VaultUpgradeTier.forRank(player.vault().capacityTier());
+        return current.next()
+            .map(next -> String.format(
+                "Next upgrade: %d slots for %d gold (VAULT UPGRADE).",
+                context.bankService().vaultCapacity() + next.slotBonus(),
+                next.upgradeCost()))
+            .orElse(null);
     }
 
     /**

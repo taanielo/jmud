@@ -63,4 +63,36 @@ public final class VaultListing {
         lines.add(String.format("Stored %d / %d items.", items.size(), capacity));
         return List.copyOf(lines);
     }
+
+    /**
+     * Formats the given vault item list into display lines, always showing a slots-used vs. capacity
+     * footer (even for an empty vault) and an optional upgrade hint line.
+     *
+     * @param items        the items stored in the player's vault
+     * @param capacity     the player's effective vault capacity
+     * @param styler       the styler used to color item names by rarity
+     * @param upgradeHint  a line describing the next upgrade tier's cost and slot gain, or
+     *                     {@code null}/blank to omit it (e.g. when already at the top tier)
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(List<Item> items, int capacity, TextStyler styler, String upgradeHint) {
+        Objects.requireNonNull(items, "Items are required");
+        Objects.requireNonNull(styler, "Styler is required");
+        List<String> lines = new ArrayList<>(items.size() + 3);
+        if (items.isEmpty()) {
+            lines.add(EMPTY);
+        } else {
+            lines.add(HEADER);
+            for (Item item : items) {
+                Objects.requireNonNull(item, "Item must not be null");
+                String name = styler.rarity(item.presentationName(), item.presentationRarity());
+                lines.add(String.format("  %-30s %d lb", name, item.getWeight()));
+            }
+        }
+        lines.add(String.format("Stored %d / %d items.", items.size(), capacity));
+        if (upgradeHint != null && !upgradeHint.isBlank()) {
+            lines.add(upgradeHint);
+        }
+        return List.copyOf(lines);
+    }
 }
