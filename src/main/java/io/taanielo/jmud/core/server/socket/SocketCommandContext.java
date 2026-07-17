@@ -704,6 +704,15 @@ public interface SocketCommandContext extends Client {
     default void executeParty(String args) {}
 
     /**
+     * Sends a party-chat message to every currently-online member of the caller's party (the
+     * {@code PTELL} verb, or free text after {@code PARTY}). The default implementation is a no-op so
+     * existing test stubs do not need to be updated.
+     *
+     * @param message the message to broadcast to the party
+     */
+    default void partyChat(String message) {}
+
+    /**
      * Executes a FOLLOW sub-command: reports the current leader when {@code args} is blank, stops
      * following on {@code OFF}, or starts auto-following the named online party member.
      *

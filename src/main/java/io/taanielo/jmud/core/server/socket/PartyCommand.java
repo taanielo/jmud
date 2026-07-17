@@ -15,6 +15,7 @@ import java.util.Optional;
  *   <li>{@code PARTY LEAVE}          — leave the current party (disbands if last member)</li>
  *   <li>{@code PARTY DISBAND}        — disband the party (leader only)</li>
  *   <li>{@code PARTY LOOT <mode>}    — set item loot mode to {@code free}, {@code round-robin}, or {@code roll} (leader only)</li>
+ *   <li>{@code PARTY <message>}      — send a message to online party members (also {@code PTELL})</li>
  * </ul>
  */
 public class PartyCommand extends RegistrableCommand {
@@ -35,7 +36,7 @@ public class PartyCommand extends RegistrableCommand {
 
     @Override
     public String shortDescription() {
-        return "Form and manage a player party for shared XP. Use PARTY FORM to begin.";
+        return "Form and manage a player party for shared XP. Use PARTY FORM to begin. Alias: PTELL (chat).";
     }
 
     @Override
@@ -50,6 +51,7 @@ public class PartyCommand extends RegistrableCommand {
                  PARTY LEAVE            \u2014 leave your current party
                  PARTY DISBAND          \u2014 disband the party (leader only)
                  PARTY LOOT <mode>      \u2014 set loot mode: free, round-robin, or roll (leader only)
+                 PARTY <message>        \u2014 chat to online party members (or use PTELL <message>)
 
                XP earned from mob kills is split equally among party members in the same room.
                In round-robin loot mode, dropped items are handed to party members in turn instead of
@@ -63,10 +65,14 @@ public class PartyCommand extends RegistrableCommand {
     @Override
     public Optional<SocketCommandMatch> match(String input) {
         String[] parts = SocketCommandParsing.splitInput(input);
-        if (!"PARTY".equals(parts[0])) {
-            return Optional.empty();
-        }
+        String token = parts[0];
         String args = parts[1];
-        return Optional.of(new SocketCommandMatch(this, context -> context.executeParty(args)));
+        if ("PTELL".equals(token)) {
+            return Optional.of(new SocketCommandMatch(this, context -> context.partyChat(args)));
+        }
+        if ("PARTY".equals(token)) {
+            return Optional.of(new SocketCommandMatch(this, context -> context.executeParty(args)));
+        }
+        return Optional.empty();
     }
 }
