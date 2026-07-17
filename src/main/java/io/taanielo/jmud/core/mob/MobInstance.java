@@ -31,6 +31,20 @@ public class MobInstance {
     private final UUID instanceId = UUID.randomUUID();
     private final MobTemplate template;
     private final AtomicInteger hp;
+    /**
+     * The effective max HP this instance was spawned with. For ordinary world mobs this equals
+     * {@link MobTemplate#maxHp()}; for {@link #isPet() companions} it is the template max HP scaled up
+     * by the owner's level (see {@link CompanionScaling}). Used by {@link #respawn()} so a mob returns
+     * to its correct full HP rather than the raw template value.
+     */
+    private final int maxHp;
+    /**
+     * Owner-level scaling applied to this instance, or {@code null} for ordinary world mobs. Non-null
+     * only for {@link #isPet() companions}; its damage multiplier is applied to a pet's resolved hit
+     * damage via {@link #scaleCompanionDamage(int)} so a high-level owner's pet hits harder.
+     */
+    @Nullable
+    private final CompanionScaling companionScaling;
     private final AtomicInteger respawnTicksRemaining = new AtomicInteger(0);
     private final Set<Username> engagedPlayers = ConcurrentHashMap.newKeySet();
     /**
@@ -94,15 +108,20 @@ public class MobInstance {
 
     public MobInstance(MobTemplate template) {
         this.template = template;
-        this.hp = new AtomicInteger(template.maxHp());
+        this.maxHp = template.maxHp();
+        this.companionScaling = null;
+        this.hp = new AtomicInteger(maxHp);
         this.currentRoomId = template.spawnRoomId();
         this.summoner = null;
         this.owner = null;
     }
 
-    private MobInstance(MobTemplate template, RoomId spawnRoom, Username summoner, int durationTicks) {
+    private MobInstance(
+        MobTemplate template, RoomId spawnRoom, Username summoner, int ownerLevel, int durationTicks) {
         this.template = Objects.requireNonNull(template, "Template is required");
-        this.hp = new AtomicInteger(template.maxHp());
+        this.companionScaling = CompanionScaling.forOwnerLevel(ownerLevel);
+        this.maxHp = companionScaling.scaleMaxHp(template.maxHp());
+        this.hp = new AtomicInteger(maxHp);
         this.currentRoomId = Objects.requireNonNull(spawnRoom, "Spawn room is required");
         this.summoner = Objects.requireNonNull(summoner, "Summoner is required");
         this.owner = null;
@@ -112,9 +131,11 @@ public class MobInstance {
         this.summonTicksRemaining.set(durationTicks);
     }
 
-    private MobInstance(MobTemplate template, RoomId spawnRoom, Username owner) {
+    private MobInstance(MobTemplate template, RoomId spawnRoom, Username owner, int ownerLevel) {
         this.template = Objects.requireNonNull(template, "Template is required");
-        this.hp = new AtomicInteger(template.maxHp());
+        this.companionScaling = CompanionScaling.forOwnerLevel(ownerLevel);
+        this.maxHp = companionScaling.scaleMaxHp(template.maxHp());
+        this.hp = new AtomicInteger(maxHp);
         this.currentRoomId = Objects.requireNonNull(spawnRoom, "Spawn room is required");
         this.summoner = null;
         this.owner = Objects.requireNonNull(owner, "Owner is required");
@@ -125,15 +146,19 @@ public class MobInstance {
      * living for {@code durationTicks} ticks. The pet fights hostile mobs in its room on the caster's
      * behalf and is removed on death or when its lifetime elapses.
      *
+     * <p>The pet's effective max HP is scaled up from the template value by {@code ownerLevel} (see
+     * {@link CompanionScaling}) so a higher-level summoner's pet is tougher.
+     *
      * @param template      the pet template (must be a {@link MobTemplate#isPetTemplate() pet template})
      * @param spawnRoom     the room to spawn the pet into (normally the summoner's current room)
      * @param summoner      the player who summoned the pet
+     * @param ownerLevel    the summoner's current level, used to scale the pet's HP and damage
      * @param durationTicks how many ticks the pet lives before auto-dismissing; must be positive
      * @return the new summoned pet instance
      */
     public static MobInstance summoned(
-        MobTemplate template, RoomId spawnRoom, Username summoner, int durationTicks) {
-        return new MobInstance(template, spawnRoom, summoner, durationTicks);
+        MobTemplate template, RoomId spawnRoom, Username summoner, int ownerLevel, int durationTicks) {
+        return new MobInstance(template, spawnRoom, summoner, ownerLevel, durationTicks);
     }
 
     /**
@@ -141,13 +166,20 @@ public class MobInstance {
      * Unlike a {@link #summoned} pet, a tamed pet never expires: it follows its owner between rooms
      * and fights hostile mobs at their side until dismissed or destroyed.
      *
-     * @param template  the tamed mob's template
-     * @param spawnRoom the room to spawn the pet into (normally the owner's current room)
-     * @param owner     the player who tamed the mob
+     * <p>The pet's effective max HP is scaled up from the template value by {@code ownerLevel} (see
+     * {@link CompanionScaling}) so a higher-level tamer's companion is tougher. The scaling is fixed
+     * at spawn time — a companion does not silently grow stronger as its owner levels up; it is only
+     * recomputed the next time it re-enters the world (a fresh tame or a respawn on login).
+     *
+     * @param template   the tamed mob's template
+     * @param spawnRoom  the room to spawn the pet into (normally the owner's current room)
+     * @param owner      the player who tamed the mob
+     * @param ownerLevel the owner's current level, used to scale the companion's HP and damage
      * @return the new tamed pet instance
      */
-    public static MobInstance tamed(MobTemplate template, RoomId spawnRoom, Username owner) {
-        return new MobInstance(template, spawnRoom, owner);
+    public static MobInstance tamed(
+        MobTemplate template, RoomId spawnRoom, Username owner, int ownerLevel) {
+        return new MobInstance(template, spawnRoom, owner, ownerLevel);
     }
 
     /**
@@ -158,12 +190,17 @@ public class MobInstance {
      * @param template   the tamed mob's template
      * @param spawnRoom  the room to spawn the pet into (normally the owner's current room)
      * @param owner      the player who tamed the mob
+     * @param ownerLevel the owner's current level, used to scale the companion's HP and damage
      * @param customName the companion's custom display name, or {@code null} to keep the template name
      * @return the new tamed pet instance
      */
     public static MobInstance tamed(
-        MobTemplate template, RoomId spawnRoom, Username owner, @Nullable String customName) {
-        return tamed(template, spawnRoom, owner, customName, null);
+        MobTemplate template,
+        RoomId spawnRoom,
+        Username owner,
+        int ownerLevel,
+        @Nullable String customName) {
+        return tamed(template, spawnRoom, owner, ownerLevel, customName, null);
     }
 
     /**
@@ -175,6 +212,7 @@ public class MobInstance {
      * @param template          the tamed mob's template
      * @param spawnRoom         the room to spawn the pet into (normally the owner's current room)
      * @param owner             the player who tamed the mob
+     * @param ownerLevel        the owner's current level, used to scale the companion's HP and damage
      * @param customName        the companion's custom display name, or {@code null} to keep the
      *                          template name
      * @param customDescription the companion's custom roleplay description, or {@code null} to fall
@@ -185,9 +223,10 @@ public class MobInstance {
         MobTemplate template,
         RoomId spawnRoom,
         Username owner,
+        int ownerLevel,
         @Nullable String customName,
         @Nullable String customDescription) {
-        MobInstance instance = new MobInstance(template, spawnRoom, owner);
+        MobInstance instance = new MobInstance(template, spawnRoom, owner, ownerLevel);
         if (customName != null && !customName.isBlank()) {
             instance.customName = customName;
         }
@@ -466,9 +505,32 @@ public class MobInstance {
         return summonTicksRemaining.decrementAndGet() <= 0;
     }
 
+    /**
+     * Returns this instance's effective max HP. For an ordinary world mob this equals the template's
+     * {@link MobTemplate#maxHp()}; for a {@link #isPet() companion} it is the template value scaled up
+     * by the owner's level at spawn time (see {@link CompanionScaling}).
+     *
+     * @return the effective max HP
+     */
+    public int maxHp() {
+        return maxHp;
+    }
+
+    /**
+     * Scales a companion's resolved hit damage by this instance's owner-level damage multiplier so a
+     * higher-level owner's pet hits harder. Returns {@code rawDamage} unchanged for ordinary world
+     * mobs (those with no {@link #companionScaling}).
+     *
+     * @param rawDamage the unscaled resolved damage of a single hit
+     * @return the damage to actually apply
+     */
+    public int scaleCompanionDamage(int rawDamage) {
+        return companionScaling == null ? rawDamage : companionScaling.scaleDamage(rawDamage);
+    }
+
     /** Resets the mob to full HP and returns it to its spawn room, ready to act again. */
     public void respawn() {
-        hp.set(template.maxHp());
+        hp.set(maxHp);
         respawnTicksRemaining.set(0);
         engagedPlayers.clear();
         specialAbilityUsed.set(false);

@@ -187,7 +187,7 @@ game-designer should propose closing.
 | Player preferences (`ANSI`, `AUTOLOOT`, `PROMPT`, `BRIEF`) | ✅ | brief-mode room descriptions `BRIEF [on\|off\|toggle\|status]` ✅ #575 (movement skips prose; `LOOK` always shows it) |
 | PvP (duels, rankings, arena events) | ✅ | none known |
 | World events (timed rare-elite spawns) | ✅ #585 | none known |
-| Pets (tame/summon) | ✅ | custom companion names ✅ #571 · custom companion descriptions ✅ #623 |
+| Pets (tame/summon) | ✅ | custom companion names ✅ #571 · custom companion descriptions ✅ #623 · owner-level companion scaling — a tamed or summoned companion's effective max HP and dealt damage now scale with the owner's level at spawn time via a single shared, deterministic, capped `CompanionScaling` formula (TAME and SUMMON alike), so a high-level owner's pet is tougher and hits harder than the same template obtained early; recomputed only on a fresh tame/summon or a login respawn (no mid-session growth), no `Player`/`MobInstance` schema change or save migration ✅ #653 (corrects the prior stale "no known gaps" note) |
 | Mounts (`MOUNT`/`DISMOUNT`, per-step move-point discount) | ✅ #494 #495 | tiered stable stock: sturdy-pony (150g, -1) · swift-warhorse (600g, -2) · militia war-charger (2,500g, -3, `min_reputation: 20` on the now-`faction_id: militia` stable, mirroring the armory's capstone gates) — a reputation-gated aspirational mount for out-levelled players ✅ #631 |
 | Weather & world ambience | ✅ | none known |
 | Transports (telnet, SSH, WebSocket, browser web client) | ✅ #526 #527 | none known |
