@@ -1,8 +1,10 @@
 package io.taanielo.jmud.core.mob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -73,5 +75,33 @@ class MobTemplateTest {
     @Test
     void rejectsNegativeNightRespawnTicks() {
         assertThrows(IllegalArgumentException.class, () -> template(30, -1));
+    }
+
+    @Test
+    void parryChanceDefaultsToZeroViaLegacyConstructorSoExistingMobsNeverParry() {
+        MobTemplate mobTemplate = template(30, null);
+
+        assertEquals(0, mobTemplate.parryChancePercent(),
+            "a template built via the pre-parry constructor defaults to no parry");
+        assertFalse(mobTemplate.canParry(), "a zero parry chance means the mob cannot parry");
+    }
+
+    @Test
+    void canParryReflectsAnAuthoredParryChance() {
+        MobTemplate guard = new MobTemplate(
+            MobId.of("mob.guard"), "Town Guard", 20, null, null, false,
+            List.of(), SPAWN_ROOM, 1, 30, 5, null, List.of(), false, null, null, false,
+            null, null, false, false, 20);
+
+        assertEquals(20, guard.parryChancePercent());
+        assertTrue(guard.canParry(), "a positive parry chance means the mob can parry");
+    }
+
+    @Test
+    void rejectsParryChanceAbove100() {
+        assertThrows(IllegalArgumentException.class, () -> new MobTemplate(
+            MobId.of("mob.guard"), "Town Guard", 20, null, null, false,
+            List.of(), SPAWN_ROOM, 1, 30, 5, null, List.of(), false, null, null, false,
+            null, null, false, false, 101));
     }
 }

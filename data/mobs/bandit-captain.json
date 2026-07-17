@@ -7,6 +7,7 @@
   "attack_id": "attack.bandit-captain",
   "special_attack_id": "attack.rally-cry",
   "aggressive": true,
+  "parry_chance": 20,
   "faction_id": "bandits",
   "spawn_room_id": "bandit-captains-den",
   "max_count": 1,

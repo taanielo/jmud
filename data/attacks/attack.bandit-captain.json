@@ -22,6 +22,16 @@
       "phase": "attack_crit",
       "channel": "self",
       "text": "The bandit captain's blade finds a gap in your guard! The blow {verb} you!"
+    },
+    {
+      "phase": "attack_parry",
+      "channel": "self",
+      "text": "The bandit captain turns your blade aside with a practised flick and ripostes for {damage}!"
+    },
+    {
+      "phase": "attack_parry",
+      "channel": "room",
+      "text": "The bandit captain parries the strike and answers with a lightning riposte!"
     }
   ]
 }

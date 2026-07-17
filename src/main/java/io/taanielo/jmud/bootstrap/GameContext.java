@@ -473,8 +473,9 @@ public record GameContext(
             mobRegistry.setRaceArmorBonusResolver(raceArmorBonusResolver);
             mobRegistry.setShieldBlockResolver(shieldBlockResolver);
             // Parry (issue #639): a player may parry a mob's melee swing and riposte the mob, using the
-            // same resolver the PvP CombatEngine uses. A mob's own attack is never parried by the mob
-            // (mobs do not parry player attacks in v1 — documented scope limit).
+            // same resolver the PvP CombatEngine uses. The mirror case (issue #645) — a defensively
+            // trained mob parrying the player's own melee swing — is a data-authored trait on the mob
+            // template (parry_chance), resolved inside MobRegistry with no resolver wiring here.
             mobRegistry.setParryResolver(parryResolver);
             mobRegistry.setDamageVerbTable(damageVerbTable);
             mobRegistry.setTargetConditionTable(combatFlavor.conditions());

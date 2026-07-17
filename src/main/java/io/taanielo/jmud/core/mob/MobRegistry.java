@@ -164,8 +164,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     /**
      * Resolves whether a defending player wielding a melee weapon parries a mob's landing melee swing
      * (taking zero damage) and ripostes the mob for their mainhand weapon's damage. Defaults to a
-     * no-op (no parry possible) until the composition root injects the real resolver. A mob's own
-     * attack is never parried by the mob (v1 scope limit).
+     * no-op (no parry possible) until the composition root injects the real resolver. This resolver
+     * governs the <em>player</em>-side parry of a mob's swing; a mob's own parry of a player's melee
+     * attack is a separate, data-authored trait (see {@link MobTemplate#parryChancePercent()} and
+     * {@link #resolveMobParry}).
      */
     private ParryResolver parryResolver = ParryResolver.noOp();
     /**
@@ -350,8 +352,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     /**
      * Registers the resolver that lets a player wielding a melee weapon parry a mob's landing melee
      * swing and riposte the mob, mirroring the PvP {@link io.taanielo.jmud.core.combat.CombatEngine}.
-     * When not set, a no-op resolver leaves mob swings unparryable. A mob never parries a player's own
-     * attack in this iteration (documented v1 scope limit).
+     * When not set, a no-op resolver leaves mob swings unparryable. This governs only the player-side
+     * parry; a mob's own parry of a player's melee attack is a data-authored trait resolved separately
+     * (see {@link MobTemplate#parryChancePercent()} and {@link #resolveMobParry}).
      *
      * @param parryResolver the parry resolver; must not be null
      */
@@ -659,8 +662,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         // Parry takes precedence over the shield block: a player wielding a melee weapon may fully
         // avoid the mob's melee swing (zero damage) and riposte the mob with their mainhand weapon.
         // Ranged mob attacks are never parried. Only roll when a parry is possible so a non-parrying
-        // defender leaves the RNG stream — and every legacy result — unchanged. Mobs never parry the
-        // player's own attack (documented v1 scope limit).
+        // defender leaves the RNG stream — and every legacy result — unchanged. (The mirror case — a
+        // mob parrying the player's own melee attack — is handled separately in resolveMobParry.)
         ParryResolver.Parry parry = attack.isRanged()
             ? ParryResolver.Parry.none()
             : parryResolver.resolve(target);
@@ -680,6 +683,136 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         }
         damage = mitigateForDefender(damage, target, attack.damageType());
         return new MobAttackOutcome(true, blocked, damage, false, 0);
+    }
+
+    /**
+     * The outcome of a defensively-trained mob's parry roll against a player's just-landed melee hit:
+     * whether it parried (fully negating that swing's damage) and, when it did, the riposte damage the
+     * mob deals back to the player together with the mob's own attack definition that produced it (so
+     * an authored {@link MessagePhase#ATTACK_PARRY} line can be rendered).
+     */
+    private record MobParryOutcome(boolean parried, int riposteDamage, @Nullable AttackDefinition riposteAttack) {
+
+        private static final MobParryOutcome NONE = new MobParryOutcome(false, 0, null);
+
+        static MobParryOutcome none() {
+            return NONE;
+        }
+    }
+
+    /**
+     * Rolls a defensively-trained mob's parry against a player's just-landed <em>melee</em> hit,
+     * mirroring the player-side {@link ParryResolver} on the mob defender. The chance is the mob's
+     * authored {@link MobTemplate#parryChancePercent()} clamped to
+     * {@code [CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE]}; a mob with no
+     * authored parry chance never rolls, so every existing (non-parrying) mob leaves the seeded
+     * {@link CombatRandom} stream — and every legacy fight — numerically unchanged. On a parry the
+     * mob ripostes for a fresh roll of its own basic attack's damage. Only the melee attack paths
+     * ({@link #processPlayerAttack} and the tick-driven {@link #runPlayerCombat}) call this; the
+     * ranged (SHOOT), AoE-spell, and summoned-pet damage paths never do (documented melee-only scope).
+     *
+     * @param mob the defending mob
+     * @return the parry outcome; {@link MobParryOutcome#none()} when the mob cannot or does not parry
+     */
+    private MobParryOutcome resolveMobParry(MobInstance mob) {
+        int chance = clamp(
+            mob.template().parryChancePercent(),
+            CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE);
+        if (chance <= 0 || random.roll(1, 100) > chance) {
+            return MobParryOutcome.none();
+        }
+        AttackDefinition riposteAttack =
+            mob.template().attackId() != null ? loadAttack(mob.template().attackId()) : null;
+        int riposteDamage = riposteAttack != null ? rollDamage(riposteAttack) : 0;
+        return new MobParryOutcome(true, riposteDamage, riposteAttack);
+    }
+
+    /**
+     * Builds the self-facing line shown to a player whose melee attack was parried by a defensively
+     * trained mob, which then riposted for {@code riposteDamage}. Renders an authored
+     * {@link MessagePhase#ATTACK_PARRY} SELF-channel message on the mob's attack when present (so a
+     * guard's flavour text surfaces), else a sensible generic line using the worded-damage verb table
+     * when available, mirroring {@link #mobAttackMessage}.
+     *
+     * @param mob           the parrying mob
+     * @param riposteAttack the mob's attack definition powering the riposte (may be {@code null})
+     * @param riposteDamage the riposte damage dealt back to the attacking player
+     * @param playerMaxHp   the attacker's maximum HP, used to resolve the {@code {verb}} damage tier
+     * @return the rendered message text to show the parried attacker
+     */
+    private String mobParryMessage(
+        MobInstance mob, @Nullable AttackDefinition riposteAttack, int riposteDamage, int playerMaxHp) {
+        if (riposteAttack != null) {
+            String rendered = renderMobParrySpec(
+                mob, riposteAttack, MessageChannel.SELF, riposteDamage, playerMaxHp);
+            if (rendered != null) {
+                return rendered;
+            }
+        }
+        String mobName = mob.template().name();
+        if (damageVerbTable != null && riposteDamage > 0) {
+            DamageVerb verb = damageVerbTable.verbFor(riposteDamage, playerMaxHp);
+            return "The " + mobName + " parries your attack and " + verb.thirdPerson()
+                + " you for " + riposteDamage + "!";
+        }
+        return "The " + mobName + " parries your attack and ripostes for "
+            + riposteDamage + " damage!";
+    }
+
+    /**
+     * Broadcasts a mob-parry to the other players in the combat room, so bystanders see a defensively
+     * trained mob turn aside an attacker's blow and strike back. Renders an authored
+     * {@link MessagePhase#ATTACK_PARRY} ROOM-channel message on the mob's attack when present, else a
+     * generic line. The parrying attacker is skipped (they receive the SELF line instead).
+     *
+     * @param mob           the parrying mob
+     * @param attacker      the attacker whose blow was parried (excluded from the broadcast)
+     * @param riposteAttack the mob's attack definition powering the riposte (may be {@code null})
+     * @param riposteDamage the riposte damage dealt back to the attacker
+     * @param roomId        the combat room
+     */
+    private void broadcastMobParry(
+        MobInstance mob, Username attacker, @Nullable AttackDefinition riposteAttack,
+        int riposteDamage, RoomId roomId) {
+        String rendered = riposteAttack == null ? null
+            : renderMobParrySpec(mob, riposteAttack, MessageChannel.ROOM, riposteDamage, 0);
+        String roomMsg = rendered != null ? rendered
+            : "The " + mob.template().name() + " parries " + attacker.getValue()
+                + "'s attack and strikes back!";
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(attacker)) {
+                continue;
+            }
+            playerEventBus.publish(occupant,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(roomMsg))));
+        }
+    }
+
+    /**
+     * Renders the mob's authored {@link MessagePhase#ATTACK_PARRY} message on the given channel, or
+     * {@code null} when the attack declares none (or it renders blank), so callers fall back to a
+     * generic line. Mirrors the placeholder/verb substitution used by {@link #mobAttackMessage}.
+     */
+    @Nullable
+    private String renderMobParrySpec(
+        MobInstance mob, AttackDefinition attack, MessageChannel channel, int riposteDamage, int maxHp) {
+        for (MessageSpec spec : attack.messages()) {
+            if (spec.phase() != MessagePhase.ATTACK_PARRY || spec.channel() != channel) {
+                continue;
+            }
+            DamageVerb verb = riposteDamage > 0 && damageVerbTable != null && maxHp > 0
+                ? damageVerbTable.verbFor(riposteDamage, maxHp)
+                : null;
+            MessageContext context = new MessageContext(
+                null, null, mob.template().name(), null, null, null, attack.name(), riposteDamage,
+                verb == null ? null : verb.thirdPerson(),
+                verb == null ? null : verb.secondPerson());
+            String rendered = messageRenderer.render(spec, context);
+            if (rendered != null && !rendered.isBlank()) {
+                return rendered;
+            }
+        }
+        return null;
     }
 
     private static int clamp(int value, int min, int max) {
@@ -1047,6 +1180,23 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (!outcome.hit()) {
             messages.add(GameMessage.toSource(playerMissMessage(mob)));
             return new GameActionResult(null, null, messages);
+        }
+        // A defensively-trained mob may parry the otherwise-landing melee blow: the player deals zero
+        // damage this swing and the mob ripostes with its own attack. Melee-only — the SHOOT/AoE/pet
+        // paths never reach here. A mob with no authored parry chance never rolls (see resolveMobParry).
+        MobParryOutcome parry = resolveMobParry(mob);
+        if (parry.parried()) {
+            int playerMaxHp = attacker.getVitals().getMaxHp();
+            messages.add(GameMessage.toSource(
+                mobParryMessage(mob, parry.riposteAttack(), parry.riposteDamage(), playerMaxHp)));
+            broadcastMobParry(mob, attacker.getUsername(), parry.riposteAttack(),
+                parry.riposteDamage(), roomId);
+            Player damaged = attacker.withVitals(attacker.getVitals().damage(parry.riposteDamage()));
+            if (damaged.getVitals().hp() <= 0) {
+                handleMobKill(mob, damaged, roomService.getPlayersInRoom(roomId));
+                return new GameActionResult(null, null, messages);
+            }
+            return new GameActionResult(damaged, null, messages);
         }
         int damage = outcome.damage();
         int remaining = mob.takeDamage(damage);
@@ -3134,6 +3284,26 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (!outcome.hit()) {
                 messages.add(GameMessage.toSource(playerMissMessage(mob)));
                 playerEventBus.publish(username, new GameActionResult(null, null, messages));
+                continue;
+            }
+            // A defensively-trained mob may parry this auto-attack swing: the player deals zero damage
+            // and the mob ripostes with its own attack, symmetric to the player-side parry on the mob's
+            // swing (resolveMobAttack). Melee-only; a non-parrying mob never rolls (resolveMobParry).
+            MobParryOutcome parry = resolveMobParry(mob);
+            if (parry.parried()) {
+                int playerMaxHp = player.getVitals().getMaxHp();
+                messages.add(GameMessage.toSource(
+                    mobParryMessage(mob, parry.riposteAttack(), parry.riposteDamage(), playerMaxHp)));
+                broadcastMobParry(mob, username, parry.riposteAttack(),
+                    parry.riposteDamage(), playerRoom);
+                Player damaged = player.withVitals(player.getVitals().damage(parry.riposteDamage()));
+                if (damaged.getVitals().hp() <= 0) {
+                    playerEventBus.publish(username, new GameActionResult(null, null, messages));
+                    handleMobKill(mob, damaged, roomService.getPlayersInRoom(playerRoom));
+                    continue;
+                }
+                saveOrLog(damaged);
+                playerEventBus.publish(username, new GameActionResult(damaged, null, messages));
                 continue;
             }
             int damage = outcome.damage();

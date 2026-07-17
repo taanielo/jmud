@@ -39,6 +39,7 @@ public class MobTemplateDtoMapper {
         FactionId factionId = dto.factionId() != null ? FactionId.of(dto.factionId()) : null;
         boolean worldBoss = dto.worldBoss() != null && dto.worldBoss();
         boolean worldEvent = dto.worldEvent() != null && dto.worldEvent();
+        int parryChancePercent = dto.parryChance() == null ? 0 : dto.parryChance();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -60,7 +61,8 @@ public class MobTemplateDtoMapper {
             dialogueId,
             factionId,
             worldBoss,
-            worldEvent
+            worldEvent,
+            parryChancePercent
         );
     }
 }

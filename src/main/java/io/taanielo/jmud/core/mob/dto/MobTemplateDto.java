@@ -24,6 +24,7 @@ public record MobTemplateDto(
     String dialogueId,
     String factionId,
     Boolean worldBoss,
-    Boolean worldEvent
+    Boolean worldEvent,
+    Integer parryChance
 ) {
 }
