@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.undersong-resonant-maw",
+  "name": "a resonant swallowing",
+  "min_damage": 66,
+  "max_damage": 94,
+  "hit_bonus": 10,
+  "crit_bonus": 8,
+  "damage_bonus": 17,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 70
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The resonant maw yawns and the whole throat of the world seems to breathe in through it, dragging the warmth and the air out of you toward the ringing shaft below. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The resonant maw gapes and the shaft's tone swells toward you like a swallow, and you brace against the ribbed stone until the cold suction rolls past and eases."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The resonant maw opens to its root and the throat of the world inhales through it all at once, and for one airless, ringing moment the cold tears the very breath out of your chest and casts it down into the dark! The blow {verb} you!"
+    }
+  ]
+}

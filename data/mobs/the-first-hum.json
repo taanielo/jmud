@@ -1,0 +1,33 @@
+{
+  "schema_version": 4,
+  "id": "the-first-hum",
+  "name": "the First Hum",
+  "max_hp": 1560,
+  "attack_id": "attack.first-hum",
+  "special_attack_id": "attack.first-hum-underhum",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["construct", "resonant", "boss", "the-undersong"],
+  "spawn_room_id": "undersong-source",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 3600,
+  "loot": [
+    {
+      "item_id": "underhum-resonance-mote",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "the-undersong-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 720,
+    "max": 1100
+  }
+}

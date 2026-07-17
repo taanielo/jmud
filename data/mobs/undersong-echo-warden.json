@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "undersong-echo-warden",
+  "name": "an echo-warden",
+  "max_hp": 800,
+  "attack_id": "attack.undersong-echo-warden",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-undersong"],
+  "spawn_room_id": "undersong-choir-of-echoes",
+  "max_count": 2,
+  "respawn_ticks": 85,
+  "xp_reward": 980,
+  "loot": [
+    {
+      "item_id": "underhum-resonance-mote",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 210,
+    "max": 320
+  }
+}

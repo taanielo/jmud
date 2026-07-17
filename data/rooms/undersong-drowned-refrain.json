@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "undersong-drowned-refrain",
+  "name": "The Drowned Refrain",
+  "description": "The western passage sinks, and the floor of the chamber beyond it lies under a black standing water so still it might be glass, so cold the hum comes up through it slowed and thickened, a drowned version of the vault's tone that seems to sound from far beneath the surface. Where the Choir of Echoes throws the note back too many times, this place holds it too long: the water takes the hum and will not let it go, ringing it down and down until it becomes something heavy and lightless, a refrain sung by a throat full of freezing water. The Unsung above cut their throats out rather than carry a note; here the note is carried anyway, by the water, by the cold, by the drowned choristers who wade the shallows with their heads bowed under the surface and hum the deep tone up through the flooded dark. Your own breath fogs and falls as frost the instant it leaves you, snatched down into the water's slow refrain, and you understand that even silence and even drowning are only more ways the underhum makes itself heard.",
+  "item_ids": [],
+  "exits": {
+    "east": "undersong-humming-vault"
+  },
+  "min_level": 67,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A slow ring travels up through the standing water and the whole black surface trembles once, shedding a thin skin of ice from its edges.",
+    "A drowned chorister lifts its bowed head half out of the water, hums a single freezing note up into the dark, and sinks again without a ripple.",
+    "The cold off the flooded floor climbs your legs, and your fogged breath falls straight down as glittering frost into the still black water."
+  ]
+}

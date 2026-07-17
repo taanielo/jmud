@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "the-undersong-map",
+  "name": "Map of the Undersong",
+  "description": "Not a chart so much as a tuning fork bound in vellum: the passages beneath the Unsung are marked here as notches filed into the map's iron spine, each one ringing a different pitch when struck, so that the route to the source is read not by the eye but by the ear and the hand, a scale descending from the Descent to the root of the world. It is colder than the deepest ice and it never stops faintly humming, a single low tone felt in the fingers that holds true no matter how the map is turned — the note of the underhum itself, carried up out of the dark for anyone with the nerve to follow it down.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 70,
+  "map_area_id": "the-undersong"
+}

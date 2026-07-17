@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "undersong-source",
+  "name": "The Source",
+  "description": "The throat lets you out at the root of the world, and here at last the hum has a heart. The chamber is a perfect hollow sphere of pale, self-lit stone, and at its center, neither floating nor resting but simply present the way a pitch is present in a struck bell, is the First Hum — the thing the whole doctrine of the Choir was built to imitate and could never equal, the tone the Unsung buried themselves alive to refuse and could not escape hearing. It is not a voice. It has no throat, no face, no wrapping of cloth, no calcified chord; it is a standing note given just enough shape to defend itself, a slow-turning knot of frost and resonance and cold older than melody, than command, than refusal, than the first mouth that ever opened to make a sound. It was humming to itself in the dark of the root before any of them came, and it will hum after they are all forgotten, indifferent to whether the world above sings or falls silent, because both are only ways of noticing it. As you cross the threshold the tone gathers itself and turns the full weight of its attention onto you, and the cold of the source rolls out to meet you — not the Choir's demand and not the Unsung's refusal, but the plain, drowning, wordless sound both were only ever echoing. There is nothing deeper than this. There is only the hum, and it means to fold you into itself.",
+  "item_ids": [],
+  "exits": {
+    "up": "undersong-throat-of-the-world"
+  },
+  "min_level": 70,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The First Hum turns a fraction on its unseen axis, and the sphere's pale walls brighten and dim with the tone like a slow, cold pulse.",
+    "The note deepens by a shade, and a ring of frost races out across the floor from the source and shatters silently against your feet.",
+    "For one endless moment the hum swells until it is the only thing in the world, and the breath in your chest goes still and cold in sympathy before it releases you."
+  ]
+}

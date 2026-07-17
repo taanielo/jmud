@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "undersong-resonant-maw",
+  "name": "a resonant maw",
+  "max_hp": 860,
+  "attack_id": "attack.undersong-resonant-maw",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-undersong"],
+  "spawn_room_id": "undersong-throat-of-the-world",
+  "max_count": 1,
+  "respawn_ticks": 95,
+  "xp_reward": 1050,
+  "loot": [
+    {
+      "item_id": "underhum-resonance-mote",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 230,
+    "max": 350
+  }
+}
