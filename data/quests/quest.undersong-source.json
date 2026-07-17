@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "undersong-source",
+  "name": "Silence the First Hum",
+  "description": "The cantors only mouthed the note; the throat of the world only carried it. Down past the drowned refrains and the resonant maw, where the stair lets out at the root of the world, the hum has a heart. The Source is a perfect hollow sphere of pale, self-lit stone, and at its center — neither floating nor resting but simply present the way a pitch is present in a struck bell — turns the First Hum: not a voice, no throat, no face, only a standing note given just enough shape to defend itself, a slow knot of frost and resonance older than melody, than command, than refusal, than the first mouth that ever opened. It was humming to itself in the dark before the Choir imitated it and the Unsung fled it, and it means to fold you into itself as it folded them. There is nothing deeper than this. Cross the threshold, break the First Hum where it lifts the full weight of its attention onto you, and let the wordless tone under the world go quiet at its own root — or be drowned in it.",
+  "target_mob_id": "the-first-hum",
+  "required_kills": 1,
+  "gold_reward": 760,
+  "xp_reward": 1900,
+  "title_reward": "Hum-Silencer",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 40,
+  "recommended_level": 71,
+  "repeatable": false,
+  "prerequisite_quest_id": "undersong-cull"
+}
