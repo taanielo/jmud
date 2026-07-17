@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.effects;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -79,6 +80,48 @@ public class EffectEngine {
                 sendMessages(target, definition, MessagePhase.EXPIRE, sink);
             }
         }
+    }
+
+    /**
+     * Renders the {@code examine}-phase message of every effect currently active on the target,
+     * in effect order, for display to a bystander looking at that player (the {@code LOOK <player>}
+     * command). Each rendered line has {@code {name}} substituted with the target's display name.
+     * Effects that define no {@code examine} message contribute no line.
+     *
+     * <p>This is a pure read: it never mutates effect durations or stacks, so it is safe to call on
+     * demand from the tick thread (AGENTS.md §5).
+     *
+     * @param target the effect target whose visible effects to describe
+     * @return the rendered examine lines, in effect order; empty when no active effect has one
+     * @throws EffectRepositoryException if an active effect id cannot be resolved
+     */
+    public List<String> examineLines(EffectTarget target) throws EffectRepositoryException {
+        Objects.requireNonNull(target, "Effect target is required");
+        List<String> lines = new ArrayList<>();
+        for (EffectInstance instance : target.effects()) {
+            EffectDefinition definition = definitionOrThrow(instance.id());
+            MessageContext context = new MessageContext(
+                target.username(),
+                target.username(),
+                target.displayName(),
+                target.displayName(),
+                null,
+                definition.name(),
+                null,
+                null
+            );
+            for (MessageSpec spec : definition.messages()) {
+                if (spec.phase() != MessagePhase.EXAMINE) {
+                    continue;
+                }
+                String rendered = renderer.render(spec, context);
+                if (rendered == null || rendered.isBlank()) {
+                    continue;
+                }
+                lines.add(rendered);
+            }
+        }
+        return lines;
     }
 
     private EffectDefinition definitionOrThrow(EffectId id) throws EffectRepositoryException {

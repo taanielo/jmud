@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -157,6 +158,89 @@ class EffectEngineTest {
         assertTrue(player.effects().isEmpty());
         assertEquals(List.of(), sink.messages());
         assertEquals(false, removed);
+    }
+
+    @Test
+    void examineLinesRendersExaminePhaseAndSkipsEffectsWithoutOne() throws EffectRepositoryException {
+        EffectId blessId = EffectId.of("bless");
+        EffectId plainId = EffectId.of("plain");
+        EffectDefinition bless = new EffectDefinition(
+            blessId,
+            "Bless",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(new MessageSpec(MessagePhase.EXAMINE, MessageChannel.ROOM, "{name} is blessed."))
+        );
+        EffectDefinition plain = new EffectDefinition(
+            plainId,
+            "Plain",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(new MessageSpec(MessagePhase.APPLY, MessageChannel.SELF, "You feel plain."))
+        );
+        EffectEngine engine = new EffectEngine(
+            new MapEffectRepository(Map.of(blessId, bless, plainId, plain)));
+        Player player = new Player(
+            User.of(Username.of("bob"), Password.hash("pw", 1000)),
+            1,
+            0,
+            PlayerVitals.defaults(),
+            new ArrayList<>(List.of(new EffectInstance(blessId, 5, 1), new EffectInstance(plainId, 5, 1))),
+            "HP {hp}/{maxHp}",
+            false,
+            List.of(),
+            null,
+            null
+        );
+
+        List<String> lines = engine.examineLines(player);
+
+        assertEquals(List.of("bob is blessed."), lines);
+    }
+
+    @Test
+    void examineLinesEmptyWhenNoActiveEffects() throws EffectRepositoryException {
+        EffectDefinition bless = new EffectDefinition(
+            EffectId.of("bless"),
+            "Bless",
+            10,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(new MessageSpec(MessagePhase.EXAMINE, MessageChannel.ROOM, "{name} is blessed."))
+        );
+        EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(bless));
+        Player player = new Player(
+            User.of(Username.of("eve"), Password.hash("pw", 1000)),
+            1,
+            0,
+            PlayerVitals.defaults(),
+            new ArrayList<>(),
+            "HP {hp}/{maxHp}",
+            false,
+            List.of(),
+            null,
+            null
+        );
+
+        assertTrue(engine.examineLines(player).isEmpty());
+    }
+
+    private static class MapEffectRepository implements EffectRepository {
+        private final Map<EffectId, EffectDefinition> definitions;
+
+        private MapEffectRepository(Map<EffectId, EffectDefinition> definitions) {
+            this.definitions = definitions;
+        }
+
+        @Override
+        public Optional<EffectDefinition> findById(EffectId id) {
+            return Optional.ofNullable(definitions.get(id));
+        }
     }
 
     private static class InMemoryEffectRepository implements EffectRepository {
