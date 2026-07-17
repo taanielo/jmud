@@ -227,6 +227,48 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsTamedCompanionCustomDescription() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("beastmaster"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withTamedPets(PlayerPets.empty()
+                .tame("wolf")
+                .withName("wolf", null, "Fluffy")
+                .withDescription("wolf", "Fluffy", "A shaggy grey wolf with one torn ear."));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("Fluffy"), loaded.get().getTamedPetNames(),
+            "The companion custom name round-trips alongside the description");
+        assertEquals(List.of("A shaggy grey wolf with one torn ear."),
+            loaded.get().getTamedPetDescriptions(),
+            "The companion custom description round-trips");
+    }
+
+    @Test
+    void loadsLegacyTamedPetsWithoutDescriptionsAsUndescribed() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("elder"), Password.hash("pw", 1000));
+        repository.savePlayer(Player.of(user, "%hp> ")
+            .withTamedPets(PlayerPets.empty().tame("wolf").withName("wolf", null, "Fluffy")));
+        Path file = tempDir.resolve("players").resolve("elder.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("tamedPetDescriptions");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("Fluffy"), loaded.get().getTamedPetNames(),
+            "A legacy named companion still loads");
+        assertTrue(loaded.get().pets().entries().get(0).description().isEmpty(),
+            "A legacy companion with no description field loads as undescribed");
+    }
+
+    @Test
     void loadsLegacyTamedPetsWithoutNamesAsUnnamed() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("veteran"), Password.hash("pw", 1000));

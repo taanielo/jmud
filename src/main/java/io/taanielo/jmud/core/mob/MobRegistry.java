@@ -66,6 +66,7 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerIdentity;
 import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.PlayerPets;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -1989,6 +1990,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     static final int MAX_PET_NAME_LENGTH = 24;
 
     /**
+     * Maximum length of a companion's custom roleplay description (see the DESCRIBE command). Shares
+     * the player-description cap so a companion description and a player description use one limit.
+     */
+    static final int MAX_PET_DESCRIPTION_LENGTH = PlayerIdentity.MAX_DESCRIPTION_LENGTH;
+
+    /**
      * Permanently tames (charms) a charmable mob in the tamer's room, turning it into a persistent
      * companion that follows its owner between rooms and fights at their side. The captured wild mob
      * is removed from the world and scheduled to respawn, a tamed instance is spawned in its place,
@@ -2116,6 +2123,140 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             "Your companion shall henceforth be known as " + trimmedName + ".")));
     }
 
+    /**
+     * Returns the given player's own live tamed companions, in no particular order. Shared by the
+     * companion-targeting commands (NAME/DESCRIBE) so they resolve against exactly the pets the player
+     * controls.
+     *
+     * @param owner the owning player's username
+     * @return the owner's live tamed companions (never null, may be empty)
+     */
+    private List<MobInstance> ownedLiveCompanions(Username owner) {
+        return instances.values().stream()
+            .filter(m -> m.isTamed() && m.isAlive() && owner.equals(m.owner()))
+            .toList();
+    }
+
+    /**
+     * Returns whether the given player owns a live tamed companion matching {@code token} by its
+     * current display name or template name (same resolution the NAME command uses). Lets the
+     * DESCRIBE command decide whether a leading token targets one of the player's companions (pet
+     * description) or is the start of the player's own roleplay description. Runs on the tick thread.
+     *
+     * @param owner the player whose companions to check
+     * @param token the leading target token typed by the player
+     * @return {@code true} when the token resolves to one of the player's live companions
+     */
+    public boolean ownsCompanionMatching(Player owner, String token) {
+        Objects.requireNonNull(owner, "Owner is required");
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+        return findMobByName(ownedLiveCompanions(owner.getUsername()), token) != null;
+    }
+
+    /**
+     * Applies a DESCRIBE action to one of the player's own tamed companions (see the DESCRIBE
+     * command). The companion is matched among the player's live pets by its current display name or
+     * template name (same targeting as NAME). The {@code descriptionArg} selects the action:
+     * <ul>
+     *   <li>blank/{@code null} — query: report the current custom description, or a not-set hint,
+     *       to the owner only, with no state change.</li>
+     *   <li>{@code CLEAR}/{@code NONE} — clear the custom description back to the generic LOOK line.</li>
+     *   <li>anything else — set the custom description (capped at
+     *       {@link #MAX_PET_DESCRIPTION_LENGTH} characters).</li>
+     * </ul>
+     * On a set/clear the live instance and the owner's persisted {@link PlayerPets} record are both
+     * updated so the description shows on LOOK immediately and survives logout/login and respawn. Runs
+     * on the tick thread via the owner's command queue (AGENTS.md §5).
+     *
+     * @param owner          the player describing their companion
+     * @param companionInput the target companion token (template or existing custom name)
+     * @param descriptionArg the description text, or a query/CLEAR/NONE directive as above
+     * @return result whose {@code updatedSource} is the owner with the change persisted on a
+     *         successful set/clear; a message-only result on a query; or an error with no state change
+     *         when targeting/validation fails
+     */
+    public GameActionResult describeCompanion(
+        Player owner, String companionInput, @Nullable String descriptionArg) {
+        Objects.requireNonNull(owner, "Owner is required");
+        if (companionInput == null || companionInput.isBlank()) {
+            return GameActionResult.error("Usage: DESCRIBE <companion> <description>");
+        }
+        MobInstance target = findMobByName(ownedLiveCompanions(owner.getUsername()), companionInput);
+        if (target == null) {
+            return GameActionResult.error(
+                "You have no companion called \"" + companionInput.trim() + "\".");
+        }
+        String templateId = target.template().id().getValue();
+        String customName = target.customName();
+        String arg = descriptionArg == null ? "" : descriptionArg.trim();
+
+        if (arg.isEmpty()) {
+            String current = target.customDescription();
+            if (current == null) {
+                return new GameActionResult(null, null, List.of(GameMessage.toSource(
+                    "Your " + target.displayName() + " has no custom description set. Use DESCRIBE "
+                        + companionInput.trim() + " <text> to set one.")));
+            }
+            return new GameActionResult(null, null, List.of(
+                GameMessage.toSource("Description of " + target.displayName() + ":"),
+                GameMessage.toSource("  " + current)));
+        }
+
+        if (arg.equalsIgnoreCase("CLEAR") || arg.equalsIgnoreCase("NONE")) {
+            if (target.customDescription() == null) {
+                return GameActionResult.error(
+                    "Your " + target.displayName() + " has no custom description to clear.");
+            }
+            target.setDescription(null);
+            Player updated = owner.withTamedPets(
+                owner.pets().withDescription(templateId, customName, null));
+            saveOrLog(updated);
+            return new GameActionResult(updated, null, List.of(GameMessage.toSource(
+                "Your " + target.displayName() + "'s description has been cleared.")));
+        }
+
+        if (arg.length() > MAX_PET_DESCRIPTION_LENGTH) {
+            return GameActionResult.error("That description is too long (" + arg.length()
+                + " characters); the limit is " + MAX_PET_DESCRIPTION_LENGTH + ".");
+        }
+        target.setDescription(arg);
+        Player updated = owner.withTamedPets(
+            owner.pets().withDescription(templateId, customName, arg));
+        saveOrLog(updated);
+        return new GameActionResult(updated, null, List.of(GameMessage.toSource(
+            "Your " + target.displayName() + "'s description has been set.")));
+    }
+
+    /**
+     * Resolves the LOOK-at-a-creature text for a mob matching {@code token} in {@code roomId}, used by
+     * the LOOK command when its target is not a player. When the mob is a tamed companion carrying a
+     * custom description (see the DESCRIBE command) that description is shown; otherwise a generic
+     * "nothing special" line is shown — a companion's description hint ("none set") is never shown here,
+     * only to its owner via DESCRIBE. Returns empty when no live mob in the room matches the token, so
+     * the caller can report that nothing was seen. Safe to call from the tick thread.
+     *
+     * @param roomId the room to search
+     * @param token  the target token typed by the player
+     * @return the LOOK lines to display, or empty when no mob matches
+     */
+    public Optional<List<String>> describeMobOnLook(RoomId roomId, String token) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), token);
+        if (mob == null) {
+            return Optional.empty();
+        }
+        String description = mob.customDescription();
+        if (description != null) {
+            return Optional.of(List.of(description));
+        }
+        return Optional.of(List.of("You see nothing special about " + mob.displayName() + "."));
+    }
+
     /** Composite key pairing a tamed pet's template id and custom name for spawn deduplication. */
     private static String liveKey(String templateId, @Nullable String customName) {
         return templateId + " " + (customName == null ? "" : customName);
@@ -2150,7 +2291,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 log.warn("Tamed pet template {} for player {} no longer exists", templateId, username);
                 continue;
             }
-            MobInstance pet = MobInstance.tamed(template, roomId, username, entry.customName());
+            MobInstance pet = MobInstance.tamed(
+                template, roomId, username, entry.customName(), entry.customDescription());
             instances.put(pet.instanceId(), pet);
         }
     }

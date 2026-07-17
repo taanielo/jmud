@@ -1088,6 +1088,20 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player source = session.getPlayer();
         Optional<Player> resolved = abilityTargetResolver.resolve(source, targetInput);
         if (resolved.isEmpty()) {
+            // Not a player: fall back to looking at a creature in the room (e.g. a tamed companion),
+            // which renders its custom description (see DESCRIBE) when one is set.
+            if (context.mobRegistry() != null) {
+                Optional<RoomId> roomIdOpt = roomService.findPlayerLocation(source.getUsername());
+                if (roomIdOpt.isPresent()) {
+                    Optional<List<String>> mobLook =
+                        context.mobRegistry().describeMobOnLook(roomIdOpt.get(), targetInput);
+                    if (mobLook.isPresent()) {
+                        connection.writeLines(mobLook.get());
+                        sendPrompt();
+                        return;
+                    }
+                }
+            }
             writeLineWithPrompt("You don't see that here.");
             return;
         }
@@ -4559,6 +4573,24 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 sendPrompt();
             }
             return;
+        }
+        // A leading token naming one of the player's own tamed companions targets that companion's
+        // roleplay description (DESCRIBE <pet> [text|CLEAR|NONE]); otherwise DESCRIBE manages the
+        // player's own description. Companion resolution runs on the tick thread (AGENTS.md §5).
+        if (context.mobRegistry() != null) {
+            String[] petParts = normalized.split("\\s+", 2);
+            String companionToken = petParts[0];
+            if (context.mobRegistry().ownsCompanionMatching(player, companionToken)) {
+                String descriptionArg = petParts.length > 1 ? petParts[1] : "";
+                if (!descriptionArg.isBlank()) {
+                    cancelRestIfActive();
+                }
+                GameActionResult result = context.mobRegistry()
+                    .describeCompanion(session.getPlayer(), companionToken, descriptionArg);
+                deliverResult(result);
+                sendPrompt();
+                return;
+            }
         }
         if (normalized.equalsIgnoreCase("CLEAR") || normalized.equalsIgnoreCase("NONE")) {
             if (player.description().isEmpty()) {

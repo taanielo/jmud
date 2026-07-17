@@ -82,6 +82,15 @@ public class MobInstance {
      */
     @Nullable
     private volatile String customName;
+    /**
+     * The owner-assigned custom roleplay description of a tamed companion (see the DESCRIBE command),
+     * or {@code null} when the companion has no custom description. Only meaningful for
+     * {@link #isTamed() tamed} pets; written on the tick thread via {@link #setDescription(String)}
+     * (describing and respawn-on-login), read from any thread for LOOK rendering. When {@code null}
+     * a LOOK falls back to a generic line rather than showing this description.
+     */
+    @Nullable
+    private volatile String customDescription;
 
     public MobInstance(MobTemplate template) {
         this.template = template;
@@ -154,9 +163,36 @@ public class MobInstance {
      */
     public static MobInstance tamed(
         MobTemplate template, RoomId spawnRoom, Username owner, @Nullable String customName) {
+        return tamed(template, spawnRoom, owner, customName, null);
+    }
+
+    /**
+     * Creates a permanently tamed pet instance owned by {@code owner} and carrying an optional custom
+     * display name (see the NAME command) and custom roleplay description (see the DESCRIBE command).
+     * Used when respawning a persisted companion whose owner has already named and/or described it, so
+     * both are present from the moment it re-enters the world.
+     *
+     * @param template          the tamed mob's template
+     * @param spawnRoom         the room to spawn the pet into (normally the owner's current room)
+     * @param owner             the player who tamed the mob
+     * @param customName        the companion's custom display name, or {@code null} to keep the
+     *                          template name
+     * @param customDescription the companion's custom roleplay description, or {@code null} to fall
+     *                          back to the generic LOOK line
+     * @return the new tamed pet instance
+     */
+    public static MobInstance tamed(
+        MobTemplate template,
+        RoomId spawnRoom,
+        Username owner,
+        @Nullable String customName,
+        @Nullable String customDescription) {
         MobInstance instance = new MobInstance(template, spawnRoom, owner);
         if (customName != null && !customName.isBlank()) {
             instance.customName = customName;
+        }
+        if (customDescription != null && !customDescription.isBlank()) {
+            instance.customDescription = customDescription;
         }
         return instance;
     }
@@ -367,6 +403,30 @@ public class MobInstance {
      */
     public void setCustomName(@Nullable String customName) {
         this.customName = customName == null || customName.isBlank() ? null : customName;
+    }
+
+    /**
+     * Returns this tamed companion's custom roleplay description, or {@code null} when it has none.
+     * Safe to call from any thread.
+     *
+     * @return the custom description, or {@code null}
+     */
+    @Nullable
+    public String customDescription() {
+        return customDescription;
+    }
+
+    /**
+     * Assigns a custom roleplay description to this tamed companion (see the DESCRIBE command). Once
+     * set, this replaces the generic line shown when a player LOOKs at the companion. Must only be
+     * called from the tick thread.
+     *
+     * @param customDescription the new custom description; blank/{@code null} clears it back to the
+     *                          generic LOOK line
+     */
+    public void setDescription(@Nullable String customDescription) {
+        this.customDescription =
+            customDescription == null || customDescription.isBlank() ? null : customDescription;
     }
 
     /**
