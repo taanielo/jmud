@@ -14,6 +14,14 @@
   "xp_reward": 3900,
   "loot": [
     {
+      "item_id": "the-caesura-stroke",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "crown-of-the-held-beat",
+      "drop_chance": 0.45
+    },
+    {
       "item_id": "held-breath-splinter",
       "drop_chance": 1.0
     },

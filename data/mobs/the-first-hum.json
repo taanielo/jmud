@@ -14,6 +14,14 @@
   "xp_reward": 3600,
   "loot": [
     {
+      "item_id": "the-underhum-knell",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "standing-tone-torc",
+      "drop_chance": 0.45
+    },
+    {
       "item_id": "underhum-resonance-mote",
       "drop_chance": 1.0
     },
