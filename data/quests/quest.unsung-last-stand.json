@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "unsung-last-stand",
+  "name": "The Marshal's Refusal",
+  "description": "The sentries were only the outer wards. Down past the Catacomb of Dissent, in a domed chamber hung and packed and layered with sound-drinking cloth until the room is a throat lined against all sound, stands the oldest of the Unsung and the first: the Throatless Marshal, who cut its own voice out before any other and led the rest into the mute dark. It has never in all the long refusal made a single sound, and it gives none now — it simply turns its wrapped and eyeless head toward you, and the silence tightens like a fist around your chest, because to the Marshal you are the Choir's voice come down the stair at last, the compulsion made flesh. Cross the last stand, break the Marshal where it lifts its silence against you, and let the Unsung's refusal end on its own terms rather than the cathedral's.",
+  "target_mob_id": "the-throatless-marshal",
+  "required_kills": 1,
+  "gold_reward": 680,
+  "xp_reward": 1700,
+  "title_reward": "Silence-Ender",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 35,
+  "recommended_level": 62,
+  "repeatable": false,
+  "prerequisite_quest_id": "unsung-cull"
+}
