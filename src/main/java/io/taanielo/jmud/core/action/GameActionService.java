@@ -1081,28 +1081,102 @@ public class GameActionService {
             return GameActionResult.error("You don't see that here.");
         }
         Player updated = source.addItem(item.get());
-        List<GameMessage> messages = new ArrayList<>();
+        List<GameMessage> messages = buildPickupMessages(source, item.get());
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Builds the messages announcing that {@code source} picked up {@code item}: any custom
+     * {@link MessagePhase#PICKUP} messages the item carries, or a default source line and room
+     * broadcast otherwise. Factored out of {@link #getItem} so the {@link MessageContext}/emitter
+     * wiring lives in a single place (the bulk {@link #getAllItems} path summarizes instead).
+     *
+     * @param source the player who picked the item up
+     * @param item   the item that was picked up
+     * @return the messages to deliver for this pickup
+     */
+    private List<GameMessage> buildPickupMessages(Player source, Item item) {
         MessageContext context = new MessageContext(
             source.getUsername(),
             source.getUsername(),
             source.getUsername().getValue(),
             source.getUsername().getValue(),
-            item.get().getName(),
+            item.getName(),
             null,
             null,
             null
         );
-        List<GameMessage> emitted = messageEmitter.emit(item.get().getMessages(), MessagePhase.PICKUP, context);
-        if (emitted.isEmpty()) {
-            messages.add(GameMessage.toSource("You pick up " + item.get().getName() + "."));
+        List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), MessagePhase.PICKUP, context);
+        if (!emitted.isEmpty()) {
+            return emitted;
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You pick up " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " picks up " + item.getName() + "."
+        ));
+        return messages;
+    }
+
+    /**
+     * Picks up every item currently on the floor of the player's room, in the room-list order the
+     * merged static + transient item list (the one {@code LOOK} renders) reports.
+     *
+     * <p>Each pickup is checked against the player's carry limit first; the moment adding the next
+     * item would leave them {@linkplain EncumbranceService#isOverburdened(Player) overburdened}, the
+     * action stops there, keeps everything already gathered, and reports the item it could not carry —
+     * mirroring the single-item {@link #getItem} overburdened guard without erroring the whole action.
+     * An empty room reports that there is nothing here to get. The response is a single summarized line
+     * rather than one line per item, so a large haul does not spam the terminal; the per-item
+     * delivery-quest and light-reveal side effects are applied by the adapter over the newly-added
+     * inventory items.
+     *
+     * @param source the player picking everything up
+     * @return result with the updated inventory and a summary message, or an error with no state change
+     */
+    public GameActionResult getAllItems(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        RoomService.LookResult look = roomService.look(source.getUsername());
+        Room room = look.room();
+        if (room == null) {
+            return GameActionResult.error("You cannot get items here.");
+        }
+        List<Item> floor = room.getItems();
+        if (floor.isEmpty()) {
+            return GameActionResult.error("There is nothing here to get.");
+        }
+        Player current = source;
+        List<String> picked = new ArrayList<>();
+        String blocked = null;
+        for (Item item : floor) {
+            if (encumbranceService.isOverburdened(current.addItem(item))) {
+                blocked = item.getName();
+                break;
+            }
+            Optional<Item> taken = roomService.takeItem(source.getUsername(), item.getId().getValue());
+            if (taken.isEmpty()) {
+                continue;
+            }
+            current = current.addItem(taken.get());
+            picked.add(taken.get().getName());
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        if (!picked.isEmpty()) {
+            messages.add(GameMessage.toSource("You get " + joinNames(picked) + ". " + countSuffix(picked.size())));
             messages.add(GameMessage.toRoom(
                 source.getUsername(),
                 null,
-                source.getUsername().getValue() + " picks up " + item.get().getName() + "."
+                picked.size() == 1
+                    ? source.getUsername().getValue() + " picks up " + picked.getFirst() + "."
+                    : source.getUsername().getValue() + " picks up several items."
             ));
-        } else {
-            messages.addAll(emitted);
         }
+        if (blocked != null) {
+            messages.add(GameMessage.toSource("You are carrying too much to pick up " + blocked + "."));
+        }
+        Player updated = picked.isEmpty() ? null : current;
         return new GameActionResult(updated, null, messages);
     }
 
@@ -1131,7 +1205,21 @@ public class GameActionService {
             }
         }
         Player updated = source.removeItem(item).withEquipment(equipment);
-        List<GameMessage> messages = new ArrayList<>();
+        List<GameMessage> messages = buildDropMessages(source, item);
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Builds the messages announcing that {@code source} dropped {@code item}: any custom
+     * {@link MessagePhase#DROP} messages the item carries, or a default source line and room broadcast
+     * otherwise. Factored out of {@link #dropItem} so the {@link MessageContext}/emitter wiring lives
+     * in a single place (the bulk {@link #dropAllItems} path summarizes instead).
+     *
+     * @param source the player who dropped the item
+     * @param item   the item that was dropped
+     * @return the messages to deliver for this drop
+     */
+    private List<GameMessage> buildDropMessages(Player source, Item item) {
         MessageContext context = new MessageContext(
             source.getUsername(),
             source.getUsername(),
@@ -1143,17 +1231,90 @@ public class GameActionService {
             null
         );
         List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), MessagePhase.DROP, context);
-        if (emitted.isEmpty()) {
-            messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
-            messages.add(GameMessage.toRoom(
-                source.getUsername(),
-                null,
-                source.getUsername().getValue() + " drops " + item.getName() + "."
-            ));
-        } else {
-            messages.addAll(emitted);
+        if (!emitted.isEmpty()) {
+            return emitted;
         }
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " drops " + item.getName() + "."
+        ));
+        return messages;
+    }
+
+    /**
+     * Drops every unequipped item in the player's inventory onto the room floor in one action.
+     *
+     * <p>Worn or wielded gear is deliberately left untouched — unlike single-item {@link #dropItem},
+     * which auto-unequips a requested worn item, this bulk form never unequips anything, so a careless
+     * {@code DROP ALL} cannot strip a player's weapon or armour by accident. Reports a single
+     * summarized line rather than one line per item; an empty (or fully-equipped) inventory reports
+     * that there is nothing to drop, with no state change.
+     *
+     * @param source the player dropping everything
+     * @return result with the updated inventory and a summary message, or an error with no state change
+     */
+    public GameActionResult dropAllItems(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        PlayerEquipment equipment = source.getEquipment();
+        List<Item> keep = new ArrayList<>();
+        List<Item> toDrop = new ArrayList<>();
+        for (Item item : source.getInventory()) {
+            if (equipment.isEquipped(item.getId())) {
+                keep.add(item);
+            } else {
+                toDrop.add(item);
+            }
+        }
+        if (toDrop.isEmpty()) {
+            return GameActionResult.error("You have nothing to drop.");
+        }
+        List<String> dropped = new ArrayList<>();
+        for (Item item : toDrop) {
+            roomService.dropItem(source.getUsername(), item);
+            dropped.add(item.getName());
+        }
+        Player updated = source.withInventory(keep);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You drop " + joinNames(dropped) + ". " + countSuffix(dropped.size())));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            dropped.size() == 1
+                ? source.getUsername().getValue() + " drops " + dropped.getFirst() + "."
+                : source.getUsername().getValue() + " drops several items."
+        ));
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Joins item names into a natural-language list: {@code "a"}, {@code "a and b"}, or the
+     * Oxford-comma form {@code "a, b, and c"} for three or more.
+     *
+     * @param names the item names in the order they were gathered
+     * @return the human-readable joined list
+     */
+    private static String joinNames(List<String> names) {
+        int size = names.size();
+        if (size == 1) {
+            return names.getFirst();
+        }
+        if (size == 2) {
+            return names.get(0) + " and " + names.get(1);
+        }
+        return String.join(", ", names.subList(0, size - 1)) + ", and " + names.get(size - 1);
+    }
+
+    /**
+     * Formats the trailing {@code (N item)} / {@code (N items)} count for a bulk get/drop summary.
+     *
+     * @param count the number of items acted on
+     * @return the parenthesised, correctly-pluralised count suffix
+     */
+    private static String countSuffix(int count) {
+        return "(" + count + (count == 1 ? " item)" : " items)");
     }
 
     /**
@@ -1349,6 +1510,76 @@ public class GameActionService {
             source.getUsername(),
             null,
             source.getUsername().getValue() + " gets " + contained.getName() + " from " + container.getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Retrieves every item from a container the player is carrying into their inventory in one action.
+     *
+     * <p>The named container must be carried, be an actual {@linkplain Item#isContainer() container},
+     * and be unlocked (mirroring the single-item {@link #getFromContainer} guards). Each contained
+     * item is moved to the top-level inventory (regaining its carry weight) and removed from the
+     * container. Reports a single summarized line rather than one line per item; an empty container
+     * reports that there is nothing in it, with no state change.
+     *
+     * @param source         the player emptying the container
+     * @param containerInput the container name or id to empty
+     * @return result with the updated inventory, or an error with no state change
+     */
+    // Identity comparison below (inv == container) is intentional: container is the exact instance
+    // resolved from this inventory, so identity replaces precisely that reference without disturbing
+    // value-equal duplicates elsewhere in the inventory.
+    @SuppressWarnings("ReferenceEquality")
+    public GameActionResult getAllFromContainer(Player source, String containerInput) {
+        Objects.requireNonNull(source, "Source is required");
+        String containerNorm = containerInput == null ? "" : containerInput.trim();
+        if (containerNorm.isEmpty()) {
+            return GameActionResult.error("Usage: get all from <container>");
+        }
+        Item container = findInventoryItem(source, containerNorm);
+        if (container == null) {
+            return GameActionResult.error("You aren't carrying " + containerNorm + ".");
+        }
+        if (!container.isContainer()) {
+            return GameActionResult.error(container.getName() + " is not a container.");
+        }
+        if (container.isLocked()) {
+            return GameActionResult.error(container.getName() + " is locked.");
+        }
+        List<Item> contents = container.getContainedItems();
+        if (contents.isEmpty()) {
+            return GameActionResult.error("There is nothing in " + container.getName() + ".");
+        }
+        Item updatedContainer = container;
+        List<String> takenNames = new ArrayList<>();
+        for (Item contained : contents) {
+            updatedContainer = updatedContainer.withoutContainedItem(contained.getId());
+            takenNames.add(contained.getName());
+        }
+        List<Item> next = new ArrayList<>();
+        boolean containerReplaced = false;
+        for (Item inv : source.getInventory()) {
+            if (!containerReplaced && inv == container) {
+                next.add(updatedContainer);
+                containerReplaced = true;
+                continue;
+            }
+            next.add(inv);
+        }
+        next.addAll(contents);
+        Player updated = source.withInventory(next);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You get " + joinNames(takenNames) + " from " + container.getName() + ". "
+                + countSuffix(takenNames.size())));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            takenNames.size() == 1
+                ? source.getUsername().getValue() + " gets " + takenNames.getFirst()
+                    + " from " + container.getName() + "."
+                : source.getUsername().getValue() + " gets several items from " + container.getName() + "."
         ));
         return new GameActionResult(updated, null, messages);
     }
