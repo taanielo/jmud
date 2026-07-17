@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -60,6 +61,7 @@ import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.enchant.EnchantOutcome;
 import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
+import io.taanielo.jmud.core.guild.GuildLevel;
 import io.taanielo.jmud.core.guild.GuildMember;
 import io.taanielo.jmud.core.guild.GuildResult;
 import io.taanielo.jmud.core.guild.GuildService;
@@ -4012,7 +4014,29 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 connection.writeLine("  " + member.username().getValue() + rankTag + " - " + status);
             });
         connection.writeLine("Treasury: " + guild.treasuryGold() + " gold.");
+        writeGuildLevelLines(guild);
         sendPrompt();
+    }
+
+    /**
+     * Writes the guild's level and lifetime-deposit progress lines (used by the roster and vault views).
+     * Announces the guild's current level, its level-scaled vault capacity, its lifetime deposited total
+     * and either the gold needed for the next level or that it has reached the max level.
+     */
+    private void writeGuildLevelLines(Guild guild) {
+        GuildLevel level = guild.level();
+        connection.writeLine("Guild level: " + level.rank() + "/" + GuildLevel.FIVE.rank()
+            + " (vault capacity " + GuildService.vaultCapacity(guild) + " slots).");
+        OptionalInt nextThreshold = guild.nextLevelThreshold();
+        if (nextThreshold.isPresent()) {
+            int remaining = nextThreshold.getAsInt() - guild.lifetimeDepositedGold();
+            connection.writeLine("Lifetime deposited: " + guild.lifetimeDepositedGold()
+                + " gold. Next level at " + nextThreshold.getAsInt() + " gold ("
+                + remaining + " more to go).");
+        } else {
+            connection.writeLine("Lifetime deposited: " + guild.lifetimeDepositedGold()
+                + " gold. Max level reached.");
+        }
     }
 
     private void handleGuildBank(GuildService guildService) {
@@ -4040,6 +4064,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You only have " + player.getGold() + " gold to deposit.");
             return;
         }
+        GuildLevel levelBefore = guild.level();
         GuildResult result = guildService.deposit(player.getUsername(), amount);
         if (result.success() && result.guild() != null) {
             Player updated = player.addGold(-amount);
@@ -4047,6 +4072,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
             saveOrWarn(updated);
             broadcastToGuild(result.guild(), player.getUsername(),
                 player.getUsername().getValue() + " deposited " + amount + " gold to the guild bank.");
+            GuildLevel levelAfter = result.guild().level();
+            if (levelAfter.rank() > levelBefore.rank()) {
+                connection.writeLine(result.message());
+                writeLineWithPrompt("Your deposit raises " + result.guild().name() + " to guild level "
+                    + levelAfter.rank() + "! Shared vault capacity is now "
+                    + GuildService.vaultCapacity(result.guild()) + " slots.");
+                broadcastToGuild(result.guild(), player.getUsername(),
+                    result.guild().name() + " has reached guild level " + levelAfter.rank()
+                        + "! The shared vault now holds up to "
+                        + GuildService.vaultCapacity(result.guild()) + " items.");
+                return;
+            }
         }
         writeLineWithPrompt(result.message());
     }
@@ -4077,15 +4114,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         List<VaultedItem> items = guild.vaultedItems();
         if (items.isEmpty()) {
-            writeLineWithPrompt("The " + guild.name() + " vault is empty.");
+            connection.writeLine("The " + guild.name() + " vault is empty.");
+            writeGuildLevelLines(guild);
+            sendPrompt();
             return;
         }
         connection.writeLine(guild.name() + " vault (" + items.size() + "/"
-            + GuildService.VAULT_CAPACITY + "):");
+            + GuildService.vaultCapacity(guild) + "):");
         for (VaultedItem vaulted : items) {
             connection.writeLine("  " + vaulted.item().getName()
                 + " (deposited by " + vaulted.depositor().getValue() + ")");
         }
+        writeGuildLevelLines(guild);
         sendPrompt();
     }
 

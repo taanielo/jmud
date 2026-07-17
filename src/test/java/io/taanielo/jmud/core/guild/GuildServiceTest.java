@@ -356,6 +356,58 @@ class GuildServiceTest {
     }
 
     @Test
+    void depositAccumulatesLifetimeGoldAndRaisesLevel() {
+        service.create(ALICE, "Ironclad");
+
+        service.deposit(ALICE, 300);
+        GuildResult result = service.deposit(ALICE, 300);
+
+        assertEquals(600, result.guild().treasuryGold());
+        assertEquals(600, result.guild().lifetimeDepositedGold());
+        assertEquals(GuildLevel.TWO, result.guild().level());
+        assertEquals(600, repository.saved.get(result.guild().id()).lifetimeDepositedGold());
+    }
+
+    @Test
+    void withdrawDoesNotReduceLifetimeGold() {
+        service.create(ALICE, "Ironclad");
+        service.deposit(ALICE, 600);
+
+        service.withdraw(ALICE, 600);
+
+        Guild guild = service.guildOf(ALICE).orElseThrow();
+        assertEquals(0, guild.treasuryGold());
+        assertEquals(600, guild.lifetimeDepositedGold());
+        assertEquals(GuildLevel.TWO, guild.level());
+    }
+
+    @Test
+    void vaultCapacityScalesWithGuildLevel() {
+        service.create(ALICE, "Ironclad");
+        assertEquals(40, GuildService.vaultCapacity(service.guildOf(ALICE).orElseThrow()));
+
+        service.deposit(ALICE, 500);
+        assertEquals(50, GuildService.vaultCapacity(service.guildOf(ALICE).orElseThrow()));
+
+        service.deposit(ALICE, 14_500);
+        assertEquals(80, GuildService.vaultCapacity(service.guildOf(ALICE).orElseThrow()));
+    }
+
+    @Test
+    void higherLevelGuildCanStoreBeyondBaseCapacity() {
+        service.create(ALICE, "Ironclad");
+        service.deposit(ALICE, 500);
+        for (int i = 0; i < 50; i++) {
+            assertTrue(service.storeItem(ALICE, item("item-" + i, "trinket " + i)).success());
+        }
+
+        GuildResult overflow = service.storeItem(ALICE, item("extra", "one too many"));
+
+        assertFalse(overflow.success());
+        assertEquals(50, service.guildOf(ALICE).orElseThrow().vaultedItems().size());
+    }
+
+    @Test
     void memberCanDepositAndLeaderCanWithdraw() {
         service.create(ALICE, "Ironclad");
         service.invite(ALICE, BOB, true);
