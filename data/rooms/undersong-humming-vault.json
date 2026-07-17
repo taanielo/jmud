@@ -1,0 +1,20 @@
+{
+  "schema_version": 8,
+  "id": "undersong-humming-vault",
+  "name": "The Humming Vault",
+  "description": "The stair lets out into a vault so vast the resonating stone carries the hum in every direction at once, and standing in it is like standing inside a struck bell that never stops ringing. There is no single source you can face; the tone comes from the floor, the ribbed and curving walls, the unseen ceiling lost in the dark overhead, all of it vibrating in one seamless, sub-audible chord that has been sounding, patient and unbroken, since before the Choir raised its first voice to imitate it. The Choir demanded that every throat join a single note; the Unsung answered by cutting every throat out. Neither ever understood that the note they fought over was only an echo of this — a thing with no throat at all, that never needed to be sung and cannot be silenced, because it was never a voice in the first place. Two low passages open from the vault, east and west, where the hum divides and takes on different characters; and at the vault's far heart the floor drops away down a throat of stone toward the place where the tone is loudest and oldest, and where something is answering it in kind.",
+  "item_ids": [],
+  "exits": {
+    "up": "undersong-descent",
+    "east": "undersong-choir-of-echoes",
+    "west": "undersong-drowned-refrain",
+    "down": "undersong-throat-of-the-world"
+  },
+  "min_level": 66,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The whole vault swells a half-tone and the sound presses in from every side at once, a pressure with no direction to flee.",
+    "A hollow cantor drifts across the far floor, its ribs open and empty, humming back the vault's note through a throat it no longer owns.",
+    "Frost crazes the ribbed wall in slow spreading fans, keeping time with a beat far below hearing."
+  ]
+}

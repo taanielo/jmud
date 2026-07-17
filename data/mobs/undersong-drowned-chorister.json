@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "undersong-drowned-chorister",
+  "name": "a drowned chorister",
+  "max_hp": 760,
+  "attack_id": "attack.undersong-drowned-chorister",
+  "aggressive": true,
+  "tags": ["undead", "resonant", "the-undersong"],
+  "spawn_room_id": "undersong-drowned-refrain",
+  "max_count": 2,
+  "respawn_ticks": 82,
+  "xp_reward": 950,
+  "loot": [
+    {
+      "item_id": "underhum-resonance-mote",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 200,
+    "max": 300
+  }
+}

@@ -165,6 +165,7 @@ a validator rule, not a manual checkbox.
 | The Marrow Bloom (`marrow-bloom`) | ✅ #579 | ✅ (marrow-cull, marrow-bloom #581) | ✅ #579 |
 | The Bonelight Choir (`bonelight-choir`) | ✅ #608 | ✅ (bonelight-cull, bonelight-choir #609) | ✅ #608 |
 | The Unsung (`the-unsung`) | ✅ #633 | ✅ (unsung-cull, unsung-last-stand #634) | ✅ #633 |
+| The Undersong (`the-undersong`) | ✅ #655 | 🔨 #656 | ✅ #655 |
 
 ## Systems
 

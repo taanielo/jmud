@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "underhum-resonance-mote",
+  "name": "a mote of underhum resonance",
+  "description": "A bead of standing tone somehow made solid — a fleck of the First Hum's own resonance, condensed out of the source's cold and held in a lattice of frost that rings a single unending note against the palm too low to hear and impossible to set down without missing. It is older than the material any enchanter has ever worked: not bone struck from a fused choir, not cloth woven of held silence, but the raw sound the world was humming to itself before there were throats to imitate or refuse it. Bonewrights and rune-singers speak of it the way sailors speak of the deep, certain it could be worked into a ward that answers no voice, or a note that outlasts silence — but only by a hand willing to risk being folded into the tone it means to shape.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 180,
+  "rarity": "rare"
+}

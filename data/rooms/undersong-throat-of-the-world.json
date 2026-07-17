@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "undersong-throat-of-the-world",
+  "name": "The Throat of the World",
+  "description": "The floor of the vault funnels down into a vast vertical shaft of resonating stone, ribbed like the inside of a throat and wide enough to swallow the cathedral above whole. This is where the hum is made — not sung, made, the way a struck string makes a note, the whole shaft of living rock vibrating as one until the tone is no longer something you hear but something you are inside of, pressing on the lungs, blurring the eyes, setting the marrow of every bone ringing in sympathy. The Choir raised a cathedral to imitate this and heard only its own echo. The Unsung buried themselves in silence to escape it and only proved they had heard it too. Here at the throat there is no imitating and no escaping; there is only the raw column of tone rising out of the deep, and the cold that rides it, so total that frost sheets the walls in scaled white plates and your every breath is torn from you and carried down into the dark before you can draw the next. The shaft descends one last time, toward a light and a sound at its root that neither the Choir nor the Unsung ever reached — the source, still humming, exactly as it hummed before the first throat was ever raised to answer it.",
+  "item_ids": [],
+  "exits": {
+    "up": "undersong-humming-vault",
+    "down": "undersong-source"
+  },
+  "min_level": 68,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The whole shaft flexes with a note too vast to hear, and for an instant your vision doubles and the frost on the walls sings a thin high harmonic of its own.",
+    "A plate of white frost the size of a door peels from the throat's wall and falls away into the dark below without ever making a sound you can hear over the hum.",
+    "The tone rises from the root of the shaft in a slow crushing swell, and every bone in you rings with it until you are not sure the sound is not coming from inside you."
+  ]
+}

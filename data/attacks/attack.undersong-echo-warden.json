@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.undersong-echo-warden",
+  "name": "a folded echo",
+  "min_damage": 62,
+  "max_damage": 90,
+  "hit_bonus": 9,
+  "crit_bonus": 8,
+  "damage_bonus": 16,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 65
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The echo-warden gathers a hundred late copies of the hum out of the black stone and folds them all onto you at once, and the overlapping tones crush inward, cold and grinding and out of true. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The echo-warden collapses its reflections toward you and the gallery's stacked echoes rush in cold from every wall, and you slip through the one seam where they cross and cancel."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The echo-warden brings the whole gallery's worth of copied tone down on you in a single folded chord, each echo a beat colder than the last, until the layered sound closes like a fist of ice! The blow {verb} you!"
+    }
+  ]
+}
