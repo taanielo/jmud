@@ -22,6 +22,8 @@ import io.taanielo.jmud.core.character.repository.RaceRepository;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.craft.PlayerProficiencies;
+import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
@@ -212,6 +214,63 @@ class ScoreCommandTest {
 
         assertTrue(context.lines.stream().anyMatch(l -> l.equals("Titles: Rat Slayer, *Centurion* (active)")),
             "Expected active title marked in output, got: " + context.lines);
+    }
+
+    @Test
+    void showsNoneWhenNoProfessionPractised() {
+        Player player = makePlayer(PlayerEquipment.empty());
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(EquipmentArmorResolver.noOp(), RaceArmorBonusResolver.noOp());
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Profs : none")),
+            "Expected 'Profs : none' in output, got: " + context.lines);
+    }
+
+    @Test
+    void showsAllFiveProfessionsWhenPractised() {
+        PlayerProficiencies profs = PlayerProficiencies.empty()
+            .gain(ProfessionId.BLACKSMITHING, 250)
+            .gain(ProfessionId.ALCHEMY, 120)
+            .gain(ProfessionId.COOKING, 90)
+            .gain(ProfessionId.ENCHANTING, 305)
+            .gain(ProfessionId.LEATHERWORKING, 437);
+        Player player = makePlayer(PlayerEquipment.empty()).withProficiencies(profs);
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(EquipmentArmorResolver.noOp(), RaceArmorBonusResolver.noOp());
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        String expected = "Profs : blacksmithing 2 (50/100 to next), alchemy 1 (20/100 to next), "
+            + "cooking 0 (90/100 to next), enchanting 3 (5/100 to next), leatherworking 4 (37/100 to next)";
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals(expected)),
+            "Expected all five professions in output, got: " + context.lines);
+    }
+
+    @Test
+    void onlyListsPractisedProfessions() {
+        PlayerProficiencies profs = PlayerProficiencies.empty()
+            .gain(ProfessionId.LEATHERWORKING, 437);
+        Player player = makePlayer(PlayerEquipment.empty()).withProficiencies(profs);
+        CapturingContext context = new CapturingContext(player, true);
+
+        ScoreCommand cmd = makeCommand(EquipmentArmorResolver.noOp(), RaceArmorBonusResolver.noOp());
+        cmd.match("SCORE").orElseThrow().execute(context);
+
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("Profs : leatherworking 4 (37/100 to next)")),
+            "Expected only leatherworking listed, got: " + context.lines);
+    }
+
+    @Test
+    void formatsProficienciesHelperRendersLevelsAndProgress() {
+        PlayerProficiencies profs = PlayerProficiencies.empty()
+            .gain(ProfessionId.BLACKSMITHING, 100)
+            .gain(ProfessionId.ENCHANTING, 150);
+
+        assertTrue(ScoreCommand.formatProficiencies(profs)
+            .equals("blacksmithing 1 (0/100 to next), enchanting 1 (50/100 to next)"));
+        assertTrue(ScoreCommand.formatProficiencies(PlayerProficiencies.empty()).equals("none"));
     }
 
     @Test

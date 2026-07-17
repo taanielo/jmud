@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.craft;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -26,6 +27,13 @@ public record ProfessionId(String value) {
     /** The leatherworking profession backing the {@code TAN} command. */
     public static final ProfessionId LEATHERWORKING = new ProfessionId("leatherworking");
 
+    /**
+     * All professions known to the game, in a stable display order. New professions must be appended
+     * here so read-only surfaces (e.g. {@code SCORE}) pick them up without further edits.
+     */
+    private static final List<ProfessionId> KNOWN =
+        List.of(BLACKSMITHING, ALCHEMY, COOKING, ENCHANTING, LEATHERWORKING);
+
     public ProfessionId {
         Objects.requireNonNull(value, "Profession id is required");
         if (value.isBlank()) {
@@ -42,5 +50,14 @@ public record ProfessionId(String value) {
     public static ProfessionId of(String value) {
         return new ProfessionId(Objects.requireNonNull(value, "Profession id is required")
             .trim().toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Returns all professions known to the game, in a stable display order.
+     *
+     * @return an immutable list of every known profession id
+     */
+    public static List<ProfessionId> known() {
+        return KNOWN;
     }
 }
