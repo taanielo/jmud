@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "tailoring-silkweave-slippers",
+  "name": "Silkweave Slippers",
+  "output_item": "silkweave-slippers",
+  "gold_cost": 25,
+  "materials": [
+    { "item": "spider-silk", "quantity": 2 }
+  ]
+}

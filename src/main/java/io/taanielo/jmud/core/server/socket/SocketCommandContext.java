@@ -600,6 +600,17 @@ public interface SocketCommandContext extends Client {
     default void cut(String args) {}
 
     /**
+     * Executes the {@code SEW} command. With blank arguments it lists the cloth armor recipes a tailor
+     * can make, with live {@code have/need} material counts; with an item name it attempts to sew it,
+     * consuming the required cloth and gold. Requires a tailor in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output item name to sew, or blank to list recipes
+     */
+    default void sew(String args) {}
+
+    /**
      * Executes the {@code GATHER} command, harvesting the raw-material yield of an available resource
      * node in the player's current room and adding it to their inventory. If no node is present, or
      * the node has already been harvested and not yet respawned, a clear failure message is sent and

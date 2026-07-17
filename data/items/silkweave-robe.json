@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "silkweave-robe",
+  "name": "Silkweave Robe",
+  "description": "A flowing robe of layered spider silk backed with a panel of grave linen, cool against the skin and whisper-light on the shoulders. It gathers a caster's power into a deep, steady reservoir.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "intellect": 2,
+      "mana": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "chest",
+  "weight": 2,
+  "value": 120,
+  "attack_ref": null
+}

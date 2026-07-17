@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "tailoring-gravebound-leggings",
+  "name": "Gravebound Leggings",
+  "output_item": "gravebound-leggings",
+  "gold_cost": 50,
+  "min_skill": 2,
+  "materials": [
+    { "item": "grave-linen", "quantity": 2 },
+    { "item": "spider-silk", "quantity": 2 }
+  ]
+}
