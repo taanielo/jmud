@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "interval-caesura-shade",
+  "name": "a caesura-shade",
+  "max_hp": 880,
+  "attack_id": "attack.interval-caesura-shade",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-interval"],
+  "spawn_room_id": "interval-grace-notes",
+  "max_count": 2,
+  "respawn_ticks": 84,
+  "xp_reward": 1220,
+  "loot": [
+    {
+      "item_id": "held-breath-splinter",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 250,
+    "max": 380
+  }
+}

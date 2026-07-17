@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.the-fermata",
+  "name": "a held stroke",
+  "min_damage": 76,
+  "max_damage": 102,
+  "hit_bonus": 11,
+  "crit_bonus": 9,
+  "damage_bonus": 20,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 72
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Fermata lets a fraction of its enormous held stroke fall onto you, no more than a hair of the eternity it has kept drawn back, and even that sliver of released cold drives through flesh and bone and stops your pulse against the count for the length of a held note. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Fermata tips its arrested stroke toward you and the cold of the whole withheld measure gathers to fall — and you break your rhythm and step off the beat, and the stroke draws itself back up short of you, unresolved, refusing to spend itself."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Fermata narrows its held stroke down to the width of your heart and lets a single beat of it fall, and the cold of that one released instant drives so deep that every bone in you rings once with the downbeat it has held back since the world began! The blow {verb} you!"
+    }
+  ]
+}

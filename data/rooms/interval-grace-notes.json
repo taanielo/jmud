@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "interval-grace-notes",
+  "name": "The Grace Notes",
+  "description": "The measure thins here into a narrow gallery of ornament, where all the small unsounded flourishes that live in the pause before a beat have drifted and caught — the quick grace notes, the half-turns, the little crushed graces that a player leans through on the way to the note that matters and never quite lets ring on their own. They hang in the cold air in their hundreds, each one frozen a hair short of sounding, delicate as frost-ferns and just as sharp, and the whole gallery shivers faintly whenever your heartbeat passes through it, as though every arrested ornament were straining toward the beat of you and could not quite reach it. There is a terrible patience to the place. These are the sounds that were never important enough to be finished, the decorations of a music that has stopped, and they have waited in the gap without resentment and without hope, simply poised, for as long as there has been a pause to wait inside. The only way onward loops back west to the empty measure; the graces do not lead anywhere, because a grace note was never meant to arrive.",
+  "item_ids": [],
+  "exits": {
+    "west": "interval-hollow-measure"
+  },
+  "min_level": 74,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A cluster of frozen grace notes trembles as your pulse crosses the gallery, ringing a chord so thin and high it is felt in the teeth rather than heard.",
+    "One crushed grace, sharper than the rest, drifts close to your throat, hangs there a beat too long, and then withdraws unfinished.",
+    "The cold sharpens to a fine edge, as if every unsounded ornament in the room were leaning in at once to borrow the rhythm of your breath."
+  ]
+}

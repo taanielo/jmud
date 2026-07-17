@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.interval-metronome-wraith",
+  "name": "a marked-off beat",
+  "min_damage": 66,
+  "max_damage": 92,
+  "hit_bonus": 10,
+  "crit_bonus": 8,
+  "damage_bonus": 17,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 65
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The metronome-wraith swings its arrested tick onto your pulse and marks you off like a beat in a bar, and the cold of the count drives in on the stroke, stopping the blood in the vein for the length of one measure. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The metronome-wraith ticks its cold stroke toward the beat of you and you break your own rhythm just in time, stepping off the count so the frozen tick falls through empty air where your heart was."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The metronome-wraith locks onto your heartbeat and marks off every beat at once in a single overwound stroke, and the cold of the count clamps down so hard your pulse skips and staggers to catch the rhythm again! The blow {verb} you!"
+    }
+  ]
+}

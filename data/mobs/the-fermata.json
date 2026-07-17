@@ -1,0 +1,33 @@
+{
+  "schema_version": 4,
+  "id": "the-fermata",
+  "name": "the Fermata",
+  "max_hp": 1880,
+  "attack_id": "attack.the-fermata",
+  "special_attack_id": "attack.the-fermata-resolution",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["construct", "resonant", "boss", "the-interval"],
+  "spawn_room_id": "interval-the-fermata",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 3900,
+  "loot": [
+    {
+      "item_id": "held-breath-splinter",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "the-interval-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 780,
+    "max": 1180
+  }
+}
