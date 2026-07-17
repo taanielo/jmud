@@ -4125,9 +4125,42 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "DISBAND" -> handlePartyDisband(player, partyService);
             case "LOOT" -> handlePartyLoot(player, partyService, subArgs);
             case "" -> handlePartyStatus(player, partyService);
-            default -> writeLineWithPrompt(
-                "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND|LOOT <free|round-robin|roll>]");
+            default -> partyChat(args);
         }
+    }
+
+    @Override
+    public void partyChat(String message) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use party chat.");
+            return;
+        }
+        PartyService partyService = context.partyService();
+        if (partyService == null) {
+            writeLineWithPrompt("The party system is not available.");
+            return;
+        }
+        Party party = partyService.findParty(player.getUsername()).orElse(null);
+        if (party == null) {
+            writeLineWithPrompt("You are not in a party.");
+            return;
+        }
+        if (message == null || message.isBlank()) {
+            writeLineWithPrompt("Say what to your party?");
+            return;
+        }
+        String trimmed = message.trim();
+        Username sender = player.getUsername();
+        List<Username> online = onlinePlayerNames();
+        String line = "[Party] " + sender.getValue() + ": " + trimmed;
+        for (Username member : party.memberIds()) {
+            if (!member.equals(sender) && online.contains(member)) {
+                sendToUsername(member, line);
+            }
+        }
+        connection.writeLine("[Party] You: " + trimmed);
+        sendPrompt();
     }
 
     @Override
