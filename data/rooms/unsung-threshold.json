@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "unsung-threshold",
+  "name": "The Unsung Threshold",
+  "description": "You expected the nave floor to be solid, and it is not. Where the ranks of the choir converge, the fused bone thins and cracks, and a stair falls away beneath the cathedral's own reliquary into a dark the held note cannot follow. You go down, and with every step the single overwhelming voice of the Choir grows fainter, not because you are moving away from it but because something down here is refusing it — pressing back against the chord with a silence so total it has weight. At the foot of the stair the note simply stops, cut off clean, and the quiet that replaces it is not empty. It is held, the way a breath is held, the way a scream is held behind clenched teeth. These are the catacombs of the Unsung: the ones the Bloom swallowed who would not join the song, who cut their own voices out rather than be made to sing, and who have been down here in the mute dark ever since, refusing. The walls are hung with dark cloth that drinks every sound, and the silence watches you as intently as any sentry.",
+  "item_ids": [],
+  "exits": {
+    "up": "bonelight-choir-nave",
+    "down": "unsung-hall-of-refusal"
+  },
+  "min_level": 57,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The Choir's held note leaks faintly down the stair behind you and is swallowed whole by the muffling dark, gone as though it never sounded.",
+    "A length of sound-drinking cloth stirs on the wall, though no air moves, and the quiet deepens where it settles.",
+    "Somewhere ahead a footstep falls, deliberate and unhurried, and makes no sound at all — you feel it in the floor rather than hear it."
+  ]
+}

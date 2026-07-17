@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "unsung-catacomb-of-dissent",
+  "name": "The Catacomb of Dissent",
+  "description": "Below the hall the ways draw together again into a true catacomb, and here the silence has been made into something more than defense — it has been made into doctrine. The walls are shelved floor to ceiling with the dead of the Unsung, laid to rest each with a strip of the sound-drinking cloth bound over the mouth, so that even in death they hold their refusal, even in death they will not be made to sing. Between the shelves move the silence adepts, the keepers of the doctrine, and where the sentries above are merely mute these have made an art of it: the cold that leaks from them is the cold of a held breath that will never be let go, and it reaches for the warmth of yours. The catacomb slopes steadily downward toward a single sealed way at its far end, and from beyond that seal comes nothing at all — the deepest silence you have ever stood in, the silence of the one who leads them, who has never in the whole long refusal made a single sound.",
+  "item_ids": [],
+  "exits": {
+    "up": "unsung-hall-of-refusal",
+    "down": "unsung-last-stand"
+  },
+  "min_level": 61,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A silence adept passes between the shelves, and the bound dead seem to lean fractionally toward it, held in the same long refusal.",
+    "A strip of mouth-cloth on one of the shelved dead has come loose, and an adept pauses to bind it fast again before moving on.",
+    "The cold from the sealed way at the catacomb's end reaches up the slope toward you, patient and total, and your breath frosts in the black air."
+  ]
+}

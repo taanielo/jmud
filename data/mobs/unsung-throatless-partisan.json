@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "unsung-throatless-partisan",
+  "name": "a throatless partisan",
+  "max_hp": 520,
+  "attack_id": "attack.unsung-throatless-partisan",
+  "aggressive": true,
+  "tags": ["undead", "silent", "the-unsung"],
+  "spawn_room_id": "unsung-gallery-of-cut-throats",
+  "max_count": 2,
+  "respawn_ticks": 75,
+  "xp_reward": 700,
+  "loot": [
+    {
+      "item_id": "woven-silence-skein",
+      "drop_chance": 0.2
+    }
+  ],
+  "gold_drop": {
+    "min": 150,
+    "max": 240
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "shroud-of-refusal",
+  "name": "the Shroud of Refusal",
+  "description": "A cloak cut and sewn from the sound-drinking cloth of the Unsung, the same weave they bind over the mouths of their dead, made whole and worn across the shoulders. It drinks every sound its wearer makes — the scuff of a boot, the rasp of a drawn breath, the whisper of the cloak itself — and gives it back as nothing, wrapping the one who wears it in a pocket of the same held silence the Unsung keep. The cold that lives in it turns the bite of frost and stolen breath aside, and there is a strange comfort in its quiet, the comfort of a thing that has decided, once and forever, to refuse.",
+  "attributes": {
+    "stats": {
+      "ac": 4,
+      "cold_resist": 20,
+      "dexterity": 4
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "back",
+  "weight": 2,
+  "value": 420,
+  "rarity": "epic",
+  "attack_ref": null
+}
