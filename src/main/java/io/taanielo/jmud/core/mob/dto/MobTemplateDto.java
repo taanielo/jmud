@@ -28,6 +28,10 @@ public record MobTemplateDto(
     Boolean worldEvent,
     Integer parryChance,
     Map<String, Integer> resistances,
-    Map<String, Integer> vulnerabilities
+    Map<String, Integer> vulnerabilities,
+    Boolean healer,
+    Integer healMin,
+    Integer healMax,
+    Integer healThreshold
 ) {
 }

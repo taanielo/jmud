@@ -160,7 +160,8 @@ class MobRegistrySingleTargetAbilityTest {
             false,
             0,
             resistances,
-            vulnerabilities
+            vulnerabilities,
+            null
         );
         MobTemplateRepository templateRepo = new StubMobTemplateRepository(List.of(template));
         AttackRepository attackRepo = new StubAttackRepository(Map.of(UNARMED, UNARMED_MELEE));

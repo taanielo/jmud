@@ -3465,12 +3465,38 @@ class SocketCommandContextImpl implements SocketCommandContext {
         String affinity = elementalAffinityLine(
             found.template().resistances(), found.template().vulnerabilities());
         String tierLine = "The " + found.template().name() + " " + tier + ".";
-        if (affinity.isEmpty()) {
+        List<String> hints = new ArrayList<>();
+        if (!affinity.isEmpty()) {
+            hints.add(affinity);
+        }
+        // Discoverability hint for support-caster healer mobs (issue #733): surfaces the "kill the
+        // healer first" decision before the pull, mirroring the elemental-affinity hint above (#717).
+        String healerHint = healerHintLine(found.template().isHealer());
+        if (!healerHint.isEmpty()) {
+            hints.add(healerHint);
+        }
+        if (hints.isEmpty()) {
             writeLineWithPrompt(tierLine);
         } else {
             writeLineSafe(tierLine);
-            writeLineWithPrompt(affinity);
+            for (int i = 0; i < hints.size() - 1; i++) {
+                writeLineSafe(hints.get(i));
+            }
+            writeLineWithPrompt(hints.get(hints.size() - 1));
         }
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability hint for a support-caster healer mob
+     * (issue #733), or an empty string when the mob is not a healer. Mirrors
+     * {@link #elementalAffinityLine} so a player can spot a "kill the healer first" pull before
+     * committing to it rather than learning mid-fight.
+     *
+     * @param isHealer whether the considered mob carries a {@code HealerProfile}
+     * @return the healer hint sentence, or an empty string when the mob is not a healer
+     */
+    static String healerHintLine(boolean isHealer) {
+        return isHealer ? "It looks like it could heal its allies." : "";
     }
 
     /**

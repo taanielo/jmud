@@ -78,6 +78,10 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                  ability hit — e.g. {@code {FIRE: 50}} on an ice mob makes an incoming fire spell
  *                  deal 50% more damage. Always non-null, defaulting to an empty map (no
  *                  vulnerability). Physical/untyped damage is never amplified.
+ * @param healerProfile optional support-caster AI profile (issue #733); when non-null this mob is a
+ *                  <em>healer</em> that mends a wounded ally in its room instead of attacking on an AI
+ *                  decision (see {@link HealerProfile}). {@code null} for ordinary mobs, which never
+ *                  heal — additive and save-compatible, so existing mob data is unaffected.
  */
 public record MobTemplate(
     MobId id,
@@ -103,7 +107,8 @@ public record MobTemplate(
     boolean worldEvent,
     int parryChancePercent,
     Map<DamageType, Integer> resistances,
-    Map<DamageType, Integer> vulnerabilities
+    Map<DamageType, Integer> vulnerabilities,
+    @Nullable HealerProfile healerProfile
 ) {
 
     /**
@@ -360,7 +365,7 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, dialogueId, factionId, worldBoss, worldEvent, 0, Map.of(), Map.of());
+            charmable, dialogueId, factionId, worldBoss, worldEvent, 0, Map.of(), Map.of(), null);
     }
 
     /**
@@ -395,7 +400,45 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of());
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of(),
+            null);
+    }
+
+    /**
+     * Convenience constructor for authoring a healer mob (issue #733) that specifies a
+     * {@link #healerProfile()} but no elemental resistances/vulnerabilities; defaults those to empty
+     * maps. Preserves the pre-elemental constructor arity plus the trailing healer profile so healer
+     * mobs can be constructed without spelling out the empty elemental maps.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent,
+        @Nullable HealerProfile healerProfile
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of(),
+            healerProfile);
     }
 
     /**
@@ -431,6 +474,17 @@ public record MobTemplate(
      */
     public boolean canParry() {
         return parryChancePercent > 0;
+    }
+
+    /**
+     * Returns whether this mob is a support-caster <em>healer</em> — i.e. carries a non-null
+     * {@link #healerProfile()} and therefore mends wounded allies instead of always attacking
+     * (issue #733).
+     *
+     * @return {@code true} when this mob has a {@link HealerProfile}
+     */
+    public boolean isHealer() {
+        return healerProfile != null;
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */

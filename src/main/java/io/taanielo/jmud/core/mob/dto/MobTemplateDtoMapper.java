@@ -10,6 +10,7 @@ import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.mob.GoldDrop;
+import io.taanielo.jmud.core.mob.HealerProfile;
 import io.taanielo.jmud.core.mob.LootEntry;
 import io.taanielo.jmud.core.mob.MobId;
 import io.taanielo.jmud.core.mob.MobTemplate;
@@ -46,6 +47,7 @@ public class MobTemplateDtoMapper {
         Map<DamageType, Integer> resistances = toElementalMap(dto.resistances(), dto.id(), "resistances");
         Map<DamageType, Integer> vulnerabilities =
             toElementalMap(dto.vulnerabilities(), dto.id(), "vulnerabilities");
+        HealerProfile healerProfile = toHealerProfile(dto);
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -70,8 +72,31 @@ public class MobTemplateDtoMapper {
             worldEvent,
             parryChancePercent,
             resistances,
-            vulnerabilities
+            vulnerabilities,
+            healerProfile
         );
+    }
+
+    /**
+     * Builds the optional {@link HealerProfile} from the raw DTO (issue #733). Returns {@code null}
+     * unless the mob is explicitly flagged {@code "healer": true}, keeping every existing mob file a
+     * non-healer. A healer mob must author positive {@code heal_min}/{@code heal_max} amounts; the
+     * wounded {@code heal_threshold} defaults to {@link HealerProfile#DEFAULT_THRESHOLD_PERCENT} when
+     * omitted. Authoring errors surface here as an {@link IllegalArgumentException} at load rather than
+     * silently disabling the mechanic.
+     */
+    private HealerProfile toHealerProfile(MobTemplateDto dto) {
+        if (dto.healer() == null || !dto.healer()) {
+            return null;
+        }
+        if (dto.healMin() == null || dto.healMax() == null) {
+            throw new IllegalArgumentException("Mob '" + dto.id()
+                + "' is flagged healer but is missing heal_min/heal_max");
+        }
+        int threshold = dto.healThreshold() == null
+            ? HealerProfile.DEFAULT_THRESHOLD_PERCENT
+            : dto.healThreshold();
+        return new HealerProfile(dto.healMin(), dto.healMax(), threshold);
     }
 
     /**

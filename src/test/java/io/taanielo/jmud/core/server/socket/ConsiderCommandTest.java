@@ -208,6 +208,18 @@ class ConsiderCommandTest {
                 Map.of(DamageType.POISON, 25, DamageType.FIRE, 25), Map.of()));
     }
 
+    @Test
+    void healerHintShownForHealerMobs() {
+        assertEquals(
+            "It looks like it could heal its allies.",
+            SocketCommandContextImpl.healerHintLine(true));
+    }
+
+    @Test
+    void healerHintEmptyForOrdinaryMobs() {
+        assertEquals("", SocketCommandContextImpl.healerHintLine(false));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
 
     /**

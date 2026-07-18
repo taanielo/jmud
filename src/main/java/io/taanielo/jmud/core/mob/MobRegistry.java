@@ -3433,6 +3433,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (tryMobFlee(mob)) {
             return;
         }
+        // A healer-tagged mob spends this decision mending a wounded ally instead of attacking
+        // (issue #733). Placed after the telegraph and flee gates above so a healer mid-wind-up or
+        // mid-flee never also heals on the same tick.
+        if (tryMobHeal(mob)) {
+            return;
+        }
         Username targetUsername = selectAiTarget(mob, candidates);
         Player target = playerRepository.loadPlayer(targetUsername).orElse(null);
         if (target == null || target.isDead()) {
@@ -3479,6 +3485,103 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
         resolveMobAttackAndPublish(mob, attack, target, targetUsername, candidates, packJoin,
             firstEngagement, useSpecial);
+    }
+
+    /**
+     * Gives a healer-tagged mob (see {@link HealerProfile}) the chance to mend a wounded ally instead
+     * of attacking this AI decision (issue #733). When the mob carries a healer profile and a
+     * different alive, non-pet mob in its room is wounded at or below the authored threshold (and not
+     * already at full HP), the healer restores a seeded {@code [healMin, healMax]} roll to the
+     * most-wounded such ally (clamped to that ally's max HP) and announces it to the room, spending
+     * this decision on the heal. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the mob taking its AI decision
+     * @return {@code true} when the mob healed an ally this decision (and must not also attack);
+     *         {@code false} when it is not a healer or no ally needs healing (it attacks normally)
+     */
+    private boolean tryMobHeal(MobInstance mob) {
+        HealerProfile profile = mob.template().healerProfile();
+        if (profile == null) {
+            return false;
+        }
+        MobInstance ally = selectHealTarget(mob, profile);
+        if (ally == null) {
+            return false;
+        }
+        int amount = random.roll(profile.healMin(), profile.healMax());
+        ally.heal(amount);
+        String message = "The " + mob.template().name() + " chants over the "
+            + ally.template().name() + "'s wounds — it looks steadier!";
+        broadcastToRoom(mob.roomId(), message);
+        return true;
+    }
+
+    /**
+     * Selects the ally a healer mob should mend this decision: the most-wounded (lowest HP ratio)
+     * different, alive, non-pet mob in the healer's room whose current HP is at or below the profile's
+     * {@link HealerProfile#thresholdPercent()} of its maximum and is not already full. Ties are broken
+     * deterministically by lower absolute current HP, then by instance id, so the choice never depends
+     * on room iteration order. Returns {@code null} when no ally qualifies.
+     *
+     * @param healer  the healer mob
+     * @param profile the healer's profile supplying the wounded threshold
+     * @return the ally to heal, or {@code null} when none is wounded enough
+     */
+    @Nullable
+    private MobInstance selectHealTarget(MobInstance healer, HealerProfile profile) {
+        MobInstance best = null;
+        for (MobInstance ally : getMobsInRoom(healer.roomId())) {
+            if (ally.instanceId().equals(healer.instanceId()) || ally.isPet()) {
+                continue;
+            }
+            int max = ally.maxHp();
+            int current = ally.currentHp();
+            if (current >= max) {
+                continue;
+            }
+            if ((long) current * 100 > (long) profile.thresholdPercent() * max) {
+                continue;
+            }
+            if (best == null || isMoreWounded(ally, best)) {
+                best = ally;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Deterministic "more wounded" ordering used to pick a healer's target: a lower current/max HP
+     * ratio wins; ties break on lower absolute current HP, then on instance id.
+     *
+     * @param candidate the mob being considered
+     * @param incumbent the current best (most-wounded-so-far) mob
+     * @return {@code true} when {@code candidate} is more wounded than {@code incumbent}
+     */
+    private static boolean isMoreWounded(MobInstance candidate, MobInstance incumbent) {
+        long lhs = (long) candidate.currentHp() * incumbent.maxHp();
+        long rhs = (long) incumbent.currentHp() * candidate.maxHp();
+        if (lhs != rhs) {
+            return lhs < rhs;
+        }
+        if (candidate.currentHp() != incumbent.currentHp()) {
+            return candidate.currentHp() < incumbent.currentHp();
+        }
+        return candidate.instanceId().compareTo(incumbent.instanceId()) < 0;
+    }
+
+    /**
+     * Publishes a message to every player in the given room. Unlike {@link #broadcastToRoomExcept},
+     * no occupant is excluded — used for mob-only actions such as a healer mending an ally where the
+     * event is equally relevant to every onlooker. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param roomId  the room whose occupants receive the message
+     * @param message the line to send
+     */
+    private void broadcastToRoom(RoomId roomId, String message) {
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            playerEventBus.publish(occupant,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(message))));
+        }
     }
 
     /**
