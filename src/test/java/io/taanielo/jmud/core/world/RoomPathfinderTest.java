@@ -34,15 +34,15 @@ class RoomPathfinderTest {
             return link(from, direction, to).link(to, direction.opposite(), from);
         }
 
-        Function<RoomId, Map<Direction, RoomId>> asProvider() {
-            return roomId -> exits.getOrDefault(roomId, Map.of());
+        Map<Direction, RoomId> exitsOf(RoomId roomId) {
+            return exits.getOrDefault(roomId, Map.of());
         }
     }
 
     @Test
     void sameStartAndDestinationIsAZeroStepRoute() {
         Optional<List<Direction>> path = pathfinder.findPath(
-            RoomId.of("a"), RoomId.of("a"), new Graph().asProvider());
+            RoomId.of("a"), RoomId.of("a"), new Graph()::exitsOf);
 
         assertTrue(path.isPresent());
         assertEquals(List.of(), path.get());
@@ -53,7 +53,7 @@ class RoomPathfinderTest {
         Graph graph = new Graph().corridor("a", Direction.NORTH, "b");
 
         Optional<List<Direction>> path = pathfinder.findPath(
-            RoomId.of("a"), RoomId.of("b"), graph.asProvider());
+            RoomId.of("a"), RoomId.of("b"), graph::exitsOf);
 
         assertTrue(path.isPresent());
         assertEquals(List.of(Direction.NORTH), path.get());
@@ -68,7 +68,7 @@ class RoomPathfinderTest {
             .corridor("d", Direction.EAST, "e");
 
         Optional<List<Direction>> path = pathfinder.findPath(
-            RoomId.of("a"), RoomId.of("e"), graph.asProvider());
+            RoomId.of("a"), RoomId.of("e"), graph::exitsOf);
 
         assertTrue(path.isPresent());
         assertEquals(
@@ -86,7 +86,7 @@ class RoomPathfinderTest {
             .corridor("a", Direction.EAST, "d");
 
         Optional<List<Direction>> path = pathfinder.findPath(
-            RoomId.of("a"), RoomId.of("d"), graph.asProvider());
+            RoomId.of("a"), RoomId.of("d"), graph::exitsOf);
 
         assertTrue(path.isPresent());
         assertEquals(List.of(Direction.EAST), path.get());
@@ -100,7 +100,7 @@ class RoomPathfinderTest {
             .link("island", Direction.SOUTH, "island");
 
         Optional<List<Direction>> path = pathfinder.findPath(
-            RoomId.of("a"), RoomId.of("island"), graph.asProvider());
+            RoomId.of("a"), RoomId.of("island"), graph::exitsOf);
 
         assertTrue(path.isEmpty());
     }

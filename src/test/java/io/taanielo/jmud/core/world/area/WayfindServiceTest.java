@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.transport.Ferry;
 import io.taanielo.jmud.core.transport.FerryId;
-import io.taanielo.jmud.core.transport.FerryRepository;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomPathfinder;

@@ -39,6 +39,14 @@ public class RoomPathfinder {
     private static final int MAX_ROOMS_EXPLORED = 10_000;
 
     /**
+     * Canonical direction order used to break ties between equally-short routes, giving BFS a
+     * deterministic, run-independent expansion order without depending on {@link Enum#ordinal()}.
+     * Mirrors the {@link Direction} declaration order (north, south, east, west, up, down).
+     */
+    private static final List<Direction> CANONICAL_ORDER =
+            List.of(Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.DOWN);
+
+    /**
      * Finds the shortest sequence of compass directions that walks from {@code start} to
      * {@code destination}, using only the exits reported by {@code walkableExits}.
      *
@@ -99,7 +107,7 @@ public class RoomPathfinder {
      */
     private static List<Map.Entry<Direction, RoomId>> sortedExits(Map<Direction, RoomId> exits) {
         List<Map.Entry<Direction, RoomId>> ordered = new ArrayList<>(exits.entrySet());
-        ordered.sort(Comparator.comparingInt(e -> e.getKey().ordinal()));
+        ordered.sort(Comparator.comparingInt(e -> CANONICAL_ORDER.indexOf(e.getKey())));
         return ordered;
     }
 
