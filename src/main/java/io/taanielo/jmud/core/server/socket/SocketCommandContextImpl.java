@@ -65,6 +65,8 @@ import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildLevel;
 import io.taanielo.jmud.core.guild.GuildMember;
+import io.taanielo.jmud.core.guild.GuildQuest;
+import io.taanielo.jmud.core.guild.GuildQuestService;
 import io.taanielo.jmud.core.guild.GuildResult;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.GuildVaultResult;
@@ -4360,6 +4362,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "VAULT" -> handleGuildVault(guildService);
             case "STORE" -> handleGuildStore(guildService, subArgs);
             case "CLAIM" -> handleGuildClaim(guildService, subArgs);
+            case "QUEST" -> executeGuildQuest(subArgs);
             case "" -> handleGuildStatus(guildService);
             default -> guildChat(args);
         }
@@ -4397,6 +4400,44 @@ class SocketCommandContextImpl implements SocketCommandContext {
             }
         }
         connection.writeLine("[Guild] You: " + trimmed);
+        sendPrompt();
+    }
+
+    @Override
+    public void executeGuildQuest(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use guild commands.");
+            return;
+        }
+        GuildService guildService = context.guildService();
+        GuildQuestService guildQuestService = context.guildQuestService();
+        if (guildService == null || guildQuestService == null) {
+            writeLineWithPrompt("The guild system is not available.");
+            return;
+        }
+        reconcileGuildMembership(player, guildService);
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        GuildQuest quest = guildQuestService.activeQuestFor(player.getUsername()).orElse(null);
+        if (quest == null) {
+            writeLineWithPrompt("Your guild has no active guild quest right now.");
+            return;
+        }
+        connection.writeLine("=== " + guild.name() + " Guild Quest ===");
+        connection.writeLine(quest.name());
+        connection.writeLine("  Objective: slay " + quest.requiredKills() + " " + quest.targetName() + ".");
+        connection.writeLine("  Progress:  " + quest.progressLine() + ".");
+        connection.writeLine(
+            "  Reward:    " + quest.goldReward() + " gold into the guild treasury on completion.");
+        if (quest.isComplete()) {
+            connection.writeLine("  This objective is complete — a new one will be posted shortly.");
+        } else {
+            connection.writeLine("  Any online member's kills of this mob type credit the whole guild.");
+        }
         sendPrompt();
     }
 

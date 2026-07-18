@@ -58,6 +58,7 @@ import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.faction.Faction;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.faction.ReputationService;
+import io.taanielo.jmud.core.guild.GuildQuestService;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
@@ -112,6 +113,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
+    /** Optional cooperative guild-quest kill hook; may be null when guilds are disabled. */
+    private GuildQuestService guildQuestService;
     /** Optional party service for XP splitting and round-robin loot; may be null when disabled. */
     private PartyService partyService;
     /** Optional encumbrance service used to skip full-inventory members in round-robin loot; may be null. */
@@ -267,6 +270,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     public void setQuestKillService(QuestKillService questKillService) {
         this.questKillService = questKillService;
+    }
+
+    /**
+     * Registers the cooperative guild-quest service credited alongside personal quests when a guild
+     * member kills a mob. This is a parallel path to {@link #setQuestKillService(QuestKillService)}: it
+     * advances the killer's guild's shared guild quest without touching the player's personal quest
+     * slots.
+     *
+     * @param guildQuestService the service to notify on mob death; may be null to disable
+     */
+    public void setGuildQuestService(GuildQuestService guildQuestService) {
+        this.guildQuestService = guildQuestService;
     }
 
     /**
@@ -1471,6 +1486,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 }
             }
         }
+        // Cooperative guild quest: credit the killer's guild (if any) independently of personal quests.
+        // Progress, completion payout and the [Guild] announcement are handled inside the service, which
+        // mutates only guild state on this tick thread (AGENTS.md §5).
+        if (guildQuestService != null) {
+            guildQuestService.recordKill(afterXp.getUsername(), mob.template().id().getValue());
+        }
         FactionId factionId = mob.template().factionId();
         if (reputationService != null && factionId != null) {
             int before = afterXp.reputation().standing(factionId);
@@ -1527,6 +1548,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                         memberMsgs.add(GameMessage.toSource(msg));
                     }
                 }
+            }
+            if (guildQuestService != null) {
+                guildQuestService.recordKill(memberAfterXp.getUsername(), mob.template().id().getValue());
             }
             if (reputationService != null && factionId != null) {
                 int memberBefore = memberAfterXp.reputation().standing(factionId);

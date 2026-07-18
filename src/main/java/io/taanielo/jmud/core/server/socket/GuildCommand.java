@@ -25,6 +25,7 @@ import java.util.Optional;
  *   <li>{@code GUILD VAULT}          — list the items in the guild's shared item vault</li>
  *   <li>{@code GUILD STORE <item>}   — deposit an item into the guild vault (any member)</li>
  *   <li>{@code GUILD CLAIM <item>}   — take an item from the guild vault (leader or officer)</li>
+ *   <li>{@code GUILD QUEST}          — show the guild's cooperative guild quest and shared progress</li>
  *   <li>{@code GUILD <message>}      — send a message to online guildmates (also {@code GC})</li>
  * </ul>
  */
@@ -70,7 +71,14 @@ public class GuildCommand extends RegistrableCommand {
              + "  GUILD VAULT            — list items in the guild's shared item vault\n"
              + "  GUILD STORE <item>     — deposit an item into the guild vault (any member)\n"
              + "  GUILD CLAIM <item>     — take an item from the guild vault (leader or officer)\n"
+             + "  GUILD QUEST            — show the guild's cooperative guild quest (also GUILD_QUEST/GQUEST)\n"
              + "  GUILD <message>        — chat to online guildmates (or use GC <message>)\n"
+             + "\n"
+             + "Guild quests: every guild is assigned one shared 'slay N of a mob type' objective at a\n"
+             + "time, rotated daily and scaled to the guild's level. Any online member's kill of the\n"
+             + "matching mob — anywhere in the world — credits the whole guild automatically (no ACCEPT).\n"
+             + "On completion the reward gold is paid into the guild treasury (advancing the guild's\n"
+             + "lifetime total and level) and a [Guild] announcement fires; a new objective is then rolled.\n"
              + "\n"
              + "Guild levels (1-5): every gold piece deposited via GUILD DEPOSIT adds to the guild's\n"
              + "lifetime deposited total (withdrawals never reduce it). Crossing a threshold raises the\n"

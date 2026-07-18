@@ -16,6 +16,8 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildId;
 import io.taanielo.jmud.core.guild.GuildLevel;
+import io.taanielo.jmud.core.guild.GuildQuest;
+import io.taanielo.jmud.core.guild.GuildQuestObjective;
 import io.taanielo.jmud.core.guild.GuildRank;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.world.Item;
@@ -124,6 +126,38 @@ class JsonGuildRepositoryTest {
             assertEquals(500, g.treasuryGold());
             assertEquals(700, g.lifetimeDepositedGold());
             assertEquals(GuildLevel.TWO, g.level());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsActiveGuildQuest(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-gq.json");
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            GuildQuest quest = GuildQuest.fromObjective(
+                new GuildQuestObjective("guild-rat-purge", "Rat Purge", "rat", "rats", 20, 250, 1))
+                .recordKill()
+                .recordKill();
+            Guild guild = Guild.found(GuildId.of("g-gq"), "Ironclad", ALICE)
+                .withActiveGuildQuest(quest);
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = reopened.loadAll().get(0);
+            GuildQuest quest = g.activeGuildQuest();
+            assertEquals("guild-rat-purge", quest.questId());
+            assertEquals("rat", quest.targetMobId());
+            assertEquals("rats", quest.targetName());
+            assertEquals(20, quest.requiredKills());
+            assertEquals(2, quest.currentKills());
+            assertEquals(250, quest.goldReward());
         } finally {
             reopened.close();
         }

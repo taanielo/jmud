@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "type": "guild",
+  "name": "Guild Hunts",
+  "objectives": [
+    {
+      "id": "guild-rat-purge",
+      "name": "Rat Purge",
+      "target_mob_id": "rat",
+      "target_name": "rats",
+      "required_kills": 20,
+      "gold_reward": 250,
+      "min_guild_level": 1
+    },
+    {
+      "id": "guild-goblin-warband",
+      "name": "Break the Goblin Warband",
+      "target_mob_id": "goblin",
+      "target_name": "goblins",
+      "required_kills": 18,
+      "gold_reward": 300,
+      "min_guild_level": 1
+    },
+    {
+      "id": "guild-wolf-pack",
+      "name": "Thin the Wolf Pack",
+      "target_mob_id": "wolf",
+      "target_name": "wolves",
+      "required_kills": 16,
+      "gold_reward": 300,
+      "min_guild_level": 1
+    },
+    {
+      "id": "guild-kobold-tunnels",
+      "name": "Clear the Kobold Tunnels",
+      "target_mob_id": "kobold",
+      "target_name": "kobolds",
+      "required_kills": 16,
+      "gold_reward": 320,
+      "min_guild_level": 1
+    },
+    {
+      "id": "guild-dire-wolf-cull",
+      "name": "Cull the Dire Wolves",
+      "target_mob_id": "dire-wolf",
+      "target_name": "dire wolves",
+      "required_kills": 14,
+      "gold_reward": 600,
+      "min_guild_level": 2
+    },
+    {
+      "id": "guild-frost-imp-hunt",
+      "name": "Hunt the Frost Imps",
+      "target_mob_id": "frost-imp",
+      "target_name": "frost imps",
+      "required_kills": 12,
+      "gold_reward": 1100,
+      "min_guild_level": 3
+    },
+    {
+      "id": "guild-ember-swarm",
+      "name": "Douse the Ember Swarm",
+      "target_mob_id": "embercrawler",
+      "target_name": "embercrawlers",
+      "required_kills": 12,
+      "gold_reward": 2400,
+      "min_guild_level": 4
+    },
+    {
+      "id": "guild-void-vigil",
+      "name": "The Void Vigil",
+      "target_mob_id": "void-wraith",
+      "target_name": "void wraiths",
+      "required_kills": 10,
+      "gold_reward": 4000,
+      "min_guild_level": 5
+    }
+  ]
+}

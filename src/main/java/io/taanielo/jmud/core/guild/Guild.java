@@ -6,6 +6,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.authentication.Username;
 
 /**
@@ -30,6 +32,11 @@ import io.taanielo.jmud.core.authentication.Username;
  * reduce it — and drives the guild's {@link #level() level}, which in turn scales the shared vault's
  * capacity. It is a "how much has this guild ever raised" counter, distinct from the current
  * {@code treasuryGold} balance.
+ *
+ * <p>{@code activeGuildQuest} is the guild's current cooperative {@link GuildQuest} — a shared "slay N of
+ * a mob type" objective whose progress accrues from every member's kills. It is {@code null} for a guild
+ * that has never been assigned one (e.g. a freshly loaded legacy guild); the {@link GuildQuestService}
+ * lazily assigns one on first access, so no persistence migration is required.
  */
 public record Guild(
     GuildId id,
@@ -38,7 +45,8 @@ public record Guild(
     List<GuildMember> members,
     int treasuryGold,
     List<VaultedItem> vaultedItems,
-    int lifetimeDepositedGold
+    int lifetimeDepositedGold,
+    @Nullable GuildQuest activeGuildQuest
 ) {
 
     public Guild {
@@ -66,7 +74,7 @@ public record Guild(
      */
     public static Guild found(GuildId id, String name, Username leader) {
         return new Guild(
-            id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of(), 0);
+            id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of(), 0, null);
     }
 
     /**
@@ -140,7 +148,8 @@ public record Guild(
         int nextOrder = members.stream().mapToInt(GuildMember::joinOrder).max().orElse(-1) + 1;
         List<GuildMember> next = new ArrayList<>(members);
         next.add(new GuildMember(username, GuildRank.MEMBER, nextOrder));
-        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold);
+        return new Guild(
+            id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest);
     }
 
     /**
@@ -161,7 +170,8 @@ public record Guild(
             .toList());
         if (remaining.isEmpty()) {
             return new Guild(
-                id, name, leaderId, List.of(), treasuryGold, vaultedItems, lifetimeDepositedGold);
+                id, name, leaderId, List.of(), treasuryGold, vaultedItems, lifetimeDepositedGold,
+                activeGuildQuest);
         }
         Username newLeader = leaderId;
         if (leaderId.equals(username)) {
@@ -174,7 +184,8 @@ public record Guild(
                 .toList();
         }
         return new Guild(
-            id, name, newLeader, remaining, treasuryGold, vaultedItems, lifetimeDepositedGold);
+            id, name, newLeader, remaining, treasuryGold, vaultedItems, lifetimeDepositedGold,
+            activeGuildQuest);
     }
 
     /**
@@ -195,7 +206,8 @@ public record Guild(
         List<GuildMember> next = members.stream()
             .map(m -> m.username().equals(username) ? m.withRank(newRank) : m)
             .toList();
-        return new Guild(id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold);
+        return new Guild(
+            id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest);
     }
 
     /**
@@ -212,7 +224,7 @@ public record Guild(
         }
         return new Guild(
             id, name, leaderId, members, treasuryGold + amount, vaultedItems,
-            lifetimeDepositedGold + amount);
+            lifetimeDepositedGold + amount, activeGuildQuest);
     }
 
     /**
@@ -231,7 +243,8 @@ public record Guild(
             throw new IllegalArgumentException("Withdraw amount exceeds treasury balance");
         }
         return new Guild(
-            id, name, leaderId, members, treasuryGold - amount, vaultedItems, lifetimeDepositedGold);
+            id, name, leaderId, members, treasuryGold - amount, vaultedItems, lifetimeDepositedGold,
+            activeGuildQuest);
     }
 
     /**
@@ -244,7 +257,8 @@ public record Guild(
         Objects.requireNonNull(vaulted, "vaulted is required");
         List<VaultedItem> next = new ArrayList<>(vaultedItems);
         next.add(vaulted);
-        return new Guild(id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold);
+        return new Guild(
+            id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold, activeGuildQuest);
     }
 
     /**
@@ -262,6 +276,20 @@ public record Guild(
         }
         List<VaultedItem> next = new ArrayList<>(vaultedItems);
         next.remove(index);
-        return new Guild(id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold);
+        return new Guild(
+            id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold, activeGuildQuest);
+    }
+
+    /**
+     * Returns a copy of this guild with its active cooperative guild quest set to {@code quest}. Passing
+     * {@code null} clears the assignment (the {@link GuildQuestService} will lazily assign a fresh one on
+     * next access).
+     *
+     * @param quest the new active guild quest, or {@code null} to clear it
+     * @return the updated guild
+     */
+    public Guild withActiveGuildQuest(@Nullable GuildQuest quest) {
+        return new Guild(
+            id, name, leaderId, members, treasuryGold, vaultedItems, lifetimeDepositedGold, quest);
     }
 }

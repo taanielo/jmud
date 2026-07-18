@@ -17,7 +17,8 @@ record GuildDto(
     @Nullable List<GuildMemberDto> members,
     int treasuryGold,
     @Nullable List<VaultedItemDto> vaultedItems,
-    int lifetimeDepositedGold
+    int lifetimeDepositedGold,
+    @Nullable GuildQuestDto activeGuildQuest
 ) {
 
     /** JSON transfer object for one roster entry. */
@@ -32,6 +33,18 @@ record GuildDto(
     record VaultedItemDto(
         @Nullable ItemDto item,
         @Nullable String depositor
+    ) {
+    }
+
+    /** JSON transfer object for the guild's active cooperative guild quest (schema v4+). */
+    record GuildQuestDto(
+        @Nullable String questId,
+        @Nullable String name,
+        @Nullable String targetMobId,
+        @Nullable String targetName,
+        int requiredKills,
+        int currentKills,
+        int goldReward
     ) {
     }
 }

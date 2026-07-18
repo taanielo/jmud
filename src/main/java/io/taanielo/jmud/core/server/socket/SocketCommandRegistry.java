@@ -177,6 +177,7 @@ public class SocketCommandRegistry {
         new PartyCommand(registry);
         new FollowCommand(registry);
         new GuildCommand(registry);
+        new GuildQuestCommand(registry);
         new TitleCommand(registry);
         new DescribeCommand(registry);
         new DepositCommand(registry);

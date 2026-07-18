@@ -1231,6 +1231,16 @@ public interface SocketCommandContext extends Client {
     default void guildChat(String message) {}
 
     /**
+     * Shows the caller's guild its active cooperative guild quest: the objective, shared progress
+     * ({@code Slayed 7 / 20 dire wolves}) and the gold reward paid into the treasury on completion.
+     * Reports "You are not in a guild." when the caller is guildless. The default implementation is a
+     * no-op so existing test stubs do not need to be updated.
+     *
+     * @param args unused sub-arguments (the command takes none)
+     */
+    default void executeGuildQuest(String args) {}
+
+    /**
      * Returns the guild tag suffix (e.g. {@code " [Ironclad]"}) for the given online player, or an
      * empty string when they belong to no guild. Used by {@code WHO} to annotate each name.
      *
