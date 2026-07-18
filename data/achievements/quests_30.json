@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "id": "quests_50",
+  "id": "quests_30",
   "name": "Legend of the Realm",
-  "description": "Complete 50 one-time contracts.",
+  "description": "Complete 30 one-time contracts.",
   "condition": "quests_completed",
-  "threshold": 50
+  "threshold": 30
 }

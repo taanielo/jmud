@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "level_96",
+  "name": "Apex of the Realm",
+  "description": "Reach character level 96.",
+  "condition": "level",
+  "threshold": 96
+}

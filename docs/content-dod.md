@@ -83,3 +83,12 @@ Two enforcement tiers per item:
 - [M] Interactions with existing systems reviewed (combat, economy, death, persistence)
 - [M] Save-game compatibility statement in the PR
 - [M] Row added to `feature-matrix.md` with any known follow-up gaps filed as issues
+
+## Achievement (milestone definition)
+
+- [M] Player-facing HELP entry (`HELP ACHIEVEMENTS`) still accurately describes the command
+- [M] Unit/smoke coverage proving the happy path: new definitions load, sort, and render via `AchievementService`/`AchievementsCommand`
+- [M] Interactions reviewed: the milestone fires from the existing `AchievementService#checkAndUnlock` call sites (level-up, mob-kill, quest-completion) with no new hook
+- [M] Every threshold is reachable given the content backing its condition (a `quests_completed` threshold must not exceed the one-time quest count; a `level` threshold must not exceed the level cap) — guarded by a content test, not honour-system
+- [M] Save-game compatibility statement in the PR (new definitions are additive; no `Player`/save schema change; already-unlocked achievement IDs are unaffected)
+- [M] Row updated in `feature-matrix.md`

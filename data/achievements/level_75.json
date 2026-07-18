@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "id": "level_75",
+  "name": "Mythic Ascendant",
+  "description": "Reach character level 75.",
+  "condition": "level",
+  "threshold": 75
+}
