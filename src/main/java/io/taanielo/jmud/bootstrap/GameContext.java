@@ -188,6 +188,7 @@ import io.taanielo.jmud.core.world.MapService;
 import io.taanielo.jmud.core.world.PlayerLocationService;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomItemService;
+import io.taanielo.jmud.core.world.RoomPathfinder;
 import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.WorldClock;
@@ -196,6 +197,7 @@ import io.taanielo.jmud.core.world.area.AreaConsistencyChecker;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
 import io.taanielo.jmud.core.world.area.AreaWaypointService;
+import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
 import io.taanielo.jmud.core.world.repository.ItemCatalog;
@@ -278,6 +280,7 @@ public record GameContext(
     PlayerSessionRegistry playerSessionRegistry,
     AreaMapService areaMapService,
     AreaWaypointService areaWaypointService,
+    WayfindService wayfindService,
     AreaConsistencyChecker areaConsistencyChecker,
     ContentCompletenessChecker contentCompletenessChecker,
     ShutdownHandle shutdownHandle
@@ -408,6 +411,11 @@ public record GameContext(
         BoatEngine boatEngine = new BoatEngine(
             worldRandom, playerLocationService, messageBroadcaster, ferryRepository.findAll());
         tickRegistry.register(boatEngine);
+
+        // WAYFIND: turn-by-turn walking directions over the visible room graph (regular exits plus
+        // globally-discovered hidden exits), with ferries only used to explain ferry-only routes.
+        WayfindService wayfindService = new WayfindService(
+            areaRepository, new RoomPathfinder(), ferryRepository, playerLocationService::getVisibleExits);
 
         EncumbranceService encumbranceService = new EncumbranceService(
             raceRepository, classRepository, new EquipmentCarryResolver(itemRepository));
@@ -688,6 +696,7 @@ public record GameContext(
             playerSessionRegistry,
             areaMapService,
             areaWaypointService,
+            wayfindService,
             areaConsistencyChecker,
             contentCompletenessChecker,
             shutdownHandle
