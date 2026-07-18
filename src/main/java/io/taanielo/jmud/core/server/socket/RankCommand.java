@@ -8,7 +8,6 @@ import java.util.Optional;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
-import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 
 /**
