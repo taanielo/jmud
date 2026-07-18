@@ -1,0 +1,14 @@
+{
+  "schema_version": 15,
+  "id": "unspent-encore",
+  "name": "an unspent encore",
+  "description": "A single measure of music that was never written and never played — the one more piece the Ovation demanded of a finished world, wrung out of the roaring hall and caught at the instant before it could be forced to sound, held in a lattice of clapped air that presses one low insistent beat against the palm and never quite lets go. It is stranger than a resolved overtone and more restless than any material yet drawn from the deep song: where the overtone was the released ending of the world's oldest chord, this is the refusal of that ending, the extra measure that should not exist, a scrap of pure demand for more kept from spending itself. Bonewrights and rune-singers name it warily, uncertain a thing can be worked from a piece of music the world was never meant to play, yet certain it could be forged into an edge that never lets a blow be the last one, or a ward that answers every ending with a demand for one more beat — but only by a hand willing to keep giving, measure after measure, the way the hall keeps calling and will not stop.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 240,
+  "rarity": "epic"
+}

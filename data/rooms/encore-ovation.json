@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "encore-ovation",
+  "name": "The Ovation",
+  "description": "The corridor opens onto a wide dark stage, and standing at the center of it, with the whole roar of the empty hall pouring into it and back out again without pause, is the thing that has refused to let the world end — the Ovation, the applause given a body, the demand for one more piece made hostile and enormous and awake. It does not sit and it does not float and it does not resolve the way the Coda resolved; it applauds, endlessly, a towering shape of clapped insistence and repeating echo and standing call gathered into one will, and every measure of ovation it takes in it drives back out as a single wordless command: again. It has been calling for an encore since before there was a world to end, and now the ended music has come to it wearing your face and carrying the one thing the whole finished song ran out of — a living, unrepeated heartbeat, the last unspent measure, the encore it has waited an eternity to wring out of a work that had already taken its final bow. The Choir demanded a resolution and the Coda gave it; but the Ovation will not accept that any resolution is final, and it means to have one more piece out of you, and another, and another, playing your borrowed pulse out onto its stage over and over until there is nothing left of you to call back. There is nothing beyond this stage. There is only the applause, and it will not stop, and it means to play its encore on you.",
+  "item_ids": [],
+  "exits": {
+    "south": "encore-final-bow"
+  },
+  "min_level": 95,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The Ovation takes in the whole roar of the hall and drives it back out as one wordless demand — again, again — and the stage shakes with the refusal to let the music end.",
+    "A wall of applause rolls off the towering shape and breaks over the stage, and in the crash of it you can hear the single word the whole ovation is clapping: more.",
+    "For one vast moment the calling seems about to spend itself and fall at last into the silence the Coda earned — and then the Ovation lifts, and swells, and refuses, and calls the encore out of your heartbeat again."
+  ]
+}
