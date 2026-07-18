@@ -80,4 +80,41 @@ class PlayerPreferencesTest {
         assertTrue(prefs.withAutoLootEnabled(true).briefModeEnabled());
         assertTrue(prefs.withPromptFormat("%h>").briefModeEnabled());
     }
+
+    @Test
+    void autoAssistDefaultsOffWhenAbsent() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", true, true, true);
+
+        assertFalse(prefs.autoAssistEnabled());
+    }
+
+    @Test
+    void autoAssistDefaultsOffWhenNull() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", true, true, true, null);
+
+        assertFalse(prefs.autoAssistEnabled());
+    }
+
+    @Test
+    void withAutoAssistEnabledFlipsFlagPreservingOtherFields() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", true, true, true, false);
+
+        PlayerPreferences enabled = prefs.withAutoAssistEnabled(true);
+
+        assertTrue(enabled.autoAssistEnabled());
+        assertTrue(enabled.ansiEnabled());
+        assertTrue(enabled.autoLootEnabled());
+        assertTrue(enabled.briefModeEnabled());
+        assertEquals("%hp>", enabled.promptFormat());
+    }
+
+    @Test
+    void otherWithersPreserveAutoAssist() {
+        PlayerPreferences prefs = new PlayerPreferences("%hp>", false, false, false, true);
+
+        assertTrue(prefs.withAnsiEnabled(true).autoAssistEnabled());
+        assertTrue(prefs.withAutoLootEnabled(true).autoAssistEnabled());
+        assertTrue(prefs.withBriefModeEnabled(true).autoAssistEnabled());
+        assertTrue(prefs.withPromptFormat("%h>").autoAssistEnabled());
+    }
 }

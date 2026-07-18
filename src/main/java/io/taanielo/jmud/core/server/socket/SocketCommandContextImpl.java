@@ -495,6 +495,35 @@ class SocketCommandContextImpl implements SocketCommandContext {
         writeLineWithPrompt("AUTOLOOT is now " + (enabled ? "ON" : "OFF"));
     }
 
+    private void handleAutoAssistCommand(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to change autoassist settings.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.equals("STATUS")) {
+            writeLineWithPrompt("AUTOASSIST is " + (player.isAutoAssistEnabled() ? "ON" : "OFF"));
+            return;
+        }
+        switch (normalized) {
+            case "ON" -> setAutoAssistEnabled(true);
+            case "OFF" -> setAutoAssistEnabled(false);
+            case "TOGGLE" -> setAutoAssistEnabled(!player.isAutoAssistEnabled());
+            default -> writeLineWithPrompt("Usage: AUTOASSIST [on|off|toggle|status]");
+        }
+    }
+
+    private void setAutoAssistEnabled(boolean enabled) {
+        Player player = session.getPlayer();
+        if (player.isAutoAssistEnabled() == enabled) {
+            writeLineWithPrompt("AUTOASSIST is already " + (enabled ? "ON" : "OFF"));
+            return;
+        }
+        session.replacePlayer(player.withAutoAssistEnabled(enabled));
+        writeLineWithPrompt("AUTOASSIST is now " + (enabled ? "ON" : "OFF"));
+    }
+
     private void handleBriefCommand(String args) {
         Player player = session.getPlayer();
         if (!session.isAuthenticated() || player == null) {
@@ -1730,6 +1759,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
     @Override
     public void updateAutoLoot(String args) {
         handleAutoLootCommand(args);
+    }
+
+    @Override
+    public void updateAutoAssist(String args) {
+        handleAutoAssistCommand(args);
     }
 
     @Override
