@@ -94,7 +94,7 @@ public class CorpseLocatorService {
      *                    {@code RoomService#findCorpsesByOwner})
      * @return one or more lines to send to the player (never empty, never {@code null})
      */
-    public List<String> locate(RoomId currentRoom, List<Corpse> corpses) {
+    public List<String> locateMostUrgent(RoomId currentRoom, List<Corpse> corpses) {
         Objects.requireNonNull(currentRoom, "Current room is required");
         Objects.requireNonNull(corpses, "Corpses list is required");
         List<Corpse> live = liveCorpses(corpses);

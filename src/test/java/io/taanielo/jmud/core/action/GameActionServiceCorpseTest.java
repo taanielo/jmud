@@ -44,7 +44,6 @@ import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerVitals;
-import io.taanielo.jmud.core.world.Corpse;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;

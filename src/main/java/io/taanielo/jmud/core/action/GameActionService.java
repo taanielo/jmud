@@ -632,7 +632,7 @@ public class GameActionService {
         String trimmed = args == null ? "" : args.trim();
         List<String> lines;
         if (trimmed.isEmpty()) {
-            lines = corpseLocatorService.locate(currentRoom, corpses);
+            lines = corpseLocatorService.locateMostUrgent(currentRoom, corpses);
         } else if (trimmed.equalsIgnoreCase("ALL")) {
             lines = corpseLocatorService.locateAll(currentRoom, corpses);
         } else {

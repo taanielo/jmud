@@ -163,7 +163,7 @@ class CorpseLocatorServiceTest {
 
     @Test
     void locateListWithNoCorpsesReportsNoCorpse() {
-        List<String> lines = service(List.of()).locate(RoomId.of("here"), List.of());
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of());
 
         assertEquals(List.of("You have no corpse in the world."), lines);
     }
@@ -175,7 +175,7 @@ class CorpseLocatorServiceTest {
         roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
         Corpse only = corpse("dark-cave", 214, NOW.minusSeconds(120));
 
-        List<String> lines = service(List.of()).locate(RoomId.of("here"), List.of(only));
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of(only));
 
         assertEquals(2, lines.size());
         assertEquals(
@@ -193,7 +193,7 @@ class CorpseLocatorServiceTest {
         Corpse urgent = corpse("dark-cave", 10, NOW.minusSeconds(200));
         Corpse newer = corpse("lost-crypt", 30, NOW.minusSeconds(30));
 
-        List<String> lines = service(List.of()).locate(RoomId.of("here"), List.of(urgent, newer));
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of(urgent, newer));
 
         assertEquals(3, lines.size());
         assertEquals(
@@ -209,9 +209,9 @@ class CorpseLocatorServiceTest {
         corridor("here", Direction.EAST, "dark-cave");
         roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
         Corpse decayed = corpse("lost-crypt", 10, NOW.minusSeconds(DECAY_SECONDS + 10));
-        Corpse live = corpse("dark-cave", 30, NOW.minusSeconds(30));
+        Corpse live = corpse("dark-cave", 30, NOW.minusSeconds(DECAY_SECONDS - 30));
 
-        List<String> lines = service(List.of()).locate(RoomId.of("here"), List.of(decayed, live));
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of(decayed, live));
 
         // Only one live corpse remains, so no count line is appended.
         assertEquals(2, lines.size());
