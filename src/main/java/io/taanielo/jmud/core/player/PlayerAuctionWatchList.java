@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.player;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -43,7 +44,7 @@ public class PlayerAuctionWatchList {
                 }
             }
         }
-        this.keywords = Set.copyOf(normalised);
+        this.keywords = Collections.unmodifiableSet(normalised);
     }
 
     /**
