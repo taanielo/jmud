@@ -99,8 +99,12 @@ import io.taanielo.jmud.core.gathering.ResourceGatheringService;
 import io.taanielo.jmud.core.gathering.ResourceNode;
 import io.taanielo.jmud.core.gathering.ResourceNodeRespawnTicker;
 import io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository;
+import io.taanielo.jmud.core.guild.GuildQuestPool;
+import io.taanielo.jmud.core.guild.GuildQuestRotationTicker;
+import io.taanielo.jmud.core.guild.GuildQuestService;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
 import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.repository.json.JsonGuildQuestPoolRepository;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
@@ -247,6 +251,7 @@ public record GameContext(
     BankService bankService,
     AuctionService auctionService,
     GuildService guildService,
+    GuildQuestService guildQuestService,
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
     WorldClock worldClock,
@@ -541,13 +546,21 @@ public record GameContext(
         // them out of the Guild Clerk's QUEST LIST (AGENTS.md §3.3 — reuse the canonical quest flow).
         QuestRepository questRepository =
             new CompositeQuestRepository(baseQuestRepository, dailyQuestService);
+        // Cooperative guild quests: every guild has one shared "slay N of a mob type" objective,
+        // rotated daily from a level-banded JSON pool. Any online member's kill of the matching mob
+        // type credits the whole guild (a parallel path to QuestKillService, invoked from the same
+        // mob-death hook); completion pays the guild treasury and announces on the [Guild] channel.
+        GuildQuestService guildQuestService =
+            new GuildQuestService(guildService, createGuildQuestPool(), messageBroadcaster);
         if (mobRegistry != null) {
             QuestKillService questKillService = new QuestKillService(questRepository);
             questKillService.setLevelUpService(levelUpService);
             mobRegistry.setQuestKillService(questKillService);
+            mobRegistry.setGuildQuestService(guildQuestService);
         }
         tickRegistry.register(
             new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
+        tickRegistry.register(new GuildQuestRotationTicker(worldClock, guildQuestService));
 
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);
@@ -643,6 +656,7 @@ public record GameContext(
             bankService,
             auctionService,
             guildService,
+            guildQuestService,
             messageBroadcaster,
             gossipHistory,
             worldClock,
@@ -1100,6 +1114,14 @@ public record GameContext(
             return new GuildService(new JsonGuildRepository());
         } catch (GuildRepositoryException e) {
             throw new IllegalStateException("Failed to initialize guild service: " + e.getMessage(), e);
+        }
+    }
+
+    private static GuildQuestPool createGuildQuestPool() {
+        try {
+            return new JsonGuildQuestPoolRepository().load();
+        } catch (GuildRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize guild quest pool: " + e.getMessage(), e);
         }
     }
 

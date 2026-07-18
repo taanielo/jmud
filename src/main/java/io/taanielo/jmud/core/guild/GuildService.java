@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.guild;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -565,6 +566,30 @@ public class GuildService {
     public Optional<GuildId> getPendingInviteGuild(Username invitee) {
         Objects.requireNonNull(invitee, "invitee is required");
         return Optional.ofNullable(pendingInvites.get(invitee));
+    }
+
+    /**
+     * Returns a point-in-time snapshot of every guild currently known to the service, used by the
+     * {@link GuildQuestService} to rotate guild quests across all guilds on the tick thread.
+     *
+     * @return an immutable snapshot of all guilds
+     */
+    public Collection<Guild> allGuilds() {
+        return List.copyOf(guildsById.values());
+    }
+
+    /**
+     * Persists an updated guild snapshot whose only change is its {@link Guild#activeGuildQuest() active
+     * guild quest} (assignment, progress, or completion). Membership, name and treasury indices are
+     * unaffected, so this replaces the cached snapshot and hands the write to the repository without
+     * re-indexing. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the guild whose active guild quest changed; must not be null
+     */
+    public synchronized void saveGuildQuestState(Guild updated) {
+        Objects.requireNonNull(updated, "updated is required");
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
     }
 
     // ── Indexing helpers ──────────────────────────────────────────────

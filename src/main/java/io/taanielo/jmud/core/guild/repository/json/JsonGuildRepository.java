@@ -25,6 +25,7 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildId;
 import io.taanielo.jmud.core.guild.GuildMember;
+import io.taanielo.jmud.core.guild.GuildQuest;
 import io.taanielo.jmud.core.guild.GuildRank;
 import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
@@ -46,12 +47,14 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
     /**
      * Latest schema written. Version 2 adds the additive shared item vault ({@code vaultedItems}).
      * Version 3 adds the additive lifetime-deposit counter ({@code lifetimeDepositedGold}) that drives
-     * a guild's level and scaled vault capacity.
+     * a guild's level and scaled vault capacity. Version 4 adds the additive cooperative guild quest
+     * ({@code activeGuildQuest}); pre-v4 files load with no assigned quest (lazily assigned on demand).
      */
-    private static final int SCHEMA_VERSION = 3;
+    private static final int SCHEMA_VERSION = 4;
     /**
-     * Oldest schema still readable; v1 files (pre-vault) load with an empty vault, and v1/v2 files
-     * (pre-lifetime) load with {@code lifetimeDepositedGold = 0}, i.e. at level 1.
+     * Oldest schema still readable; v1 files (pre-vault) load with an empty vault, v1/v2 files
+     * (pre-lifetime) load with {@code lifetimeDepositedGold = 0}, i.e. at level 1, and pre-v4 files load
+     * with no active guild quest.
      */
     private static final int MIN_SCHEMA_VERSION = 1;
     private static final String GUILDS_DIR = "guilds";
@@ -183,10 +186,30 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 members,
                 Math.max(0, dto.treasuryGold()),
                 vaultedItems,
-                Math.max(0, dto.lifetimeDepositedGold()));
+                Math.max(0, dto.lifetimeDepositedGold()),
+                toGuildQuest(dto.activeGuildQuest()));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new GuildRepositoryException("Invalid guild data in " + path + ": " + e.getMessage(), e);
         }
+    }
+
+    @Nullable
+    private static GuildQuest toGuildQuest(GuildDto.@Nullable GuildQuestDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        @Nullable String questId = dto.questId();
+        @Nullable String targetMobId = dto.targetMobId();
+        if (questId == null || targetMobId == null) {
+            return null;
+        }
+        String name = dto.name() == null ? questId : dto.name();
+        String targetName = dto.targetName() == null ? targetMobId : dto.targetName();
+        return new GuildQuest(
+            questId, name, targetMobId, targetName,
+            Math.max(1, dto.requiredKills()),
+            Math.max(0, dto.currentKills()),
+            Math.max(0, dto.goldReward()));
     }
 
     private static GuildRank parseRank(@Nullable String rank) {
@@ -252,9 +275,13 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 .map(v -> new GuildDto.VaultedItemDto(
                     itemMapper.toDto(v.item()), v.depositor().getValue()))
                 .toList();
+            @Nullable GuildQuest quest = guild.activeGuildQuest();
+            GuildDto.@Nullable GuildQuestDto questDto = quest == null ? null : new GuildDto.GuildQuestDto(
+                quest.questId(), quest.name(), quest.targetMobId(), quest.targetName(),
+                quest.requiredKills(), quest.currentKills(), quest.goldReward());
             GuildDto dto = new GuildDto(
                 SCHEMA_VERSION, guild.id().value(), guild.name(), guild.leaderId().getValue(),
-                memberDtos, guild.treasuryGold(), vaultDtos, guild.lifetimeDepositedGold());
+                memberDtos, guild.treasuryGold(), vaultDtos, guild.lifetimeDepositedGold(), questDto);
             objectMapper.writeValue(tmp.toFile(), dto);
             Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {

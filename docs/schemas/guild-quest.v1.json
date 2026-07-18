@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:guild-quest:v1",
+  "title": "Guild quest pool (v1)",
+  "description": "The level-banded catalogue of cooperative guild-quest objectives a guild's single active guild quest is drawn from. Every guild is assigned one active 'slay N of a mob type' objective at a time; progress accrues automatically for the whole guild whenever any online member kills the matching mob type (no ACCEPT needed), mirroring the personal kill-quest credit in QuestKillService. On completion the reward gold is paid straight into the guild treasury (also advancing the guild's lifetime deposited gold and GuildLevel), a [Guild] announcement fires, and a fresh objective is rolled. The active objective is otherwise re-rolled once per game day (NIGHT->DAY transition, GuildQuestRotationTicker), the same cadence as daily quests. Assignment is level-banded: a guild is only assigned objectives whose min_guild_level is at or below its current level rank. Pool files live under data/quests/guild/<name>.json and the loader tolerates unknown properties (AGENTS.md §11). Per-guild progress is not stored here; it lives on the Guild (guild schema v4, activeGuildQuest).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "objectives"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "type": {
+      "type": "string",
+      "const": "guild",
+      "description": "Optional human-readable discriminator."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional display name of the pool."
+    },
+    "objectives": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The guild-quest objectives, ordered low to high level band. At least one objective must have min_guild_level 1 so every guild is eligible.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "target_mob_id",
+          "target_name",
+          "required_kills",
+          "gold_reward",
+          "min_guild_level"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Unique objective id across the whole pool."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Display name shown to guild members (e.g. 'Cull the Dire Wolves')."
+          },
+          "target_mob_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Mob template id whose kills advance this objective."
+          },
+          "target_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Plural display noun used in progress lines (e.g. 'dire wolves')."
+          },
+          "required_kills": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of matching kills needed to complete the objective."
+          },
+          "gold_reward": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Gold paid into the guild treasury on completion."
+          },
+          "min_guild_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Lowest guild level rank (1-5) eligible to be assigned this objective."
+          }
+        }
+      }
+    }
+  }
+}
