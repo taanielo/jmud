@@ -1,0 +1,20 @@
+{
+  "schema_version": 8,
+  "id": "encore-empty-seats",
+  "name": "The Hall of Empty Seats",
+  "description": "The threshold opens into a vast dark hall banked on every side with rows upon rows of empty seats, and every one of them is applauding. There are no hands. There is no audience. There has not been an audience since before the first note of the world, if there ever was one at all — and still the seats clap, tier on tier of them rising into a dark that has no ceiling, a roar of ovation pouring down onto a stage where the piece has already ended and taken its final bow. This is the body of the refusal: a hall that will not let the performance be over, applauding a music that has stopped, and the longer it applauds the more the applause stops being praise and becomes a summons. The sound has weight here. It presses on the chest the way the Coda's cold pressed, except that the Coda pressed toward an ending and this presses against one, driving the stopped music to start again whether it has anything left to play or not. Your own pulse answers the clapping without meaning to, and you understand that the hall has mistaken your living heartbeat for the encore it is demanding, the one unspent measure left in a finished world. Passages break the banked seats east and west, and beyond the stage the rows narrow toward a final bow, and past that, the thing that leads the applause.",
+  "item_ids": [],
+  "exits": {
+    "south": "encore-threshold",
+    "east": "encore-echo-chamber",
+    "west": "encore-standing-call",
+    "north": "encore-final-bow"
+  },
+  "min_level": 89,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A whole tier of empty seats rises as one in a standing ovation, clapping harder, and the roar of it rolls down over the stage and does not stop.",
+    "The applause gathers into a rhythm for a moment, a clapped demand for one more measure, and your heartbeat stumbles into time with it before you can catch it.",
+    "Somewhere in the unlit upper rows a single seat begins to clap, and then a hundred, and then all of them, calling the ended music back to sound."
+  ]
+}

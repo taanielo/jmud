@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "encore-standing-call",
+  "name": "The Standing Call",
+  "description": "West of the applauding hall the seats climb into a single unbroken tier that has risen to its feet and will not sit down, and the demand pouring off it is no longer applause at all — it is a call, the wordless roar a hall makes when it has decided the performance is not allowed to be over and means to have another piece whether one exists or not. The Choir demanded a resolution and was answered; the Unsung refused to sing and was overruled; but this is neither demand nor refusal, it is insistence, the flat implacable will of an audience that has stood up and started calling for an encore and simply will not stop calling, not when the players have gone, not when the score has ended, not when there is nothing left in the whole finished world to bring back out onto the stage. The insistence has taken shape here, wrung solid out of the standing roar, forms made of pure refusal-to-let-go that press toward you with the whole weight of a hall's demand behind them. They do not want to end you. They want you to continue — to be the encore, to give the one more measure they are calling for, to play on past the point your own music was ever meant to stop, until there is nothing left of you to call back. The way out lies east to the hall of empty seats.",
+  "item_ids": [],
+  "exits": {
+    "east": "encore-empty-seats"
+  },
+  "min_level": 90,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The standing tier calls louder, a wall of insistence with no words in it, refusing to let the ended music go, refusing to sit, refusing to be finished.",
+    "A shape of pure demand peels loose from the roaring tier and presses toward you, carrying the whole implacable will of a hall that will not accept an ending.",
+    "The calling gathers to a single flat note of insistence, and for a moment it is not asking for more music but for you, the last unspent measure it means to wring the encore out of."
+  ]
+}

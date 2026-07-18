@@ -1,0 +1,19 @@
+{
+  "schema_version": 15,
+  "id": "medal-of-the-standing-ovation",
+  "name": "the Medal of the Standing Ovation",
+  "description": "A broad disc worn at the throat of the Ovation across the whole length of its endless calling, worked from a single unspent measure drawn out at the instant of its demand and set in clapped air so that it presses one low insistent beat against the collarbone and never quite lets the wearer be finished. Worn, it lays that same refusal across the wearer: the pulse steadies not to the close of a phrase but to the demand for one more, the will to answer every ending with another measure, so that a blow that should have been the last one finds the wearer already calling for the next. It never falls silent, and it never quite lets go, always one beat past the point the music was meant to stop — and there is a deep, roaring steadiness in it, the steadiness of a hall that has stood up and decided the performance is not over and will not, under any ending, sit back down.",
+  "attributes": {
+    "stats": {
+      "ac": 9,
+      "hp": 30
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 860,
+  "rarity": "epic",
+  "attack_ref": null
+}

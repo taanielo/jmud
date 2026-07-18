@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "encore-clamoring-echo",
+  "name": "a clamoring echo",
+  "max_hp": 1320,
+  "attack_id": "attack.encore-clamoring-echo",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-encore"],
+  "spawn_room_id": "encore-echo-chamber",
+  "max_count": 3,
+  "respawn_ticks": 84,
+  "xp_reward": 1920,
+  "loot": [
+    {
+      "item_id": "unspent-encore",
+      "drop_chance": 0.32
+    }
+  ],
+  "gold_drop": {
+    "min": 380,
+    "max": 540
+  }
+}

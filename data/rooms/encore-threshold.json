@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "encore-threshold",
+  "name": "The Refused Ending",
+  "description": "The Coda resolved. The last chord fell, and the phrase the whole world had been building toward since its first note came, at last, to its end — and then the hall would not empty. You feel it before you understand it: the resolving weight that meant to close on your heartbeat has closed, and instead of silence there is a sound rising on the far side of the ending, faint and enormous and impossible, the sound of a room that has been told the piece is over and refuses to accept it. This is not deeper than the Coda and it is not after it in the way the Coda was after the Fermata; it is against it, the one motion the whole descending music never accounted for. A performance ends when the score ends. But a hall does not always let the score decide. Sometimes the seats keep applauding into a silence that was meant to be final, and the applause becomes a demand, and the demand calls the music back for one more piece that was never written — an encore, wrung out of a work that had already finished. You are standing in the first breath of that refusal, the threshold where the ended song is being called back to sound again, and the applause ahead is not glad. It is hungry. It wants more, and there is nothing left to give it but you. The way back leads south into the resolved chamber; ahead, north, the calling grows into a hall of empty seats.",
+  "item_ids": [],
+  "exits": {
+    "south": "coda-resolution",
+    "north": "encore-empty-seats"
+  },
+  "min_level": 89,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The applause on the far side of the ending swells a fraction louder, insistent, the sound of a hall that will not accept that the piece is done.",
+    "A wave of clapping rolls out of the dark ahead and breaks over you, coming from no hands you can see, demanding a music that has already ended.",
+    "For a moment the calling seems about to fade into the silence the Coda earned — and then it gathers instead, and lifts, and refuses, and comes on."
+  ]
+}

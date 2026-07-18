@@ -224,6 +224,7 @@ a validator rule, not a manual checkbox.
 | The Undersong (`the-undersong`) | ✅ #655 | ✅ (undersong-cull, undersong-source #656) · signature boss loot: the First Hum drops the Underhum Knell + Standing Tone Torc #677 | ✅ #655 |
 | The Interval (`the-interval`) | ✅ #671 | ✅ (interval-cull, interval-fermata #672) · signature boss loot: the Fermata drops the Caesura Stroke + Crown of the Held Beat #677 | ✅ #671 |
 | The Coda (`the-coda`) | ✅ #697 | ✅ (coda-cull, coda-resolution #698) · signature boss loot: the Coda drops the Closing Chord + Signet of Final Resolution #703 | ✅ #697 (81-88) |
+| The Encore (`the-encore`) | ✅ #727 · signature boss loot: the Ovation drops the Final Encore + Medal of the Standing Ovation | 🔨 #728 (quest chain follow-up) | ✅ #727 (89-96) |
 
 ## Systems
 

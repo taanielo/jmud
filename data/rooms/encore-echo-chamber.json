@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "encore-echo-chamber",
+  "name": "The Echo Chamber",
+  "description": "East of the applauding hall the seats fall away into a curved chamber of black stone shaped to hold sound and never let it leave, and it is full of every note the music ever played. They come without a source. The First Hum's low founding drone, the Choir's demanded resolution, the Undersong's sustaining, the Interval's arrested breath, the Fermata's withheld stroke, the Coda's closing chord — all of it is here at once, reverberating off walls built to feed an echo back into itself forever, a piece that has ended reduced to nothing but its own reflections, playing on with no one sounding it. The echoes have been repeating so long that they have grown hungry the way a repeated word grows strange, worn smooth of meaning and left with only the shape of wanting more. They gather out of the overlapping reverberation, shapes wrung from a note played back one time too many, and they turn toward the one sound in the chamber that is not an echo of something already ended: your heartbeat, new, unrepeated, the single fresh measure in a room that has run out of anything else to play. There is no waiting them out; an echo does not tire, it only repeats, and these have decided to repeat themselves through you. The only way onward loops back west to the hall of empty seats.",
+  "item_ids": [],
+  "exits": {
+    "west": "encore-empty-seats"
+  },
+  "min_level": 90,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A note the world played an age ago comes around again off the curved walls, thinner and hungrier each pass, worn down to the pure shape of wanting to be played once more.",
+    "The overlapping echoes fold together for a moment into something almost like the whole song, then come apart again, each reflection reaching for a fresh sound to feed on.",
+    "Your own heartbeat catches in the chamber and begins, faintly, to echo — and the echoes turn toward the sound of it, hungry for a measure that has not yet been repeated to nothing."
+  ]
+}

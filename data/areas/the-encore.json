@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "the-encore",
+  "name": "The Encore",
+  "room_ids": [
+    "encore-threshold",
+    "encore-empty-seats",
+    "encore-echo-chamber",
+    "encore-standing-call",
+    "encore-final-bow",
+    "encore-ovation"
+  ],
+  "connections": [
+    "the-coda"
+  ],
+  "level_range": {
+    "min": 89,
+    "max": 96
+  },
+  "ascii_map": [
+    "        ... THE ENCORE ...",
+    "",
+    "                The Coda",
+    "                   ^",
+    "                   |",
+    "               [Threshold]",
+    "                   |",
+    "  [Standing]--[Empty Seats]--[Echo]",
+    "                   |",
+    "               [Final Bow]",
+    "                   |",
+    "                [Ovation]",
+    "",
+    "   Not a place deeper than the Coda but against it,",
+    "   the one ending the world would not accept — a hall",
+    "   of empty seats still applauding, every note the",
+    "   music ever played echoing without a source, and at",
+    "   the center the demand for one more piece given form."
+  ]
+}

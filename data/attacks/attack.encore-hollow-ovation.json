@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.encore-hollow-ovation",
+  "name": "a hollow applause",
+  "min_damage": 90,
+  "max_damage": 120,
+  "hit_bonus": 13,
+  "crit_bonus": 9,
+  "damage_bonus": 22,
+  "weapon_type": "BLUNT",
+  "damage_type": "PHYSICAL",
+  "applies_effect": {
+    "effect_id": "dazed",
+    "chance_percent": 66
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The hollow ovation claps its bodiless applause shut around you, tier on tier of empty seats roaring approval for no performance at all, and the concussion of that praise-without-hands drives into you like a struck drum. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The hollow ovation opens its clapping roar toward you and the wave of empty applause rushes in to break — and you drop beneath the crest of it and let the roar close on the space where you were."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The hollow ovation collapses the whole roar of the empty hall onto your heart at once, a standing ovation for a music that ended long ago crashing down with nothing behind it and everything in it, and for one deafened instant even the sound of your own blood is lost under the clapping! The blow {verb} you!"
+    }
+  ]
+}
