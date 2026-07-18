@@ -127,6 +127,20 @@ public class HelpCommand extends RegistrableCommand {
         "  swarm into a fair fight. A packmate only joins a fight already begun; it never ambushes",
         "  you first, so hidden rogues still choose their moment.");
 
+    private static final List<String> COOLDOWNS_TOPIC = List.of(
+        "Cooldowns",
+        "  Usage: COOLDOWNS (alias CD)",
+        "",
+        "  Lists every ability you have learned in a table with three columns:",
+        "    Ability — the ability's display name.",
+        "    Type    — SKILL or SPELL.",
+        "    Status  — its live readiness: 'Ready' when it can be used right now, or",
+        "              '<n> ticks' remaining until it comes off cooldown.",
+        "",
+        "  Unlike ABILITIES, which shows each ability's base cooldown length, COOLDOWNS",
+        "  reads your own live cooldown timers so you can plan an opener or rotation",
+        "  instead of guessing. It is read-only and never changes game state.");
+
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
      * name and its aliases. Looked up after commands but before classes, so {@code HELP resistances}
@@ -149,7 +163,10 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("shields", COMBAT_TOPIC),
         Map.entry("block", COMBAT_TOPIC),
         Map.entry("parry", COMBAT_TOPIC),
-        Map.entry("riposte", COMBAT_TOPIC)
+        Map.entry("riposte", COMBAT_TOPIC),
+        Map.entry("cooldowns", COOLDOWNS_TOPIC),
+        Map.entry("cooldown", COOLDOWNS_TOPIC),
+        Map.entry("cd", COOLDOWNS_TOPIC)
     );
 
     private final SocketCommandRegistry registry;

@@ -400,6 +400,20 @@ public interface SocketCommandContext extends Client {
     default void sendEffects() {}
 
     /**
+     * Sends the player's learned abilities as a formatted table with each ability's live
+     * cooldown status.
+     *
+     * <p>Each line shows the ability name, its type (SKILL/SPELL), and its current readiness:
+     * {@code Ready} when off cooldown, or {@code <n> ticks} remaining otherwise. Status is read
+     * from the player's own {@code CooldownSystem}; this is a pure read that never mutates
+     * cooldown state. Prints a clear "no abilities learned" line when the player has none.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void sendCooldowns() {}
+
+    /**
      * Attempts to flee from active combat by moving to a random available exit.
      */
     void fleeCombat();
