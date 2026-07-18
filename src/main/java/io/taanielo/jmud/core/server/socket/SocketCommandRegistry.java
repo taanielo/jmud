@@ -13,6 +13,7 @@ import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.faction.ReputationService;
+import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.mob.MobRegistry;
@@ -43,6 +44,7 @@ public class SocketCommandRegistry {
      * @param classRepository         repository used by {@code HELP <class>} to render a class reference sheet
      * @param abilityRegistry         registry used by {@code HELP <class>} to resolve ability ids to display names
      * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
+     * @param guildRepository         repository used to enumerate all persisted guilds for {@code RANK GUILDS}
      * @param roomService             service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
      * @param tellService             in-memory tracker of the last private-message sender per player,
      *                                backing the {@code REPLY} command
@@ -70,6 +72,7 @@ public class SocketCommandRegistry {
         ClassRepository classRepository,
         AbilityRegistry abilityRegistry,
         PlayerRepository playerRepository,
+        GuildRepository guildRepository,
         RoomService roomService,
         TellService tellService,
         MessageBroadcaster messageBroadcaster,
@@ -90,6 +93,7 @@ public class SocketCommandRegistry {
         Objects.requireNonNull(classRepository, "Class repository is required");
         Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         Objects.requireNonNull(playerRepository, "Player repository is required");
+        Objects.requireNonNull(guildRepository, "Guild repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(tellService, "Tell service is required");
         Objects.requireNonNull(messageBroadcaster, "Message broadcaster is required");
@@ -128,7 +132,7 @@ public class SocketCommandRegistry {
         new ShoutCommand(registry, roomService, messageBroadcaster);
         new GossipCommand(registry);
         new WhoCommand(registry, roomService, weatherEngine);
-        new RankCommand(registry, playerRepository);
+        new RankCommand(registry, playerRepository, guildRepository);
         new ReputationCommand(registry, reputationService);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
             characterAttributesResolver, roomService, weatherEngine);
