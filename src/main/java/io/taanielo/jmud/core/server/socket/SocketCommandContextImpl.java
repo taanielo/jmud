@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.server.socket;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -90,6 +91,7 @@ import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.MovementCostService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerAuctionWatchList;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerFriendList;
 import io.taanielo.jmud.core.player.PlayerGuildMembership;
@@ -5957,9 +5959,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "SELL" -> auctionSell(auctionService, player, roomId, rest, currentTick);
             case "BUY" -> auctionBuy(auctionService, player, rest, currentTick);
             case "CANCEL" -> auctionCancel(auctionService, player, rest, currentTick);
+            case "WATCH" -> auctionWatch(player, rest);
+            case "UNWATCH" -> auctionUnwatch(player, rest);
+            case "WATCHLIST" -> auctionWatchList(player);
             default -> writeLineWithPrompt(
                 "Usage: AUCTION LIST [keyword|MINE] | AUCTION SELL <item> <price> "
-                    + "| AUCTION BUY <#> | AUCTION CANCEL <#>");
+                    + "| AUCTION BUY <#> | AUCTION CANCEL <#> | AUCTION WATCH <keyword> "
+                    + "| AUCTION UNWATCH <keyword> | AUCTION WATCHLIST");
         }
     }
 
@@ -6014,10 +6020,94 @@ class SocketCommandContextImpl implements SocketCommandContext {
         long expiryTick = currentTick + AuctionSettings.listingTicks();
         AuctionTransactionResult result =
             auctionService.sell(player, itemInput, price, roomId, currentTick, expiryTick);
-        if (result.success() && result.updatedActor() != null) {
+        if (result.success() && result.updatedActor() != null && result.listing() != null) {
             session.replacePlayer(result.updatedActor());
+            notifyAuctionWatchers(result.updatedActor(), result.listing());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    /**
+     * Scans every online player (other than the seller) and delivers a real-time notification to
+     * those whose Auction House watch list matches the freshly listed item's name. Matching reuses
+     * {@link AuctionFilter}'s keyword semantics so a watch match can never disagree with an
+     * {@code AUCTION LIST <keyword>} match. Offline players are never touched — only already-loaded
+     * online {@link Player} objects are inspected, so no blocking repository read reaches the tick
+     * thread.
+     */
+    private void notifyAuctionWatchers(Player seller, AuctionListing listing) {
+        Username sellerName = seller.getUsername();
+        for (Username username : onlinePlayerNames()) {
+            if (username.equals(sellerName)) {
+                continue;
+            }
+            Player watcher = getOnlinePlayer(username);
+            if (watcher == null) {
+                continue;
+            }
+            for (String keyword : watcher.auctionWatchList().keywords()) {
+                if (AuctionFilter.keyword(keyword).matches(listing)) {
+                    sendToUsername(username, String.format(
+                        "[Auction] A new listing matches your watch \"%s\": %s for %d gold (seller: %s).",
+                        keyword, listing.item().getName(), listing.price(), sellerName.getValue()));
+                    break;
+                }
+            }
+        }
+    }
+
+    private void auctionWatch(Player player, String rest) {
+        String keyword = rest.trim();
+        if (keyword.isBlank()) {
+            writeLineWithPrompt("Usage: AUCTION WATCH <keyword>");
+            return;
+        }
+        PlayerAuctionWatchList watches = player.auctionWatchList();
+        if (watches.has(keyword)) {
+            writeLineWithPrompt("You are already watching \"" + keyword.toLowerCase(Locale.ROOT) + "\".");
+            return;
+        }
+        if (watches.isFull()) {
+            writeLineWithPrompt("You are already watching the maximum of " + PlayerAuctionWatchList.MAX_WATCHES
+                + " keywords. UNWATCH one first.");
+            return;
+        }
+        Player updated = player.withAuctionWatchList(watches.with(keyword));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are now watching the Auction House for \""
+            + keyword.toLowerCase(Locale.ROOT) + "\".");
+    }
+
+    private void auctionUnwatch(Player player, String rest) {
+        String keyword = rest.trim();
+        if (keyword.isBlank()) {
+            writeLineWithPrompt("Usage: AUCTION UNWATCH <keyword>");
+            return;
+        }
+        PlayerAuctionWatchList watches = player.auctionWatchList();
+        if (!watches.has(keyword)) {
+            writeLineWithPrompt("You are not watching \"" + keyword.toLowerCase(Locale.ROOT) + "\".");
+            return;
+        }
+        Player updated = player.withAuctionWatchList(watches.without(keyword));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are no longer watching \"" + keyword.toLowerCase(Locale.ROOT) + "\".");
+    }
+
+    private void auctionWatchList(Player player) {
+        Collection<String> watches = player.auctionWatchList().keywords();
+        if (watches.isEmpty()) {
+            writeLineWithPrompt("You are not watching anything.");
+            return;
+        }
+        connection.writeLine("You are watching the Auction House for:");
+        int index = 1;
+        for (String keyword : watches) {
+            connection.writeLine("  " + index++ + ". " + keyword);
+        }
+        sendPrompt();
     }
 
     private void auctionBuy(AuctionService auctionService, Player player, String rest, long currentTick) {

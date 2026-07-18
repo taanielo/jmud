@@ -14,6 +14,10 @@ import java.util.Optional;
  *   <li>{@code AUCTION SELL <item> <price>} — list an item from your inventory for a gold price.</li>
  *   <li>{@code AUCTION BUY <#>}            — buy the numbered listing.</li>
  *   <li>{@code AUCTION CANCEL <#>}         — cancel your own numbered listing.</li>
+ *   <li>{@code AUCTION WATCH <keyword>}    — watch for new listings matching a keyword (max 10);
+ *       online watchers are notified in real time when a matching item is listed.</li>
+ *   <li>{@code AUCTION UNWATCH <keyword>}  — stop watching a keyword.</li>
+ *   <li>{@code AUCTION WATCHLIST}          — list your watched keywords.</li>
  * </ul>
  *
  * <p>Gold reaches the seller even while they are offline (the same offline-delivery path as
@@ -53,9 +57,14 @@ public class AuctionCommand extends RegistrableCommand {
                  AUCTION SELL <item> <price>   \u2014 list an item from your inventory for a gold price.
                  AUCTION BUY <#>               \u2014 buy the listing with the given number.
                  AUCTION CANCEL <#>            \u2014 cancel your own listing and get the item back.
+                 AUCTION WATCH <keyword>       \u2014 watch for new listings whose item name contains the keyword;
+                                                 you are notified in real time when a match is listed (max 10).
+                 AUCTION UNWATCH <keyword>     \u2014 stop watching the given keyword.
+                 AUCTION WATCHLIST             \u2014 list the keywords you are currently watching.
                  Displayed numbers are stable across filters, so BUY/CANCEL always target the same listing.
                  Must be used at the Auction House. Sold gold reaches the seller even while offline;
-                 listings expire after a while and are returned to the seller.\
+                 listings expire after a while and are returned to the seller.
+                 Watches persist across logout; only online players receive watch notifications.\
                """;
     }
 
