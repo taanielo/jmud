@@ -48,7 +48,7 @@ public class JsonBountyRepository implements BountyRepository, AutoCloseable {
     private final Path dirPath;
     private final Path filePath;
 
-    private final AtomicReference<List<Bounty>> snapshot = new AtomicReference<>(List.of());
+    private volatile List<Bounty> snapshot = List.of();
     private final BlockingQueue<Object> writeSignals = new LinkedBlockingQueue<>();
     private final AtomicBoolean pendingWrite = new AtomicBoolean(false);
     private final AtomicReference<Thread> workerThread = new AtomicReference<>();
@@ -73,22 +73,22 @@ public class JsonBountyRepository implements BountyRepository, AutoCloseable {
         this.dirPath = Objects.requireNonNull(dataRoot, "Data root is required").resolve(WORLD_STATE_DIR);
         this.filePath = dirPath.resolve(FILE_NAME);
         ensureDirectory(dirPath);
-        snapshot.set(readFile());
+        this.snapshot = readFile();
         log.info("Loaded {} open bount{} from {}",
-            snapshot.get().size(), snapshot.get().size() == 1 ? "y" : "ies", filePath);
+            snapshot.size(), snapshot.size() == 1 ? "y" : "ies", filePath);
         Thread thread = Thread.ofVirtual().name("bounty-writer").start(this::runWorker);
         workerThread.set(thread);
     }
 
     @Override
     public List<Bounty> findAll() {
-        return snapshot.get();
+        return snapshot;
     }
 
     @Override
     public void save(List<Bounty> bounties) {
         Objects.requireNonNull(bounties, "bounties is required");
-        snapshot.set(List.copyOf(bounties));
+        this.snapshot = List.copyOf(bounties);
         if (pendingWrite.compareAndSet(false, true)) {
             writeSignals.add(WRITE_SIGNAL);
         }
@@ -180,7 +180,7 @@ public class JsonBountyRepository implements BountyRepository, AutoCloseable {
     }
 
     private synchronized void writeFile() {
-        List<Bounty> current = snapshot.get();
+        List<Bounty> current = snapshot;
         try {
             if (current.isEmpty()) {
                 Files.deleteIfExists(filePath);
