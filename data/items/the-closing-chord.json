@@ -1,0 +1,21 @@
+{
+  "schema_version": 15,
+  "id": "the-closing-chord",
+  "name": "the Closing Chord",
+  "description": "The great two-handed maul the Coda swung to end things — a weapon of resolution made solid, its head a struck chord caught at the very instant it began to resolve and grown to killing weight, bound in a lattice of finished cold that rings one low, unhurried tone against the hand and never quite falls silent. Where the Fermata's Caesura Stroke held the pause between beats, this holds the ending after them: the released chord that closes a phrase, kept from decaying to silence so that it might close something else instead. Drawn back, it gathers the last of a long resonance into its head; brought down, it does not merely strike but resolves what it strikes, ending the note of the thing the way a coda ends a piece — completely, and with a cold that follows the blow down like the silence after the final chord. It is the heaviest and stillest weapon yet drawn from the deep song, and it lands hardest for the hand willing to let each blow finish before beginning the next.",
+  "attributes": {
+    "stats": {
+      "strength": 13,
+      "dexterity": 10,
+      "cold_resist": 22
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 6,
+  "value": 1180,
+  "rarity": "epic",
+  "attack_ref": "attack.closing-chord",
+  "two_handed": true
+}
