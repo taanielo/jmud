@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.TimeOfDay;
 
@@ -67,6 +68,27 @@ public class MobInstance {
      * the mob resumes normal random targeting.
      */
     private final AtomicInteger tauntTicksRemaining = new AtomicInteger(0);
+    /**
+     * Remaining AI ticks before a telegraphed special attack lands, or {@code 0} when no telegraph is
+     * pending (see {@link io.taanielo.jmud.core.combat.AttackDefinition#telegraphTicks()}). Set on the
+     * announce tick via {@link #beginTelegraph(AttackId, Username, int)} and decremented once per AI
+     * decision via {@link #tickTelegraph()}; cleared with no damage on disengage/respawn and whenever
+     * the target leaves the fight (mirroring {@link #specialAbilityUsed}). Transient, server-only
+     * state that never touches player saves.
+     */
+    private final AtomicInteger telegraphTicksRemaining = new AtomicInteger(0);
+    /**
+     * The special attack a pending telegraph will resolve when its window elapses, or {@code null}
+     * when no telegraph is pending. Paired with {@link #telegraphTicksRemaining} and
+     * {@link #telegraphTarget}.
+     */
+    private final AtomicReference<AttackId> telegraphAttackId = new AtomicReference<>();
+    /**
+     * The player a pending telegraph is aimed at, or {@code null} when no telegraph is pending. The
+     * telegraph is cancelled if this player is no longer a live, engaged occupant of the mob's room
+     * when the window elapses.
+     */
+    private final AtomicReference<Username> telegraphTarget = new AtomicReference<>();
     /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
     private volatile RoomId currentRoomId;
     /**
@@ -303,6 +325,7 @@ public class MobInstance {
         if (engagedPlayers.isEmpty()) {
             specialAbilityUsed.set(false);
             clearTaunt();
+            clearTelegraph();
         }
     }
 
@@ -326,6 +349,81 @@ public class MobInstance {
      */
     public void markSpecialAbilityUsed() {
         specialAbilityUsed.set(true);
+    }
+
+    /**
+     * Begins telegraphing a special attack: records the attack, its target, and the number of AI
+     * ticks the mob will wind up before the blow lands. Replaces any previous pending telegraph. Must
+     * only be called from the tick thread.
+     *
+     * @param attackId the special attack that will resolve when the window elapses
+     * @param target   the player the telegraphed attack is aimed at
+     * @param ticks    how many AI decisions the mob winds up before landing the attack; must be positive
+     */
+    public void beginTelegraph(AttackId attackId, Username target, int ticks) {
+        if (ticks <= 0) {
+            throw new IllegalArgumentException("Telegraph ticks must be positive");
+        }
+        this.telegraphAttackId.set(Objects.requireNonNull(attackId, "Telegraph attack id is required"));
+        this.telegraphTarget.set(Objects.requireNonNull(target, "Telegraph target is required"));
+        this.telegraphTicksRemaining.set(ticks);
+    }
+
+    /**
+     * Returns whether this mob is currently winding up a telegraphed special attack.
+     *
+     * @return {@code true} while a telegraph is pending resolution
+     */
+    public boolean hasPendingTelegraph() {
+        return telegraphTicksRemaining.get() > 0;
+    }
+
+    /**
+     * Returns the special attack a pending telegraph will resolve, or {@code null} when none is pending.
+     *
+     * @return the pending telegraph's attack id, or {@code null}
+     */
+    @Nullable
+    public AttackId telegraphAttackId() {
+        return telegraphAttackId.get();
+    }
+
+    /**
+     * Returns the player a pending telegraph is aimed at, or {@code null} when none is pending.
+     *
+     * @return the pending telegraph's target, or {@code null}
+     */
+    @Nullable
+    public Username telegraphTarget() {
+        return telegraphTarget.get();
+    }
+
+    /**
+     * Consumes one AI decision from a pending telegraph's wind-up. Must only be called from the tick
+     * thread and only while {@link #hasPendingTelegraph()} is {@code true}.
+     *
+     * @return {@code true} when the wind-up has fully elapsed and the telegraphed attack should now
+     *         resolve (the pending state is cleared in that case); {@code false} while it keeps winding up
+     */
+    public boolean tickTelegraph() {
+        if (telegraphTicksRemaining.get() <= 0) {
+            return false;
+        }
+        if (telegraphTicksRemaining.decrementAndGet() <= 0) {
+            clearTelegraph();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Cancels any pending telegraph with no damage. A no-op when none is pending. Must only be called
+     * from the tick thread.
+     */
+    public void clearTelegraph() {
+        telegraphTicksRemaining.set(0);
+        telegraphAttackId.set(null);
+        telegraphTarget.set(null);
     }
 
     /**
@@ -535,6 +633,7 @@ public class MobInstance {
         engagedPlayers.clear();
         specialAbilityUsed.set(false);
         clearTaunt();
+        clearTelegraph();
         currentRoomId = template.spawnRoomId();
     }
 }

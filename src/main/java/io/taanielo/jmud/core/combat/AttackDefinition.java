@@ -23,10 +23,75 @@ public class AttackDefinition {
     private final AttackEffectApplication effectOnHit;
     private final RangeType rangeType;
     private final DamageType damageType;
+    private final int telegraphTicks;
 
     /**
      * Constructs an attack definition with explicit weapon type, an optional on-hit status effect
-     * application, an explicit {@link RangeType}, and an explicit {@link DamageType}.
+     * application, an explicit {@link RangeType}, an explicit {@link DamageType}, and an explicit
+     * telegraph delay.
+     *
+     * @param id             unique identifier for this attack
+     * @param name           display name of the attack
+     * @param minDamage      minimum damage dealt on a hit (non-negative)
+     * @param maxDamage      maximum damage dealt on a hit (must be &gt;= minDamage)
+     * @param hitBonus       additive bonus to hit chance
+     * @param critBonus      additive bonus to critical hit chance
+     * @param damageBonus    additive bonus applied to raw damage roll
+     * @param messages       flavour messages for hit, miss, crit, and telegraph phases
+     * @param weaponType     classification of the weapon's damage style
+     * @param effectOnHit    optional status effect to apply to the target on a successful hit;
+     *                       {@code null} means this attack applies no effect
+     * @param rangeType      whether this attack is melee-only or can strike an adjacent room;
+     *                       {@code null} defaults to {@link RangeType#MELEE}
+     * @param damageType     the elemental nature of the damage; {@code null} defaults to
+     *                       {@link DamageType#PHYSICAL}
+     * @param telegraphTicks number of AI ticks a mob winds up before this attack lands; {@code 0}
+     *                       (the default) means the attack resolves instantly with no telegraph.
+     *                       Negative values are clamped to {@code 0}
+     */
+    public AttackDefinition(
+        AttackId id,
+        String name,
+        int minDamage,
+        int maxDamage,
+        int hitBonus,
+        int critBonus,
+        int damageBonus,
+        List<MessageSpec> messages,
+        WeaponType weaponType,
+        AttackEffectApplication effectOnHit,
+        RangeType rangeType,
+        DamageType damageType,
+        int telegraphTicks
+    ) {
+        this.id = Objects.requireNonNull(id, "Attack id is required");
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Attack name must not be blank");
+        }
+        if (minDamage < 0 || maxDamage < 0) {
+            throw new IllegalArgumentException("Attack damage must be non-negative");
+        }
+        if (maxDamage < minDamage) {
+            throw new IllegalArgumentException("Attack max damage must be >= min damage");
+        }
+        this.name = name;
+        this.minDamage = minDamage;
+        this.maxDamage = maxDamage;
+        this.hitBonus = hitBonus;
+        this.critBonus = critBonus;
+        this.damageBonus = damageBonus;
+        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
+        this.weaponType = Objects.requireNonNullElse(weaponType, WeaponType.SLASHING);
+        this.effectOnHit = effectOnHit;
+        this.rangeType = Objects.requireNonNullElse(rangeType, RangeType.MELEE);
+        this.damageType = Objects.requireNonNullElse(damageType, DamageType.PHYSICAL);
+        this.telegraphTicks = Math.max(0, telegraphTicks);
+    }
+
+    /**
+     * Constructs an attack definition with explicit weapon type, an optional on-hit status effect
+     * application, an explicit {@link RangeType}, and an explicit {@link DamageType}, defaulting to
+     * no telegraph delay (instant resolution).
      *
      * @param id          unique identifier for this attack
      * @param name        display name of the attack
@@ -58,27 +123,8 @@ public class AttackDefinition {
         RangeType rangeType,
         DamageType damageType
     ) {
-        this.id = Objects.requireNonNull(id, "Attack id is required");
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Attack name must not be blank");
-        }
-        if (minDamage < 0 || maxDamage < 0) {
-            throw new IllegalArgumentException("Attack damage must be non-negative");
-        }
-        if (maxDamage < minDamage) {
-            throw new IllegalArgumentException("Attack max damage must be >= min damage");
-        }
-        this.name = name;
-        this.minDamage = minDamage;
-        this.maxDamage = maxDamage;
-        this.hitBonus = hitBonus;
-        this.critBonus = critBonus;
-        this.damageBonus = damageBonus;
-        this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
-        this.weaponType = Objects.requireNonNullElse(weaponType, WeaponType.SLASHING);
-        this.effectOnHit = effectOnHit;
-        this.rangeType = Objects.requireNonNullElse(rangeType, RangeType.MELEE);
-        this.damageType = Objects.requireNonNullElse(damageType, DamageType.PHYSICAL);
+        this(id, name, minDamage, maxDamage, hitBonus, critBonus, damageBonus, messages,
+            weaponType, effectOnHit, rangeType, damageType, 0);
     }
 
     /**
@@ -264,5 +310,18 @@ public class AttackDefinition {
     /** @return {@code true} when this attack can be fired at a target in an adjacent room */
     public boolean isRanged() {
         return rangeType == RangeType.RANGED;
+    }
+
+    /**
+     * @return the number of AI ticks a mob winds up before this attack lands; {@code 0} means the
+     *         attack resolves instantly with no telegraph (today's default behaviour)
+     */
+    public int telegraphTicks() {
+        return telegraphTicks;
+    }
+
+    /** @return {@code true} when this attack telegraphs (winds up over one or more ticks) before landing */
+    public boolean telegraphs() {
+        return telegraphTicks > 0;
     }
 }

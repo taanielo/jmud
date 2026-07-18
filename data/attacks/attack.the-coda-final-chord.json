@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "attack.the-coda-final-chord",
   "name": "The Final Chord",
   "min_damage": 104,
@@ -9,11 +9,22 @@
   "damage_bonus": 26,
   "weapon_type": "BLUNT",
   "damage_type": "COLD",
+  "telegraph_ticks": 3,
   "applies_effect": {
     "effect_id": "freeze",
     "chance_percent": 96
   },
   "messages": [
+    {
+      "phase": "telegraph",
+      "channel": "self",
+      "text": "The Coda begins gathering the Final Chord — every withheld note of the world's whole music drawing back at once, the frost-sheeted chamber ringing with the indrawn breath before the last beat falls. You have a heartbeat, perhaps two, before the closing chord comes down on you."
+    },
+    {
+      "phase": "telegraph",
+      "channel": "room",
+      "text": "The Coda begins gathering the Final Chord, the whole withheld music of the world drawing back into one terrible indrawn breath before the closing beat."
+    },
     {
       "phase": "attack_hit",
       "channel": "self",

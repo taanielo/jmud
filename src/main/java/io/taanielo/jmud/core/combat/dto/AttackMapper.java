@@ -24,7 +24,9 @@ import io.taanielo.jmud.core.messaging.MessageSpecMapper;
  * {@code range_type} field ({@code MELEE} or {@code RANGED}); it defaults to
  * {@link RangeType#MELEE} when absent or unrecognised. Schema version 6 additionally accepts an
  * optional {@code damage_type} field; it defaults to {@link DamageType#PHYSICAL} when absent or
- * unrecognised, so every pre-v6 attack file loads as physical damage unchanged.
+ * unrecognised, so every pre-v6 attack file loads as physical damage unchanged. Schema version 7
+ * additionally accepts an optional {@code telegraph_ticks} field; it defaults to {@code 0} (instant,
+ * non-telegraphed resolution) when absent, so every pre-v7 attack file loads unchanged.
  */
 public class AttackMapper {
 
@@ -41,7 +43,8 @@ public class AttackMapper {
             && dto.schemaVersion() != AttackSchemaVersions.V3
             && dto.schemaVersion() != AttackSchemaVersions.V4
             && dto.schemaVersion() != AttackSchemaVersions.V5
-            && dto.schemaVersion() != AttackSchemaVersions.V6) {
+            && dto.schemaVersion() != AttackSchemaVersions.V6
+            && dto.schemaVersion() != AttackSchemaVersions.V7) {
             throw new IllegalArgumentException("Unsupported attack schema version " + dto.schemaVersion());
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
@@ -49,6 +52,7 @@ public class AttackMapper {
         AttackEffectApplication effectOnHit = parseEffectOnHit(dto.appliesEffect());
         RangeType rangeType = parseRangeType(dto.rangeType());
         DamageType damageType = DamageType.fromString(dto.damageType());
+        int telegraphTicks = dto.telegraphTicks() == null ? 0 : Math.max(0, dto.telegraphTicks());
         return new AttackDefinition(
             AttackId.of(dto.id()),
             dto.name(),
@@ -61,7 +65,8 @@ public class AttackMapper {
             weaponType,
             effectOnHit,
             rangeType,
-            damageType
+            damageType,
+            telegraphTicks
         );
     }
 

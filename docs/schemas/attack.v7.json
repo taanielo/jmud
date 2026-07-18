@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:attack:v7",
+  "title": "Attack (v7)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "min_damage",
+    "max_damage",
+    "hit_bonus",
+    "crit_bonus",
+    "damage_bonus"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 7
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "min_damage": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_damage": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hit_bonus": {
+      "type": "integer"
+    },
+    "crit_bonus": {
+      "type": "integer"
+    },
+    "damage_bonus": {
+      "type": "integer"
+    },
+    "weapon_type": {
+      "type": "string",
+      "enum": [
+        "BLUNT",
+        "PIERCING",
+        "SLASHING"
+      ],
+      "description": "Optional; added in schema version 3. Defaults to SLASHING when omitted."
+    },
+    "range_type": {
+      "type": "string",
+      "enum": [
+        "MELEE",
+        "RANGED"
+      ],
+      "description": "Optional; added in schema version 5. Defaults to MELEE when omitted. RANGED attacks can be fired at a mob in an adjacent room via the SHOOT command."
+    },
+    "damage_type": {
+      "type": "string",
+      "enum": [
+        "PHYSICAL",
+        "FIRE",
+        "COLD",
+        "POISON"
+      ],
+      "description": "Optional; added in schema version 6. Defaults to PHYSICAL when omitted. Non-physical damage is reduced by the defender's matching *_resist armour stat (e.g. fire_resist), capped so resistance never fully negates a blow."
+    },
+    "telegraph_ticks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional; added in schema version 7. Defaults to 0 (instant resolution) when omitted. When greater than 0 and used as a mob's special attack, the mob announces a TELEGRAPH message and winds up for this many AI ticks before the blow lands, spending its turn channeling instead of also landing a normal hit. The pending attack is cancelled with no damage if the mob dies or the target leaves the fight before it resolves."
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "phase",
+          "channel",
+          "text"
+        ],
+        "properties": {
+          "phase": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "applies_effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional; added in schema version 4. Describes a status effect this attack applies to its target on a successful hit.",
+      "required": [
+        "effect_id",
+        "chance_percent"
+      ],
+      "properties": {
+        "effect_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Must match the id of an EffectDefinition under data/effects/."
+        },
+        "chance_percent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}
