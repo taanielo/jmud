@@ -55,6 +55,7 @@ import io.taanielo.jmud.core.bank.VaultUpgradeTier;
 import io.taanielo.jmud.core.bounty.BountyListing;
 import io.taanielo.jmud.core.bounty.BountyResult;
 import io.taanielo.jmud.core.bounty.BountyService;
+import io.taanielo.jmud.core.bounty.BountySettings;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.craft.CraftOutcome;
@@ -6595,16 +6596,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     private void bountyList(BountyService bountyService, long currentTick) {
-        List<BountyListing> listings = bountyService.listings(currentTick);
+        List<BountyListing> listings = bountyService.listings(currentTick, BountySettings.expiryTicks());
         if (listings.isEmpty()) {
             writeLineWithPrompt("There are no open bounties.");
             return;
         }
         connection.writeLine("Open bounties:");
-        connection.writeLine(String.format("%-24s %-10s %-9s %s", "Mob", "Reward", "Backers", "Age (ticks)"));
+        connection.writeLine(String.format("%-24s %-10s %-9s %-12s %s",
+            "Mob", "Reward", "Backers", "Age (ticks)", "Expires in"));
         for (BountyListing listing : listings) {
-            connection.writeLine(String.format("%-24s %-10d %-9d %d",
-                listing.mobName(), listing.totalReward(), listing.backerCount(), listing.ageTicks()));
+            connection.writeLine(String.format("%-24s %-10d %-9d %-12d %d",
+                listing.mobName(), listing.totalReward(), listing.backerCount(),
+                listing.ageTicks(), listing.remainingTicks()));
         }
         sendPrompt();
     }

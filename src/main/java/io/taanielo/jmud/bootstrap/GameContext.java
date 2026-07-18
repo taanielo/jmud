@@ -42,7 +42,9 @@ import io.taanielo.jmud.core.bank.BankRepository;
 import io.taanielo.jmud.core.bank.BankRepositoryException;
 import io.taanielo.jmud.core.bank.BankService;
 import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
+import io.taanielo.jmud.core.bounty.BountyExpiryTicker;
 import io.taanielo.jmud.core.bounty.BountyService;
+import io.taanielo.jmud.core.bounty.BountySettings;
 import io.taanielo.jmud.core.bounty.repository.json.JsonBountyRepository;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
@@ -675,6 +677,18 @@ public record GameContext(
             seller -> resolveAuctionSeller(seller, playerSessionRegistry, playerRepository),
             updated -> persistAuctionSeller(updated, playerSessionRegistry, persistenceQueue)));
 
+        // Bounty expiry (issue #757): a posted bounty unclaimed past jmud.bounty.expiry_ticks is
+        // automatically refunded in full to its poster — online or offline — via the same cross-player
+        // update path as the Auction House and MAIL. All state mutation runs on the tick thread
+        // (AGENTS.md §5).
+        int bountyExpiryTicks = BountySettings.expiryTicks();
+        tickRegistry.register(new BountyExpiryTicker(
+            bountyService,
+            tickClock::currentTick,
+            () -> bountyExpiryTicks,
+            poster -> resolveAuctionSeller(poster, playerSessionRegistry, playerRepository),
+            updated -> persistAuctionSeller(updated, playerSessionRegistry, persistenceQueue)));
+
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
 
         ContentCompletenessChecker contentCompletenessChecker =
@@ -897,7 +911,8 @@ public record GameContext(
     private static BountyService createBountyService(MessageBroadcaster messageBroadcaster) {
         try {
             return new BountyService(
-                new JsonBountyRepository(), new JsonMobTemplateRepository(), messageBroadcaster);
+                new JsonBountyRepository(), new JsonMobTemplateRepository(), messageBroadcaster,
+                BountySettings.maxOpenPerPlayer());
         } catch (RepositoryException e) {
             throw new IllegalStateException(
                 "Failed to initialize bounty service: " + e.getMessage(), e);

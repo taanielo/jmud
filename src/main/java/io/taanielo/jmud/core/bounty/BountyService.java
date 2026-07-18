@@ -19,7 +19,9 @@ import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.mob.MobTemplate;
 import io.taanielo.jmud.core.mob.MobTemplateRepository;
+import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerMailService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
@@ -41,9 +43,13 @@ import io.taanielo.jmud.core.world.repository.RepositoryException;
 @Slf4j
 public class BountyService {
 
+    private static final String NOTIFIER = "Bounty Board";
+
     private final BountyRepository bountyRepository;
     private final MobTemplateRepository mobTemplateRepository;
     private final MessageBroadcaster messageBroadcaster;
+    private final PlayerMailService mailService;
+    private final int maxOpenPerPlayer;
 
     /**
      * Creates a bounty service.
@@ -52,23 +58,32 @@ public class BountyService {
      * @param mobTemplateRepository source of mob templates, used to resolve a POST target and confirm it
      *                              is killable (has a non-null attack id)
      * @param messageBroadcaster    sanctioned fan-out used to announce a payout server-wide
+     * @param maxOpenPerPlayer      the maximum number of concurrent open bounties a single poster may
+     *                              hold; must be positive
      */
     public BountyService(
         BountyRepository bountyRepository,
         MobTemplateRepository mobTemplateRepository,
-        MessageBroadcaster messageBroadcaster
+        MessageBroadcaster messageBroadcaster,
+        int maxOpenPerPlayer
     ) {
         this.bountyRepository = Objects.requireNonNull(bountyRepository, "bountyRepository is required");
         this.mobTemplateRepository =
             Objects.requireNonNull(mobTemplateRepository, "mobTemplateRepository is required");
         this.messageBroadcaster = Objects.requireNonNull(messageBroadcaster, "messageBroadcaster is required");
+        if (maxOpenPerPlayer <= 0) {
+            throw new IllegalArgumentException("maxOpenPerPlayer must be positive");
+        }
+        this.maxOpenPerPlayer = maxOpenPerPlayer;
+        this.mailService = new PlayerMailService();
     }
 
     /**
      * Posts a bounty: escrows {@code gold} from the poster's on-hand balance against the resolved mob
      * type. Fails without any state change when the amount is not positive, the mob cannot be resolved,
-     * the mob is a non-combatant (no attack id), the poster cannot afford the stake, or the poster
-     * already has an open bounty on that mob type.
+     * the mob is a non-combatant (no attack id), the poster cannot afford the stake, the poster already
+     * has an open bounty on that mob type, or the poster already holds the maximum number of concurrent
+     * open bounties (see the {@code maxOpenPerPlayer} constructor argument).
      *
      * @param poster      the posting player
      * @param mobInput    the mob name or keyword to target
@@ -99,12 +114,22 @@ public class BountyService {
         }
         String templateId = template.id().getValue();
         List<Bounty> all = new ArrayList<>(bountyRepository.findAll());
+        int openForPoster = 0;
         for (Bounty existing : all) {
-            if (existing.backer().equals(poster.getUsername()) && existing.mobTemplateId().equals(templateId)) {
+            if (!existing.backer().equals(poster.getUsername())) {
+                continue;
+            }
+            openForPoster++;
+            if (existing.mobTemplateId().equals(templateId)) {
                 return BountyResult.failure(
                     "You already have a bounty on the " + template.name()
                         + ". Cancel it first to change your stake.");
             }
+        }
+        if (openForPoster >= maxOpenPerPlayer) {
+            return BountyResult.failure(
+                "You already have the maximum of " + maxOpenPerPlayer
+                    + " open bounties. Use BOUNTY CANCEL <mob> to free one up first.");
         }
         all.add(new Bounty(poster.getUsername(), templateId, template.name(), gold, currentTick));
         bountyRepository.save(all);
@@ -153,13 +178,15 @@ public class BountyService {
 
     /**
      * Returns a server-wide summary of every open bounty, one row per mob type, with the pooled reward,
-     * backer count, and the age of the oldest open stake. Ordered by pooled reward descending, then by
+     * backer count, the age of the oldest open stake, and the ticks remaining before the soonest stake
+     * on that type lapses (the oldest stake expires first). Ordered by pooled reward descending, then by
      * mob name.
      *
-     * @param currentTick the current game tick, used to compute each row's age
+     * @param currentTick the current game tick, used to compute each row's age and remaining time
+     * @param expiryTicks the configured bounty lifespan in ticks, used to compute remaining time
      * @return the open-bounty summaries (may be empty)
      */
-    public List<BountyListing> listings(long currentTick) {
+    public List<BountyListing> listings(long currentTick, long expiryTicks) {
         Map<String, List<Bounty>> byMob = new LinkedHashMap<>();
         for (Bounty bounty : bountyRepository.findAll()) {
             byMob.computeIfAbsent(bounty.mobTemplateId(), k -> new ArrayList<>()).add(bounty);
@@ -174,11 +201,66 @@ public class BountyService {
                 oldest = Math.min(oldest, bounty.postedTick());
             }
             long age = Math.max(0, currentTick - oldest);
-            listings.add(new BountyListing(mobName, total, group.size(), age));
+            long remaining = Math.max(0, oldest + expiryTicks - currentTick);
+            listings.add(new BountyListing(mobName, total, group.size(), age, remaining));
         }
         listings.sort(Comparator.comparingInt(BountyListing::totalReward).reversed()
             .thenComparing(BountyListing::mobName));
         return List.copyOf(listings);
+    }
+
+    /**
+     * Removes every bounty that has gone unclaimed past {@code expiryTicks}, persists the remainder, and
+     * returns the removed bounties so the caller can refund each poster their full stake. Called only
+     * from the tick thread by {@link BountyExpiryTicker}. Mirrors {@code AuctionService#expireListings}:
+     * if persistence of the remainder fails the whole batch is reported as not-yet-expired so no escrow
+     * is lost, and it retries next tick.
+     *
+     * @param currentTick the current game tick
+     * @param expiryTicks the configured bounty lifespan in ticks; must be positive
+     * @return the bounties that expired on or before this tick (may be empty)
+     */
+    public List<Bounty> expireBounties(long currentTick, long expiryTicks) {
+        if (expiryTicks <= 0) {
+            throw new IllegalArgumentException("expiryTicks must be positive");
+        }
+        List<Bounty> all = bountyRepository.findAll();
+        List<Bounty> remaining = new ArrayList<>(all.size());
+        List<Bounty> expired = new ArrayList<>();
+        for (Bounty bounty : all) {
+            if (bounty.isExpired(currentTick, expiryTicks)) {
+                expired.add(bounty);
+            } else {
+                remaining.add(bounty);
+            }
+        }
+        if (expired.isEmpty()) {
+            return List.of();
+        }
+        bountyRepository.save(remaining);
+        return List.copyOf(expired);
+    }
+
+    /**
+     * Refunds an expired bounty's full stake to its poster and mails them a note so they learn of the
+     * refund without having to notice its absence from {@code BOUNTY LIST}. Pure — returns the updated
+     * poster; the caller persists it wherever the poster is (live session or on disk), mirroring how
+     * {@code AuctionService#applyExpiredReturn} returns an item to an online-or-offline seller.
+     *
+     * @param poster      the poster to refund (online or freshly loaded from persistence)
+     * @param bounty      the expired bounty whose stake is refunded
+     * @param currentTick the current game tick, used to time-stamp the mail
+     * @return the poster with the stake refunded and an expiry note appended (mail is skipped silently
+     *         when the mailbox is full)
+     */
+    public Player applyExpiredRefund(Player poster, Bounty bounty, long currentTick) {
+        Objects.requireNonNull(poster, "poster is required");
+        Objects.requireNonNull(bounty, "bounty is required");
+        Player refunded = poster.addGold(bounty.reward());
+        String body = "Your bounty of " + bounty.reward() + " gold on the " + bounty.mobName()
+            + " expired unclaimed and was refunded to you.";
+        MailResult result = mailService.send(refunded, NOTIFIER, currentTick, body);
+        return result.success() && result.updatedPlayer() != null ? result.updatedPlayer() : refunded;
     }
 
     /**
