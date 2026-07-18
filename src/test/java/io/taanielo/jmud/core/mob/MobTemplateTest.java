@@ -112,7 +112,7 @@ class MobTemplateTest {
         return new MobTemplate(
             MobId.of("mob.ice"), "Frost Wyrm", 200, null, null, false,
             List.of(), SPAWN_ROOM, 1, 30, 5, null, List.of(), false, null, null, false,
-            null, null, false, false, 0, resistances, vulnerabilities);
+            null, null, false, false, 0, resistances, vulnerabilities, null);
     }
 
     @Test

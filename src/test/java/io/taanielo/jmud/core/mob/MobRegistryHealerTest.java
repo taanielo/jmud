@@ -73,9 +73,11 @@ class MobRegistryHealerTest {
 
     @Test
     void healDoesNotOverhealPastMaxHp() {
-        Harness h = new Harness();
+        // A deliberately huge heal (far exceeding the ally's missing HP) so overheal is actually
+        // reachable — with the default 12-point heal a below-threshold ally can never overshoot 50 max.
+        Harness h = new Harness(999);
         MobInstance ally = h.ally();
-        ally.takeDamage(45); // 50 -> 5, wounded; heal of 12 would overshoot max
+        ally.takeDamage(45); // 50 -> 5, badly wounded; the oversized heal would overshoot max HP
 
         h.registry.tick();
 
@@ -139,11 +141,15 @@ class MobRegistryHealerTest {
         private final int startingPlayerHp;
 
         Harness() {
+            this(HEAL_AMOUNT);
+        }
+
+        Harness(int healAmount) {
             Player player = player("hero");
             this.playerName = player.getUsername();
             this.startingPlayerHp = player.getVitals().hp();
             MobTemplateRepository templateRepo =
-                new StubMobTemplateRepository(List.of(healerTemplate(), allyTemplate()));
+                new StubMobTemplateRepository(List.of(healerTemplate(healAmount), allyTemplate()));
             AttackRepository attackRepo = new StubAttackRepository(ATTACKS);
             RoomService roomService = new RoomService(new StubRoomRepository(), ROOM_A);
             roomService.ensurePlayerLocation(playerName);
@@ -189,11 +195,11 @@ class MobRegistryHealerTest {
         }
     }
 
-    private static MobTemplate healerTemplate() {
+    private static MobTemplate healerTemplate(int healAmount) {
         return new MobTemplate(
             MobId.of("mob.bandit-medic"), "Bandit Medic", 45, HEALER_ATTACK, null, true,
             List.of(), ROOM_A, 1, 10, 5, null, List.of(), false, null, null, false,
-            null, null, false, false, 0, new HealerProfile(HEAL_AMOUNT, HEAL_AMOUNT, 50));
+            null, null, false, false, 0, new HealerProfile(healAmount, healAmount, 50));
     }
 
     private static MobTemplate allyTemplate() {

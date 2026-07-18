@@ -3531,7 +3531,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private MobInstance selectHealTarget(MobInstance healer, HealerProfile profile) {
         MobInstance best = null;
         for (MobInstance ally : getMobsInRoom(healer.roomId())) {
-            if (ally == healer || ally.isPet()) {
+            if (ally.instanceId().equals(healer.instanceId()) || ally.isPet()) {
                 continue;
             }
             int max = ally.maxHp();
