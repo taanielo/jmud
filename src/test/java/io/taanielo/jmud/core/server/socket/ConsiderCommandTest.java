@@ -220,6 +220,18 @@ class ConsiderCommandTest {
         assertEquals("", SocketCommandContextImpl.healerHintLine(false));
     }
 
+    @Test
+    void enrageHintShownForEnrageCapableMobs() {
+        assertEquals(
+            "It looks like it will wear down slowly, then grow dangerous.",
+            SocketCommandContextImpl.enrageHintLine(true));
+    }
+
+    @Test
+    void enrageHintEmptyForOrdinaryMobs() {
+        assertEquals("", SocketCommandContextImpl.enrageHintLine(false));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
 
     /**

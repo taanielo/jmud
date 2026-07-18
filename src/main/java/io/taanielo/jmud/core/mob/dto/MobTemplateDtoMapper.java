@@ -48,6 +48,9 @@ public class MobTemplateDtoMapper {
         Map<DamageType, Integer> vulnerabilities =
             toElementalMap(dto.vulnerabilities(), dto.id(), "vulnerabilities");
         HealerProfile healerProfile = toHealerProfile(dto);
+        Integer enrageTicks = dto.enrageTicks();
+        double enrageDamageMultiplier =
+            dto.enrageDamageMultiplier() == null ? 1.0 : dto.enrageDamageMultiplier();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -73,7 +76,9 @@ public class MobTemplateDtoMapper {
             parryChancePercent,
             resistances,
             vulnerabilities,
-            healerProfile
+            healerProfile,
+            enrageTicks,
+            enrageDamageMultiplier
         );
     }
 

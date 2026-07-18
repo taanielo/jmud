@@ -32,6 +32,8 @@ public record MobTemplateDto(
     Boolean healer,
     Integer healMin,
     Integer healMax,
-    Integer healThreshold
+    Integer healThreshold,
+    Integer enrageTicks,
+    Double enrageDamageMultiplier
 ) {
 }

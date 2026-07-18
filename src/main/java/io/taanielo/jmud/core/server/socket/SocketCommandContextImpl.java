@@ -3489,6 +3489,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (!healerHint.isEmpty()) {
             hints.add(healerHint);
         }
+        // Discoverability hint for enrage-capable capstone bosses (issue #745): warns a player that a
+        // drawn-out fight turns dangerous, so they bring burst rather than pure sustain, mirroring the
+        // elemental-affinity (#717) and healer (#733) hints above.
+        String enrageHint = enrageHintLine(found.template().enrageCapable());
+        if (!enrageHint.isEmpty()) {
+            hints.add(enrageHint);
+        }
         if (hints.isEmpty()) {
             writeLineWithPrompt(tierLine);
         } else {
@@ -3511,6 +3518,21 @@ class SocketCommandContextImpl implements SocketCommandContext {
      */
     static String healerHintLine(boolean isHealer) {
         return isHealer ? "It looks like it could heal its allies." : "";
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability hint for an enrage-capable boss (issue
+     * #745), or an empty string when the mob never enrages. Mirrors {@link #healerHintLine} so a player
+     * can spot that dragging the fight out will make it dangerous — and bring burst cooldowns — before
+     * committing to it rather than learning mid-fight.
+     *
+     * @param canEnrage whether the considered mob carries an authored enrage threshold
+     * @return the enrage warning sentence, or an empty string when the mob never enrages
+     */
+    static String enrageHintLine(boolean canEnrage) {
+        return canEnrage
+            ? "It looks like it will wear down slowly, then grow dangerous."
+            : "";
     }
 
     /**
