@@ -13,6 +13,7 @@ import java.util.Optional;
  *   <li>{@code PARTY ACCEPT}         — accept a pending invitation</li>
  *   <li>{@code PARTY DECLINE}        — decline a pending invitation</li>
  *   <li>{@code PARTY LEAVE}          — leave the current party (disbands if last member)</li>
+ *   <li>{@code PARTY KICK <name>}    — remove a member from the party (leader only)</li>
  *   <li>{@code PARTY DISBAND}        — disband the party (leader only)</li>
  *   <li>{@code PARTY LOOT <mode>}    — set item loot mode to {@code free}, {@code round-robin}, or {@code roll} (leader only)</li>
  *   <li>{@code PARTY <message>}      — send a message to online party members (also {@code PTELL})</li>
@@ -49,6 +50,7 @@ public class PartyCommand extends RegistrableCommand {
                  PARTY ACCEPT           \u2014 accept a pending party invitation
                  PARTY DECLINE          \u2014 decline a pending party invitation
                  PARTY LEAVE            \u2014 leave your current party
+                 PARTY KICK <player>    \u2014 remove a member from your party (leader only)
                  PARTY DISBAND          \u2014 disband the party (leader only)
                  PARTY LOOT <mode>      \u2014 set loot mode: free, round-robin, or roll (leader only)
                  PARTY <message>        \u2014 chat to online party members (or use PTELL <message>)

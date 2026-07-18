@@ -4974,6 +4974,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "ACCEPT" -> handlePartyAccept(player, partyService);
             case "DECLINE" -> handlePartyDecline(player, partyService);
             case "LEAVE" -> handlePartyLeave(player, partyService);
+            case "KICK" -> handlePartyKick(player, partyService, subArgs);
             case "DISBAND" -> handlePartyDisband(player, partyService);
             case "LOOT" -> handlePartyLoot(player, partyService, subArgs);
             case "" -> handlePartyStatus(player, partyService);
@@ -6966,6 +6967,29 @@ class SocketCommandContextImpl implements SocketCommandContext {
             for (Username other : others) {
                 sendToUsername(other,
                     player.getUsername().getValue() + " has left the party.");
+            }
+        }
+    }
+
+    private void handlePartyKick(Player player, PartyService partyService, String targetName) {
+        if (targetName == null || targetName.isBlank()) {
+            writeLineWithPrompt("Kick whom? Usage: PARTY KICK <player>");
+            return;
+        }
+        Username target = Username.of(targetName.trim());
+        // Capture the party roster before the kick so we can notify the remaining members.
+        List<Username> othersBefore = partyService.getOtherMembers(player.getUsername());
+        PartyService.PartyResult result = partyService.kick(player.getUsername(), target);
+        writeLineWithPrompt(result.message());
+        if (result.success()) {
+            // Notify the removed player in their own session.
+            sendToUsername(target,
+                "You have been removed from the party by " + player.getUsername().getValue() + ".");
+            // Notify the members who stayed behind.
+            for (Username other : othersBefore) {
+                if (!other.equals(target)) {
+                    sendToUsername(other, target.getValue() + " has been removed from the party.");
+                }
             }
         }
     }
