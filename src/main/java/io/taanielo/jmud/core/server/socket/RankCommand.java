@@ -17,7 +17,8 @@ import io.taanielo.jmud.core.player.PlayerRepository;
  * The {@code RANK DUELS} subcommand instead ranks players by their persistent duel
  * record (PvP), listing only those with at least one recorded duel. The
  * {@code RANK GUILDS} subcommand ranks every persisted guild by level (highest tier
- * first), tiebroken by lifetime deposited gold.
+ * first), tiebroken by lifetime deposited gold and then guild-war wins, and shows
+ * each guild's lifetime guild-war win count.
  *
  * <p>Unlike {@code WHO}, which only lists players currently online, this
  * command reads every persisted player via {@link PlayerRepository#findAll()}
@@ -64,8 +65,8 @@ public class RankCommand extends RegistrableCommand {
                  RANK DUELS   Displays every saved player's duel record (wins/losses/win rate),
                               ranked by wins; only players with at least one duel are listed.
                  RANK GUILDS  Displays every guild server-wide, ranked by guild level (highest
-                              first), tiebroken by lifetime deposited gold; shows each guild's
-                              level, member count, and leader.\
+                              first), tiebroken by lifetime deposited gold then guild-war wins;
+                              shows each guild's level, member count, war wins, and leader.\
                """;
     }
 

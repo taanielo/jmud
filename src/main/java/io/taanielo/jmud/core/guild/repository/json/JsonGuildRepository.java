@@ -29,6 +29,7 @@ import io.taanielo.jmud.core.guild.GuildQuest;
 import io.taanielo.jmud.core.guild.GuildRank;
 import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
+import io.taanielo.jmud.core.guild.GuildWar;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.world.dto.ItemMapper;
 
@@ -49,12 +50,14 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
      * Version 3 adds the additive lifetime-deposit counter ({@code lifetimeDepositedGold}) that drives
      * a guild's level and scaled vault capacity. Version 4 adds the additive cooperative guild quest
      * ({@code activeGuildQuest}); pre-v4 files load with no assigned quest (lazily assigned on demand).
+     * Version 5 adds the additive guild-war state ({@code activeWar}) and lifetime {@code warWins}
+     * counter; pre-v5 files load with no active war and zero wins.
      */
-    private static final int SCHEMA_VERSION = 4;
+    private static final int SCHEMA_VERSION = 5;
     /**
      * Oldest schema still readable; v1 files (pre-vault) load with an empty vault, v1/v2 files
-     * (pre-lifetime) load with {@code lifetimeDepositedGold = 0}, i.e. at level 1, and pre-v4 files load
-     * with no active guild quest.
+     * (pre-lifetime) load with {@code lifetimeDepositedGold = 0}, i.e. at level 1, pre-v4 files load
+     * with no active guild quest, and pre-v5 files load with no active war and zero war wins.
      */
     private static final int MIN_SCHEMA_VERSION = 1;
     private static final String GUILDS_DIR = "guilds";
@@ -187,7 +190,9 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
                 Math.max(0, dto.treasuryGold()),
                 vaultedItems,
                 Math.max(0, dto.lifetimeDepositedGold()),
-                toGuildQuest(dto.activeGuildQuest()));
+                toGuildQuest(dto.activeGuildQuest()),
+                toGuildWar(dto.activeWar()),
+                Math.max(0, dto.warWins()));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new GuildRepositoryException("Invalid guild data in " + path + ": " + e.getMessage(), e);
         }
@@ -210,6 +215,21 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
             Math.max(1, dto.requiredKills()),
             Math.max(0, dto.currentKills()),
             Math.max(0, dto.goldReward()));
+    }
+
+    @Nullable
+    private static GuildWar toGuildWar(GuildDto.@Nullable GuildWarDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        @Nullable String opponent = dto.opponent();
+        if (opponent == null || opponent.isBlank()) {
+            return null;
+        }
+        return new GuildWar(
+            GuildId.of(opponent),
+            Math.max(0, dto.ownPoints()),
+            Math.max(0, dto.opponentPoints()));
     }
 
     private static GuildRank parseRank(@Nullable String rank) {
@@ -279,9 +299,13 @@ public class JsonGuildRepository implements GuildRepository, AutoCloseable {
             GuildDto.@Nullable GuildQuestDto questDto = quest == null ? null : new GuildDto.GuildQuestDto(
                 quest.questId(), quest.name(), quest.targetMobId(), quest.targetName(),
                 quest.requiredKills(), quest.currentKills(), quest.goldReward());
+            @Nullable GuildWar war = guild.activeWar();
+            GuildDto.@Nullable GuildWarDto warDto = war == null ? null : new GuildDto.GuildWarDto(
+                war.opponent().value(), war.ownPoints(), war.opponentPoints());
             GuildDto dto = new GuildDto(
                 SCHEMA_VERSION, guild.id().value(), guild.name(), guild.leaderId().getValue(),
-                memberDtos, guild.treasuryGold(), vaultDtos, guild.lifetimeDepositedGold(), questDto);
+                memberDtos, guild.treasuryGold(), vaultDtos, guild.lifetimeDepositedGold(), questDto,
+                warDto, guild.warWins());
             objectMapper.writeValue(tmp.toFile(), dto);
             Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {

@@ -47,6 +47,7 @@ import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.party.PartyService;
@@ -138,6 +139,13 @@ public class GameActionService {
      * {@link #setDuelService(DuelService)} with the single shared instance used across all sessions.
      */
     private DuelService duelService = new DuelService();
+    /**
+     * Optional guild-war scorer, consulted when a duel resolves so a win between members of two warring
+     * guilds awards a war point to the winner's guild (issue #731). {@code null} until the composition
+     * root wires the shared instance via {@link #setGuildWarService(GuildWarService)}; while absent,
+     * duels resolve exactly as before with no guild-war side effect.
+     */
+    private @Nullable GuildWarService guildWarService;
     /**
      * Shared party registry, used by {@link #resurrect} to confirm the caster and their target
      * belong to the same party. {@code null} until the composition root wires the shared instance via
@@ -464,6 +472,19 @@ public class GameActionService {
     }
 
     /**
+     * Injects the shared guild-war scorer so that a resolved duel between members of two warring guilds
+     * awards a war point to the winner's guild (issue #731).
+     *
+     * <p>Called once by the composition root. When absent, duels resolve exactly as before with no
+     * guild-war side effect, so tests and non-guild code paths need no extra wiring.
+     *
+     * @param guildWarService the shared guild-war service
+     */
+    public void setGuildWarService(GuildWarService guildWarService) {
+        this.guildWarService = Objects.requireNonNull(guildWarService, "Guild war service is required");
+    }
+
+    /**
      * Injects the shared weather engine so that outdoor combat picks up ambient weather modifiers.
      *
      * <p>Called once by the composition root. When absent, combat resolves with no environmental
@@ -765,6 +786,14 @@ public class GameActionService {
         // roll back (issue #661).
         long wager = duelService.wagerOf(survivor.getUsername());
         duelService.endDuel(survivor.getUsername(), loser.getUsername());
+        // Guild-war scoring (issue #731): if the two duellists belong to guilds currently at war with
+        // each other, this resolved win scores a war point for the survivor's guild. Membership is read
+        // live here (not snapshotted at war declaration), so an ex-member no longer counts; same-guild,
+        // unguilded and non-warring duels are no-ops. Runs on the tick thread alongside every other
+        // mutation below (AGENTS.md §5).
+        if (guildWarService != null) {
+            guildWarService.recordDuelWin(survivor.getUsername(), loser.getUsername());
+        }
         Player updatedSurvivor = survivor.withDuelWins(survivor.getDuelWins() + 1);
         PlayerVitals nearDeathVitals =
             loser.getVitals().hp() <= 0 ? loser.getVitals().heal(1) : loser.getVitals();

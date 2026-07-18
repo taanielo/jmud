@@ -75,6 +75,7 @@ import io.taanielo.jmud.core.guild.GuildQuestService;
 import io.taanielo.jmud.core.guild.GuildResult;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.GuildVaultResult;
+import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
@@ -262,6 +263,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         );
         if (context.duelService() != null) {
             this.gameActionService.setDuelService(context.duelService());
+        }
+        if (context.guildWarService() != null) {
+            this.gameActionService.setGuildWarService(context.guildWarService());
         }
         if (context.weatherEngine() != null) {
             this.gameActionService.setWeatherEngine(context.weatherEngine());
@@ -4725,6 +4729,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "STORE" -> handleGuildStore(guildService, subArgs);
             case "CLAIM" -> handleGuildClaim(guildService, subArgs);
             case "QUEST" -> executeGuildQuest(subArgs);
+            case "WAR" -> handleGuildWar(subArgs);
             case "" -> handleGuildStatus(guildService);
             default -> guildChat(args);
         }
@@ -4799,6 +4804,39 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLine("  This objective is complete — a new one will be posted shortly.");
         } else {
             connection.writeLine("  Any online member's kills of this mob type credit the whole guild.");
+        }
+        sendPrompt();
+    }
+
+    /**
+     * Handles the {@code GUILD WAR} sub-command family (issue #731): declare/accept/decline/concede a
+     * consensual guild-vs-guild war, or show its live status. Leader-only mutations are enforced by
+     * {@link GuildWarService}; this method only routes the sub-command and renders the result.
+     *
+     * @param args the text after {@code GUILD WAR} (a nested sub-command, a target guild name, or blank)
+     */
+    private void handleGuildWar(String args) {
+        Player player = session.getPlayer();
+        GuildWarService guildWarService = context.guildWarService();
+        if (guildWarService == null || player == null) {
+            writeLineWithPrompt("The guild war system is not available.");
+            return;
+        }
+        Username leader = player.getUsername();
+        String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+        String sub = parts[0];
+        switch (sub) {
+            case "ACCEPT" -> writeLineWithPrompt(guildWarService.accept(leader).message());
+            case "DECLINE" -> writeLineWithPrompt(guildWarService.decline(leader).message());
+            case "CONCEDE" -> writeLineWithPrompt(guildWarService.concede(leader).message());
+            case "STATUS", "" -> renderGuildWarStatus(guildWarService, leader);
+            default -> writeLineWithPrompt(guildWarService.propose(leader, args).message());
+        }
+    }
+
+    private void renderGuildWarStatus(GuildWarService guildWarService, Username player) {
+        for (String line : guildWarService.statusLines(player)) {
+            connection.writeLine(line);
         }
         sendPrompt();
     }

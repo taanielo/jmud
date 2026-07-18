@@ -19,6 +19,7 @@ import io.taanielo.jmud.core.guild.GuildLevel;
 import io.taanielo.jmud.core.guild.GuildQuest;
 import io.taanielo.jmud.core.guild.GuildQuestObjective;
 import io.taanielo.jmud.core.guild.GuildRank;
+import io.taanielo.jmud.core.guild.GuildWar;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
@@ -160,6 +161,64 @@ class JsonGuildRepositoryTest {
             assertEquals(250, quest.goldReward());
         } finally {
             reopened.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsActiveWarAndWarWins(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-war.json");
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild guild = Guild.found(GuildId.of("g-war"), "Ironclad", ALICE)
+                .withActiveWar(new GuildWar(GuildId.of("rival-1"), 3, 1))
+                .withWarWin()
+                .withWarWin();
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = reopened.loadAll().get(0);
+            assertTrue(g.isAtWar());
+            assertEquals(GuildId.of("rival-1"), g.activeWar().opponent());
+            assertEquals(3, g.activeWar().ownPoints());
+            assertEquals(1, g.activeWar().opponentPoints());
+            assertEquals(2, g.warWins());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void loadsLegacyV4GuildFileWithNoWarAndZeroWarWins(@TempDir Path dataRoot) throws Exception {
+        Path guildsDir = dataRoot.resolve("guilds");
+        Files.createDirectories(guildsDir);
+        String legacy = """
+            {
+              "schema_version": 4,
+              "id": "g-v4",
+              "name": "Silverhand",
+              "leader_id": "Alice",
+              "members": [
+                { "username": "Alice", "rank": "LEADER", "join_order": 0 }
+              ],
+              "treasury_gold": 100,
+              "vaulted_items": [],
+              "lifetime_deposited_gold": 100
+            }
+            """;
+        Files.writeString(guildsDir.resolve("g-v4.json"), legacy);
+
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = repository.loadAll().get(0);
+            assertFalse(g.isAtWar());
+            assertEquals(0, g.warWins());
+        } finally {
+            repository.close();
         }
     }
 

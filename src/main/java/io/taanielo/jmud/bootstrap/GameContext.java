@@ -105,6 +105,7 @@ import io.taanielo.jmud.core.guild.GuildQuestService;
 import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
 import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildQuestPoolRepository;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
@@ -256,6 +257,7 @@ public record GameContext(
     AuctionService auctionService,
     GuildService guildService,
     GuildQuestService guildQuestService,
+    GuildWarService guildWarService,
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
     WorldClock worldClock,
@@ -584,6 +586,13 @@ public record GameContext(
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);
 
+        // Guild wars (issue #731): a declared, consensual guild-vs-guild rivalry scored by DUEL wins
+        // between the two guilds' members. Only the propose/accept handshake is transient (aged out
+        // each tick, like MARRY); the accepted war and lifetime warWins persist on the Guild aggregate
+        // via GuildService. All state mutation runs on the tick thread (AGENTS.md §5).
+        GuildWarService guildWarService = new GuildWarService(guildService, messageBroadcaster);
+        tickRegistry.register(guildWarService);
+
         // Consensual player marriage (issue #649): the transient proposal registry ages out pending
         // proposals each tick; the accepted bond is persisted on Player. All state mutation runs on
         // the tick thread (AGENTS.md §5).
@@ -676,6 +685,7 @@ public record GameContext(
             auctionService,
             guildService,
             guildQuestService,
+            guildWarService,
             messageBroadcaster,
             gossipHistory,
             worldClock,

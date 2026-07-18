@@ -26,6 +26,8 @@ import java.util.Optional;
  *   <li>{@code GUILD STORE <item>}   — deposit an item into the guild vault (any member)</li>
  *   <li>{@code GUILD CLAIM <item>}   — take an item from the guild vault (leader or officer)</li>
  *   <li>{@code GUILD QUEST}          — show the guild's cooperative guild quest and shared progress</li>
+ *   <li>{@code GUILD WAR <guild>}    — declare a consensual guild war on a rival guild (leader only)</li>
+ *   <li>{@code GUILD WAR ACCEPT/DECLINE/CONCEDE/STATUS} — respond to, forfeit, or inspect a war</li>
  *   <li>{@code GUILD <message>}      — send a message to online guildmates (also {@code GC})</li>
  * </ul>
  */
@@ -72,7 +74,18 @@ public class GuildCommand extends RegistrableCommand {
              + "  GUILD STORE <item>     — deposit an item into the guild vault (any member)\n"
              + "  GUILD CLAIM <item>     — take an item from the guild vault (leader or officer)\n"
              + "  GUILD QUEST            — show the guild's cooperative guild quest (also GUILD_QUEST/GQUEST)\n"
+             + "  GUILD WAR <guild>      — declare a consensual guild war on a rival guild (leader only)\n"
+             + "  GUILD WAR ACCEPT       — accept a war declared on your guild (leader only)\n"
+             + "  GUILD WAR DECLINE      — decline a war declared on your guild (leader only)\n"
+             + "  GUILD WAR CONCEDE      — forfeit your guild's active war, crediting the rival (leader only)\n"
+             + "  GUILD WAR STATUS       — show the active war's opponent, score, and target to win\n"
              + "  GUILD <message>        — chat to online guildmates (or use GC <message>)\n"
+             + "\n"
+             + "Guild wars: a guild leader may GUILD WAR <guild> to challenge a rival; that guild's leader\n"
+             + "has 60s to GUILD WAR ACCEPT (or DECLINE). While a war runs, every consensual DUEL won by a\n"
+             + "member of one warring guild over a member of the other scores one war point; the first\n"
+             + "guild to " + io.taanielo.jmud.core.guild.GuildWar.POINTS_TO_WIN + " points wins, and its\n"
+             + "lifetime war-win count (shown in RANK GUILDS) rises. See HELP GUILD WAR.\n"
              + "\n"
              + "Guild quests: every guild is assigned one shared 'slay N of a mob type' objective at a\n"
              + "time, rotated daily and scaled to the guild's level. Any online member's kill of the\n"

@@ -18,7 +18,9 @@ record GuildDto(
     int treasuryGold,
     @Nullable List<VaultedItemDto> vaultedItems,
     int lifetimeDepositedGold,
-    @Nullable GuildQuestDto activeGuildQuest
+    @Nullable GuildQuestDto activeGuildQuest,
+    @Nullable GuildWarDto activeWar,
+    int warWins
 ) {
 
     /** JSON transfer object for one roster entry. */
@@ -45,6 +47,14 @@ record GuildDto(
         int requiredKills,
         int currentKills,
         int goldReward
+    ) {
+    }
+
+    /** JSON transfer object for the guild's active guild war (schema v5+). */
+    record GuildWarDto(
+        @Nullable String opponent,
+        int ownPoints,
+        int opponentPoints
     ) {
     }
 }

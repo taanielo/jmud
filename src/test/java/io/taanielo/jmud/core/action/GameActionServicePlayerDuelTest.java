@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -44,6 +45,13 @@ import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectRepository;
+import io.taanielo.jmud.core.guild.Guild;
+import io.taanielo.jmud.core.guild.GuildId;
+import io.taanielo.jmud.core.guild.GuildRepository;
+import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.GuildWarService;
+import io.taanielo.jmud.core.messaging.Message;
+import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
@@ -258,6 +266,28 @@ class GameActionServicePlayerDuelTest {
         assertEquals(1, result.updatedSource().getDuelLosses());
         assertEquals(0, result.updatedTarget().getDuelWins());
         assertEquals(5, result.updatedTarget().getDuelLosses());
+    }
+
+    @Test
+    void endPlayerDuelScoresAGuildWarPointForTheWinnersGuild() throws Exception {
+        Player survivor = attacker;
+        Player loser = playerWithHp("target", 0);
+        duelService.activate(survivor.getUsername(), loser.getUsername());
+
+        GuildService guildService = new GuildService(new InMemoryGuildRepository());
+        GuildWarService guildWarService = new GuildWarService(guildService, new NoOpBroadcaster());
+        // attacker leads Ironclad, target leads Redhand, and the two are at war.
+        guildService.create(survivor.getUsername(), "Ironclad");
+        guildService.create(loser.getUsername(), "Redhand");
+        guildWarService.propose(survivor.getUsername(), "Redhand");
+        guildWarService.accept(loser.getUsername());
+
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+        service.setGuildWarService(guildWarService);
+
+        service.endPlayerDuel(survivor, loser);
+
+        assertEquals(1, guildService.guildOf(survivor.getUsername()).orElseThrow().activeWar().ownPoints());
     }
 
     @Test
@@ -609,6 +639,39 @@ class GameActionServicePlayerDuelTest {
         @Override
         public Optional<Room> findById(RoomId id) throws RepositoryException {
             return Optional.ofNullable(rooms.get(id));
+        }
+    }
+
+    private static final class InMemoryGuildRepository implements GuildRepository {
+        private final Map<GuildId, Guild> saved = new ConcurrentHashMap<>();
+
+        @Override
+        public List<Guild> loadAll() {
+            return List.copyOf(saved.values());
+        }
+
+        @Override
+        public void save(Guild guild) {
+            saved.put(guild.id(), guild);
+        }
+
+        @Override
+        public void delete(GuildId guildId) {
+            saved.remove(guildId);
+        }
+    }
+
+    private static final class NoOpBroadcaster implements MessageBroadcaster {
+        @Override
+        public void sendToPlayer(Username target, Message message) {
+        }
+
+        @Override
+        public void broadcastToRoom(RoomId room, Message message, Set<Username> exclude) {
+        }
+
+        @Override
+        public void broadcastGlobal(Message message, Set<Username> exclude) {
         }
     }
 }

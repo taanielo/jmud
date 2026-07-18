@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:guild:v5",
+  "title": "Guild (v5)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "leader_id",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Persisted guild schema version. Version 4 added the additive cooperative guild quest (active_guild_quest). Version 5 adds the additive guild-war state (active_war) and the lifetime guild-war win counter (war_wins); pre-v5 files load with no active war and zero wins. All earlier fields remain additive, so v1-v4 files load unchanged.",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque, stable guild id (a UUID). Independent of the display name and used as the file name."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "description": "Unique (case-insensitive) display name shown as the WHO tag."
+    },
+    "leader_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Username of the current guild leader; must also appear in members with rank LEADER."
+    },
+    "members": {
+      "type": "array",
+      "description": "The guild roster, in no particular order; ordering for display is derived from join_order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "rank",
+          "join_order"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rank": {
+            "type": "string",
+            "enum": ["LEADER", "OFFICER", "MEMBER"]
+          },
+          "join_order": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonically increasing sequence number; lower means longer-tenured. Used to pick a successor leader when the leader departs."
+          }
+        }
+      }
+    },
+    "treasury_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Shared guild treasury balance. Optional and additive: files written before this field existed load with a treasury of 0. Members deposit via GUILD DEPOSIT; only the leader withdraws via GUILD WITHDRAW."
+    },
+    "vaulted_items": {
+      "type": "array",
+      "default": [],
+      "description": "Shared guild item vault. Optional and additive: files written before this field existed (schema_version 1) load with an empty vault. Any member deposits via GUILD STORE; only the leader or an officer claims via GUILD CLAIM. Items are moved, never copied. Capped at the guild's level-scaled vault capacity (see lifetime_deposited_gold).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "depositor"
+        ],
+        "properties": {
+          "item": {
+            "type": "object",
+            "description": "The stored item in its persisted DTO form (see the item schema, e.g. docs/schemas/item.v11.json)."
+          },
+          "depositor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Username of the member who deposited the item."
+          }
+        }
+      }
+    },
+    "lifetime_deposited_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Running total of every gold piece ever deposited into the treasury via GUILD DEPOSIT over the guild's whole lifetime. Only ever increases (GUILD WITHDRAW never reduces it). Drives the guild level (1-5) on fixed thresholds — 0/500/2,000/5,000/15,000 — which in turn scales the shared vault capacity (40/50/60/70/80 slots). Optional and additive: files written before this field existed (schema_version 1 or 2) load with a total of 0, i.e. guild level 1."
+    },
+    "active_guild_quest": {
+      "type": ["object", "null"],
+      "default": null,
+      "additionalProperties": false,
+      "description": "The guild's current cooperative 'slay N of a mob type' objective. Optional and additive (schema_version 4+): files written before this field existed load with no active quest (one is lazily assigned on first access). Null when the guild has no assigned quest.",
+      "properties": {
+        "quest_id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "target_mob_id": { "type": "string", "minLength": 1 },
+        "target_name": { "type": "string" },
+        "required_kills": { "type": "integer", "minimum": 1 },
+        "current_kills": { "type": "integer", "minimum": 0 },
+        "gold_reward": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "active_war": {
+      "type": ["object", "null"],
+      "default": null,
+      "additionalProperties": false,
+      "description": "The guild's current guild war against a rival guild — a running tally of consensual DUEL wins between the two guilds' members (issue #731). Optional and additive (schema_version 5+): files written before this field existed load with no active war. Null when the guild is not at war; a guild may be in only one war at a time (on either side). Recorded from this guild's own perspective: own_points is this guild's score, opponent_points is the rival's.",
+      "properties": {
+        "opponent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Guild id of the rival guild in this war."
+        },
+        "own_points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "This guild's war-point score. First guild to 5 wins the war."
+        },
+        "opponent_points": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The rival guild's war-point score, mirrored from the rival's own active_war."
+        }
+      }
+    },
+    "war_wins": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Lifetime count of guild wars this guild has won (reaching 5 war points, or being credited an opponent's concession). Optional and additive (schema_version 5+): files written before this field existed load with 0. Displayed in RANK GUILDS."
+    }
+  }
+}
