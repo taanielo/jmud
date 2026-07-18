@@ -1,0 +1,33 @@
+{
+  "schema_version": 4,
+  "id": "the-coda",
+  "name": "the Coda",
+  "max_hp": 2200,
+  "attack_id": "attack.the-coda",
+  "special_attack_id": "attack.the-coda-final-chord",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["construct", "resonant", "boss", "the-coda"],
+  "spawn_room_id": "coda-resolution",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 4700,
+  "loot": [
+    {
+      "item_id": "resolved-overtone",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "the-coda-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 950,
+    "max": 1450
+  }
+}

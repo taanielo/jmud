@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "coda-final-measure",
+  "name": "The Final Measure",
+  "description": "The hall steps down a last time into a long narrow corridor scored with a single bar of music that has only one thing left to do. This is the final measure, the last counted length of the whole piece, and unlike every measure of the Interval above it this one is not empty and not waiting — it is closing, the ruled lines crowding forward toward a single point ahead where the last chord means to fall and, this time, will. You can feel the difference in your chest: the beat here is not held back, it is arriving, the count running down toward its resolution one step at a time with the awful certainty of a thing that has finally decided to end. The cold gathers ahead rather than around you, drawn toward the far chamber where something is lifting into the last chord of the entire music-that-refused-to-end, the resolution the Choir demanded and the Unsung denied and the Undersong sustained and the Interval suspended and the Fermata held motionless above your head until you broke it. Now it falls. Ahead, where the measure closes, a wide chamber opens and a great resolving shape gathers toward its final note. The way back leads up to the ringing hall; the way onward, down, is the last step the phrase has left to take.",
+  "item_ids": [],
+  "exits": {
+    "up": "coda-overtone-hall",
+    "down": "coda-resolution"
+  },
+  "min_level": 85,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The count runs down another step toward the point where the last chord means to land, and this time nothing draws it back.",
+    "Frost cracks in a long line down the crowding corridor, racing forward toward the resolving chamber, and does not stop short of it.",
+    "A pressure builds ahead, the sense of an enormous chord gathering toward its close, and unlike the Fermata's withheld stroke it does not settle again — it comes on."
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.coda-loosed-overtone",
+  "name": "a released ring",
+  "min_damage": 80,
+  "max_damage": 108,
+  "hit_bonus": 12,
+  "crit_bonus": 9,
+  "damage_bonus": 20,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 70
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The loosed overtone spreads its released ring straight through you, a higher voice climbing loose from some struck note and passing as pure cold vibration that rings the bones of you against one another as it goes. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The loosed overtone lifts its thin bright ring toward you and the cold of the decaying note rushes in with it, and you step through the space between two spreading rings where the sound thins to nothing."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The loosed overtone narrows its whole released ring down to the width of your heart, and the climbing cold drives so high and so deep that for one long moment every bone in you rings a single thin killing note in answer! The blow {verb} you!"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "coda-threshold",
+  "name": "The Falling Stroke",
+  "description": "The Fermata is broken, and the enormous held stroke it kept drawn back since before the first breath of the world finally falls — and you fall with it, not down but forward, carried through the collapsing pause the way a released note is carried out of the instant that held it. This is not deeper than the gap. There was nothing beneath the source and nothing beside the interval; there is only after, the place a piece of music becomes in the instant it is at last allowed to end. The cold here does not grip and does not drown; it lets go. The whole chamber rings faintly with the downbeat that has just landed, the resolving weight of a stroke an eternity in the withholding coming down all at once and, having come down, beginning — slowly, hugely — to resolve. You did not survive the Fermata. You completed it: the living pulse it had waited an age to fall upon, and in falling it did not end you but spent itself, and now the beat it was holding rolls onward through you into whatever the phrase was always meant to reach. Ahead the released sound gathers into a great hall of overtones, and somewhere past it a chord is drawing toward its close. The way back leads up, into the emptied place where the Fermata used to hang.",
+  "item_ids": [],
+  "exits": {
+    "up": "interval-the-fermata",
+    "down": "coda-overtone-hall"
+  },
+  "min_level": 81,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The last of the Fermata's fallen stroke rolls through the chamber overhead and keeps going, a downbeat that has finally landed and cannot be called back.",
+    "Frost that once held its shape here loosens and drifts, no longer poised, sliding at last toward the floor the way a held breath slides out of the chest.",
+    "Somewhere below, a released overtone rings once, low and vast and unhurried, the sound of a note that has all the time in the world now that it is finally ending."
+  ]
+}

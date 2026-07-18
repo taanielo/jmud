@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.the-coda-final-chord",
+  "name": "The Final Chord",
+  "min_damage": 104,
+  "max_damage": 136,
+  "hit_bonus": 10,
+  "crit_bonus": 9,
+  "damage_bonus": 26,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 96
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Coda sounds the whole of itself at last — the Final Chord, the resolution the Choir began and the Unsung refused and the Undersong sustained and the Interval suspended and the Fermata held one instant short of falling, the entire withheld music of the world coming down in a single closing beat, and it lands on your borrowed heartbeat like the end of everything, folding breath and warmth and count under the last chord the phrase was ever building toward. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Coda unleashes the Final Chord and the whole chamber resolves with it, an eternity of withheld music coming down in one cold closing stroke, and you press flat to the frost-sheeted floor and let the ending crash over you until the last of the chord spends itself and the silence after begins."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Coda bends the entire Final Chord down onto you alone, every note the music ever held back since the world's first breath falling on your single pulse at once, and for one endless drowning instant your borrowed rhythm is seized and resolved and spent, your own heart tolling the last beat of the last measure the world will ever count! The blow {verb} you!"
+    }
+  ]
+}

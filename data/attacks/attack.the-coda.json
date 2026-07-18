@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.the-coda",
+  "name": "a closing chord",
+  "min_damage": 92,
+  "max_damage": 122,
+  "hit_bonus": 13,
+  "crit_bonus": 10,
+  "damage_bonus": 24,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 74
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Coda lets a fraction of its closing chord fall onto you, no more than a hair of the resolution it is gathering, and even that sliver of released cold drives through flesh and bone and folds your pulse a little further under the ending it means to complete. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Coda tips its resolving chord toward you and the cold of the whole gathering close comes with it — and you break your rhythm and step off the beat, and the chord draws itself back short of you, unresolved, refusing to spend its ending early."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Coda narrows its closing chord down to the width of your heart and lets a single beat of it land, and the cold of that one resolving instant drives so deep that every bone in you rings once with the ending it has been building toward since the world's first note! The blow {verb} you!"
+    }
+  ]
+}

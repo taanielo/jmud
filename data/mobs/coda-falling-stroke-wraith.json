@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "coda-falling-stroke-wraith",
+  "name": "a falling-stroke wraith",
+  "max_hp": 1150,
+  "attack_id": "attack.coda-falling-stroke-wraith",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-coda"],
+  "spawn_room_id": "coda-falling-stroke",
+  "max_count": 2,
+  "respawn_ticks": 88,
+  "xp_reward": 1680,
+  "loot": [
+    {
+      "item_id": "resolved-overtone",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 320,
+    "max": 470
+  }
+}

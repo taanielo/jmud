@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "coda-last-silence",
+  "name": "The Last Silence",
+  "description": "West of the hall the ringing thins and thins and finally stops, and you step into the silence that comes after the last measure — not the Unsung's cut silence, the absence of a throat that could have sung, and not the Interval's held silence, the breath drawn in and never let go, but the true one, the quiet a piece of music leaves behind it once the last note has finished ending. It is the most complete stillness in the whole descent, and it is not empty. Something lives in the space where the sound has stopped, a shape made of the exact absence the last chord leaves when it finally decays to nothing, and it is hungry in the particular way of a silence that has learned it can be filled. The cold here does not move at all; it has finished moving. Your heartbeat is very loud against it, the only sound left in the room, and the shapes of the last silence turn toward that one remaining pulse the way a starving thing turns toward the only food in an empty house. This is the beat between the coda's opening and its resolving chord, the held-open quiet before the end is allowed to close, and it means to fill itself with you before the chord can fall. The way back lies east to the hall; the silence itself goes nowhere, because silence, once arrived at, has already stopped.",
+  "item_ids": [],
+  "exits": {
+    "east": "coda-overtone-hall"
+  },
+  "min_level": 82,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The silence deepens by a degree, and for a moment even the sound of your own blood seems about to be swallowed into it.",
+    "A shape of pure absence drifts across the stilled room, shaped like the hole a chord leaves behind it, and turns its hunger toward the one pulse still sounding.",
+    "The cold here does not roll or fall; it simply waits, finished and patient, the quiet of a house after the last guest has gone and before anyone new has come."
+  ]
+}

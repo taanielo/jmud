@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "coda-last-silence-wisp",
+  "name": "a last-silence wisp",
+  "max_hp": 1180,
+  "attack_id": "attack.coda-last-silence-wisp",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-coda"],
+  "spawn_room_id": "coda-final-measure",
+  "max_count": 1,
+  "respawn_ticks": 95,
+  "xp_reward": 1720,
+  "loot": [
+    {
+      "item_id": "resolved-overtone",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 330,
+    "max": 490
+  }
+}
