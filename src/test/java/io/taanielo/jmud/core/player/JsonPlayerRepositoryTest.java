@@ -97,6 +97,33 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsAuctionWatchList() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("watcher"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withAuctionWatchList(new PlayerAuctionWatchList(List.of("Sword", "Potion")));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("sword", "potion"), loaded.get().getAuctionWatches());
+        assertTrue(loaded.get().auctionWatchList().has("SWORD"));
+    }
+
+    @Test
+    void loadsPlayerWithoutAuctionWatchesFieldAsEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("nowatch"), Password.hash("pw", 1000));
+        repository.savePlayer(Player.of(user, "%hp> "));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().auctionWatchList().isEmpty());
+    }
+
+    @Test
     void savesAndLoadsSpouse() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("romeo"), Password.hash("pw", 1000));
