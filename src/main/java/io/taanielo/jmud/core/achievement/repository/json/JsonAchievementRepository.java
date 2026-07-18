@@ -87,7 +87,8 @@ public class JsonAchievementRepository implements AchievementRepository {
                 Objects.requireNonNull(dto.name(), "Achievement name is required"),
                 dto.description() != null ? dto.description() : "",
                 condition,
-                Objects.requireNonNull(dto.threshold(), "Achievement threshold is required")
+                Objects.requireNonNull(dto.threshold(), "Achievement threshold is required"),
+                dto.titleReward()
             );
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new AchievementRepositoryException(

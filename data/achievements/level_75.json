@@ -4,5 +4,6 @@
   "name": "Mythic Ascendant",
   "description": "Reach character level 75.",
   "condition": "level",
-  "threshold": 75
+  "threshold": 75,
+  "title_reward": "the Ascendant"
 }

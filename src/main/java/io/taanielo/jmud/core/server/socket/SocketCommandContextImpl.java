@@ -4179,12 +4179,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
         long unlockedCount = statuses.stream().filter(AchievementStatus::unlocked).count();
         connection.writeLine("Achievements (" + unlockedCount + "/" + statuses.size() + " unlocked):");
         for (AchievementStatus status : statuses) {
-            connection.writeLine(formatAchievementLine(status));
+            connection.writeLine(formatAchievementLine(status, player));
         }
         sendPrompt();
     }
 
-    private String formatAchievementLine(AchievementStatus status) {
+    private String formatAchievementLine(AchievementStatus status, Player player) {
         Achievement achievement = status.achievement();
         String marker = status.unlocked() ? "[X]" : "[ ]";
         String detail;
@@ -4195,8 +4195,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             detail = status.progress() + "/" + achievement.threshold() + " "
                 + achievement.condition().progressUnit();
         }
-        return String.format("  %s %-22s %s (%s)",
+        String line = String.format("  %s %-22s %s (%s)",
             marker, achievement.name(), achievement.description(), detail);
+        String titleReward = achievement.titleReward();
+        if (titleReward != null) {
+            String titleState = player.titles().has(titleReward) ? "earned" : "locked";
+            line += " [Title: " + titleReward + " - " + titleState + "]";
+        }
+        return line;
     }
 
     @Override

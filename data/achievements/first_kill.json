@@ -4,5 +4,6 @@
   "name": "First Blood",
   "description": "Slay your first enemy.",
   "condition": "total_kills",
-  "threshold": 1
+  "threshold": 1,
+  "title_reward": "the Blooded"
 }
