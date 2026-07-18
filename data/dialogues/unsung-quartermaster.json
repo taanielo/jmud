@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "unsung-quartermaster-welcome",
+  "npc_id": "unsung-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "You may speak here; the silence takes only song. I trade in the mute dark for those who came down refusing. State your need plainly — the quiet listens for anything more.",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "What do you carry?", "target": "wares" },
+        { "text": "Not yet.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "The refusal down here presses on everything — hangs cloth on the walls to drink each sound, and would drink the edge off your blade the same way. Bring it to me and I'll mend it, forge it new, or break it down for what still holds.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "Enough to outlast a long silence: healing, mana, cure, vigor, bread and water, and light to hold back the muffling dark. LIST it and take what you need, quietly.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "My thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Go softly. Down here, only the unsung are welcome.",
+      "responses": []
+    }
+  }
+}
