@@ -1467,7 +1467,11 @@ public class Player implements EffectTarget, Combatant {
             identity.spouse(),
             identity.boundRoomId(),
             preferences.autoAssistEnabled(),
-            getAuctionWatches()
+            getAuctionWatches(),
+            identity.mentor(),
+            identity.mentee(),
+            identity.mentorBondSince(),
+            identity.menteesGraduated()
         );
     }
 
