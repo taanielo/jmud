@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.world.Direction;
@@ -163,6 +165,47 @@ class ConsiderCommandTest {
         // > 1.50 → "could kill you without effort"
         assertEquals("could kill you without effort", DangerTier.evaluate(151, 100));
         assertEquals("could kill you without effort", DangerTier.evaluate(500, 100));
+    }
+
+    // ── Elemental-affinity line ────────────────────────────────────────
+
+    @Test
+    void affinityLineResistOnly() {
+        assertEquals(
+            "It looks resistant to cold.",
+            SocketCommandContextImpl.elementalAffinityLine(
+                Map.of(DamageType.COLD, 50), Map.of()));
+    }
+
+    @Test
+    void affinityLineVulnerableOnly() {
+        assertEquals(
+            "It looks vulnerable to fire.",
+            SocketCommandContextImpl.elementalAffinityLine(
+                Map.of(), Map.of(DamageType.FIRE, 50)));
+    }
+
+    @Test
+    void affinityLineBothHalves() {
+        assertEquals(
+            "It looks resistant to cold and vulnerable to fire.",
+            SocketCommandContextImpl.elementalAffinityLine(
+                Map.of(DamageType.COLD, 50), Map.of(DamageType.FIRE, 50)));
+    }
+
+    @Test
+    void affinityLineNeitherIsEmpty() {
+        assertEquals("", SocketCommandContextImpl.elementalAffinityLine(Map.of(), Map.of()));
+    }
+
+    @Test
+    void affinityLineUsesPlayerFacingWordsInEnumOrder() {
+        // Multiple resisted types are listed in DamageType declaration order (FIRE, COLD, POISON),
+        // joined with "and", using plain player-facing words rather than enum constants.
+        assertEquals(
+            "It looks resistant to fire and poison.",
+            SocketCommandContextImpl.elementalAffinityLine(
+                Map.of(DamageType.POISON, 25, DamageType.FIRE, 25), Map.of()));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

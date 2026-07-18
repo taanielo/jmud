@@ -9,8 +9,10 @@ import java.util.Optional;
  * <p>Aliases: {@code CON}.
  *
  * <p>The command performs a prefix-match against live mobs in the player's
- * current room and prints a single qualitative danger line based on the ratio
- * of the mob's {@code maxHp} to the player's {@code maxHp}.
+ * current room and prints a qualitative danger line based on the ratio of the
+ * mob's {@code maxHp} to the player's {@code maxHp}. When the target authors any
+ * elemental resistances or vulnerabilities, a second line reports them so a
+ * caster can pick the right spell before engaging.
  */
 public class ConsiderCommand extends RegistrableCommand {
 
@@ -33,7 +35,10 @@ public class ConsiderCommand extends RegistrableCommand {
         return """
                Usage: CONSIDER <target>  |  CON <target>
                  Compares the target mob's power against your own and prints a qualitative
-                 danger assessment. Prefix matching is supported (e.g. CON gob matches Goblin).\
+                 danger assessment. Prefix matching is supported (e.g. CON gob matches Goblin).
+                 If the target has any elemental weaknesses or resistances, a second line reports
+                 them (e.g. "It looks resistant to cold and vulnerable to fire."), so a caster can
+                 scout the right spell before committing mana to a nuke.\
                """;
     }
 

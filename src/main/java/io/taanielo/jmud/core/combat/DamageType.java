@@ -55,6 +55,19 @@ public enum DamageType {
     }
 
     /**
+     * Returns the plain, lower-case player-facing word for this damage type (e.g. {@code "fire"},
+     * {@code "cold"}, {@code "poison"}), rather than the upper-case Java enum constant. This is the
+     * canonical wording surfaced to players wherever an element is named outside of a full combat
+     * strike sentence — for example the {@code CONSIDER} elemental-affinity line — so the terminology
+     * never diverges between screens.
+     *
+     * @return the lower-case player-facing name of this damage type
+     */
+    public String displayName() {
+        return name().toLowerCase(Locale.ROOT);
+    }
+
+    /**
      * Parses a case-insensitive damage-type name, defaulting to {@link #PHYSICAL} when the value
      * is {@code null}, blank, or unrecognised. Used by the JSON attack mapper so that existing
      * attack files (which omit {@code damage_type}) load as {@link #PHYSICAL} unchanged.
