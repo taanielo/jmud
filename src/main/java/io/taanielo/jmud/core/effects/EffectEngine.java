@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
@@ -122,6 +123,37 @@ public class EffectEngine {
             }
         }
         return lines;
+    }
+
+    /**
+     * Finds the first active effect on the target whose {@linkplain EffectDefinition#control()
+     * control classification} is one of the given types, so that movement, flee, and cast commands
+     * can gate an action a root/silence/stun effect must forbid and name the offending effect in the
+     * refusal message.
+     *
+     * <p>This is a pure read over the target's active effects: it never mutates effect durations or
+     * stacks, so it is safe to call on demand from the tick thread (AGENTS.md §5).
+     *
+     * @param target the effect target to inspect
+     * @param types  the control classifications that would block the pending action
+     * @return the first matching active effect's definition, or empty when the target carries none
+     * @throws EffectRepositoryException if an active effect id cannot be resolved
+     */
+    public Optional<EffectDefinition> activeControl(EffectTarget target, Set<ControlType> types)
+        throws EffectRepositoryException {
+        Objects.requireNonNull(target, "Effect target is required");
+        Objects.requireNonNull(types, "Control types are required");
+        if (types.isEmpty()) {
+            return Optional.empty();
+        }
+        for (EffectInstance instance : target.effects()) {
+            EffectDefinition definition = definitionOrThrow(instance.id());
+            Optional<ControlType> control = definition.control();
+            if (control.isPresent() && types.contains(control.get())) {
+                return Optional.of(definition);
+            }
+        }
+        return Optional.empty();
     }
 
     private EffectDefinition definitionOrThrow(EffectId id) throws EffectRepositoryException {

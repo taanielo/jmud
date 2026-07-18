@@ -5,13 +5,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.effects.ControlType;
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectId;
-import io.taanielo.jmud.core.messaging.MessageSpec;
-import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 import io.taanielo.jmud.core.effects.EffectModifier;
 import io.taanielo.jmud.core.effects.EffectStacking;
 import io.taanielo.jmud.core.effects.ModifierOperation;
+import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.messaging.MessageSpecMapper;
 
 public class EffectDefinitionMapper {
     public EffectDefinition toDomain(EffectDefinitionDto dto) {
@@ -22,9 +23,10 @@ public class EffectDefinitionMapper {
         int durationTicks = dto.durationTicks() == null ? 0 : dto.durationTicks();
         int tickInterval = dto.tickInterval() == null ? 1 : dto.tickInterval();
         EffectStacking stacking = parseStacking(dto.stacking());
+        ControlType control = ControlType.fromString(dto.control()).orElse(null);
         List<EffectModifier> modifiers = mapModifiers(dto.modifiers());
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
-        return new EffectDefinition(id, name, durationTicks, tickInterval, stacking, modifiers, messages);
+        return new EffectDefinition(id, name, durationTicks, tickInterval, stacking, modifiers, messages, control);
     }
 
     private EffectStacking parseStacking(String value) {

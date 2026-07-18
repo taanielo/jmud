@@ -2,6 +2,9 @@ package io.taanielo.jmud.core.effects;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+
+import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.messaging.MessageSpec;
 
@@ -13,6 +16,7 @@ public class EffectDefinition {
     private final EffectStacking stacking;
     private final List<EffectModifier> modifiers;
     private final List<MessageSpec> messages;
+    private final @Nullable ControlType control;
 
     public EffectDefinition(
         EffectId id,
@@ -22,6 +26,19 @@ public class EffectDefinition {
         EffectStacking stacking,
         List<EffectModifier> modifiers,
         List<MessageSpec> messages
+    ) {
+        this(id, name, durationTicks, tickInterval, stacking, modifiers, messages, null);
+    }
+
+    public EffectDefinition(
+        EffectId id,
+        String name,
+        int durationTicks,
+        int tickInterval,
+        EffectStacking stacking,
+        List<EffectModifier> modifiers,
+        List<MessageSpec> messages,
+        @Nullable ControlType control
     ) {
         this.id = Objects.requireNonNull(id, "Effect id is required");
         if (name == null || name.isBlank()) {
@@ -39,6 +56,7 @@ public class EffectDefinition {
         this.stacking = Objects.requireNonNull(stacking, "Stacking is required");
         this.modifiers = List.copyOf(Objects.requireNonNullElse(modifiers, List.of()));
         this.messages = List.copyOf(Objects.requireNonNullElse(messages, List.of()));
+        this.control = control;
     }
 
     public EffectId id() {
@@ -67,6 +85,18 @@ public class EffectDefinition {
 
     public List<MessageSpec> messages() {
         return messages;
+    }
+
+    /**
+     * Returns this effect's hard crowd-control classification, if any. An effect without a
+     * classification (the default) only ever applies stat modifiers; a classified effect also
+     * mechanically forbids the corresponding player actions (movement/flee for {@link ControlType#ROOT},
+     * spellcasting for {@link ControlType#SILENCE}, everything for {@link ControlType#STUN}).
+     *
+     * @return the control classification, or empty when the effect imposes no hard control
+     */
+    public Optional<ControlType> control() {
+        return Optional.ofNullable(control);
     }
 
     public boolean isPermanent() {

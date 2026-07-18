@@ -11,6 +11,7 @@ public record EffectDefinitionDto(
     Integer durationTicks,
     Integer tickInterval,
     String stacking,
+    String control,
     List<EffectModifierDto> modifiers,
     List<MessageSpecDto> messages
 ) {
