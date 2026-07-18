@@ -31,5 +31,7 @@
   },
   "vulnerabilities": {
     "fire": 50
-  }
+  },
+  "enrage_ticks": 15,
+  "enrage_damage_multiplier": 1.25
 }

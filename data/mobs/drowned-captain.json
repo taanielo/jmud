@@ -28,5 +28,7 @@
   "gold_drop": {
     "min": 45,
     "max": 85
-  }
+  },
+  "enrage_ticks": 10,
+  "enrage_damage_multiplier": 1.2
 }
