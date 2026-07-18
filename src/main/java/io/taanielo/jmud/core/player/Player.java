@@ -191,7 +191,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -239,12 +239,13 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("tamedPetDescriptions") List<String> tamedPetDescriptions,
         @JsonProperty("vaultTier") Integer vaultTier,
         @JsonProperty("spouse") String spouse,
-        @JsonProperty("boundRoomId") String boundRoomId
+        @JsonProperty("boundRoomId") String boundRoomId,
+        @JsonProperty("autoAssistEnabled") Boolean autoAssistEnabled
     ) {
         this(
             new PlayerIdentity(user, level, experience, race, classId, description, spouse, boundRoomId),
             new PlayerCombatState(vitals, effects, dead),
-            new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled, briefModeEnabled),
+            new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled, briefModeEnabled, autoAssistEnabled),
             new PlayerAbilities(learnedAbilities),
             new PlayerInventory(inventory),
             equipment == null ? PlayerEquipment.empty() : equipment,
@@ -380,6 +381,11 @@ public class Player implements EffectTarget, Combatant {
     @JsonProperty("briefModeEnabled")
     public boolean isBriefModeEnabled() {
         return preferences.briefModeEnabled();
+    }
+
+    @JsonProperty("autoAssistEnabled")
+    public boolean isAutoAssistEnabled() {
+        return preferences.autoAssistEnabled();
     }
 
     @JsonProperty("learnedAbilities")
@@ -964,6 +970,20 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns a copy of this player with auto-assist enabled or disabled, preserving all other state.
+     * When enabled, this player is automatically joined into a party-mate's fight against a fresh mob
+     * (exactly as if they had typed {@code ASSIST <attacker>}) whenever the party-mate lands the opening
+     * attack on a mob that was not already fighting anyone, provided this player is present, not already
+     * in combat, not resting, and not dead.
+     *
+     * @param enabled whether auto-assist should be enabled
+     * @return an updated player
+     */
+    public Player withAutoAssistEnabled(boolean enabled) {
+        return new Player(identity, combatState, preferences.withAutoAssistEnabled(enabled), abilities, inventory, equipment, resting, gold, activeQuest, activeDailyQuest, totalKills, practicePoints, bankedGold, titles, aliases, mailbox, sustenance, pets, reputation, achievements, exploration, ignoreList, friendList, guildMembership, vault, completedQuests, duelWins, duelLosses, proficiencies);
+    }
+
+    /**
      * Returns a copy of this player with the given prompt format string, preserving all other state.
      *
      * @param nextFormat the new prompt format (token substitution handled by {@code PromptRenderer})
@@ -1309,7 +1329,8 @@ public class Player implements EffectTarget, Combatant {
             pets.customDescriptions(),
             vault.capacityTier(),
             identity.spouse(),
-            identity.boundRoomId()
+            identity.boundRoomId(),
+            preferences.autoAssistEnabled()
         );
     }
 

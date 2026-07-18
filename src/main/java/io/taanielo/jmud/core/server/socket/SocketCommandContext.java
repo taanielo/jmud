@@ -85,6 +85,16 @@ public interface SocketCommandContext extends Client {
     default void updateAutoLoot(String args) {}
 
     /**
+     * Handles the {@code AUTOASSIST} command: shows the current setting with no arguments or
+     * {@code STATUS}, and toggles it with {@code ON}, {@code OFF}, or {@code TOGGLE}. When enabled,
+     * the player is automatically joined into a party-mate's fight against a fresh mob.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void updateAutoAssist(String args) {}
+
+    /**
      * Handles the {@code BRIEF} command: shows the current setting with no arguments or
      * {@code STATUS}, and toggles it with {@code ON}, {@code OFF}, or {@code TOGGLE}. When enabled,
      * movement omits the room's prose description line; explicit {@code LOOK} always shows it.

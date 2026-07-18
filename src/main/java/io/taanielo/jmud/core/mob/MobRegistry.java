@@ -1198,10 +1198,17 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (attack == null) {
             return GameActionResult.error("Combat error: attack definition not found.");
         }
+        // A fresh engagement is one where the mob was not already fighting anyone: only such an
+        // opening attack fans out auto-assist to party-mates (a subsequent swing against the same
+        // already-engaged mob must not re-trigger it).
+        boolean freshEngagement = mob.engagedPlayers().isEmpty();
         // Engage first so a swing that misses still commits the attacker to the fight, exactly as a
         // landing strike does; the auto-attack then continues on the next tick (runPlayerCombat).
         mob.engage(attacker.getUsername());
         playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
+        if (freshEngagement) {
+            autoAssistPartyMembers(attacker, mob, roomId);
+        }
 
         List<GameMessage> messages = new ArrayList<>();
         HitOutcome outcome = resolvePlayerHit(attacker, attack);
@@ -1234,6 +1241,50 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             awardMobKill(mob, attacker, roomId, messages);
         }
         return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Auto-assist fan-out (issue #709): when {@code attacker} opens a <em>fresh</em> fight against
+     * {@code mob} (one that was not already engaged), every other party member present in
+     * {@code roomId} who has opted in via {@code AUTOASSIST ON} is automatically joined to the fight,
+     * exactly as if they had typed {@code ASSIST <attacker>}. A member is skipped when they are the
+     * attacker themselves, already in combat ({@link #isInCombat}), resting, dead, or their live state
+     * cannot be resolved. Each joined member receives their own confirmation line via the same
+     * {@link PlayerEventBus} path used for combat messages.
+     *
+     * <p>Only the mob's first engagement reaches this method (guarded by the caller), so a subsequent
+     * swing against the same mob never re-triggers it, and the mob-side pack-assist reinforcement path
+     * (a different entry point) never fans out player auto-assist. When the attacker is solo,
+     * {@link PartyService#getPartyMembersInRoom} returns only the attacker, so nothing happens. Runs on
+     * the tick thread via the attacker's command queue (AGENTS.md §5).
+     *
+     * @param attacker the player who opened the fight
+     * @param mob      the freshly engaged mob
+     * @param roomId   the room the fight is taking place in
+     */
+    private void autoAssistPartyMembers(Player attacker, MobInstance mob, RoomId roomId) {
+        if (partyService == null) {
+            return;
+        }
+        List<Username> members = partyService.getPartyMembersInRoom(
+            attacker.getUsername(), roomId, roomService::findPlayerLocation);
+        for (Username member : members) {
+            if (member.equals(attacker.getUsername()) || isInCombat(member)) {
+                continue;
+            }
+            Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
+            if (memberPlayer == null
+                || !memberPlayer.isAutoAssistEnabled()
+                || memberPlayer.isDead()
+                || memberPlayer.isResting()) {
+                continue;
+            }
+            mob.engage(member);
+            playerCombatTargets.put(member, mob.instanceId());
+            playerEventBus.publish(member, new GameActionResult(null, null, List.of(
+                GameMessage.toSource("You automatically join " + attacker.getUsername().getValue()
+                    + "'s fight against the " + mob.template().name() + "!"))));
+        }
     }
 
     /**
