@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,6 +62,8 @@ import io.taanielo.jmud.core.dialogue.DialogueNode;
 import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
+import io.taanielo.jmud.core.effects.ControlType;
+import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.enchant.EnchantOutcome;
@@ -1091,6 +1094,69 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     /**
+     * A player action that a hard crowd-control effect can forbid, paired with the verb used in
+     * the refusal message and the set of {@link ControlType}s that block it. Movement and flee are
+     * blocked by {@link ControlType#ROOT} and {@link ControlType#STUN}; casting by
+     * {@link ControlType#SILENCE} and {@link ControlType#STUN}; skill use only by
+     * {@link ControlType#STUN} (silence never stops a skill).
+     */
+    private enum ControlledAction {
+        MOVE("move", EnumSet.of(ControlType.ROOT, ControlType.STUN)),
+        FLEE("flee", EnumSet.of(ControlType.ROOT, ControlType.STUN)),
+        CAST("voice a spell", EnumSet.of(ControlType.SILENCE, ControlType.STUN)),
+        USE("use abilities", EnumSet.of(ControlType.STUN));
+
+        private final String verb;
+        private final Set<ControlType> blockingTypes;
+
+        ControlledAction(String verb, Set<ControlType> blockingTypes) {
+            this.verb = verb;
+            this.blockingTypes = blockingTypes;
+        }
+    }
+
+    /**
+     * Refuses the given action when the player currently carries a crowd-control effect that forbids
+     * it, printing a player-facing message that names the offending effect. The check is a pure read
+     * of the player's transient effect state and charges no resources, so a refused command is a
+     * complete no-op. A repository lookup failure degrades to "not controlled" (fail-open) rather than
+     * trapping the player. Tick-thread only (AGENTS.md §5).
+     *
+     * @param player the acting player
+     * @param action the action being attempted
+     * @return {@code true} when the action is blocked (and a refusal message was sent)
+     */
+    private boolean refuseIfControlled(Player player, ControlledAction action) {
+        Optional<EffectDefinition> control = activeControl(player, action);
+        if (control.isEmpty()) {
+            return false;
+        }
+        EffectDefinition definition = control.get();
+        String descriptor = definition.control().map(ControlType::descriptor).orElse("held fast");
+        writeLineWithPrompt(
+            "You are " + descriptor + " (" + definition.name() + ") and cannot " + action.verb + "!");
+        return true;
+    }
+
+    /**
+     * Returns the crowd-control effect currently forbidding the given action for the player, or empty
+     * when the action is not blocked. A repository lookup failure degrades to empty (fail-open). This
+     * is the messageless core used both by {@link #refuseIfControlled} and by callers that want to
+     * emit their own refusal (e.g. auto-follow cancellation). Tick-thread only (AGENTS.md §5).
+     *
+     * @param player the acting player
+     * @param action the action being attempted
+     * @return the blocking effect's definition, or empty when the action is permitted
+     */
+    private Optional<EffectDefinition> activeControl(Player player, ControlledAction action) {
+        try {
+            return context.effectEngine().activeControl(player, action.blockingTypes);
+        } catch (EffectRepositoryException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
      * Returns the first item in the list whose name or id starts with (or equals)
      * the normalised input, or {@code null} when no match is found.
      */
@@ -1186,6 +1252,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
     public void sendMove(Direction direction) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to move.");
+            return;
+        }
+        if (refuseIfControlled(session.getPlayer(), ControlledAction.MOVE)) {
             return;
         }
         cancelRestIfActive();
@@ -1390,6 +1459,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 "You are locked in combat and stop following " + leaderName.getValue() + ".");
             return;
         }
+        // A root/stun keeps the follower from moving; drop the follow rather than teleport them along.
+        Optional<EffectDefinition> moveControl = activeControl(player, ControlledAction.MOVE);
+        if (moveControl.isPresent()) {
+            String descriptor = moveControl.get().control().map(ControlType::descriptor).orElse("held fast");
+            cancelFollow(partyService, player.getUsername(),
+                "You are " + descriptor + " and stop following " + leaderName.getValue() + ".");
+            return;
+        }
         if (movementCostService.isExhausted(player)) {
             cancelFollow(partyService, player.getUsername(),
                 "You are too exhausted to keep following " + leaderName.getValue() + ". REST to recover.");
@@ -1511,6 +1588,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to use abilities.");
             return;
         }
+        if (allowChannel && refuseIfControlled(session.getPlayer(), ControlledAction.USE)) {
+            return;
+        }
         if (allowChannel && rejectIfCasting()) {
             return;
         }
@@ -1595,6 +1675,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
     private void castSpellInternal(String args, boolean allowChannel) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to cast spells.");
+            return;
+        }
+        if (allowChannel && refuseIfControlled(session.getPlayer(), ControlledAction.CAST)) {
             return;
         }
         if (allowChannel && rejectIfCasting()) {
@@ -2927,6 +3010,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
     public void fleeCombat() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to flee.");
+            return;
+        }
+        if (refuseIfControlled(session.getPlayer(), ControlledAction.FLEE)) {
             return;
         }
         if (session.getSpellCastState().isCasting()) {

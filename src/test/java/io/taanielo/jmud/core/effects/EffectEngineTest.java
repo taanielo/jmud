@@ -230,6 +230,137 @@ class EffectEngineTest {
         assertTrue(engine.examineLines(player).isEmpty());
     }
 
+    @Test
+    void activeControlFindsMatchingControlEffect() throws EffectRepositoryException {
+        EffectId id = EffectId.of("rooted");
+        EffectDefinition definition = new EffectDefinition(
+            id,
+            "Rooted",
+            6,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(),
+            ControlType.ROOT
+        );
+        EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
+        Player player = controlledPlayer("frank", id);
+
+        Optional<EffectDefinition> found =
+            engine.activeControl(player, java.util.EnumSet.of(ControlType.ROOT, ControlType.STUN));
+
+        assertTrue(found.isPresent());
+        assertEquals("Rooted", found.get().name());
+    }
+
+    @Test
+    void activeControlIgnoresNonMatchingControlType() throws EffectRepositoryException {
+        EffectId id = EffectId.of("rooted");
+        EffectDefinition definition = new EffectDefinition(
+            id,
+            "Rooted",
+            6,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(),
+            ControlType.ROOT
+        );
+        EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
+        Player player = controlledPlayer("gwen", id);
+
+        Optional<EffectDefinition> found =
+            engine.activeControl(player, java.util.EnumSet.of(ControlType.SILENCE));
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void activeControlEmptyWhenEffectHasNoControlClassification() throws EffectRepositoryException {
+        EffectId id = EffectId.of("stoneskin");
+        EffectDefinition definition = new EffectDefinition(
+            id,
+            "Stoneskin",
+            6,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of()
+        );
+        EffectEngine engine = new EffectEngine(new InMemoryEffectRepository(definition));
+        Player player = controlledPlayer("hank", id);
+
+        Optional<EffectDefinition> found =
+            engine.activeControl(player, java.util.EnumSet.of(ControlType.ROOT, ControlType.STUN));
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void controlMatrixDeniesMatchingActionsAndPermitsOthers() throws EffectRepositoryException {
+        // Blocking sets mirror SocketCommandContextImpl.ControlledAction: MOVE/FLEE -> {ROOT, STUN},
+        // CAST -> {SILENCE, STUN}, USE -> {STUN}. A player carrying exactly one control effect must be
+        // denied only the actions that effect gates, and permitted the rest.
+        java.util.Set<ControlType> move = java.util.EnumSet.of(ControlType.ROOT, ControlType.STUN);
+        java.util.Set<ControlType> flee = java.util.EnumSet.of(ControlType.ROOT, ControlType.STUN);
+        java.util.Set<ControlType> cast = java.util.EnumSet.of(ControlType.SILENCE, ControlType.STUN);
+        java.util.Set<ControlType> use = java.util.EnumSet.of(ControlType.STUN);
+
+        EffectId rootId = EffectId.of("rooted");
+        EffectId silenceId = EffectId.of("silenced");
+        EffectId stunId = EffectId.of("hammer-of-justice");
+        EffectEngine engine = new EffectEngine(new MapEffectRepository(Map.of(
+            rootId, controlDefinition(rootId, "Rooted", ControlType.ROOT),
+            silenceId, controlDefinition(silenceId, "Silenced", ControlType.SILENCE),
+            stunId, controlDefinition(stunId, "Stunned", ControlType.STUN)
+        )));
+
+        Player rooted = controlledPlayer("rooter", rootId);
+        assertTrue(engine.activeControl(rooted, move).isPresent());
+        assertTrue(engine.activeControl(rooted, flee).isPresent());
+        assertTrue(engine.activeControl(rooted, cast).isEmpty());
+        assertTrue(engine.activeControl(rooted, use).isEmpty());
+
+        Player silenced = controlledPlayer("silencer", silenceId);
+        assertTrue(engine.activeControl(silenced, move).isEmpty());
+        assertTrue(engine.activeControl(silenced, flee).isEmpty());
+        assertTrue(engine.activeControl(silenced, cast).isPresent());
+        assertTrue(engine.activeControl(silenced, use).isEmpty());
+
+        Player stunned = controlledPlayer("stunned", stunId);
+        assertTrue(engine.activeControl(stunned, move).isPresent());
+        assertTrue(engine.activeControl(stunned, flee).isPresent());
+        assertTrue(engine.activeControl(stunned, cast).isPresent());
+        assertTrue(engine.activeControl(stunned, use).isPresent());
+
+        Player uncontrolled = controlledPlayer("free", EffectId.of("stoneskin"));
+        EffectEngine plainEngine = new EffectEngine(new InMemoryEffectRepository(
+            new EffectDefinition(EffectId.of("stoneskin"), "Stoneskin", 6, 1,
+                EffectStacking.REFRESH, List.of(), List.of())));
+        assertTrue(plainEngine.activeControl(uncontrolled, move).isEmpty());
+        assertTrue(plainEngine.activeControl(uncontrolled, cast).isEmpty());
+        assertTrue(plainEngine.activeControl(uncontrolled, use).isEmpty());
+    }
+
+    private static EffectDefinition controlDefinition(EffectId id, String name, ControlType control) {
+        return new EffectDefinition(id, name, 6, 1, EffectStacking.REFRESH, List.of(), List.of(), control);
+    }
+
+    private static Player controlledPlayer(String username, EffectId activeEffect) {
+        return new Player(
+            User.of(Username.of(username), Password.hash("pw", 1000)),
+            1,
+            0,
+            PlayerVitals.defaults(),
+            new ArrayList<>(List.of(new EffectInstance(activeEffect, 5, 1))),
+            "HP {hp}/{maxHp}",
+            false,
+            List.of(),
+            null,
+            null
+        );
+    }
+
     private static class MapEffectRepository implements EffectRepository {
         private final Map<EffectId, EffectDefinition> definitions;
 

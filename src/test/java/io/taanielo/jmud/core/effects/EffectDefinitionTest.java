@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.effects;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -62,5 +63,26 @@ class EffectDefinitionTest {
     @Test
     void notHarmfulWhenNoModifiers() {
         assertFalse(withModifiers(List.of()).isHarmful());
+    }
+
+    @Test
+    void controlIsEmptyByDefault() {
+        assertTrue(withModifiers(List.of()).control().isEmpty());
+    }
+
+    @Test
+    void controlIsPreservedWhenSupplied() {
+        EffectDefinition rooted = new EffectDefinition(
+            EffectId.of("rooted"),
+            "Rooted",
+            6,
+            1,
+            EffectStacking.REFRESH,
+            List.of(),
+            List.of(),
+            ControlType.ROOT
+        );
+
+        assertEquals(ControlType.ROOT, rooted.control().orElseThrow());
     }
 }

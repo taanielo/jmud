@@ -5,6 +5,7 @@
   "duration_ticks": 6,
   "tick_interval": 1,
   "stacking": "refresh",
+  "control": "silence",
   "modifiers": [
     {
       "stat": "attack",
