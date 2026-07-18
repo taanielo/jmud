@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1101,12 +1100,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * {@link ControlType#STUN} (silence never stops a skill).
      */
     private enum ControlledAction {
-        MOVE("move", EnumSet.of(ControlType.ROOT, ControlType.STUN)),
-        FLEE("flee", EnumSet.of(ControlType.ROOT, ControlType.STUN)),
-        CAST("voice a spell", EnumSet.of(ControlType.SILENCE, ControlType.STUN)),
-        USE("use abilities", EnumSet.of(ControlType.STUN));
+        MOVE("move", Set.of(ControlType.ROOT, ControlType.STUN)),
+        FLEE("flee", Set.of(ControlType.ROOT, ControlType.STUN)),
+        CAST("voice a spell", Set.of(ControlType.SILENCE, ControlType.STUN)),
+        USE("use abilities", Set.of(ControlType.STUN));
 
         private final String verb;
+
+        // Set.of(...) yields a genuinely immutable set at runtime; the declared java.util.Set type
+        // trips ErrorProne's ImmutableEnumChecker (a false positive here). Guava's ImmutableSet is
+        // not a dependency of this module, so we suppress rather than add one for a single field.
+        @SuppressWarnings("ImmutableEnumChecker")
         private final Set<ControlType> blockingTypes;
 
         ControlledAction(String verb, Set<ControlType> blockingTypes) {
