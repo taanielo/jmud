@@ -166,6 +166,16 @@
       "maximum": 100,
       "default": 50,
       "description": "Wounded HP threshold, as a percent (1-100) of an ally's max HP, at or below which a healer mob will heal it. Defaults to 50 when omitted. Ignored unless healer is true."
+    },
+    "enrage_ticks": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "Optional per-encounter enrage threshold (issue #745): the number of committed AI attack decisions a fight against this mob may run before it enrages — announcing it to the room and multiplying its outgoing melee/special damage by enrage_damage_multiplier for the rest of that encounter. Enrage is transient, per-encounter state that resets on disengage/respawn; telegraph wind-up ticks do not advance the clock. Requires enrage_damage_multiplier > 1.0 when present. Omit for mobs that never enrage (today's behaviour); only a handful of capstone/world bosses author it."
+    },
+    "enrage_damage_multiplier": {
+      "type": "number",
+      "exclusiveMinimum": 1.0,
+      "description": "Multiplier applied to this mob's landed melee/special damage once it has enraged (see enrage_ticks). Must be strictly greater than 1.0 and is only meaningful alongside enrage_ticks. Omit for mobs that never enrage."
     }
   }
 }

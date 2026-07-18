@@ -673,11 +673,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * ({@link #mitigateForDefender}) still applies. All rolls go through the seeded
      * {@link CombatRandom} port so outcomes stay replayable.
      *
+     * <p>Once the mob has {@link MobInstance#isEnraged() enraged} (issue #745) its landed damage is
+     * scaled up by {@link MobTemplate#enrageDamageMultiplier()} before the shield-block and
+     * elemental-resistance mitigation still apply, so an enraged boss hits harder while a defender's
+     * gear keeps mattering. A parry (zero damage) and a miss are unaffected. Non-enraged mobs — every
+     * ordinary mob — are numerically unchanged.
+     *
      * @param attack the mob's resolved attack definition
      * @param target the defending player
+     * @param mob    the attacking mob, consulted for its per-encounter enrage boost
      * @return the resolved hit/block/damage outcome
      */
-    private MobAttackOutcome resolveMobAttack(AttackDefinition attack, Player target) {
+    private MobAttackOutcome resolveMobAttack(AttackDefinition attack, Player target, MobInstance mob) {
         int defenderAc = armorResolver.totalAc(target)
             + classArmorBonusResolver.armorBonus(target)
             + raceArmorBonusResolver.armorBonus(target);
@@ -699,7 +706,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             int riposte = rollDamage(parry.riposteAttack(), target);
             return new MobAttackOutcome(true, false, 0, true, riposte);
         }
-        int damage = rollDamage(attack);
+        int damage = mob.applyEnrageMultiplier(rollDamage(attack));
         boolean blocked = false;
         ShieldBlockResolver.ShieldBlock shieldBlock = shieldBlockResolver.resolve(target);
         if (shieldBlock.canBlock()) {
@@ -3463,6 +3470,17 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             && !reputationService.isHostile(target.reputation(), mob.template().factionId())) {
             return;
         }
+        // Each sustained attack decision against an already-engaged target advances this encounter's
+        // enrage clock (issue #745), so crossing the authored threshold enrages the mob exactly once
+        // and announces it to the room. Gated on {@code !firstEngagement} so the opening swing of a
+        // fresh pull — and a pack-assist join (#617), which is always a first engagement — starts the
+        // clock rather than advancing it, and so never enrages on the same tick it joins. The
+        // telegraph, flee (#567), and healer (#733) gates above have already returned for those
+        // decisions, so a mid-wind-up, mid-flee, or heal tick never advances the clock either;
+        // telegraph wind-up ticks return in advancePendingTelegraph and likewise never count.
+        if (!firstEngagement && mob.advanceEnrage()) {
+            announceEnrage(mob);
+        }
         boolean useSpecial = mob.template().specialAttackId() != null
             && !mob.specialAbilityUsed()
             && firstEngagement;
@@ -3489,6 +3507,24 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
         resolveMobAttackAndPublish(mob, attack, target, targetUsername, candidates, packJoin,
             firstEngagement, useSpecial);
+    }
+
+    /**
+     * Announces to everyone in the mob's room that it has just enraged (issue #745), telegraphing the
+     * stepped-up danger so a drawn-out boss fight visibly turns rather than silently doing more damage.
+     * Called exactly once per encounter, on the AI decision that crosses the mob's
+     * {@link MobTemplate#enrageTicks()} threshold. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the mob that has just enraged
+     */
+    private void announceEnrage(MobInstance mob) {
+        String name = mob.template().name();
+        // Boss names are authored lower-case-"the"-prefixed ("the Fermata"); render a natural
+        // sentence-initial subject ("The Fermata") rather than a doubled "The the Fermata".
+        String subject = name.regionMatches(true, 0, "the ", 0, 4)
+            ? "The " + name.substring(4)
+            : "The " + name;
+        broadcastToRoom(mob.roomId(), subject + "'s eyes blaze with fury — it grows enraged!");
     }
 
     /**
@@ -3608,7 +3644,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private void resolveMobAttackAndPublish(
         MobInstance mob, AttackDefinition attack, Player target, Username targetUsername,
         List<Username> candidates, boolean packJoin, boolean firstEngagement, boolean useSpecial) {
-        MobAttackOutcome outcome = resolveMobAttack(attack, target);
+        MobAttackOutcome outcome = resolveMobAttack(attack, target, mob);
         if (!outcome.hit()) {
             // A miss deals no damage, wears no gear, and applies no on-hit effect. The player may
             // still be drawn into the fight — thrown from a mount and shown the first-engagement

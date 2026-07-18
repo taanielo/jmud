@@ -89,6 +89,23 @@ public class MobInstance {
      * when the window elapses.
      */
     private final AtomicReference<Username> telegraphTarget = new AtomicReference<>();
+    /**
+     * Number of committed AI attack decisions this mob has taken in the current combat encounter,
+     * used to drive the per-encounter enrage clock (issue #745). Advanced once per committed attack
+     * decision via {@link #advanceEnrage()}; telegraph wind-up ticks and turns spent fleeing/healing do
+     * not advance it. Reset to zero whenever the encounter ends (see {@link #disengage(Username)} and
+     * {@link #respawn()}), so a fresh pull always starts the clock over. Transient, server-only state
+     * that never touches player saves.
+     */
+    private final AtomicInteger enrageDecisions = new AtomicInteger(0);
+    /**
+     * Whether this mob has crossed its {@link MobTemplate#enrageTicks()} threshold and enraged in the
+     * current combat encounter (issue #745). Once set, its outgoing damage is boosted by
+     * {@link MobTemplate#enrageDamageMultiplier()} via {@link #applyEnrageMultiplier(int)} for the rest
+     * of the fight. Reset alongside {@link #enrageDecisions} when the encounter ends, mirroring
+     * {@link #specialAbilityUsed}.
+     */
+    private final AtomicBoolean enraged = new AtomicBoolean(false);
     /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
     private volatile RoomId currentRoomId;
     /**
@@ -341,6 +358,7 @@ public class MobInstance {
             specialAbilityUsed.set(false);
             clearTaunt();
             clearTelegraph();
+            clearEnrage();
         }
     }
 
@@ -483,6 +501,58 @@ public class MobInstance {
     private void clearTaunt() {
         taunter.set(null);
         tauntTicksRemaining.set(0);
+    }
+
+    /**
+     * Advances this encounter's enrage clock by one committed AI attack decision (issue #745),
+     * enraging the mob exactly once when the {@link MobTemplate#enrageTicks()} threshold is first
+     * crossed. A no-op returning {@code false} when the mob is not {@link MobTemplate#enrageCapable()
+     * enrage-capable} or has already enraged this encounter. Must only be called from the tick thread,
+     * once per committed attack decision, so telegraph wind-up ticks and turns spent fleeing/healing
+     * never advance it.
+     *
+     * @return {@code true} on the single decision that first pushes this mob past its enrage threshold
+     *         (the caller announces the enrage); {@code false} otherwise
+     */
+    public boolean advanceEnrage() {
+        Integer threshold = template.enrageTicks();
+        if (threshold == null || enraged.get()) {
+            return false;
+        }
+        if (enrageDecisions.incrementAndGet() >= threshold) {
+            enraged.set(true);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether this mob has enraged in the current combat encounter (issue #745).
+     *
+     * @return {@code true} once the enrage threshold has been crossed this encounter
+     */
+    public boolean isEnraged() {
+        return enraged.get();
+    }
+
+    /**
+     * Scales a landed hit's damage by this mob's {@link MobTemplate#enrageDamageMultiplier()} when it
+     * has {@link #isEnraged() enraged} (issue #745), returning {@code rawDamage} unchanged otherwise.
+     * The result is floored at {@code 1} so an enraged hit never rounds down to zero.
+     *
+     * @param rawDamage the unscaled resolved damage of a single landed hit
+     * @return the damage to actually apply after any enrage boost
+     */
+    public int applyEnrageMultiplier(int rawDamage) {
+        if (!enraged.get()) {
+            return rawDamage;
+        }
+        return Math.max(1, (int) Math.round(rawDamage * template.enrageDamageMultiplier()));
+    }
+
+    private void clearEnrage() {
+        enrageDecisions.set(0);
+        enraged.set(false);
     }
 
     /**
@@ -649,6 +719,7 @@ public class MobInstance {
         specialAbilityUsed.set(false);
         clearTaunt();
         clearTelegraph();
+        clearEnrage();
         currentRoomId = template.spawnRoomId();
     }
 }

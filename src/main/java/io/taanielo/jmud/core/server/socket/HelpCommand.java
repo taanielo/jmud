@@ -133,7 +133,16 @@ public class HelpCommand extends RegistrableCommand {
         "  Use them: FLEE the room to dodge it outright, top yourself off with a heal, or pop a",
         "  defensive cooldown so the hit lands on a braced target. If the boss dies or you leave the",
         "  fight before the wind-up finishes, the attack simply never lands. Watch for the warning —",
-        "  the scariest hit in the fight is the one you can see coming.");
+        "  the scariest hit in the fight is the one you can see coming.",
+        "",
+        "  The greatest bosses also ENRAGE if you let a fight drag on. Grind one of them down purely",
+        "  by turtling — heavy healing, kiting, hiding behind block and parry — and eventually its",
+        "  patience breaks: it announces the turn (\"...its eyes blaze with fury — it grows enraged!\")",
+        "  and hits markedly harder for the rest of that fight. This is why sustain alone is not enough",
+        "  against a capstone boss: bring your burst cooldowns and end the fight before the clock runs",
+        "  out. CONSIDER a foe first — if it \"will wear down slowly, then grow dangerous,\" it enrages,",
+        "  so plan to spike it down rather than out-heal it. Enrage is per-fight: break off cleanly (or",
+        "  kill it) and a fresh pull starts calm again, its patience reset.");
 
     private static final List<String> COOLDOWNS_TOPIC = List.of(
         "Cooldowns",
@@ -197,6 +206,9 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("block", COMBAT_TOPIC),
         Map.entry("parry", COMBAT_TOPIC),
         Map.entry("riposte", COMBAT_TOPIC),
+        Map.entry("enrage", COMBAT_TOPIC),
+        Map.entry("enrages", COMBAT_TOPIC),
+        Map.entry("telegraph", COMBAT_TOPIC),
         Map.entry("cooldowns", COOLDOWNS_TOPIC),
         Map.entry("cooldown", COOLDOWNS_TOPIC),
         Map.entry("cd", COOLDOWNS_TOPIC),

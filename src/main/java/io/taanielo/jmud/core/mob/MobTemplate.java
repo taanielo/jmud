@@ -82,6 +82,18 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                  <em>healer</em> that mends a wounded ally in its room instead of attacking on an AI
  *                  decision (see {@link HealerProfile}). {@code null} for ordinary mobs, which never
  *                  heal — additive and save-compatible, so existing mob data is unaffected.
+ * @param enrageTicks optional per-encounter enrage threshold (issue #745): the number of committed
+ *                  AI attack decisions a fight against this mob may run before the mob
+ *                  <em>enrages</em> — announcing it to the room and boosting its outgoing damage by
+ *                  {@link #enrageDamageMultiplier()} for the rest of that encounter. {@code null} (the
+ *                  default) means the mob never enrages, so existing mob data is unaffected. When
+ *                  present it must be positive. Only a handful of capstone/world bosses author it.
+ *                  Enrage is transient, per-{@link MobInstance} encounter state that resets on
+ *                  disengage/respawn; telegraph wind-up ticks do not advance the clock.
+ * @param enrageDamageMultiplier the multiplier applied to this mob's landed melee/special damage once
+ *                  it has {@link #enrageCapable() enraged}; only meaningful when {@code enrageTicks} is
+ *                  present, in which case it must be strictly greater than {@code 1.0}. Defaults to
+ *                  {@code 1.0} (no boost) for mobs that never enrage.
  */
 public record MobTemplate(
     MobId id,
@@ -108,7 +120,9 @@ public record MobTemplate(
     int parryChancePercent,
     Map<DamageType, Integer> resistances,
     Map<DamageType, Integer> vulnerabilities,
-    @Nullable HealerProfile healerProfile
+    @Nullable HealerProfile healerProfile,
+    @Nullable Integer enrageTicks,
+    double enrageDamageMultiplier
 ) {
 
     /**
@@ -139,6 +153,15 @@ public record MobTemplate(
         }
         if (parryChancePercent < 0 || parryChancePercent > 100) {
             throw new IllegalArgumentException("Mob parryChancePercent must be in [0, 100]");
+        }
+        if (enrageTicks != null) {
+            if (enrageTicks <= 0) {
+                throw new IllegalArgumentException("Mob enrageTicks must be positive when present");
+            }
+            if (enrageDamageMultiplier <= 1.0) {
+                throw new IllegalArgumentException(
+                    "Mob enrageDamageMultiplier must be greater than 1.0 when enrageTicks is present");
+            }
         }
         lootTable = List.copyOf(lootTable);
         tags = tags == null ? List.of() : List.copyOf(tags);
@@ -439,6 +462,57 @@ public record MobTemplate(
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
             charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of(),
             healerProfile);
+    }
+
+    /**
+     * Convenience constructor preserving the pre-enrage canonical arity (issue #745): defaults
+     * {@link #enrageTicks()} to {@code null} and {@link #enrageDamageMultiplier()} to {@code 1.0} (a
+     * mob that never enrages). Keeps every existing caller and the JSON mapper source-compatible with
+     * the constructor that previously ended at {@code healerProfile}.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent,
+        Map<DamageType, Integer> resistances,
+        Map<DamageType, Integer> vulnerabilities,
+        @Nullable HealerProfile healerProfile
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, resistances,
+            vulnerabilities, healerProfile, null, 1.0);
+    }
+
+    /**
+     * Returns whether this mob is authored to <em>enrage</em> after a drawn-out fight (issue #745) —
+     * i.e. carries a positive {@link #enrageTicks()} threshold and therefore steps up its damage by
+     * {@link #enrageDamageMultiplier()} once an encounter runs past that many committed AI attack
+     * decisions.
+     *
+     * @return {@code true} when this mob has an authored enrage threshold
+     */
+    public boolean enrageCapable() {
+        return enrageTicks != null;
     }
 
     /**
