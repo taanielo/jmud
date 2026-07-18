@@ -38,9 +38,10 @@ public class WayfindCommand extends RegistrableCommand {
                  Routing only uses exits you can already walk — regular exits and secret exits that
                  have been discovered with SEARCH. A locked door is still part of the route: the
                  directions do not fail just because a door is locked, since you carry the key
-                 separately (see HELP LOCK / HELP UNLOCK). Ferry crossings are NOT part of the
-                 walkable route; if the only way across needs a ferry, WAYFIND tells you so rather
-                 than pretending a walking route exists.\
+                 separately (see HELP LOCK / HELP UNLOCK). When the shortest or only way across needs
+                 a ferry, the route includes a "board the <ferry> at <dock> and ride to <dock>" step:
+                 walk onto the ferry's deck at that dock and wait for its scheduled departure. WAYFIND
+                 gives directions, not a departure time, so it never promises when the ferry sails.\
                """;
     }
 

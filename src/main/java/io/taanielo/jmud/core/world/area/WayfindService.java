@@ -1,16 +1,11 @@
 package io.taanielo.jmud.core.world.area;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,16 +21,22 @@ import io.taanielo.jmud.core.world.RoomPathfinder;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
- * Read-only domain service backing the {@code WAYFIND} command: it turns "how do I walk to that
- * zone I've already visited?" into live, turn-by-turn compass directions.
+ * Read-only domain service backing the {@code WAYFIND} command: it turns "how do I get to that zone
+ * I've already visited?" into live, turn-by-turn directions.
  *
  * <p>Given a player's current room and an area name or id, it resolves the destination area, then
  * asks {@link RoomPathfinder} for the shortest walking route to that area's waypoint (its first
  * room, {@code room_ids[0]} — the same entrance convention BIND and {@link AreaWaypointService}
- * use). Routing only crosses exits the world graph already exposes for normal walking (regular
- * exits plus globally-discovered hidden exits); ferry hops and other non-{@link Direction} transport
- * are not part of the walkable graph, so a ferry-only destination is reported as such rather than
- * pretended reachable.
+ * use). Walking routes cross only exits the world graph already exposes for normal walking (regular
+ * exits plus globally-discovered hidden exits).
+ *
+ * <p>When the shortest (or only) route requires boarding a ferry, the route is stitched together
+ * from two walking legs — start to a boarding dock and an arrival dock to the destination — with a
+ * distinct "board the ferry" step spliced between them. Only routes crossing at most one ferry leg
+ * are considered; there is exactly one ferry in the world today (a two-dock route), so multi-ferry
+ * chaining is intentionally out of scope. Among the pure-walking route and every candidate ferry
+ * route, the one with the fewest total steps wins, with ties broken deterministically in favour of
+ * the pure-walking route and then the ferry-repository/route-index order.
  *
  * <p>Every lookup is an in-memory repository read with no mutation, safe to run on the tick thread
  * (AGENTS.md §5).
@@ -47,27 +48,32 @@ public class WayfindService {
     private final RoomPathfinder pathfinder;
     private final FerryRepository ferryRepository;
     private final Function<RoomId, Map<Direction, RoomId>> walkableExits;
+    private final Function<RoomId, String> roomNames;
 
     /**
      * Creates a wayfinding service.
      *
-     * @param areaRepository the source of area definitions used to resolve destinations and list
-     *                       neighbours
-     * @param pathfinder     the shortest-route search over the walkable room graph
-     * @param ferryRepository the world's ferry definitions, used only to tell a ferry-only
-     *                       destination apart from a truly unreachable one
-     * @param walkableExits  a function returning, for any room, the exits that may be walked
-     *                       (regular exits plus globally-discovered hidden exits)
+     * @param areaRepository  the source of area definitions used to resolve destinations and list
+     *                        neighbours
+     * @param pathfinder      the shortest-route search over the walkable room graph
+     * @param ferryRepository the world's ferry definitions, used to route across ferry crossings and
+     *                        to render their boarding docks
+     * @param walkableExits   a function returning, for any room, the exits that may be walked
+     *                        (regular exits plus globally-discovered hidden exits)
+     * @param roomNames       a function returning a room's display name, used to name the boarding
+     *                        and arrival docks in a ferry step
      */
     public WayfindService(
             AreaRepository areaRepository,
             RoomPathfinder pathfinder,
             FerryRepository ferryRepository,
-            Function<RoomId, Map<Direction, RoomId>> walkableExits) {
+            Function<RoomId, Map<Direction, RoomId>> walkableExits,
+            Function<RoomId, String> roomNames) {
         this.areaRepository = Objects.requireNonNull(areaRepository, "Area repository is required");
         this.pathfinder = Objects.requireNonNull(pathfinder, "Room pathfinder is required");
         this.ferryRepository = Objects.requireNonNull(ferryRepository, "Ferry repository is required");
         this.walkableExits = Objects.requireNonNull(walkableExits, "Walkable exits provider is required");
+        this.roomNames = Objects.requireNonNull(roomNames, "Room name resolver is required");
     }
 
     /**
@@ -75,9 +81,9 @@ public class WayfindService {
      *
      * <p>With a blank query it lists the player's current area and its charted neighbours. With a
      * query it resolves the destination area (exact id, exact name, then partial match) and either
-     * prints the turn-by-turn route to that area's waypoint, an ambiguity/unknown prompt, or a
-     * friendly no-route message (distinguishing a ferry-only destination from a truly unreachable
-     * one). It never throws for player input and never mutates game state.
+     * prints the turn-by-turn route to that area's waypoint (walking, or walking plus a single ferry
+     * leg when that is the shortest or only way), an ambiguity/unknown prompt, or a friendly
+     * no-route message. It never throws for player input and never mutates game state.
      *
      * @param currentRoom the room the player is standing in
      * @param rawQuery    the raw argument after {@code WAYFIND} (blank lists nearby areas)
@@ -147,27 +153,107 @@ public class WayfindService {
 
         Area destination = matches.get(0);
         RoomId waypoint = destination.roomIds().get(0);
-        Optional<List<Direction>> route = pathfinder.findPath(currentRoom, waypoint, walkableExits);
+        Optional<List<RouteStep>> route = findBestRoute(currentRoom, waypoint);
         if (route.isPresent()) {
             return List.of(renderRoute(destination, route.get()));
-        }
-        if (reachableIncludingFerries(currentRoom, waypoint)) {
-            return List.of("No walking route to " + destination.name()
-                + " found (you may need to take a ferry).");
         }
         return List.of("No known route to " + destination.name() + ".");
     }
 
     /**
-     * Formats a found route as the total step count and the comma-joined direction labels, or a
-     * "you are already here" line when the route is empty.
+     * Finds the shortest route to the waypoint, considering the pure-walking route and every route
+     * that crosses a single ferry leg (walk to a boarding dock, board, walk from the arrival dock).
+     *
+     * <p>Cost is the total number of steps: each walked direction counts as one, and a ferry leg
+     * counts as one. The pure-walking route is preferred on ties (so a walkable destination renders
+     * exactly as before), then earlier ferries and route-index pairs, giving deterministic output.
      */
-    private static String renderRoute(Area destination, List<Direction> directions) {
-        if (directions.isEmpty()) {
+    private Optional<List<RouteStep>> findBestRoute(RoomId currentRoom, RoomId waypoint) {
+        List<RouteStep> best = null;
+        int bestCost = Integer.MAX_VALUE;
+
+        Optional<List<Direction>> walk = pathfinder.findPath(currentRoom, waypoint, walkableExits);
+        if (walk.isPresent()) {
+            best = walk.get().stream().map(WayfindService::walkStep).toList();
+            bestCost = best.size();
+        }
+
+        for (Ferry ferry : ferryRepository.findAll()) {
+            List<RoomId> docks = ferry.route();
+            for (int i = 0; i < docks.size(); i++) {
+                for (int j = 0; j < docks.size(); j++) {
+                    if (i == j) {
+                        continue;
+                    }
+                    RoomId boardingDock = docks.get(i);
+                    RoomId arrivalDock = docks.get(j);
+                    Optional<List<Direction>> legToDock = pathfinder.findPath(currentRoom, boardingDock, walkableExits);
+                    if (legToDock.isEmpty()) {
+                        continue;
+                    }
+                    Optional<List<Direction>> legFromDock = pathfinder.findPath(arrivalDock, waypoint, walkableExits);
+                    if (legFromDock.isEmpty()) {
+                        continue;
+                    }
+                    int cost = legToDock.get().size() + legFromDock.get().size() + 1;
+                    if (cost < bestCost) {
+                        best = stitchFerryRoute(ferry, boardingDock, arrivalDock, legToDock.get(), legFromDock.get());
+                        bestCost = cost;
+                    }
+                }
+            }
+        }
+
+        return Optional.ofNullable(best);
+    }
+
+    /**
+     * Assembles a ferry route from the walk to the boarding dock, the ferry leg, and the walk from
+     * the arrival dock.
+     */
+    private List<RouteStep> stitchFerryRoute(
+            Ferry ferry,
+            RoomId boardingDock,
+            RoomId arrivalDock,
+            List<Direction> legToDock,
+            List<Direction> legFromDock) {
+        List<RouteStep> steps = new ArrayList<>();
+        legToDock.forEach(direction -> steps.add(walkStep(direction)));
+        steps.add(new FerryStep(ferry.name(), roomNames.apply(boardingDock), roomNames.apply(arrivalDock)));
+        legFromDock.forEach(direction -> steps.add(walkStep(direction)));
+        return List.copyOf(steps);
+    }
+
+    private static RouteStep walkStep(Direction direction) {
+        return new WalkStep(direction);
+    }
+
+    /**
+     * Formats a found route as the total step count and the ordered step phrases, or a "you are
+     * already here" line when the route is empty. Walked directions are comma-joined exactly as
+     * before; a ferry leg is rendered as a distinct, plainly-worded step introduced (and followed)
+     * by "then" so it can never be mistaken for a compass direction.
+     */
+    private static String renderRoute(Area destination, List<RouteStep> steps) {
+        if (steps.isEmpty()) {
             return "You are already at the entrance to " + destination.name() + ".";
         }
-        String steps = directions.stream().map(Direction::label).collect(Collectors.joining(", "));
-        return destination.name() + " is " + directions.size() + " step(s) away: " + steps + ".";
+        long walkCount = steps.stream().filter(step -> step instanceof WalkStep).count();
+        StringBuilder joined = new StringBuilder();
+        boolean previousWasFerry = false;
+        for (int i = 0; i < steps.size(); i++) {
+            RouteStep step = steps.get(i);
+            boolean isFerry = step instanceof FerryStep;
+            if (i > 0) {
+                joined.append(", ");
+                if (isFerry || previousWasFerry) {
+                    joined.append("then ");
+                }
+            }
+            joined.append(step.label());
+            previousWasFerry = isFerry;
+        }
+        return destination.name() + " is " + walkCount + " step(s) away: " + joined + ".";
     }
 
     /**
@@ -213,42 +299,26 @@ public class WayfindService {
     }
 
     /**
-     * Returns whether the destination is reachable when ferry hops are allowed in addition to normal
-     * walking. Used only to distinguish a ferry-only destination from a truly unreachable one; each
-     * ferry contributes virtual edges from its deck room to every dock on its route, modelling the
-     * ferry carrying a boarded passenger to another dock.
+     * A single leg of a rendered route: either a walked compass direction or a ferry crossing.
      */
-    private boolean reachableIncludingFerries(RoomId start, RoomId destination) {
-        if (start.equals(destination)) {
-            return true;
-        }
-        Map<RoomId, List<RoomId>> ferryEdges = buildFerryEdges();
-        Deque<RoomId> frontier = new ArrayDeque<>();
-        Set<RoomId> visited = new HashSet<>();
-        frontier.add(start);
-        visited.add(start);
-        while (!frontier.isEmpty()) {
-            RoomId current = frontier.removeFirst();
-            List<RoomId> neighbours = new ArrayList<>(walkableExits.apply(current).values());
-            neighbours.addAll(ferryEdges.getOrDefault(current, List.of()));
-            for (RoomId neighbour : neighbours) {
-                if (neighbour.equals(destination)) {
-                    return true;
-                }
-                if (visited.add(neighbour)) {
-                    frontier.add(neighbour);
-                }
-            }
-        }
-        return false;
+    private sealed interface RouteStep permits WalkStep, FerryStep {
+        /** The player-facing phrase for this step. */
+        String label();
     }
 
-    /** Builds the deck-room-to-docks virtual adjacency for every configured ferry. */
-    private Map<RoomId, List<RoomId>> buildFerryEdges() {
-        Map<RoomId, List<RoomId>> edges = new HashMap<>();
-        for (Ferry ferry : ferryRepository.findAll()) {
-            edges.computeIfAbsent(ferry.deckRoomId(), id -> new ArrayList<>()).addAll(ferry.route());
+    /** A single walked compass move. */
+    private record WalkStep(Direction direction) implements RouteStep {
+        @Override
+        public String label() {
+            return direction.label();
         }
-        return edges;
+    }
+
+    /** A single ferry crossing from one dock to another aboard a named ferry. */
+    private record FerryStep(String ferryName, String boardingDock, String arrivalDock) implements RouteStep {
+        @Override
+        public String label() {
+            return "board the " + ferryName + " at " + boardingDock + " and ride to " + arrivalDock;
+        }
     }
 }

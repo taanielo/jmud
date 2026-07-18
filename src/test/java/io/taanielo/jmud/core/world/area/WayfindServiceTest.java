@@ -32,10 +32,13 @@ class WayfindServiceTest {
         exits.computeIfAbsent(RoomId.of(from), id -> new LinkedHashMap<>()).put(direction, RoomId.of(to));
     }
 
+    private final Map<RoomId, String> roomNames = new HashMap<>();
+
     private WayfindService service(List<Area> areas, List<Ferry> ferries) {
         Function<RoomId, Map<Direction, RoomId>> provider = roomId -> exits.getOrDefault(roomId, Map.of());
+        Function<RoomId, String> names = roomId -> roomNames.getOrDefault(roomId, roomId.getValue());
         return new WayfindService(
-            new StubAreaRepository(areas), new RoomPathfinder(), () -> List.copyOf(ferries), provider);
+            new StubAreaRepository(areas), new RoomPathfinder(), () -> List.copyOf(ferries), provider, names);
     }
 
     private static Area area(String id, String name, List<String> connections, String... roomIds) {
@@ -125,27 +128,84 @@ class WayfindServiceTest {
     }
 
     @Test
-    void ferryOnlyDestinationSuggestsTakingAFerry() {
-        // The dock reaches the deck by walking, but only the ferry carries you across to the island.
-        corridor("north-dock", Direction.DOWN, "ferry-deck");
-        Area mainland = area("mainland", "Mainland", List.of(), "north-dock");
+    void ferryOnlyDestinationRoutesAcrossTheCrossing() {
+        // No walking path reaches the island; the only way across is the Coastal Ferry.
+        corridor("start", Direction.NORTH, "mid");
+        corridor("mid", Direction.NORTH, "north-dock");
+        corridor("south-dock", Direction.EAST, "isle-1");
+        corridor("isle-1", Direction.EAST, "isle-2");
+        corridor("isle-2", Direction.EAST, "isle-shore");
+        roomNames.put(RoomId.of("north-dock"), "North Dock");
+        roomNames.put(RoomId.of("south-dock"), "South Dock");
+        Area mainland = area("mainland", "Mainland", List.of(), "start", "mid", "north-dock");
         Area island = area("island", "Shrouded Isle", List.of(), "isle-shore");
         Ferry ferry = new Ferry(
             FerryId.of("coastal"),
             "Coastal Ferry",
-            RoomId.of("ferry-deck"),
-            List.of(RoomId.of("north-dock"), RoomId.of("isle-shore")),
+            RoomId.of("coastal-ferry-deck"),
+            List.of(RoomId.of("north-dock"), RoomId.of("south-dock")),
             15,
             0,
             List.of(),
             List.of());
         WayfindService service = service(List.of(mainland, island), List.of(ferry));
 
-        List<String> lines = service.wayfind(RoomId.of("north-dock"), "shrouded isle");
+        List<String> lines = service.wayfind(RoomId.of("start"), "shrouded isle");
 
         assertEquals(
-            "No walking route to Shrouded Isle found (you may need to take a ferry).",
+            "Shrouded Isle is 5 step(s) away: north, north, then board the Coastal Ferry at North Dock "
+                + "and ride to South Dock, then east, east, east.",
             lines.get(0));
+    }
+
+    @Test
+    void walkingRouteWinsWhenShorterThanTheFerryRoute() {
+        // A short walking path exists; a ferry route also exists but is longer, so it is not used.
+        corridor("start", Direction.EAST, "dest");
+        corridor("start", Direction.NORTH, "north-dock");
+        corridor("south-dock", Direction.WEST, "dest");
+        roomNames.put(RoomId.of("north-dock"), "North Dock");
+        roomNames.put(RoomId.of("south-dock"), "South Dock");
+        Area here = area("here", "Harbor Town", List.of(), "start", "north-dock");
+        Area target = area("target", "Market Square", List.of(), "dest");
+        Ferry ferry = new Ferry(
+            FerryId.of("coastal"),
+            "Coastal Ferry",
+            RoomId.of("coastal-ferry-deck"),
+            List.of(RoomId.of("north-dock"), RoomId.of("south-dock")),
+            15,
+            0,
+            List.of(),
+            List.of());
+        WayfindService service = service(List.of(here, target), List.of(ferry));
+
+        List<String> lines = service.wayfind(RoomId.of("start"), "market square");
+
+        assertEquals("Market Square is 1 step(s) away: east.", lines.get(0));
+    }
+
+    @Test
+    void noRouteEvenViaFerryReportsNoKnownRoute() {
+        // The ferry's docks are unreachable by walking, so even a ferry hop cannot help.
+        corridor("start", Direction.NORTH, "dead-end");
+        roomNames.put(RoomId.of("north-dock"), "North Dock");
+        roomNames.put(RoomId.of("south-dock"), "South Dock");
+        Area here = area("here", "Starting Glade", List.of(), "start", "dead-end");
+        Area island = area("island", "Shrouded Isle", List.of(), "isle-shore");
+        Ferry ferry = new Ferry(
+            FerryId.of("coastal"),
+            "Coastal Ferry",
+            RoomId.of("coastal-ferry-deck"),
+            List.of(RoomId.of("north-dock"), RoomId.of("south-dock")),
+            15,
+            0,
+            List.of(),
+            List.of());
+        WayfindService service = service(List.of(here, island), List.of(ferry));
+
+        List<String> lines = service.wayfind(RoomId.of("start"), "shrouded isle");
+
+        assertEquals("No known route to Shrouded Isle.", lines.get(0));
     }
 
     @Test
