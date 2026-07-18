@@ -105,11 +105,14 @@ class AchievementContentTest {
     }
 
     @Test
-    void mentorTitleDoesNotCollideWithAnyAchievementOrQuestTitle() throws Exception {
-        // The MENTOR bond (issue #751) grants a programmatic title on a mentor's first graduated
-        // mentee; it must stay unique against every data-authored achievement and quest title_reward.
-        String mentorTitle =
-            io.taanielo.jmud.core.mentor.MentorService.MENTOR_TITLE.toLowerCase(Locale.ROOT);
+    void mentorRankTitlesDoNotCollideWithAnyAchievementOrQuestTitle() throws Exception {
+        // The MENTOR bond (issues #751, #752) grants programmatic Mentors' Guild rank titles as a
+        // mentor graduates mentees; every rung title must stay unique against every data-authored
+        // achievement and quest title_reward, and unique among the ranks themselves.
+        List<String> rankTitles =
+            new io.taanielo.jmud.core.mentor.json.JsonMentorRankRepository(DATA_ROOT).load().ranks().stream()
+                .map(io.taanielo.jmud.core.mentor.MentorRank::title)
+                .toList();
 
         Set<String> achievementTitles = new HashSet<>();
         for (Achievement achievement : shippedAchievements()) {
@@ -117,10 +120,20 @@ class AchievementContentTest {
                 achievementTitles.add(achievement.titleReward().toLowerCase(Locale.ROOT));
             }
         }
-        assertFalse(achievementTitles.contains(mentorTitle),
-            "Mentor title collides with an achievement title_reward: " + mentorTitle);
-        assertFalse(questTitleRewards().contains(mentorTitle),
-            "Mentor title collides with a quest title_reward: " + mentorTitle);
+        Set<String> questTitles = questTitleRewards();
+        Set<String> seenRankTitles = new HashSet<>();
+        for (String title : rankTitles) {
+            String key = title.toLowerCase(Locale.ROOT);
+            assertTrue(seenRankTitles.add(key),
+                "Mentor rank title is duplicated (case-insensitively): " + title);
+            assertFalse(achievementTitles.contains(key),
+                "Mentor rank title collides with an achievement title_reward: " + title);
+            assertFalse(questTitles.contains(key),
+                "Mentor rank title collides with a quest title_reward: " + title);
+        }
+        // The advertised first-rung constant must match the shipped ladder's lowest rung.
+        assertTrue(rankTitles.contains(io.taanielo.jmud.core.mentor.MentorService.MENTOR_TITLE),
+            "The MENTOR_TITLE constant must be one of the shipped mentor rank titles");
     }
 
     @Test

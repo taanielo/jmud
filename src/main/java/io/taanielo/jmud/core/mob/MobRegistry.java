@@ -1554,11 +1554,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             (double) mob.template().xpReward() / Math.max(1, partyRecipients.size()));
 
         // Mentor bond (issue #751): a mentee whose mentor is also an eligible recipient of this kill
-        // earns a flat bonus on top of their own share. It is purely additive — never subtracted from
-        // any other member — so the total pool paid to the rest of the party is unchanged.
-        int attackerMentorBonus = menteeBonusXp(working.get(attacker.getUsername()), eligible, xpPerMember);
+        // earns a flat bonus on top of their own share. The mentor of a present mentee likewise earns a
+        // Mentors' Guild perk bonus (issue #752) scaling with their rank. Both are purely additive —
+        // never subtracted from any other member — so the pool paid to the rest of the party is
+        // unchanged. A recipient is at most one of the two (a bond is one-to-one), so they never stack.
+        int attackerMenteeBonus = menteeBonusXp(working.get(attacker.getUsername()), eligible, xpPerMember);
+        int attackerMentorGuildBonus = mentorGuildBonusXp(working.get(attacker.getUsername()), eligible, xpPerMember);
         LevelUpResult levelUpResult = levelUpService.awardXp(
-            working.get(attacker.getUsername()), xpPerMember + attackerMentorBonus);
+            working.get(attacker.getUsername()), xpPerMember + attackerMenteeBonus + attackerMentorGuildBonus);
         Player afterXp = levelUpResult.player();
         // Gold is split with the same divisor and "present in the room" eligibility as the XP split
         // above: the roll is made once, then divided by every party member in the room (dead members
@@ -1634,9 +1637,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
         messages.add(GameMessage.toSource(
             "You gain " + xpPerMember + " experience points."));
-        if (attackerMentorBonus > 0) {
+        if (attackerMenteeBonus > 0) {
             messages.add(GameMessage.toSource(
-                "Your mentor's guidance grants you " + attackerMentorBonus + " bonus experience!"));
+                "Your mentor's guidance grants you " + attackerMenteeBonus + " bonus experience!"));
+        }
+        if (attackerMentorGuildBonus > 0) {
+            messages.add(GameMessage.toSource(
+                "Your mentoring dedication grants you " + attackerMentorGuildBonus + " bonus experience!"));
         }
         if (levelUpResult.leveledUp()) {
             messages.add(GameMessage.toSource(
@@ -1670,18 +1677,23 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (member.equals(attacker.getUsername())) {
                 continue;
             }
-            int memberMentorBonus = menteeBonusXp(working.get(member), eligible, xpPerMember);
+            int memberMenteeBonus = menteeBonusXp(working.get(member), eligible, xpPerMember);
+            int memberMentorGuildBonus = mentorGuildBonusXp(working.get(member), eligible, xpPerMember);
             LevelUpResult memberLvl = levelUpService.awardXp(
-                working.get(member), xpPerMember + memberMentorBonus);
+                working.get(member), xpPerMember + memberMenteeBonus + memberMentorGuildBonus);
             Player memberAfterXp = memberLvl.player()
                 .withTotalKills(memberLvl.player().getTotalKills() + 1);
             List<GameMessage> memberMsgs = new ArrayList<>();
             memberMsgs.add(GameMessage.toSource(
                 "Your party slay the " + mob.template().name()
                     + "! You gain " + xpPerMember + " experience points."));
-            if (memberMentorBonus > 0) {
+            if (memberMenteeBonus > 0) {
                 memberMsgs.add(GameMessage.toSource(
-                    "Your mentor's guidance grants you " + memberMentorBonus + " bonus experience!"));
+                    "Your mentor's guidance grants you " + memberMenteeBonus + " bonus experience!"));
+            }
+            if (memberMentorGuildBonus > 0) {
+                memberMsgs.add(GameMessage.toSource(
+                    "Your mentoring dedication grants you " + memberMentorGuildBonus + " bonus experience!"));
             }
             if (memberLvl.leveledUp()) {
                 memberMsgs.add(GameMessage.toSource(
@@ -1781,6 +1793,32 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Returns the flat Mentors' Guild perk bonus XP a mentor recipient earns on this kill (issue #752),
+     * or 0 when the perk is inactive: no mentor service, the recipient has no mentee, their mentee is
+     * not one of the eligible in-room recipients of this same kill's split, or their guild rank has
+     * unlocked no perk yet. The bonus is purely additive and scales with the mentor's rank.
+     *
+     * @param recipient the recipient whose share might be boosted for actively mentoring
+     * @param eligible  the alive, in-room recipients of this kill (potential mentees)
+     * @param baseShare the recipient's own computed XP share before the bonus
+     * @return the bonus XP to add to {@code baseShare}, or 0
+     */
+    private int mentorGuildBonusXp(Player recipient, List<Username> eligible, int baseShare) {
+        if (mentorService == null || recipient == null) {
+            return 0;
+        }
+        String menteeName = recipient.mentee();
+        if (menteeName == null) {
+            return 0;
+        }
+        Username menteeUser = Username.of(menteeName);
+        if (!eligible.contains(menteeUser)) {
+            return 0;
+        }
+        return mentorService.mentorBonusXp(baseShare, recipient.menteesGraduated());
+    }
+
+    /**
      * Graduates every bonded mentee in {@code finalStates} who has reached their (also-present)
      * mentor's graduation threshold: the bond is cleared on both sides, the mentor's lifetime counter
      * ticks up, and their first graduated mentee earns the mentor title. Both players' updated states
@@ -1830,9 +1868,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 graduationSink(mentorUser, attackerName, attackerMessages, memberMsgLists);
             mentorSink.add(GameMessage.toSource("Your mentee " + menteeName.getValue()
                 + " has graduated! Your mentor bond has ended."));
-            if (outcome.firstTitleEarned()) {
-                mentorSink.add(GameMessage.toSource(
-                    "Title earned: " + MentorService.MENTOR_TITLE + "!"));
+            for (String earnedTitle : outcome.newlyEarnedTitles()) {
+                mentorSink.add(GameMessage.toSource("Title earned: " + earnedTitle + "!"));
             }
         }
     }

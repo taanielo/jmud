@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,13 @@ import io.taanielo.jmud.core.player.Player;
  */
 class MentorServiceTest {
 
-    private final MentorService service = new MentorService();
+    private static final MentorRankLadder LADDER = new MentorRankLadder(List.of(
+        new MentorRank(1, "the Mentor", 5),
+        new MentorRank(3, "the Seasoned Mentor", 10),
+        new MentorRank(5, "the Master Mentor", 15),
+        new MentorRank(10, "the Grandmaster Mentor", 20)));
+
+    private final MentorService service = new MentorService(LADDER);
 
     private static Player player(String name) {
         User user = User.of(Username.of(name), Password.hash("pw", 1));
@@ -75,24 +82,42 @@ class MentorServiceTest {
         assertFalse(outcome.mentee().hasMentorBond(), "mentee bond cleared");
         assertFalse(outcome.mentor().hasMentorBond(), "mentor bond cleared");
         assertEquals(1, outcome.mentor().menteesGraduated());
-        assertTrue(outcome.firstTitleEarned());
+        assertEquals(List.of(MentorService.MENTOR_TITLE), outcome.newlyEarnedTitles());
         assertTrue(outcome.mentor().titles().has(MentorService.MENTOR_TITLE));
     }
 
     @Test
-    void graduateIsIdempotentForTheTitleAcrossMultipleMentees() {
+    void graduateGrantsEachRankTitleExactlyOnceAsTheCounterClimbs() {
         Player mentor = player("Mentor").withMentee("A", 1L);
         MentorService.GraduationOutcome first = service.graduate(player("A").withMentor("Mentor", 1L), mentor);
-        assertTrue(first.firstTitleEarned());
+        assertEquals(List.of("the Mentor"), first.newlyEarnedTitles());
         assertEquals(1, first.mentor().menteesGraduated());
 
-        // The same mentor graduates a second mentee: counter climbs, but no second title grant.
+        // Second graduation: counter climbs to 2 but no new rank threshold is crossed (next is 3).
         Player mentorAgain = first.mentor().withMentee("B", 2L);
         MentorService.GraduationOutcome second =
             service.graduate(player("B").withMentor("Mentor", 2L), mentorAgain);
-        assertFalse(second.firstTitleEarned(), "title granted only on the first graduation");
+        assertEquals(List.of(), second.newlyEarnedTitles(), "no new rank reached at 2 graduations");
         assertEquals(2, second.mentor().menteesGraduated());
-        assertTrue(second.mentor().titles().has(MentorService.MENTOR_TITLE));
+        assertTrue(second.mentor().titles().has("the Mentor"));
+
+        // Third graduation crosses the rank-2 threshold, earning the mid-tier title exactly once.
+        Player mentorThird = second.mentor().withMentee("C", 3L);
+        MentorService.GraduationOutcome third =
+            service.graduate(player("C").withMentor("Mentor", 3L), mentorThird);
+        assertEquals(List.of("the Seasoned Mentor"), third.newlyEarnedTitles());
+        assertEquals(3, third.mentor().menteesGraduated());
+        assertTrue(third.mentor().titles().has("the Mentor"), "keeps the first-rung title");
+        assertTrue(third.mentor().titles().has("the Seasoned Mentor"));
+    }
+
+    @Test
+    void mentorBonusXpScalesWithGuildRankAndFloorsAtZeroBelowFirstRank() {
+        assertEquals(0, service.mentorBonusXp(100, 0), "no rank yet grants no perk");
+        assertEquals(5, service.mentorBonusXp(100, 1), "rank 1 grants +5%");
+        assertEquals(10, service.mentorBonusXp(100, 3), "rank 2 grants +10%");
+        assertEquals(20, service.mentorBonusXp(100, 25), "top rank caps the perk at +20%");
+        assertEquals(0, service.mentorBonusXp(0, 10), "non-positive share yields no bonus");
     }
 
     // ── proposal registry ───────────────────────────────────────────────

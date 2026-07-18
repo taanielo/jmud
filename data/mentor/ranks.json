@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "ranks": [
+    {
+      "mentees_required": 1,
+      "title": "the Mentor",
+      "mentor_xp_bonus_percent": 5
+    },
+    {
+      "mentees_required": 3,
+      "title": "the Seasoned Mentor",
+      "mentor_xp_bonus_percent": 10
+    },
+    {
+      "mentees_required": 5,
+      "title": "the Master Mentor",
+      "mentor_xp_bonus_percent": 15
+    },
+    {
+      "mentees_required": 10,
+      "title": "the Grandmaster Mentor",
+      "mentor_xp_bonus_percent": 20
+    }
+  ]
+}
