@@ -257,3 +257,4 @@ game-designer should propose closing.
 | Admin/wizard tooling | ✅ | none known |
 | Classes (kits, level gains, attributes, descriptions, HELP) | ✅ #516 #521 #522 #523 #524 #547 | balance pass ✅ #556 |
 | Exploration (locked doors, hidden exits + SEARCH) | ✅ #587 #612 #621 | discovery persists across restarts (#612); rogues get a levelled SEARCH find-chance bonus (#621) on top of the flat 50% base, capped below certainty and mirroring the PICK formula shape |
+| Achievements (milestones: level, kills, quests) | ✅ | fixed unreachable quests_50 (36 one-time quests exist, threshold was 50 → retired for reachable quests_30) · extended level ceiling past 50 to match the level-96 curve (added level_75 mythic tier #715, level_96 The Encore ceiling #727) · added a kill milestone past 1000 (kills_5000) · content test guards that no `quests_completed` threshold outgrows the shipped one-time quest count ✅ #737 |
