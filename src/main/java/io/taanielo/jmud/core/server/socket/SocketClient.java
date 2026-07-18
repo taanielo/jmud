@@ -260,6 +260,10 @@ public class SocketClient implements Client {
             // Clear any pending marriage proposal so a disconnect never leaves the other party stuck.
             context.marriageService().clearFor(session.getPlayer().getUsername());
         }
+        if (context.mentorService() != null && session.getPlayer() != null) {
+            // Clear any pending mentor proposal so a disconnect never leaves the other party stuck.
+            context.mentorService().clearFor(session.getPlayer().getUsername());
+        }
         if (context.partyService() != null && session.getPlayer() != null) {
             // Clear any auto-follow relationship so a disconnect never leaves a follower stuck.
             context.partyService().clearFollowsInvolving(session.getPlayer().getUsername());

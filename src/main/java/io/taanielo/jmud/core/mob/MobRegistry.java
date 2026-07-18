@@ -65,6 +65,7 @@ import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageRenderer;
 import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.party.LootMode;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
@@ -120,6 +121,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private BountyService bountyService;
     /** Optional party service for XP splitting and round-robin loot; may be null when disabled. */
     private PartyService partyService;
+    /** Optional mentor service for the mentee XP bonus and bond graduation; may be null when disabled. */
+    private MentorService mentorService;
     /** Optional encumbrance service used to skip full-inventory members in round-robin loot; may be null. */
     private EncumbranceService encumbranceService;
     /** Optional effect engine used to apply on-hit status effects (e.g. poison); may be null when disabled. */
@@ -880,6 +883,16 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Registers the mentor service used to apply the mentee XP bonus and drive bond graduation on
+     * shared mob kills.
+     *
+     * @param mentorService the mentor service; may be null to disable the mentor XP bonus
+     */
+    public void setMentorService(MentorService mentorService) {
+        this.mentorService = mentorService;
+    }
+
+    /**
      * Registers the encumbrance service used to decide whether a party member can hold a
      * round-robin loot item without becoming overburdened (see
      * {@link EncumbranceService#isOverburdened(Player)}). When null, members are treated as always
@@ -1540,7 +1553,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         int xpPerMember = (int) Math.floor(
             (double) mob.template().xpReward() / Math.max(1, partyRecipients.size()));
 
-        LevelUpResult levelUpResult = levelUpService.awardXp(working.get(attacker.getUsername()), xpPerMember);
+        // Mentor bond (issue #751): a mentee whose mentor is also an eligible recipient of this kill
+        // earns a flat bonus on top of their own share. It is purely additive — never subtracted from
+        // any other member — so the total pool paid to the rest of the party is unchanged.
+        int attackerMentorBonus = menteeBonusXp(working.get(attacker.getUsername()), eligible, xpPerMember);
+        LevelUpResult levelUpResult = levelUpService.awardXp(
+            working.get(attacker.getUsername()), xpPerMember + attackerMentorBonus);
         Player afterXp = levelUpResult.player();
         // Gold is split with the same divisor and "present in the room" eligibility as the XP split
         // above: the roll is made once, then divided by every party member in the room (dead members
@@ -1616,6 +1634,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
         messages.add(GameMessage.toSource(
             "You gain " + xpPerMember + " experience points."));
+        if (attackerMentorBonus > 0) {
+            messages.add(GameMessage.toSource(
+                "Your mentor's guidance grants you " + attackerMentorBonus + " bonus experience!"));
+        }
         if (levelUpResult.leveledUp()) {
             messages.add(GameMessage.toSource(
                 "You have advanced to level " + afterXp.getLevel() + "!"));
@@ -1638,17 +1660,29 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         // Kill-quest progress and faction reputation are credited to each eligible member too, exactly
         // as if they had landed the kill individually (issue #395), so grouped questing rewards the
         // whole party consistently with the XP/loot split above.
+        // Final per-member state and message lists are accumulated here rather than saved inline, so a
+        // mentor-bond graduation pass (issue #751) can fold its cross-player bond changes into the same
+        // single save/publish per member below (a fresh reload+save of a mentor would otherwise clobber
+        // the XP just applied while the persistence queue writes behind).
+        Map<Username, Player> finalStates = new LinkedHashMap<>();
+        Map<Username, List<GameMessage>> memberMsgLists = new LinkedHashMap<>();
         for (Username member : eligible) {
             if (member.equals(attacker.getUsername())) {
                 continue;
             }
-            LevelUpResult memberLvl = levelUpService.awardXp(working.get(member), xpPerMember);
+            int memberMentorBonus = menteeBonusXp(working.get(member), eligible, xpPerMember);
+            LevelUpResult memberLvl = levelUpService.awardXp(
+                working.get(member), xpPerMember + memberMentorBonus);
             Player memberAfterXp = memberLvl.player()
                 .withTotalKills(memberLvl.player().getTotalKills() + 1);
             List<GameMessage> memberMsgs = new ArrayList<>();
             memberMsgs.add(GameMessage.toSource(
                 "Your party slay the " + mob.template().name()
                     + "! You gain " + xpPerMember + " experience points."));
+            if (memberMentorBonus > 0) {
+                memberMsgs.add(GameMessage.toSource(
+                    "Your mentor's guidance grants you " + memberMentorBonus + " bonus experience!"));
+            }
             if (memberLvl.leveledUp()) {
                 memberMsgs.add(GameMessage.toSource(
                     "You have advanced to level " + memberAfterXp.getLevel() + "!"));
@@ -1694,14 +1728,128 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                         + (memberAfter < memberBefore ? " decreases." : " increases.")));
                 }
             }
-            saveOrLog(memberAfterXp);
             List<GameMessage> lootMsgs = memberMessages.get(member);
             if (lootMsgs != null) {
                 memberMsgs.addAll(lootMsgs);
             }
-            playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
+            finalStates.put(member, memberAfterXp);
+            memberMsgLists.put(member, memberMsgs);
+        }
+
+        // Mentor-bond graduation pass (issue #751): the attacker joins the pool so a bond in either
+        // direction (attacker as mentor or mentee) is handled uniformly. Runs after all XP is settled.
+        finalStates.put(attacker.getUsername(), afterXp);
+        applyMentorGraduations(finalStates, memberMsgLists, messages, attacker.getUsername());
+        afterXp = finalStates.get(attacker.getUsername());
+
+        // Single save + publish per member, now carrying any graduation bond change.
+        for (Username member : eligible) {
+            if (member.equals(attacker.getUsername())) {
+                continue;
+            }
+            Player memberFinal = finalStates.get(member);
+            saveOrLog(memberFinal);
+            playerEventBus.publish(member,
+                new GameActionResult(memberFinal, null, memberMsgLists.get(member)));
         }
         return afterXp;
+    }
+
+    /**
+     * Returns the flat bonus XP a mentee recipient earns on this kill, or 0 when the mentor bond is
+     * inactive: no mentor service, the recipient has no mentor, or their mentor is not one of the
+     * eligible in-room recipients of this same kill's split. The bonus is purely additive.
+     *
+     * @param recipient the recipient whose share might be boosted
+     * @param eligible  the alive, in-room recipients of this kill (potential mentors)
+     * @param baseShare the recipient's own computed XP share before the bonus
+     * @return the bonus XP to add to {@code baseShare}, or 0
+     */
+    private int menteeBonusXp(Player recipient, List<Username> eligible, int baseShare) {
+        if (mentorService == null || recipient == null) {
+            return 0;
+        }
+        String mentorName = recipient.mentor();
+        if (mentorName == null) {
+            return 0;
+        }
+        Username mentorUser = Username.of(mentorName);
+        if (!eligible.contains(mentorUser)) {
+            return 0;
+        }
+        return mentorService.menteeBonusXp(baseShare);
+    }
+
+    /**
+     * Graduates every bonded mentee in {@code finalStates} who has reached their (also-present)
+     * mentor's graduation threshold: the bond is cleared on both sides, the mentor's lifetime counter
+     * ticks up, and their first graduated mentee earns the mentor title. Both players' updated states
+     * are written back into {@code finalStates} and a graduation notice is routed to each — the
+     * attacker's via {@code attackerMessages}, everyone else's via {@code memberMsgLists}. Runs on the
+     * tick thread; no I/O or RNG (AGENTS.md §5).
+     *
+     * @param finalStates     mutable map of every recipient's settled state, updated in place
+     * @param memberMsgLists  mutable per-member message lists for non-attacker recipients
+     * @param attackerMessages the attacker-facing message sink
+     * @param attackerName    the killer's username, used to route their own graduation messages
+     */
+    private void applyMentorGraduations(
+        Map<Username, Player> finalStates,
+        Map<Username, List<GameMessage>> memberMsgLists,
+        List<GameMessage> attackerMessages,
+        Username attackerName) {
+        if (mentorService == null) {
+            return;
+        }
+        for (Username menteeName : List.copyOf(finalStates.keySet())) {
+            Player menteePlayer = finalStates.get(menteeName);
+            String mentorName = menteePlayer.mentor();
+            if (mentorName == null) {
+                continue;
+            }
+            Username mentorUser = Username.of(mentorName);
+            Player mentorPlayer = finalStates.get(mentorUser);
+            if (mentorPlayer == null) {
+                // Mentor is not a recipient of this kill; graduation waits until they group up again.
+                continue;
+            }
+            String mentorsMentee = mentorPlayer.mentee();
+            if (mentorsMentee == null || !Username.of(mentorsMentee).equals(menteeName)) {
+                continue;
+            }
+            if (!mentorService.hasGraduated(menteePlayer.getLevel(), mentorPlayer.getLevel())) {
+                continue;
+            }
+            MentorService.GraduationOutcome outcome = mentorService.graduate(menteePlayer, mentorPlayer);
+            finalStates.put(menteeName, outcome.mentee());
+            finalStates.put(mentorUser, outcome.mentor());
+            graduationSink(menteeName, attackerName, attackerMessages, memberMsgLists).add(
+                GameMessage.toSource("You have graduated under " + mentorUser.getValue()
+                    + "'s mentorship! Your mentor bond has ended. Go forth, adventurer."));
+            List<GameMessage> mentorSink =
+                graduationSink(mentorUser, attackerName, attackerMessages, memberMsgLists);
+            mentorSink.add(GameMessage.toSource("Your mentee " + menteeName.getValue()
+                + " has graduated! Your mentor bond has ended."));
+            if (outcome.firstTitleEarned()) {
+                mentorSink.add(GameMessage.toSource(
+                    "Title earned: " + MentorService.MENTOR_TITLE + "!"));
+            }
+        }
+    }
+
+    /**
+     * Resolves the message sink for a graduation notice: the attacker's own list when {@code who} is
+     * the killer, otherwise their per-member list (created on demand).
+     */
+    private List<GameMessage> graduationSink(
+        Username who,
+        Username attackerName,
+        List<GameMessage> attackerMessages,
+        Map<Username, List<GameMessage>> memberMsgLists) {
+        if (who.equals(attackerName)) {
+            return attackerMessages;
+        }
+        return memberMsgLists.computeIfAbsent(who, ignored -> new ArrayList<>());
     }
 
     /**

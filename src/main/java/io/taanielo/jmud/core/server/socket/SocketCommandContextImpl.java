@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -82,6 +83,7 @@ import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
+import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.notes.NoteDeletionResult;
 import io.taanielo.jmud.core.notes.NotesService;
 import io.taanielo.jmud.core.notes.PlayerNote;
@@ -2254,6 +2256,224 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return " (Married to " + online.spouse() + ")";
         }
         return "";
+    }
+
+    // ── Mentor bond (issue #751) ────────────────────────────────────────
+
+    @Override
+    public void executeMentor(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to use MENTOR.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("STATUS")) {
+            showMentorStatus(player);
+            return;
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        switch (sub) {
+            case "ACCEPT" -> acceptMentorProposal(player);
+            case "DECLINE" -> declineMentorProposal(player);
+            case "END" -> endMentorBond(player);
+            default -> proposeMentor(player, trimmed);
+        }
+    }
+
+    private MentorService mentorService() {
+        return context.mentorService();
+    }
+
+    private void showMentorStatus(Player player) {
+        if (player.hasMentorBond()) {
+            boolean isMentee = player.mentor() != null;
+            String partner = isMentee ? player.mentor() : player.mentee();
+            Username partnerName = Username.of(partner);
+            // Self-heal a dangling bond: a partner who was purged and is not online effectively ends
+            // the bond for this player (mirrors the marriage self-heal, issue #751/#649).
+            if (findOnlinePlayer(partnerName) == null
+                && context.playerRepository().loadPlayer(partnerName).isEmpty()) {
+                session.replacePlayer(player.withoutMentorBond());
+                writeLineWithPrompt("Your former " + (isMentee ? "mentor " : "mentee ") + partner
+                    + " is no longer among us; your mentor bond has ended.");
+                return;
+            }
+            String role = isMentee ? "mentee" : "mentor";
+            writeLineWithPrompt("You are the " + role + " in a mentor bond with " + partner + ". The mentee"
+                + " earns +" + MentorService.MENTEE_XP_BONUS_PERCENT
+                + "% bonus XP while grouped together. Bonded since "
+                + formatBondSince(player.mentorBondSince()) + ".");
+            return;
+        }
+        Optional<Username> proposer = mentorService().pendingProposer(player.getUsername());
+        if (proposer.isPresent()) {
+            writeLineWithPrompt(proposer.get().getValue()
+                + " has offered to mentor you. Type MENTOR ACCEPT or MENTOR DECLINE.");
+            return;
+        }
+        writeLineWithPrompt("You have no active mentor bond.");
+    }
+
+    private void proposeMentor(Player player, String targetName) {
+        if (player.hasMentorBond()) {
+            writeLineWithPrompt("You already have a mentor bond. Use MENTOR END before starting another.");
+            return;
+        }
+        Optional<Player> match = abilityTargetResolver.resolve(player, targetName);
+        if (match.isEmpty()) {
+            writeLineWithPrompt("There is no one here by that name to mentor.");
+            return;
+        }
+        Player target = match.get();
+        if (target.getUsername().equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot mentor yourself.");
+            return;
+        }
+        if (target.hasMentorBond()) {
+            writeLineWithPrompt(target.getUsername().getValue() + " already has a mentor bond.");
+            return;
+        }
+        MentorService svc = mentorService();
+        if (!svc.meetsLevelGap(player.getLevel(), target.getLevel())) {
+            writeLineWithPrompt("You must be at least " + MentorService.MIN_LEVEL_GAP
+                + " levels above " + target.getUsername().getValue() + " to mentor them.");
+            return;
+        }
+        if (!svc.withinMenteeCeiling(target.getLevel())) {
+            writeLineWithPrompt(target.getUsername().getValue()
+                + " is no longer a newcomer (must be below level "
+                + MentorService.MENTEE_LEVEL_CEILING + " to be mentored).");
+            return;
+        }
+        if (svc.hasPendingProposal(target.getUsername())) {
+            writeLineWithPrompt(target.getUsername().getValue()
+                + " already has a pending proposal. Let them answer it first.");
+            return;
+        }
+        svc.propose(player.getUsername(), target.getUsername());
+        sendToUsername(target.getUsername(), player.getUsername().getValue()
+            + " offers to become your mentor! Type MENTOR ACCEPT to say yes, or MENTOR DECLINE."
+            + " The offer lapses in 60 seconds.");
+        writeLineWithPrompt("You offer to mentor " + target.getUsername().getValue()
+            + ". They have 60 seconds to answer.");
+    }
+
+    private void acceptMentorProposal(Player player) {
+        Optional<Username> proposerMatch = mentorService().pendingProposer(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending mentor proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        MentorService svc = mentorService();
+        if (player.hasMentorBond()) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt("You already have a mentor bond.");
+            return;
+        }
+        Player proposer = findOnlinePlayer(proposerName);
+        if (proposer == null) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue() + " is no longer online; the offer is void.");
+            return;
+        }
+        if (proposer.hasMentorBond()) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue()
+                + " has taken on another mentee in the meantime.");
+            return;
+        }
+        // Re-validate the eligibility gates in case levels changed since the offer was made.
+        if (!svc.meetsLevelGap(proposer.getLevel(), player.getLevel())
+            || !svc.withinMenteeCeiling(player.getLevel())) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt("You are no longer eligible to be " + proposerName.getValue()
+                + "'s mentee.");
+            return;
+        }
+        svc.resolve(player.getUsername());
+        long now = System.currentTimeMillis();
+        Player updatedMentee = player.withMentor(proposerName.getValue(), now);
+        Player updatedMentor = proposer.withMentee(player.getUsername().getValue(), now);
+        session.replacePlayer(updatedMentee);
+        updateTarget(updatedMentor);
+        sendToUsername(proposerName, player.getUsername().getValue()
+            + " accepts your mentorship. You are now their mentor!");
+        writeLineWithPrompt("You accept " + proposerName.getValue()
+            + "'s mentorship. They are now your mentor — you earn +"
+            + MentorService.MENTEE_XP_BONUS_PERCENT + "% bonus XP while grouped together.");
+    }
+
+    private void declineMentorProposal(Player player) {
+        Optional<Username> proposerMatch = mentorService().resolve(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending mentor proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        sendToUsername(proposerName, player.getUsername().getValue()
+            + " declined your offer of mentorship.");
+        writeLineWithPrompt("You decline " + proposerName.getValue() + "'s offer of mentorship.");
+    }
+
+    private void endMentorBond(Player player) {
+        if (!player.hasMentorBond()) {
+            writeLineWithPrompt("You have no active mentor bond.");
+            return;
+        }
+        boolean wasMentee = player.mentor() != null;
+        String partnerName = wasMentee ? player.mentor() : player.mentee();
+        Username partnerUsername = Username.of(partnerName);
+        Username self = player.getUsername();
+        session.replacePlayer(player.withoutMentorBond());
+        Player onlinePartner = findOnlinePlayer(partnerUsername);
+        if (onlinePartner != null) {
+            if (mentorBondPointsAt(onlinePartner, self)) {
+                updateTarget(onlinePartner.withoutMentorBond());
+            }
+            sendToUsername(partnerUsername, self.getValue() + " has ended your mentor bond.");
+        } else {
+            notifyOfflinePartnerOfBondEnd(partnerUsername, self);
+        }
+        writeLineWithPrompt("You end your mentor bond with " + partnerName + ".");
+    }
+
+    /** Returns whether {@code partner}'s recorded mentor bond points back at {@code self}. */
+    private static boolean mentorBondPointsAt(Player partner, Username self) {
+        String asMentor = partner.mentor();
+        String asMentee = partner.mentee();
+        return (asMentor != null && Username.of(asMentor).equals(self))
+            || (asMentee != null && Username.of(asMentee).equals(self));
+    }
+
+    /**
+     * Clears an offline partner's persisted mentor bond and mails them so they learn of the end on
+     * next login. Best-effort: if their record no longer exists, or no longer points back at the
+     * initiator, there is nothing to clear.
+     */
+    private void notifyOfflinePartnerOfBondEnd(Username partnerUsername, Username initiator) {
+        Player offlinePartner = context.playerRepository().loadPlayer(partnerUsername).orElse(null);
+        if (offlinePartner == null || !mentorBondPointsAt(offlinePartner, initiator)) {
+            return;
+        }
+        Player cleared = offlinePartner.withoutMentorBond();
+        long currentTick = context.tickClock().currentTick();
+        MailResult mail = playerMailService.send(cleared, initiator.getValue(), currentTick,
+            initiator.getValue() + " has ended your mentor bond.");
+        saveOrWarn(mail.success() && mail.updatedPlayer() != null ? mail.updatedPlayer() : cleared);
+    }
+
+    /** Formats a mentor-bond timestamp (epoch millis) for MENTOR STATUS, or "unknown" when unset. */
+    private static String formatBondSince(long epochMillis) {
+        if (epochMillis <= 0L) {
+            return "unknown";
+        }
+        return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm 'UTC'")
+            .withZone(ZoneId.of("UTC"))
+            .format(Instant.ofEpochMilli(epochMillis));
     }
 
     @Override

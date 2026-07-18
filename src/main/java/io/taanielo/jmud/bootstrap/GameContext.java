@@ -118,6 +118,7 @@ import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.messaging.TellService;
+import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.mob.MobRegistry;
 import io.taanielo.jmud.core.mob.WorldBossAnnouncer;
 import io.taanielo.jmud.core.mob.WorldEventScheduler;
@@ -284,6 +285,7 @@ public record GameContext(
     AchievementService achievementService,
     DuelService duelService,
     MarriageService marriageService,
+    MentorService mentorService,
     NotesService notesService,
     PlayerSessionRegistry playerSessionRegistry,
     AreaMapService areaMapService,
@@ -491,6 +493,9 @@ public record GameContext(
         // announcer can resolve a killer's affiliation, and so the initial world-load spawn
         // announcement fires through a fully-wired registry (AGENTS.md §5 — all on the tick thread).
         PartyService partyService = new PartyService();
+        // Mentor bonds (issue #751): the transient proposal registry plus the pure XP-bonus/graduation
+        // rules. Created before the mob registry so the shared kill path can apply the mentee bonus.
+        MentorService mentorService = new MentorService();
         // The guild repository is shared: GuildService owns the authoritative in-memory copy, while the
         // read-only RANK GUILDS command re-reads every persisted guild off the reader thread (like RANK
         // over players), so both are wired from the one repository instance (AGENTS.md §3.3, §5).
@@ -510,6 +515,7 @@ public record GameContext(
             mobRegistry.setReputationService(reputationService);
             mobRegistry.setAchievementService(achievementService);
             mobRegistry.setPartyService(partyService);
+            mobRegistry.setMentorService(mentorService);
             mobRegistry.setEncumbranceService(encumbranceService);
             mobRegistry.setCombatAttributeBonusResolver(combatAttributeBonusResolver);
             mobRegistry.setEquipmentResistanceResolver(equipmentResistanceResolver);
@@ -621,6 +627,8 @@ public record GameContext(
         // the tick thread (AGENTS.md §5).
         MarriageService marriageService = new MarriageService();
         tickRegistry.register(marriageService);
+        // Mentor-bond proposals age out each tick just like marriage proposals (issue #751).
+        tickRegistry.register(mentorService);
 
         // The Arena drafts random online players into announced consensual duels on a fixed tick
         // interval. It reads the live client snapshot only to enumerate online usernames; all state
@@ -731,6 +739,7 @@ public record GameContext(
             achievementService,
             duelService,
             marriageService,
+            mentorService,
             notesService,
             playerSessionRegistry,
             areaMapService,

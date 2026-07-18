@@ -774,6 +774,21 @@ public interface SocketCommandContext extends Client {
     default void spouseTell(String message) {}
 
     /**
+     * Executes a MENTOR sub-command: a player name to propose, {@code ACCEPT}, {@code DECLINE},
+     * {@code END}, or empty/{@code STATUS} to report current state.
+     *
+     * <p>Manages the opt-in mentor bond (see issue #751) in which a veteran player boosts a partied
+     * newcomer's XP. Proposals are held in the transient mentor registry; the accepted bond is
+     * persisted on both {@link Player} records. All validation and state changes run here on the tick
+     * thread.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ACCEPT"} or {@code "Alice"})
+     */
+    default void executeMentor(String args) {}
+
+    /**
      * Returns the {@code WHO}/roster marital-status suffix for the given online player, e.g.
      * {@code " (Married to Alice)"}, or an empty string when they are unmarried. Used by {@code WHO}
      * to annotate each name.
