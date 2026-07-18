@@ -120,6 +120,7 @@ import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
 import io.taanielo.jmud.core.social.MarriageService;
+import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.trade.TradeExecutionService;
 import io.taanielo.jmud.core.trade.TradeService;
 import io.taanielo.jmud.core.trade.TradeSession;
@@ -2903,6 +2904,33 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 : "none";
             connection.writeLine(String.format("%-20s %-6s %-12s %s",
                 ability.name(), ability.type().name(), costStr, cooldownStr));
+        }
+        sendPrompt();
+    }
+
+    @Override
+    public void sendCooldowns() {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to view your cooldowns.");
+            return;
+        }
+        List<AbilityId> learned = player.getLearnedAbilities();
+        if (learned.isEmpty()) {
+            writeLineWithPrompt("You have not learned any abilities yet.");
+            return;
+        }
+        CooldownSystem cooldowns = session.getAbilityCooldowns();
+        connection.writeLine(String.format("%-20s %-6s %s", "Ability", "Type", "Status"));
+        connection.writeLine("-".repeat(40));
+        for (AbilityId abilityId : learned) {
+            Ability ability = abilityRegistry.findById(abilityId).orElse(null);
+            if (ability == null) {
+                continue;
+            }
+            String status = CooldownStatusFormatter.format(cooldowns, abilityId);
+            connection.writeLine(String.format("%-20s %-6s %s",
+                ability.name(), ability.type().name(), status));
         }
         sendPrompt();
     }
