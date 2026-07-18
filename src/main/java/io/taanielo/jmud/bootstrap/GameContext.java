@@ -2,6 +2,7 @@ package io.taanielo.jmud.bootstrap;
 
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -199,6 +200,7 @@ import io.taanielo.jmud.core.world.area.AreaConsistencyChecker;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
 import io.taanielo.jmud.core.world.area.AreaWaypointService;
+import io.taanielo.jmud.core.world.area.CorpseLocatorService;
 import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
@@ -284,6 +286,7 @@ public record GameContext(
     AreaMapService areaMapService,
     AreaWaypointService areaWaypointService,
     WayfindService wayfindService,
+    CorpseLocatorService corpseLocatorService,
     AreaConsistencyChecker areaConsistencyChecker,
     ContentCompletenessChecker contentCompletenessChecker,
     ShutdownHandle shutdownHandle
@@ -423,6 +426,14 @@ public record GameContext(
             ferryRepository,
             playerLocationService::getVisibleExits,
             roomId -> roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue()));
+
+        // CORPSE: routes a fallen player back to their remains, reusing WAYFIND's ferry-aware routing
+        // and reading the transient corpse state RoomItemService already tracks (AGENTS.md §5).
+        CorpseLocatorService corpseLocatorService = new CorpseLocatorService(
+            wayfindService,
+            roomId -> roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue()),
+            DeathSettings::corpseDecaySeconds,
+            Instant::now);
 
         EncumbranceService encumbranceService = new EncumbranceService(
             raceRepository, classRepository, new EquipmentCarryResolver(itemRepository));
@@ -712,6 +723,7 @@ public record GameContext(
             areaMapService,
             areaWaypointService,
             wayfindService,
+            corpseLocatorService,
             areaConsistencyChecker,
             contentCompletenessChecker,
             shutdownHandle

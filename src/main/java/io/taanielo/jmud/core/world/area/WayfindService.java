@@ -155,9 +155,31 @@ public class WayfindService {
         RoomId waypoint = destination.roomIds().get(0);
         Optional<List<RouteStep>> route = findBestRoute(currentRoom, waypoint);
         if (route.isPresent()) {
-            return List.of(renderRoute(destination, route.get()));
+            return List.of(renderRoute(destination.name(), route.get()));
         }
         return List.of("No known route to " + destination.name() + ".");
+    }
+
+    /**
+     * Renders ferry-aware turn-by-turn directions between two arbitrary rooms, phrased for a named
+     * destination. Shared by the {@code CORPSE} command so a fallen player can be routed back to
+     * their remains with the exact same walking + single-ferry-leg routing {@code WAYFIND} uses.
+     *
+     * <p>The returned sentence has the same shape as a {@code WAYFIND} route line
+     * ("{@code <name> is N step(s) away: ...}"), or the "you are already at" line when the two rooms
+     * coincide. An empty result means no walking-or-ferry route connects the two rooms. This is a
+     * pure in-memory read with no mutation, safe on the tick thread (AGENTS.md §5).
+     *
+     * @param destinationName the display name to use for the destination in the rendered sentence
+     * @param from            the room to route from (the player's current room)
+     * @param to              the destination room
+     * @return the rendered directions sentence, or empty when no route exists
+     */
+    public Optional<String> describeRoute(String destinationName, RoomId from, RoomId to) {
+        Objects.requireNonNull(destinationName, "Destination name is required");
+        Objects.requireNonNull(from, "Origin room is required");
+        Objects.requireNonNull(to, "Destination room is required");
+        return findBestRoute(from, to).map(steps -> renderRoute(destinationName, steps));
     }
 
     /**
@@ -234,9 +256,9 @@ public class WayfindService {
      * before; a ferry leg is rendered as a distinct, plainly-worded step introduced (and followed)
      * by "then" so it can never be mistaken for a compass direction.
      */
-    private static String renderRoute(Area destination, List<RouteStep> steps) {
+    private static String renderRoute(String destinationName, List<RouteStep> steps) {
         if (steps.isEmpty()) {
-            return "You are already at the entrance to " + destination.name() + ".";
+            return "You are already at the entrance to " + destinationName + ".";
         }
         long walkCount = steps.stream().filter(step -> step instanceof WalkStep).count();
         StringBuilder joined = new StringBuilder();
@@ -253,7 +275,7 @@ public class WayfindService {
             joined.append(step.label());
             previousWasFerry = isFerry;
         }
-        return destination.name() + " is " + walkCount + " step(s) away: " + joined + ".";
+        return destinationName + " is " + walkCount + " step(s) away: " + joined + ".";
     }
 
     /**

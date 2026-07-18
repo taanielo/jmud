@@ -77,6 +77,7 @@ import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaWaypointService;
+import io.taanielo.jmud.core.world.area.CorpseLocatorService;
 import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -192,6 +193,13 @@ public class GameActionService {
      * get their bearings.
      */
     private @Nullable WayfindService wayfindService;
+    /**
+     * Optional corpse-locator service, used by {@link #corpse} to report where a fallen player's
+     * remains lie and route them back. {@code null} until the composition root wires it via
+     * {@link #setCorpseLocatorService(CorpseLocatorService)}; while absent, CORPSE reports that the
+     * player cannot sense their corpse.
+     */
+    private @Nullable CorpseLocatorService corpseLocatorService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -574,6 +582,48 @@ public class GameActionService {
             return GameActionResult.error("You are nowhere; there is nothing to route from.");
         }
         List<GameMessage> messages = wayfindService.wayfind(currentRoom, query).stream()
+            .map(GameMessage::toSource)
+            .toList();
+        return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Injects the corpse-locator service used by {@link #corpse} to report a fallen player's remains
+     * and route them back.
+     *
+     * <p>Called once by the composition root. When absent, CORPSE reports that the player cannot sense
+     * their corpse.
+     *
+     * @param corpseLocatorService the shared corpse-locator service
+     */
+    public void setCorpseLocatorService(CorpseLocatorService corpseLocatorService) {
+        this.corpseLocatorService = Objects.requireNonNull(corpseLocatorService, "Corpse locator service is required");
+    }
+
+    /**
+     * Handles the {@code CORPSE} command: tells the player where their tracked corpse lies, how much
+     * gold it holds, how long remains before it decays, and turn-by-turn directions back to it — or
+     * that they have no corpse at all.
+     *
+     * <p>This is a pure read of world and location state (AGENTS.md §5): it never moves the player,
+     * consumes no moves or cooldown, and never mutates game state. The routing and formatting live in
+     * {@link CorpseLocatorService}; this method only resolves the player's current room and their
+     * tracked corpse and wraps the resulting lines as source-directed messages.
+     *
+     * @param source the player asking about their corpse; must not be null
+     * @return a result carrying the corpse report, never an exception
+     */
+    public GameActionResult corpse(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        if (corpseLocatorService == null) {
+            return GameActionResult.error("You cannot sense your corpse right now.");
+        }
+        RoomId currentRoom = roomService.findPlayerLocation(source.getUsername()).orElse(null);
+        if (currentRoom == null) {
+            return GameActionResult.error("You are nowhere; there is nothing to route from.");
+        }
+        Corpse corpse = roomService.findCorpseByOwner(source.getUsername().getValue()).orElse(null);
+        List<GameMessage> messages = corpseLocatorService.locate(currentRoom, corpse).stream()
             .map(GameMessage::toSource)
             .toList();
         return new GameActionResult(null, null, messages);
