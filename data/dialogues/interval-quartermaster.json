@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "interval-quartermaster-welcome",
+  "npc_id": "interval-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "You are the first heartbeat this place has borrowed in an age, and I have waited the whole of it to be of use. There is nothing beyond the gap — I am the last rest before the measure ends. Speak, and I will answer before the beat falls.",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "What do you carry?", "target": "wares" },
+        { "text": "Not yet.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "Everything frays in the pause between one pulse and the next — steel, cloth, the will to go on. Set your gear on my forge and I will mend it, reforge it whole, or break it down for what still keeps time.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "All that a body needs to hold its rhythm at the edge of the world: healing, mana, cure, vigor, food and light. LIST it and take your fill. There is no stall past me, and no beat after.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "My thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Keep your rhythm. The gap counts every beat you miss.",
+      "responses": []
+    }
+  }
+}
