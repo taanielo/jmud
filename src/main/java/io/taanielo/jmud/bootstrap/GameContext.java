@@ -102,6 +102,7 @@ import io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepositor
 import io.taanielo.jmud.core.guild.GuildQuestPool;
 import io.taanielo.jmud.core.guild.GuildQuestRotationTicker;
 import io.taanielo.jmud.core.guild.GuildQuestService;
+import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildQuestPoolRepository;
@@ -461,7 +462,11 @@ public record GameContext(
         // announcer can resolve a killer's affiliation, and so the initial world-load spawn
         // announcement fires through a fully-wired registry (AGENTS.md §5 — all on the tick thread).
         PartyService partyService = new PartyService();
-        GuildService guildService = createGuildService();
+        // The guild repository is shared: GuildService owns the authoritative in-memory copy, while the
+        // read-only RANK GUILDS command re-reads every persisted guild off the reader thread (like RANK
+        // over players), so both are wired from the one repository instance (AGENTS.md §3.3, §5).
+        GuildRepository guildRepository = createGuildRepository();
+        GuildService guildService = createGuildService(guildRepository);
         // Ephemeral tracker of the last private-message sender per player, backing REPLY (issue #462).
         TellService tellService = new TellService();
 
@@ -524,7 +529,8 @@ public record GameContext(
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, characterAttributesResolver,
             classRepository, abilityRegistry,
-            playerRepository, roomService, tellService, messageBroadcaster, reputationService, weatherEngine,
+            playerRepository, guildRepository, roomService, tellService, messageBroadcaster, reputationService,
+            weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);
 
@@ -1109,9 +1115,17 @@ public record GameContext(
         }
     }
 
-    private static GuildService createGuildService() {
+    private static GuildRepository createGuildRepository() {
         try {
-            return new GuildService(new JsonGuildRepository());
+            return new JsonGuildRepository();
+        } catch (GuildRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize guild repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static GuildService createGuildService(GuildRepository guildRepository) {
+        try {
+            return new GuildService(guildRepository);
         } catch (GuildRepositoryException e) {
             throw new IllegalStateException("Failed to initialize guild service: " + e.getMessage(), e);
         }

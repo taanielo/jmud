@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.guild.Guild;
+import io.taanielo.jmud.core.guild.GuildId;
+import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -27,14 +30,16 @@ class RankCommandTest {
 
     @Test
     void matchesRankToken() {
-        RankCommand cmd = new RankCommand(new SocketCommandRegistry(), new StubPlayerRepository(List.of()));
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of()), new StubGuildRepository(List.of()));
         assertTrue(cmd.match("RANK").isPresent());
         assertTrue(cmd.match("rank").isPresent());
     }
 
     @Test
     void doesNotMatchOtherTokens() {
-        RankCommand cmd = new RankCommand(new SocketCommandRegistry(), new StubPlayerRepository(List.of()));
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of()), new StubGuildRepository(List.of()));
         assertFalse(cmd.match("WHO").isPresent());
         assertFalse(cmd.match("").isPresent());
     }
@@ -43,7 +48,9 @@ class RankCommandTest {
     void listsAllPersistedPlayersSortedByKills() {
         Player alice = player("alice", 10);
         Player bob = player("bob", 25);
-        RankCommand cmd = new RankCommand(new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice, bob)));
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice, bob)),
+            new StubGuildRepository(List.of()));
         CapturingContext context = new CapturingContext(alice, true);
 
         cmd.match("RANK").orElseThrow().execute(context);
@@ -59,7 +66,8 @@ class RankCommandTest {
         Player bob = duelist("bob", 9, 2);
         Player pacifist = player("pacifist", 5);
         RankCommand cmd = new RankCommand(
-            new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice, bob, pacifist)));
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice, bob, pacifist)),
+            new StubGuildRepository(List.of()));
         CapturingContext context = new CapturingContext(alice, true);
 
         cmd.match("RANK DUELS").orElseThrow().execute(context);
@@ -72,8 +80,43 @@ class RankCommandTest {
     }
 
     @Test
+    void rankGuildsListsGuildsByLevelThenLifetimeGold() {
+        Player alice = player("alice", 0);
+        Guild small = guild("Fledglings", "alice", 0);
+        Guild mighty = guild("Titans", "bob", 5_000);
+        Guild rising = guild("Ascendants", "carol", 2_000);
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice)),
+            new StubGuildRepository(List.of(small, mighty, rising)));
+        CapturingContext context = new CapturingContext(alice, true);
+
+        cmd.match("RANK GUILDS").orElseThrow().execute(context);
+
+        assertTrue(context.lines.get(0).equals("Guild ranking:"));
+        assertTrue(context.lines.get(1).contains("Titans"));
+        assertTrue(context.lines.get(2).contains("Ascendants"));
+        assertTrue(context.lines.get(3).contains("Fledglings"));
+        assertTrue(context.lines.stream().anyMatch(l -> l.equals("3 guilds ranked.")));
+    }
+
+    @Test
+    void rankGuildsWithNoGuildsShowsFriendlyMessage() {
+        Player alice = player("alice", 0);
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of(alice)),
+            new StubGuildRepository(List.of()));
+        CapturingContext context = new CapturingContext(alice, true);
+
+        cmd.match("RANK GUILDS").orElseThrow().execute(context);
+
+        assertTrue(context.lines.contains("No guilds have been founded yet."));
+        assertFalse(context.lines.stream().anyMatch(l -> l.equals("Guild ranking:")));
+    }
+
+    @Test
     void unauthenticatedPlayerGetsErrorMessage() {
-        RankCommand cmd = new RankCommand(new SocketCommandRegistry(), new StubPlayerRepository(List.of()));
+        RankCommand cmd = new RankCommand(
+            new SocketCommandRegistry(), new StubPlayerRepository(List.of()), new StubGuildRepository(List.of()));
         CapturingContext context = new CapturingContext(null, false);
 
         cmd.match("RANK").orElseThrow().execute(context);
@@ -90,6 +133,11 @@ class RankCommandTest {
     private static Player duelist(String username, int wins, int losses) {
         User user = User.of(Username.of(username), Password.hash("pw", 1));
         return Player.of(user, "%hp> ").withDuelWins(wins).withDuelLosses(losses);
+    }
+
+    private static Guild guild(String name, String leader, int lifetimeGold) {
+        Guild founded = Guild.found(GuildId.newId(), name, Username.of(leader));
+        return lifetimeGold > 0 ? founded.depositTreasury(lifetimeGold) : founded;
     }
 
     private static class StubPlayerRepository implements PlayerRepository {
@@ -111,6 +159,27 @@ class RankCommandTest {
         @Override
         public List<Player> findAll() {
             return players;
+        }
+    }
+
+    private static class StubGuildRepository implements GuildRepository {
+        private final List<Guild> guilds;
+
+        StubGuildRepository(List<Guild> guilds) {
+            this.guilds = guilds;
+        }
+
+        @Override
+        public List<Guild> loadAll() {
+            return guilds;
+        }
+
+        @Override
+        public void save(Guild guild) {
+        }
+
+        @Override
+        public void delete(GuildId guildId) {
         }
     }
 
