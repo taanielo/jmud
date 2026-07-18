@@ -1,0 +1,45 @@
+package io.taanielo.jmud.core.mentor;
+
+import java.util.Objects;
+
+import io.taanielo.jmud.core.authentication.Username;
+
+/**
+ * A pending mentor-bond proposal awaiting the target (mentee) player's response, held transiently by
+ * {@link MentorService}.
+ *
+ * <p>The proposal is keyed by the target (the proposed-to newcomer) inside the service and remembers
+ * who issued it together with a countdown, in ticks, until it silently expires. Instances are
+ * immutable value objects; {@link #tickDown()} returns a fresh copy with the window reduced by one.
+ *
+ * @param proposer       the higher-level player who offered to mentor
+ * @param ticksRemaining ticks left in the acceptance window before the proposal lapses
+ */
+public record MentorProposal(Username proposer, int ticksRemaining) {
+
+    /**
+     * Creates a proposal, validating the proposer and clamping the window to at least zero.
+     */
+    public MentorProposal {
+        Objects.requireNonNull(proposer, "Proposer is required");
+        ticksRemaining = Math.max(0, ticksRemaining);
+    }
+
+    /**
+     * Returns a copy of this proposal with its acceptance window reduced by one tick.
+     *
+     * @return the aged proposal
+     */
+    public MentorProposal tickDown() {
+        return new MentorProposal(proposer, Math.max(0, ticksRemaining - 1));
+    }
+
+    /**
+     * Returns {@code true} when the acceptance window has fully elapsed.
+     *
+     * @return {@code true} when this proposal has timed out
+     */
+    public boolean expired() {
+        return ticksRemaining <= 0;
+    }
+}

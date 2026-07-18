@@ -105,6 +105,25 @@ class AchievementContentTest {
     }
 
     @Test
+    void mentorTitleDoesNotCollideWithAnyAchievementOrQuestTitle() throws Exception {
+        // The MENTOR bond (issue #751) grants a programmatic title on a mentor's first graduated
+        // mentee; it must stay unique against every data-authored achievement and quest title_reward.
+        String mentorTitle =
+            io.taanielo.jmud.core.mentor.MentorService.MENTOR_TITLE.toLowerCase(Locale.ROOT);
+
+        Set<String> achievementTitles = new HashSet<>();
+        for (Achievement achievement : shippedAchievements()) {
+            if (achievement.titleReward() != null) {
+                achievementTitles.add(achievement.titleReward().toLowerCase(Locale.ROOT));
+            }
+        }
+        assertFalse(achievementTitles.contains(mentorTitle),
+            "Mentor title collides with an achievement title_reward: " + mentorTitle);
+        assertFalse(questTitleRewards().contains(mentorTitle),
+            "Mentor title collides with a quest title_reward: " + mentorTitle);
+    }
+
+    @Test
     void everyShippedAchievementGrantsATitle() throws Exception {
         List<Achievement> missing = shippedAchievements().stream()
             .filter(a -> a.titleReward() == null)

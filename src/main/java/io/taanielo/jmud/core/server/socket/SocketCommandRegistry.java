@@ -151,6 +151,7 @@ public class SocketCommandRegistry {
         new DuelCommand(registry);
         new TradeCommand(registry);
         new MarryCommand(registry);
+        new MentorCommand(registry);
         new SpouseTellCommand(registry);
         new AcceptCommand(registry);
         new FleeCommand(registry);

@@ -193,7 +193,7 @@ public class Player implements EffectTarget, Combatant {
     ) {
         this(user, level, experience, vitals, effects, promptFormat, ansiEnabled, learnedAbilities,
             race, classId, dead, inventory, equipment, gold, activeQuest, totalKills, practicePoints,
-            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            bankedGold, titles, aliases, mailbox, sustenance, tamedPets, reputation, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @JsonCreator
@@ -243,10 +243,16 @@ public class Player implements EffectTarget, Combatant {
         @JsonProperty("spouse") String spouse,
         @JsonProperty("boundRoomId") String boundRoomId,
         @JsonProperty("autoAssistEnabled") Boolean autoAssistEnabled,
-        @JsonProperty("auctionWatches") List<String> auctionWatches
+        @JsonProperty("auctionWatches") List<String> auctionWatches,
+        @JsonProperty("mentor") String mentor,
+        @JsonProperty("mentee") String mentee,
+        @JsonProperty("mentorBondSince") Long mentorBondSince,
+        @JsonProperty("menteesGraduated") Integer menteesGraduated
     ) {
         this(
-            new PlayerIdentity(user, level, experience, race, classId, description, spouse, boundRoomId),
+            new PlayerIdentity(user, level, experience, race, classId, description, spouse, boundRoomId,
+                mentor, mentee, mentorBondSince == null ? 0L : mentorBondSince,
+                menteesGraduated == null ? 0 : menteesGraduated),
             new PlayerCombatState(vitals, effects, dead),
             new PlayerPreferences(promptFormat, ansiEnabled, autoLootEnabled, briefModeEnabled, autoAssistEnabled),
             new PlayerAbilities(learnedAbilities),
@@ -441,6 +447,49 @@ public class Player implements EffectTarget, Combatant {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public String getBoundRoomId() {
         return identity.boundRoomId();
+    }
+
+    /**
+     * Returns this player's mentor's username (see the MENTOR command) for JSON serialisation when
+     * they are a mentee, or {@code null} otherwise (the field is then omitted from save files, so
+     * existing saves deserialise unaffected as "no bond").
+     */
+    @JsonProperty("mentor")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getMentor() {
+        return identity.mentor();
+    }
+
+    /**
+     * Returns this player's mentee's username (see the MENTOR command) for JSON serialisation when
+     * they are a mentor, or {@code null} otherwise (the field is then omitted from save files).
+     */
+    @JsonProperty("mentee")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getMentee() {
+        return identity.mentee();
+    }
+
+    /**
+     * Returns the epoch-millis timestamp the current mentor bond formed for JSON serialisation, or
+     * {@code null} when there is no bond (the field is then omitted from save files).
+     */
+    @JsonProperty("mentorBondSince")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public Long getMentorBondSince() {
+        long since = identity.mentorBondSince();
+        return since == 0L ? null : since;
+    }
+
+    /**
+     * Returns the lifetime graduated-mentee count for JSON serialisation, or {@code null} when it is
+     * zero (the field is then omitted from save files, so existing saves default to 0).
+     */
+    @JsonProperty("menteesGraduated")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public Integer getMenteesGraduated() {
+        int count = identity.menteesGraduated();
+        return count == 0 ? null : count;
     }
 
     @JsonProperty("dead")
@@ -1182,6 +1231,87 @@ public class Player implements EffectTarget, Combatant {
     }
 
     /**
+     * Returns the username of this player's mentor (see the MENTOR command) when this player is the
+     * mentee of an active bond, or {@code null} when they have no mentor.
+     */
+    @JsonIgnore
+    public String mentor() {
+        return identity.mentor();
+    }
+
+    /**
+     * Returns the username of this player's mentee (see the MENTOR command) when this player is the
+     * mentor of an active bond, or {@code null} when they have no mentee.
+     */
+    @JsonIgnore
+    public String mentee() {
+        return identity.mentee();
+    }
+
+    /**
+     * Returns {@code true} when this player is either side of an active mentor bond.
+     */
+    @JsonIgnore
+    public boolean hasMentorBond() {
+        return identity.mentor() != null || identity.mentee() != null;
+    }
+
+    /**
+     * Returns the epoch-millis timestamp the current mentor bond was formed, or {@code 0} when there
+     * is no active bond.
+     */
+    @JsonIgnore
+    public long mentorBondSince() {
+        return identity.mentorBondSince();
+    }
+
+    /**
+     * Returns the lifetime count of mentees this player has guided to graduation (see the MENTOR
+     * command); {@code 0} for a player who has never mentored anyone to graduation.
+     */
+    @JsonIgnore
+    public int menteesGraduated() {
+        return identity.menteesGraduated();
+    }
+
+    /**
+     * Returns a copy of this player bonded as the mentee of the given mentor.
+     *
+     * @param mentorName the mentor's username display value
+     * @param since      the epoch-millis timestamp the bond formed
+     */
+    public Player withMentor(String mentorName, long since) {
+        return withIdentity(identity.withMentorBond(mentorName, null, since));
+    }
+
+    /**
+     * Returns a copy of this player bonded as the mentor of the given mentee.
+     *
+     * @param menteeName the mentee's username display value
+     * @param since      the epoch-millis timestamp the bond formed
+     */
+    public Player withMentee(String menteeName, long since) {
+        return withIdentity(identity.withMentorBond(null, menteeName, since));
+    }
+
+    /**
+     * Returns a copy of this player with any active mentor bond cleared (the lifetime graduation
+     * counter is preserved).
+     */
+    public Player withoutMentorBond() {
+        return withIdentity(identity.withMentorBond(null, null, 0L));
+    }
+
+    /**
+     * Returns a copy of this player with the lifetime graduated-mentee counter replaced.
+     *
+     * @param nextCount the new lifetime graduation count; negatives clamp to 0
+     */
+    public Player withMenteesGraduated(int nextCount) {
+        return withIdentity(identity.withMenteesGraduated(nextCount));
+    }
+
+    /**
      * Returns a copy of this player with the resting flag set to the given value.
      *
      * <p>The resting state is in-memory only and is never persisted.
@@ -1337,7 +1467,11 @@ public class Player implements EffectTarget, Combatant {
             identity.spouse(),
             identity.boundRoomId(),
             preferences.autoAssistEnabled(),
-            getAuctionWatches()
+            getAuctionWatches(),
+            identity.mentor(),
+            identity.mentee(),
+            identity.mentorBondSince(),
+            identity.menteesGraduated()
         );
     }
 
