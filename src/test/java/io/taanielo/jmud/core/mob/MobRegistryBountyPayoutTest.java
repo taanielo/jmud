@@ -96,7 +96,7 @@ class MobRegistryBountyPayoutTest {
             templateRepo, itemRepo, attackRepo, roomService, playerRepo, queue, bus,
             MobRegistryTestSupport.random());
 
-        bountyService = new BountyService(bountyRepo, templateRepo, broadcaster);
+        bountyService = new BountyService(bountyRepo, templateRepo, broadcaster, 5);
         registry.setBountyService(bountyService);
 
         if (partied) {

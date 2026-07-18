@@ -49,11 +49,15 @@ public class BountyCommand extends RegistrableCommand {
                  BOUNTY POST <mob> <gold>  — escrow gold against a mob type; the gold is taken from you
                                              now and paid to whoever next kills that mob type anywhere.
                                              Posting on a type someone else already backs pools the reward.
-                 BOUNTY LIST               — list every open bounty: mob, total reward, backers, and age.
+                 BOUNTY LIST               — list every open bounty: mob, total reward, backers, age, and
+                                             how soon each one lapses.
                  BOUNTY CANCEL <mob>       — pull your own unclaimed bounty on a mob type; refunded in full.
                  When a bountied mob dies, the pooled reward pays out to the killer (split across their
                  party like a gold drop) and is announced server-wide. You cannot bounty a harmless
-                 creature, and you can only cancel a stake before it is paid out.\
+                 creature, and you can only cancel a stake before it is paid out.
+                 A bounty left unclaimed for a while expires on its own and the full stake is refunded to
+                 you, with a note sent to your mailbox. You may hold only a limited number of open
+                 bounties at once — use BOUNTY CANCEL to free one up if you hit the cap.\
                """;
     }
 

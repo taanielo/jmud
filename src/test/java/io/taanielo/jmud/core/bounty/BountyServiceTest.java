@@ -37,8 +37,15 @@ class BountyServiceTest {
     private final InMemoryBountyRepository bountyRepo = new InMemoryBountyRepository();
     private final CapturingBroadcaster broadcaster = new CapturingBroadcaster();
 
+    private static final int MAX_OPEN = 5;
+    private static final long EXPIRY_TICKS = 6000;
+
     private BountyService service(MobTemplate... templates) {
-        return new BountyService(bountyRepo, new StubTemplateRepo(List.of(templates)), broadcaster);
+        return service(MAX_OPEN, templates);
+    }
+
+    private BountyService service(int maxOpen, MobTemplate... templates) {
+        return new BountyService(bountyRepo, new StubTemplateRepo(List.of(templates)), broadcaster, maxOpen);
     }
 
     private Player player(String name, int gold) {
@@ -112,11 +119,53 @@ class BountyServiceTest {
         service.post(player("Alice", 500), "goblin", 100, 10);
         service.post(player("Bob", 500), "goblin", 250, 20);
 
-        List<BountyListing> listings = service.listings(30);
+        List<BountyListing> listings = service.listings(30, EXPIRY_TICKS);
         assertEquals(1, listings.size());
         assertEquals(350, listings.get(0).totalReward(), "reward pools across backers");
         assertEquals(2, listings.get(0).backerCount());
         assertEquals(20, listings.get(0).ageTicks(), "age tracks the oldest open stake (tick 10 → 30)");
+        assertEquals(EXPIRY_TICKS - 20, listings.get(0).remainingTicks(),
+            "remaining tracks the soonest-to-lapse (oldest) stake");
+    }
+
+    @Test
+    void post_rejectsOncePosterHitsOpenBountyCap() {
+        BountyService service = service(2,
+            combatMob("mob.goblin", "Goblin"),
+            combatMob("mob.rat", "Rat"),
+            combatMob("mob.orc", "Orc"));
+        Player poster = player("Alice", 1000);
+
+        Player afterFirst = service.post(poster, "goblin", 100, 10).updatedActor();
+        Player afterSecond = service.post(afterFirst, "rat", 100, 11).updatedActor();
+        BountyResult third = service.post(afterSecond, "orc", 100, 12);
+
+        assertFalse(third.success(), "a post beyond the cap is rejected");
+        assertTrue(third.message().contains("2"), third.message());
+        assertTrue(third.message().contains("CANCEL"), third.message());
+        assertEquals(2, bountyRepo.findAll().size(), "no bounty is created past the cap");
+        assertEquals(800, afterSecond.getGold(), "no gold is moved by the rejected post");
+    }
+
+    @Test
+    void expireBounties_removesStaleAndRefundsFullStake() {
+        BountyService service = service(combatMob(GOBLIN_ID, "Goblin"));
+        Player poster = player("Alice", 500);
+        Player afterPost = service.post(poster, "goblin", 100, 10).updatedActor();
+        assertEquals(400, afterPost.getGold());
+
+        long expiry = 100;
+        List<Bounty> notYet = service.expireBounties(50, expiry);
+        assertTrue(notYet.isEmpty(), "a fresh bounty does not expire");
+        assertEquals(1, bountyRepo.findAll().size());
+
+        List<Bounty> expired = service.expireBounties(10 + expiry, expiry);
+        assertEquals(1, expired.size(), "the stale bounty expires");
+        assertTrue(bountyRepo.findAll().isEmpty(), "the expired bounty is closed");
+
+        Player refunded = service.applyExpiredRefund(afterPost, expired.get(0), 200);
+        assertEquals(500, refunded.getGold(), "the full stake is refunded");
+        assertFalse(refunded.mailbox().isEmpty(), "a refund note is mailed to the poster");
     }
 
     @Test
