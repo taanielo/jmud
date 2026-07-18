@@ -4,5 +4,6 @@
   "name": "Slayer of Legions",
   "description": "Slay 5000 enemies.",
   "condition": "total_kills",
-  "threshold": 5000
+  "threshold": 5000,
+  "title_reward": "the Legion-Slayer"
 }

@@ -1,12 +1,19 @@
 package io.taanielo.jmud.core.achievement;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -53,6 +60,58 @@ class AchievementContentTest {
             "Every quests_completed achievement must be reachable: only " + oneTimeQuests
                 + " one-time quests exist, but these demand more: " + unreachable.stream()
                     .map(a -> a.id().getValue() + "=" + a.threshold()).toList());
+    }
+
+    /** Extracts every {@code "title_reward": "..."} string found anywhere under {@code data/quests/}. */
+    private static Set<String> questTitleRewards() throws IOException {
+        Pattern pattern = Pattern.compile("\"title_reward\"\\s*:\\s*\"([^\"]+)\"");
+        Set<String> titles = new HashSet<>();
+        try (var stream = Files.walk(DATA_ROOT.resolve("quests"))) {
+            for (Path path : stream.filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(".json")).toList()) {
+                Matcher matcher = pattern.matcher(Files.readString(path));
+                while (matcher.find()) {
+                    titles.add(matcher.group(1).toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+        return titles;
+    }
+
+    @Test
+    void achievementTitleRewardsAreUniqueAndDoNotCollideWithQuests() throws Exception {
+        List<String> achievementTitles = shippedAchievements().stream()
+            .map(Achievement::titleReward)
+            .filter(Objects::nonNull)
+            .toList();
+
+        assertFalse(achievementTitles.isEmpty(),
+            "expected shipped achievements to grant title rewards");
+
+        // Uniqueness among achievement titles (case-insensitive).
+        Set<String> seen = new HashSet<>();
+        for (String title : achievementTitles) {
+            String key = title.toLowerCase(Locale.ROOT);
+            assertTrue(seen.add(key),
+                "Achievement title reward is duplicated (case-insensitively): " + title);
+        }
+
+        // No collision with any quest title reward (case-insensitive).
+        Set<String> questTitles = questTitleRewards();
+        for (String title : achievementTitles) {
+            assertFalse(questTitles.contains(title.toLowerCase(Locale.ROOT)),
+                "Achievement title reward collides with a quest title_reward: " + title);
+        }
+    }
+
+    @Test
+    void everyShippedAchievementGrantsATitle() throws Exception {
+        List<Achievement> missing = shippedAchievements().stream()
+            .filter(a -> a.titleReward() == null)
+            .toList();
+        assertEquals(List.of(), missing,
+            "Every shipped achievement must grant a title reward: " + missing.stream()
+                .map(a -> a.id().getValue()).toList());
     }
 
     @Test

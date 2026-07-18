@@ -4,5 +4,6 @@
   "name": "Apex of the Realm",
   "description": "Reach character level 96.",
   "condition": "level",
-  "threshold": 96
+  "threshold": 96,
+  "title_reward": "the Apex"
 }

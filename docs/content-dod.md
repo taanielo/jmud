@@ -90,5 +90,6 @@ Two enforcement tiers per item:
 - [M] Unit/smoke coverage proving the happy path: new definitions load, sort, and render via `AchievementService`/`AchievementsCommand`
 - [M] Interactions reviewed: the milestone fires from the existing `AchievementService#checkAndUnlock` call sites (level-up, mob-kill, quest-completion) with no new hook
 - [M] Every threshold is reachable given the content backing its condition (a `quests_completed` threshold must not exceed the one-time quest count; a `level` threshold must not exceed the level cap) — guarded by a content test, not honour-system
-- [M] Save-game compatibility statement in the PR (new definitions are additive; no `Player`/save schema change; already-unlocked achievement IDs are unaffected)
+- [M] Optional `title_reward` is unique: any granted title must not collide (case-insensitively) with another achievement's or any quest's `title_reward` — guarded by a content test, not honour-system
+- [M] Save-game compatibility statement in the PR (new definitions are additive; the optional `title_reward` defaults absent = no behaviour change; no `Player`/save schema change; titles persist via the existing `PlayerTitles` mechanism; already-unlocked achievement IDs are unaffected)
 - [M] Row updated in `feature-matrix.md`

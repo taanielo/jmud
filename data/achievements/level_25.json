@@ -4,5 +4,6 @@
   "name": "Veteran",
   "description": "Reach character level 25.",
   "condition": "level",
-  "threshold": 25
+  "threshold": 25,
+  "title_reward": "the Veteran"
 }

@@ -4,5 +4,6 @@
   "name": "Slayer of Thousands",
   "description": "Slay 1000 enemies.",
   "condition": "total_kills",
-  "threshold": 1000
+  "threshold": 1000,
+  "title_reward": "the Thousand-Slayer"
 }

@@ -1581,6 +1581,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             afterXp = achievementResult.player();
             for (Achievement unlocked : achievementResult.newlyUnlocked()) {
                 messages.add(GameMessage.toSource("Achievement unlocked: " + unlocked.name() + "!"));
+                String titleReward = unlocked.titleReward();
+                if (titleReward != null) {
+                    messages.add(GameMessage.toSource("Title earned: " + titleReward + "!"));
+                }
             }
         }
 

@@ -11,6 +11,7 @@ record AchievementDto(
     @Nullable String name,
     @Nullable String description,
     @Nullable String condition,
-    @Nullable Integer threshold
+    @Nullable Integer threshold,
+    @Nullable String titleReward
 ) {
 }

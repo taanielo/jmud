@@ -70,6 +70,11 @@ public final class AchievementService {
      * Evaluates every achievement against the given player and unlocks any that are newly satisfied,
      * stamping each with the current clock instant.
      *
+     * <p>Any newly unlocked achievement that carries a {@link Achievement#titleReward()} the player
+     * does not already hold also grants that title via {@link Player#grantTitle(String)}, mirroring
+     * the quest-completion title-reward flow. Callers surface it with a
+     * {@code "Title earned: <title>!"} line alongside the achievement-unlock notice.
+     *
      * <p>Tick-thread only (AGENTS.md §5): called from milestone events (mob kills, level-ups) so the
      * returned, updated player can be persisted by the caller.
      *
@@ -92,7 +97,14 @@ public final class AchievementService {
         if (newlyUnlocked.isEmpty()) {
             return new UnlockResult(player, List.of());
         }
-        return new UnlockResult(player.withAchievements(updated), List.copyOf(newlyUnlocked));
+        Player result = player.withAchievements(updated);
+        for (Achievement achievement : newlyUnlocked) {
+            String titleReward = achievement.titleReward();
+            if (titleReward != null && !result.titles().has(titleReward)) {
+                result = result.grantTitle(titleReward);
+            }
+        }
+        return new UnlockResult(result, List.copyOf(newlyUnlocked));
     }
 
     /**
