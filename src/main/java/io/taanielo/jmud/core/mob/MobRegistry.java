@@ -34,6 +34,7 @@ import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.NpcStealPort;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
@@ -115,6 +116,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private QuestKillService questKillService;
     /** Optional cooperative guild-quest kill hook; may be null when guilds are disabled. */
     private GuildQuestService guildQuestService;
+    /** Optional player-funded bounty payout hook; may be null when bounties are disabled. */
+    private BountyService bountyService;
     /** Optional party service for XP splitting and round-robin loot; may be null when disabled. */
     private PartyService partyService;
     /** Optional encumbrance service used to skip full-inventory members in round-robin loot; may be null. */
@@ -282,6 +285,19 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     public void setGuildQuestService(GuildQuestService guildQuestService) {
         this.guildQuestService = guildQuestService;
+    }
+
+    /**
+     * Registers the bounty service consulted when a mob is killed. When a slain mob's template has one
+     * or more open player-funded bounties, the pooled reward is paid to the killer (split across their
+     * eligible party exactly like the mob's gold drop), announced server-wide, and the bounties close.
+     * This is an independent parallel path to {@link #setQuestKillService(QuestKillService)} /
+     * {@link #setGuildQuestService(GuildQuestService)}; it never touches quest progress.
+     *
+     * @param bountyService the service to consult on mob death; may be null to disable bounty payouts
+     */
+    public void setBountyService(BountyService bountyService) {
+        this.bountyService = bountyService;
     }
 
     /**
@@ -1545,6 +1561,28 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     goldDropMessage(mob, goldRolled, goldShare, partyRecipients.size())));
             }
         }
+        // Player-funded bounty payout: if this mob type carries open bounties, claim the pooled reward
+        // and split it across the same eligible (alive, in-room) recipients as the gold drop. Unlike a
+        // raw gold drop, escrowed bounty gold must be conserved, so the divisor is the count of members
+        // actually paid (eligible, never dead) and any rounding remainder goes to the killer — the pooled
+        // stake is handed out in full, never created or destroyed. claim() also fires the server-wide
+        // announcement and closes the paid entries. A no-op on an ordinary un-bountied kill.
+        int bountyShare = 0;
+        if (bountyService != null) {
+            int bountyTotal = bountyService.claim(
+                mob.template().id().getValue(), attacker.getUsername(), mob.template().name());
+            if (bountyTotal > 0) {
+                int recipients = Math.max(1, eligible.size());
+                bountyShare = bountyTotal / recipients;
+                int killerShare = bountyShare + (bountyTotal - bountyShare * recipients);
+                if (killerShare > 0) {
+                    afterXp = afterXp.addGold(killerShare);
+                }
+                messages.add(GameMessage.toSource(
+                    "You claim " + killerShare + " gold in bounty for slaying the "
+                        + mob.template().name() + "!"));
+            }
+        }
         if (questKillService != null) {
             var killResult = questKillService.recordKill(afterXp, mob.template().id().getValue());
             if (killResult.isPresent()) {
@@ -1622,6 +1660,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 }
                 memberMsgs.add(GameMessage.toSource(
                     goldDropMessage(mob, goldRolled, goldShare, partyRecipients.size())));
+            }
+            // Pay this member their equal share of any claimed bounty (same divisor as the killer's
+            // share above; the killer additionally absorbed the rounding remainder for conservation).
+            if (bountyShare > 0) {
+                memberAfterXp = memberAfterXp.addGold(bountyShare);
+                memberMsgs.add(GameMessage.toSource(
+                    "You claim " + bountyShare + " gold in bounty for slaying the "
+                        + mob.template().name() + "!"));
             }
             if (questKillService != null) {
                 var memberKillResult = questKillService.recordKill(memberAfterXp, mob.template().id().getValue());

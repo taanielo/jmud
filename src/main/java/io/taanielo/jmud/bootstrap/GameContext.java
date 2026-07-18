@@ -42,6 +42,8 @@ import io.taanielo.jmud.core.bank.BankRepository;
 import io.taanielo.jmud.core.bank.BankRepositoryException;
 import io.taanielo.jmud.core.bank.BankService;
 import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
+import io.taanielo.jmud.core.bounty.BountyService;
+import io.taanielo.jmud.core.bounty.repository.json.JsonBountyRepository;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
@@ -257,6 +259,7 @@ public record GameContext(
     TradeService tradeService,
     BankService bankService,
     AuctionService auctionService,
+    BountyService bountyService,
     GuildService guildService,
     GuildQuestService guildQuestService,
     GuildWarService guildWarService,
@@ -590,6 +593,15 @@ public record GameContext(
             mobRegistry.setQuestKillService(questKillService);
             mobRegistry.setGuildQuestService(guildQuestService);
         }
+        // Player-funded mob bounties (issue #749): a persisted, in-memory-cached ledger of gold staked
+        // on mob types, paid to whoever next kills the type (split across their party like a gold drop)
+        // and announced server-wide. The payout hook runs on the tick thread from the same mob-death
+        // path as quest/guild-quest crediting (AGENTS.md §5); GameContext is the only place the
+        // repository and service are constructed (AGENTS.md §3.3).
+        BountyService bountyService = createBountyService(messageBroadcaster);
+        if (mobRegistry != null) {
+            mobRegistry.setBountyService(bountyService);
+        }
         tickRegistry.register(
             new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
         tickRegistry.register(new GuildQuestRotationTicker(worldClock, guildQuestService));
@@ -694,6 +706,7 @@ public record GameContext(
             tradeService,
             bankService,
             auctionService,
+            bountyService,
             guildService,
             guildQuestService,
             guildWarService,
@@ -864,6 +877,16 @@ public record GameContext(
                 persistenceQueue, playerEventBus, worldRandom);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
+        }
+    }
+
+    private static BountyService createBountyService(MessageBroadcaster messageBroadcaster) {
+        try {
+            return new BountyService(
+                new JsonBountyRepository(), new JsonMobTemplateRepository(), messageBroadcaster);
+        } catch (RepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize bounty service: " + e.getMessage(), e);
         }
     }
 

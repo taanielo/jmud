@@ -51,6 +51,9 @@ import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bank.BankTransactionResult;
 import io.taanielo.jmud.core.bank.VaultUpgradeTier;
+import io.taanielo.jmud.core.bounty.BountyListing;
+import io.taanielo.jmud.core.bounty.BountyResult;
+import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.craft.CraftOutcome;
@@ -6269,6 +6272,88 @@ class SocketCommandContextImpl implements SocketCommandContext {
                     + "| AUCTION BUY <#> | AUCTION CANCEL <#> | AUCTION WATCH <keyword> "
                     + "| AUCTION UNWATCH <keyword> | AUCTION WATCHLIST");
         }
+    }
+
+    @Override
+    public void manageBounty(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use bounties.");
+            return;
+        }
+        BountyService bountyService = context.bountyService();
+        if (bountyService == null) {
+            writeLineWithPrompt("The bounty system is not available.");
+            return;
+        }
+        long currentTick = context.tickClock().currentTick();
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            bountyUsage();
+            return;
+        }
+        String[] parts = normalized.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        String rest = parts.length > 1 ? parts[1].trim() : "";
+        switch (sub) {
+            case "POST" -> bountyPost(bountyService, player, rest, currentTick);
+            case "LIST" -> bountyList(bountyService, currentTick);
+            case "CANCEL" -> bountyCancel(bountyService, player, rest);
+            default -> bountyUsage();
+        }
+    }
+
+    private void bountyUsage() {
+        writeLineWithPrompt("Usage: BOUNTY POST <mob> <gold> | BOUNTY LIST | BOUNTY CANCEL <mob>");
+    }
+
+    private void bountyPost(BountyService bountyService, Player player, String rest, long currentTick) {
+        int lastSpace = rest.lastIndexOf(' ');
+        if (rest.isBlank() || lastSpace < 0) {
+            writeLineWithPrompt("Usage: BOUNTY POST <mob> <gold>");
+            return;
+        }
+        String mobInput = rest.substring(0, lastSpace).trim();
+        String goldInput = rest.substring(lastSpace + 1).trim();
+        int gold;
+        try {
+            gold = Integer.parseInt(goldInput);
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("'" + goldInput + "' is not a valid amount of gold.");
+            return;
+        }
+        BountyResult result = bountyService.post(player, mobInput, gold, currentTick);
+        if (result.success() && result.updatedActor() != null) {
+            session.replacePlayer(result.updatedActor());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void bountyList(BountyService bountyService, long currentTick) {
+        List<BountyListing> listings = bountyService.listings(currentTick);
+        if (listings.isEmpty()) {
+            writeLineWithPrompt("There are no open bounties.");
+            return;
+        }
+        connection.writeLine("Open bounties:");
+        connection.writeLine(String.format("%-24s %-10s %-9s %s", "Mob", "Reward", "Backers", "Age (ticks)"));
+        for (BountyListing listing : listings) {
+            connection.writeLine(String.format("%-24s %-10d %-9d %d",
+                listing.mobName(), listing.totalReward(), listing.backerCount(), listing.ageTicks()));
+        }
+        sendPrompt();
+    }
+
+    private void bountyCancel(BountyService bountyService, Player player, String rest) {
+        if (rest.isBlank()) {
+            writeLineWithPrompt("Usage: BOUNTY CANCEL <mob>");
+            return;
+        }
+        BountyResult result = bountyService.cancel(player, rest);
+        if (result.success() && result.updatedActor() != null) {
+            session.replacePlayer(result.updatedActor());
+        }
+        writeLineWithPrompt(result.message());
     }
 
     private void listAuctions(AuctionService auctionService, Player player, String filterArg, long currentTick) {

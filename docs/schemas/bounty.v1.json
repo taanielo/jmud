@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:bounties:v1",
+  "title": "Open player-funded bounties store (v1)",
+  "description": "World-scoped ledger of open player-funded mob bounties, persisted as the single file data/world-state/bounties.json. Each entry is one backer's gold stake on a mob type (identified by its template id), payable to whoever next kills a mob of that type anywhere. Several backers may stake the same mob type (each a separate entry); at most one open entry exists per (backer, mob_template_id) pair. A post debits the stake from the backer, a cancel refunds it, and a payout hands the pooled total to the killer — gold is never created or destroyed. The loader is deliberately defensive: a missing, empty, or malformed file yields no bounties. Absence of this file simply means no bounties are open.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bounties"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "bounties": {
+      "type": "array",
+      "description": "One entry per open backer stake.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "backer",
+          "mob_template_id",
+          "mob_name",
+          "reward",
+          "posted_tick"
+        ],
+        "properties": {
+          "backer": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Username of the player who posted and funds this bounty."
+          },
+          "mob_template_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Template id of the mob type the bounty targets."
+          },
+          "mob_name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Mob type display name captured at post time, used in listings and announcements."
+          },
+          "reward": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The escrowed gold stake."
+          },
+          "posted_tick": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Game tick at which the bounty was posted (used to report its age)."
+          }
+        }
+      }
+    }
+  }
+}
