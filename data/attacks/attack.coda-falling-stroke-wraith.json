@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.coda-falling-stroke-wraith",
+  "name": "an unstoppable fall",
+  "min_damage": 84,
+  "max_damage": 112,
+  "hit_bonus": 13,
+  "crit_bonus": 10,
+  "damage_bonus": 22,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 66
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The falling-stroke wraith drops onto you the whole stored weight of the Fermata's withheld motion, an age of held stillness spent in a single unstoppable descent, and the cold of it lands with the crushing force of a beat too long deferred. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The falling-stroke wraith plunges its released weight toward you and the cold of the whole spent measure comes down with it, and you throw yourself clear of the fall and let the crushing stroke land where you were and slide on past."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The falling-stroke wraith brings the entire released stroke down onto you alone, every hair of the eternity the Fermata held it back gathered into one plunging beat, and the cold of it drives so deep that your heart lurches to fall with it! The blow {verb} you!"
+    }
+  ]
+}

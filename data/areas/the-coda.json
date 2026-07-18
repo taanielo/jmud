@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "the-coda",
+  "name": "The Coda",
+  "room_ids": [
+    "coda-threshold",
+    "coda-overtone-hall",
+    "coda-falling-stroke",
+    "coda-last-silence",
+    "coda-final-measure",
+    "coda-resolution"
+  ],
+  "connections": [
+    "the-interval"
+  ],
+  "level_range": {
+    "min": 81,
+    "max": 88
+  },
+  "ascii_map": [
+    "         ... THE CODA ...",
+    "",
+    "               The Interval",
+    "                    ^",
+    "                    |",
+    "               [Threshold]",
+    "                    |",
+    "  [Falling]--[Overtone Hall]--[Last Silence]",
+    "                    |",
+    "              [Final Measure]",
+    "                    |",
+    "               [Resolution]",
+    "",
+    "   Not a place deeper than the interval but after it,",
+    "   where the held stroke the Fermata refused to release",
+    "   has finally fallen — the released overtones, the last",
+    "   silence after the last measure, and the resolving",
+    "   chord the whole music has been building toward."
+  ]
+}

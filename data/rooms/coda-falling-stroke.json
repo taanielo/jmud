@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "coda-falling-stroke",
+  "name": "The Falling",
+  "description": "East of the hall the released ring narrows into a long steep gallery where the Fermata's withheld motion, finally let go, is still falling. The whole room is downward: the ruled lines of the floor pitch away ahead of you, the frost slides, the loosed overtones here do not spread but plunge, and everything the Interval held poised and unmoving for an eternity is here spending that stored stillness all at once in a single unstoppable descent. This is what a held stroke becomes the instant it is released — not gentle, not finished, but momentum, the accumulated weight of an age of withholding coming down with nothing left to catch it. Things move in the falling: shapes wrung out of the released stroke, all of them dropping, all of them carrying the crushing downward force of a beat too long deferred, and they fall toward you the way the Fermata meant to, except that these have already been let go and cannot be called back. There is no arresting them and no waiting them out; a fall does not pause. The only way onward loops back west to the ringing hall, because a falling stroke was never meant to arrive anywhere but the bottom.",
+  "item_ids": [],
+  "exits": {
+    "west": "coda-overtone-hall"
+  },
+  "min_level": 82,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A loosed shape drops past you down the pitched floor, trailing the crushing weight of the whole withheld measure, and does not slow.",
+    "Frost slides in a long unstoppable sheet down the gallery, gathering speed, spending an eternity of held stillness in a single fall.",
+    "The room tilts a fraction steeper, and everything in it — cold, sound, the wrung-loose shapes of the stroke — leans further into the fall that will not end until it lands."
+  ]
+}

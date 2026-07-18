@@ -1,0 +1,14 @@
+{
+  "schema_version": 15,
+  "id": "the-coda-map",
+  "name": "Map of the Coda",
+  "description": "Not a chart of any place with extent, but a rendering of an ending — the last bar of a piece of music scored onto a leaf of frost-clouded vellum, its final measure closed off by a thin double line ruled the way a composer rules the end of a score, past which there is nothing because there is meant to be nothing. The route through is read the way a musician reads the close of a phrase: not as somewhere to go but as a resolution to arrive at, threshold to the resolving chord, each measure a step nearer the last one the world will ever count. It is colder than the map of the Interval and it does not wait the way that one waits; it resolves, faintly and continuously, a leaf of vellum forever in the act of ending and never quite finished, so that to hold it is to feel your own pulse counted down against its closing bars toward the double line beyond which the map, like the music, simply stops.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 80,
+  "map_area_id": "the-coda"
+}
