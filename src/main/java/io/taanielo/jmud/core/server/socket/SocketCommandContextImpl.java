@@ -3095,12 +3095,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
-    public void corpse() {
+    public void corpse(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to sense your corpse.");
             return;
         }
-        GameActionResult result = gameActionService.corpse(session.getPlayer());
+        GameActionResult result = gameActionService.corpse(session.getPlayer(), args);
         deliverResult(result);
         sendPrompt();
     }

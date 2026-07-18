@@ -159,6 +159,160 @@ class CorpseLocatorServiceTest {
             lines.get(1));
     }
 
+    // ── multi-corpse: bare CORPSE ────────────────────────────────────────────
+
+    @Test
+    void locateListWithNoCorpsesReportsNoCorpse() {
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of());
+
+        assertEquals(List.of("You have no corpse in the world."), lines);
+    }
+
+    @Test
+    void locateListWithSingleCorpseMatchesSingleCorpseOutput() {
+        corridor("here", Direction.NORTH, "mid");
+        corridor("mid", Direction.EAST, "dark-cave");
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        Corpse only = corpse("dark-cave", 214, NOW.minusSeconds(120));
+
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of(only));
+
+        assertEquals(2, lines.size());
+        assertEquals(
+            "Your corpse lies in The Dark Cave, holding 214 gold. It will decay in about 3 minutes.",
+            lines.get(0));
+        assertEquals("The Dark Cave is 2 step(s) away: north, east.", lines.get(1));
+    }
+
+    @Test
+    void locateListWithMultipleCorpsesReportsMostUrgentAndCountLine() {
+        corridor("here", Direction.EAST, "dark-cave");
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        roomNames.put(RoomId.of("lost-crypt"), "The Lost Crypt");
+        // Soonest to decay first: the older corpse (spawned longer ago) leads.
+        Corpse urgent = corpse("dark-cave", 10, NOW.minusSeconds(200));
+        Corpse newer = corpse("lost-crypt", 30, NOW.minusSeconds(30));
+
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of(urgent, newer));
+
+        assertEquals(3, lines.size());
+        assertEquals(
+            "Your corpse lies in The Dark Cave, holding 10 gold. It will decay in about 2 minutes.",
+            lines.get(0));
+        assertEquals("The Dark Cave is 1 step(s) away: east.", lines.get(1));
+        assertEquals(
+            "You have 2 corpses in the world. Type CORPSE ALL to list them.", lines.get(2));
+    }
+
+    @Test
+    void locateListIgnoresDecayedCorpses() {
+        corridor("here", Direction.EAST, "dark-cave");
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        Corpse decayed = corpse("lost-crypt", 10, NOW.minusSeconds(DECAY_SECONDS + 10));
+        Corpse live = corpse("dark-cave", 30, NOW.minusSeconds(DECAY_SECONDS - 30));
+
+        List<String> lines = service(List.of()).locateMostUrgent(RoomId.of("here"), List.of(decayed, live));
+
+        // Only one live corpse remains, so no count line is appended.
+        assertEquals(2, lines.size());
+        assertEquals(
+            "Your corpse lies in The Dark Cave, holding 30 gold. It will decay in less than a minute.",
+            lines.get(0));
+    }
+
+    // ── CORPSE ALL ───────────────────────────────────────────────────────────
+
+    @Test
+    void locateAllListsEveryCorpseNumberedSoonestToDecayFirst() {
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        roomNames.put(RoomId.of("lost-crypt"), "The Lost Crypt");
+        Corpse urgent = corpse("dark-cave", 10, NOW.minusSeconds(200));
+        Corpse newer = corpse("lost-crypt", 0, NOW.minusSeconds(30));
+
+        List<String> lines = service(List.of()).locateAll(RoomId.of("here"), List.of(urgent, newer));
+
+        assertEquals(4, lines.size());
+        assertEquals("You have 2 corpses in the world (soonest to decay first):", lines.get(0));
+        assertEquals(
+            "  1. The Dark Cave, holding 10 gold. It will decay in about 2 minutes.", lines.get(1));
+        assertEquals("  2. The Lost Crypt. It will decay in about 5 minutes.", lines.get(2));
+        assertEquals("Type CORPSE <number> for directions to a specific corpse.", lines.get(3));
+    }
+
+    @Test
+    void locateAllNotesCorpseUnderfoot() {
+        roomNames.put(RoomId.of("lost-crypt"), "The Lost Crypt");
+        Corpse here = corpse("here", 5, NOW.minusSeconds(60));
+        Corpse elsewhere = corpse("lost-crypt", 0, NOW.minusSeconds(30));
+
+        List<String> lines = service(List.of()).locateAll(RoomId.of("here"), List.of(here, elsewhere));
+
+        assertEquals(
+            "  1. here (you are standing on it), holding 5 gold. It will decay in about 4 minutes.",
+            lines.get(1));
+    }
+
+    @Test
+    void locateAllWithSingleCorpseFallsBackToFullReport() {
+        corridor("here", Direction.EAST, "dark-cave");
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        Corpse only = corpse("dark-cave", 10, NOW.minusSeconds(60));
+
+        List<String> lines = service(List.of()).locateAll(RoomId.of("here"), List.of(only));
+
+        assertEquals(2, lines.size());
+        assertEquals(
+            "Your corpse lies in The Dark Cave, holding 10 gold. It will decay in about 4 minutes.",
+            lines.get(0));
+        assertEquals("The Dark Cave is 1 step(s) away: east.", lines.get(1));
+    }
+
+    @Test
+    void locateAllWithNoCorpsesReportsNoCorpse() {
+        List<String> lines = service(List.of()).locateAll(RoomId.of("here"), List.of());
+
+        assertEquals(List.of("You have no corpse in the world."), lines);
+    }
+
+    // ── CORPSE <n> ───────────────────────────────────────────────────────────
+
+    @Test
+    void locateIndexedReportsRequestedCorpseInFull() {
+        corridor("here", Direction.EAST, "lost-crypt");
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        roomNames.put(RoomId.of("lost-crypt"), "The Lost Crypt");
+        Corpse urgent = corpse("dark-cave", 10, NOW.minusSeconds(200));
+        Corpse newer = corpse("lost-crypt", 30, NOW.minusSeconds(60));
+
+        List<String> lines = service(List.of()).locateIndexed(RoomId.of("here"), List.of(urgent, newer), 2);
+
+        assertEquals(2, lines.size());
+        assertEquals(
+            "Your corpse lies in The Lost Crypt, holding 30 gold. It will decay in about 4 minutes.",
+            lines.get(0));
+        assertEquals("The Lost Crypt is 1 step(s) away: east.", lines.get(1));
+    }
+
+    @Test
+    void locateIndexedOutOfRangeReportsClearError() {
+        roomNames.put(RoomId.of("dark-cave"), "The Dark Cave");
+        roomNames.put(RoomId.of("lost-crypt"), "The Lost Crypt");
+        Corpse urgent = corpse("dark-cave", 10, NOW.minusSeconds(200));
+        Corpse newer = corpse("lost-crypt", 30, NOW.minusSeconds(30));
+
+        List<String> lines = service(List.of()).locateIndexed(RoomId.of("here"), List.of(urgent, newer), 3);
+
+        assertEquals(
+            List.of("You do not have a corpse #3. You have 2 corpses — try CORPSE ALL."), lines);
+    }
+
+    @Test
+    void locateIndexedWithNoCorpsesReportsNoCorpse() {
+        List<String> lines = service(List.of()).locateIndexed(RoomId.of("here"), List.of(), 1);
+
+        assertEquals(List.of("You have no corpse in the world."), lines);
+    }
+
     private record EmptyAreaRepository() implements AreaRepository {
         @Override
         public List<Area> findAll() {

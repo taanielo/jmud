@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,7 +16,7 @@ import io.taanielo.jmud.core.world.Direction;
 
 /**
  * Unit tests for {@link CorpseCommand}: token matching and delegation to
- * {@link SocketCommandContext#corpse()}. The corpse lookup, decay countdown, and routing logic live
+ * {@link SocketCommandContext#corpse(String)}. The corpse lookup, decay countdown, and routing logic live
  * in {@code CorpseLocatorService} and are covered by {@code CorpseLocatorServiceTest}.
  */
 class CorpseCommandTest {
@@ -45,6 +46,29 @@ class CorpseCommandTest {
         command.match("CORPSE").get().execute(context);
 
         assertTrue(context.corpseCalled);
+        assertEquals("", context.corpseArgs);
+    }
+
+    @Test
+    void corpseAllPassesAllKeyword() {
+        CorpseCommand command = new CorpseCommand(new SocketCommandRegistry());
+        TrackingContext context = new TrackingContext();
+
+        command.match("CORPSE ALL").get().execute(context);
+
+        assertTrue(context.corpseCalled);
+        assertEquals("ALL", context.corpseArgs);
+    }
+
+    @Test
+    void corpseIndexPassesNumericArgument() {
+        CorpseCommand command = new CorpseCommand(new SocketCommandRegistry());
+        TrackingContext context = new TrackingContext();
+
+        command.match("CORPSE 2").get().execute(context);
+
+        assertTrue(context.corpseCalled);
+        assertEquals("2", context.corpseArgs);
     }
 
     @Test
@@ -66,6 +90,7 @@ class CorpseCommandTest {
 
     private static class TrackingContext implements SocketCommandContext {
         boolean corpseCalled = false;
+        String corpseArgs = null;
 
         @Override public boolean isAuthenticated() { return true; }
         @Override public Player getPlayer() { return null; }
@@ -93,8 +118,9 @@ class CorpseCommandTest {
         @Override public void unequipItem(String a) {}
         @Override public void killMob(String a) {}
         @Override public void fleeCombat() {}
-        @Override public void corpse() {
+        @Override public void corpse(String args) {
             corpseCalled = true;
+            corpseArgs = args;
         }
         @Override public void sendInventory() {}
         @Override public void sendEquipment() {}

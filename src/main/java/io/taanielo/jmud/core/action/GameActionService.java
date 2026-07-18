@@ -610,10 +610,16 @@ public class GameActionService {
      * {@link CorpseLocatorService}; this method only resolves the player's current room and their
      * tracked corpse and wraps the resulting lines as source-directed messages.
      *
+     * <p>The optional {@code args} selects the reporting mode: blank reports the single most-urgent
+     * corpse (with a trailing count line when more than one is outstanding); {@code ALL} lists every
+     * outstanding corpse numbered soonest-to-decay first; a positive integer reports that numbered
+     * corpse in full. Any other argument yields a short usage line.
+     *
      * @param source the player asking about their corpse; must not be null
+     * @param args   the raw argument after {@code CORPSE} (blank, {@code ALL}, or a corpse number)
      * @return a result carrying the corpse report, never an exception
      */
-    public GameActionResult corpse(Player source) {
+    public GameActionResult corpse(Player source, String args) {
         Objects.requireNonNull(source, "Source is required");
         if (corpseLocatorService == null) {
             return GameActionResult.error("You cannot sense your corpse right now.");
@@ -622,11 +628,34 @@ public class GameActionService {
         if (currentRoom == null) {
             return GameActionResult.error("You are nowhere; there is nothing to route from.");
         }
-        Corpse corpse = roomService.findCorpseByOwner(source.getUsername().getValue()).orElse(null);
-        List<GameMessage> messages = corpseLocatorService.locate(currentRoom, corpse).stream()
+        List<Corpse> corpses = roomService.findCorpsesByOwner(source.getUsername().getValue());
+        String trimmed = args == null ? "" : args.trim();
+        List<String> lines;
+        if (trimmed.isEmpty()) {
+            lines = corpseLocatorService.locateMostUrgent(currentRoom, corpses);
+        } else if (trimmed.equalsIgnoreCase("ALL")) {
+            lines = corpseLocatorService.locateAll(currentRoom, corpses);
+        } else {
+            Integer index = parsePositiveInt(trimmed);
+            if (index == null) {
+                lines = List.of("Usage: CORPSE, CORPSE ALL, or CORPSE <number>.");
+            } else {
+                lines = corpseLocatorService.locateIndexed(currentRoom, corpses, index);
+            }
+        }
+        List<GameMessage> messages = lines.stream()
             .map(GameMessage::toSource)
             .toList();
         return new GameActionResult(null, null, messages);
+    }
+
+    private static @Nullable Integer parsePositiveInt(String value) {
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**

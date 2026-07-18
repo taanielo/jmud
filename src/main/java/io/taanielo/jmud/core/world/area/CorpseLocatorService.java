@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.world.area;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -72,23 +73,135 @@ public class CorpseLocatorService {
      */
     public List<String> locate(RoomId currentRoom, @Nullable Corpse corpse) {
         Objects.requireNonNull(currentRoom, "Current room is required");
-        if (corpse == null) {
+        if (corpse == null || isDecayed(corpse)) {
             return List.of("You have no corpse in the world.");
         }
-        long remainingSeconds = remainingSeconds(corpse);
-        if (remainingSeconds <= 0) {
+        return singleReport(currentRoom, corpse);
+    }
+
+    /**
+     * Produces the player-facing lines for a bare {@code CORPSE} invocation given every corpse the
+     * player has outstanding.
+     *
+     * <p>Already-decayed (but not-yet-swept) corpses are ignored. With no live corpse it reports "no
+     * corpse". With exactly one it reports that corpse in full, identical to the single-corpse
+     * {@link #locate(RoomId, Corpse)} output. With more than one it reports the corpse closest to
+     * decaying (the most urgent to recover) in full, then appends a line noting how many corpses
+     * remain and pointing at {@code CORPSE ALL}.
+     *
+     * @param currentRoom the room the player is standing in
+     * @param corpses     the player's tracked corpses, soonest-to-decay first (as returned by
+     *                    {@code RoomService#findCorpsesByOwner})
+     * @return one or more lines to send to the player (never empty, never {@code null})
+     */
+    public List<String> locateMostUrgent(RoomId currentRoom, List<Corpse> corpses) {
+        Objects.requireNonNull(currentRoom, "Current room is required");
+        Objects.requireNonNull(corpses, "Corpses list is required");
+        List<Corpse> live = liveCorpses(corpses);
+        if (live.isEmpty()) {
             return List.of("You have no corpse in the world.");
         }
+        List<String> lines = new ArrayList<>(singleReport(currentRoom, live.getFirst()));
+        if (live.size() > 1) {
+            lines.add("You have " + live.size() + " corpses in the world. Type CORPSE ALL to list them.");
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * Produces the player-facing lines for {@code CORPSE ALL}: a compact, numbered list of every
+     * outstanding corpse, soonest-to-decay first, each showing the room it lies in, the gold it
+     * holds, and how long remains before it decays. No per-row directions are rendered (use
+     * {@code CORPSE <n>} for full routing to a specific corpse).
+     *
+     * <p>Already-decayed (but not-yet-swept) corpses are ignored. With no live corpse it reports "no
+     * corpse".
+     *
+     * @param currentRoom the room the player is standing in (used only to note a corpse underfoot)
+     * @param corpses     the player's tracked corpses, soonest-to-decay first
+     * @return one or more lines to send to the player (never empty, never {@code null})
+     */
+    public List<String> locateAll(RoomId currentRoom, List<Corpse> corpses) {
+        Objects.requireNonNull(currentRoom, "Current room is required");
+        Objects.requireNonNull(corpses, "Corpses list is required");
+        List<Corpse> live = liveCorpses(corpses);
+        if (live.isEmpty()) {
+            return List.of("You have no corpse in the world.");
+        }
+        if (live.size() == 1) {
+            return singleReport(currentRoom, live.getFirst());
+        }
+        List<String> lines = new ArrayList<>();
+        lines.add("You have " + live.size() + " corpses in the world (soonest to decay first):");
+        for (int i = 0; i < live.size(); i++) {
+            Corpse corpse = live.get(i);
+            String where = corpse.roomId().equals(currentRoom)
+                ? "here (you are standing on it)"
+                : roomNames.apply(corpse.roomId());
+            lines.add("  " + (i + 1) + ". " + where + goldClause(corpse.gold())
+                + ". It will decay in " + friendlyRemaining(remainingSeconds(corpse)) + ".");
+        }
+        lines.add("Type CORPSE <number> for directions to a specific corpse.");
+        return List.copyOf(lines);
+    }
+
+    /**
+     * Produces the player-facing lines for {@code CORPSE <n>}: the full single-corpse report (room,
+     * gold, decay countdown, and ferry-aware turn-by-turn directions) for the {@code index}-th corpse
+     * in the soonest-to-decay ordering shown by {@code CORPSE ALL}.
+     *
+     * <p>The index is 1-based, matching the numbering in {@link #locateAll(RoomId, List)}. An
+     * out-of-range index yields a single clear error line naming how many corpses the player has.
+     * Already-decayed (but not-yet-swept) corpses are ignored for both the range check and the report.
+     *
+     * @param currentRoom the room the player is standing in
+     * @param corpses     the player's tracked corpses, soonest-to-decay first
+     * @param index       the 1-based corpse number to report
+     * @return one or more lines to send to the player (never empty, never {@code null})
+     */
+    public List<String> locateIndexed(RoomId currentRoom, List<Corpse> corpses, int index) {
+        Objects.requireNonNull(currentRoom, "Current room is required");
+        Objects.requireNonNull(corpses, "Corpses list is required");
+        List<Corpse> live = liveCorpses(corpses);
+        if (live.isEmpty()) {
+            return List.of("You have no corpse in the world.");
+        }
+        if (index < 1 || index > live.size()) {
+            return List.of("You do not have a corpse #" + index + ". You have " + countPhrase(live.size())
+                + " — try CORPSE ALL.");
+        }
+        return singleReport(currentRoom, live.get(index - 1));
+    }
+
+    private List<String> singleReport(RoomId currentRoom, Corpse corpse) {
         if (corpse.roomId().equals(currentRoom)) {
             return List.of("Your corpse lies here" + goldClause(corpse.gold())
                 + ". Loot it before it decays!");
         }
         String roomName = roomNames.apply(corpse.roomId());
         String summary = "Your corpse lies in " + roomName + goldClause(corpse.gold())
-            + ". It will decay in " + friendlyRemaining(remainingSeconds) + ".";
+            + ". It will decay in " + friendlyRemaining(remainingSeconds(corpse)) + ".";
         String directions = wayfindService.describeRoute(roomName, currentRoom, corpse.roomId())
             .orElse("No known route to " + roomName + ".");
         return List.of(summary, directions);
+    }
+
+    private List<Corpse> liveCorpses(List<Corpse> corpses) {
+        List<Corpse> live = new ArrayList<>();
+        for (Corpse corpse : corpses) {
+            if (!isDecayed(corpse)) {
+                live.add(corpse);
+            }
+        }
+        return live;
+    }
+
+    private boolean isDecayed(Corpse corpse) {
+        return remainingSeconds(corpse) <= 0;
+    }
+
+    private static String countPhrase(int count) {
+        return count + (count == 1 ? " corpse" : " corpses");
     }
 
     private long remainingSeconds(Corpse corpse) {

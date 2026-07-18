@@ -230,6 +230,20 @@ public class RoomService {
     }
 
     /**
+     * Finds every tracked corpse belonging to the named owner, ordered soonest-to-decay first.
+     *
+     * <p>Backs the {@code CORPSE ALL} / {@code CORPSE <n>} lookups so a player who died more than
+     * once before recovering the first corpse can still locate every outstanding one. Delegates to
+     * {@link RoomItemService#findCorpsesByOwner(String)}.
+     *
+     * @param ownerName the name of the dead player whose corpses to find
+     * @return an unmodifiable list of tracked corpses (oldest/soonest-to-decay first), never null
+     */
+    public List<Corpse> findCorpsesByOwner(String ownerName) {
+        return itemService.findCorpsesByOwner(ownerName);
+    }
+
+    /**
      * Removes a specific tracked corpse and its ground item from the world (consumed, not decayed).
      *
      * @param corpse the corpse to remove

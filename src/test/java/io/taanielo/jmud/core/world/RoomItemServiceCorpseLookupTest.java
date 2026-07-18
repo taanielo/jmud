@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,31 @@ class RoomItemServiceCorpseLookupTest {
         assertTrue(found.isPresent());
         assertEquals(latest.itemId(), found.get().itemId());
         assertEquals(25, found.get().gold());
+    }
+
+    @Test
+    void findCorpsesByOwnerReturnsAllCorpsesSoonestToDecayFirst() throws InterruptedException {
+        RoomItemService service = new RoomItemService();
+        Corpse oldest = service.spawnCorpse(Username.of("hero"), RoomId.of("zone-a"), 5);
+        Thread.sleep(2);
+        Corpse newest = service.spawnCorpse(Username.of("HERO"), RoomId.of("zone-b"), 25);
+        // Another player's corpse must not leak into the list.
+        service.spawnCorpse(Username.of("rival"), ROOM, 99);
+
+        List<Corpse> found = service.findCorpsesByOwner("hero");
+
+        assertEquals(2, found.size());
+        assertEquals(oldest.itemId(), found.get(0).itemId(), "oldest (soonest to decay) is first");
+        assertEquals(newest.itemId(), found.get(1).itemId());
+    }
+
+    @Test
+    void findCorpsesByOwnerReturnsEmptyForUnknownOrBlankName() {
+        RoomItemService service = new RoomItemService();
+        service.spawnCorpse(Username.of("hero"), ROOM, 5);
+
+        assertTrue(service.findCorpsesByOwner("nobody").isEmpty());
+        assertTrue(service.findCorpsesByOwner("  ").isEmpty());
     }
 
     @Test
