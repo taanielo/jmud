@@ -3713,6 +3713,34 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void sellAllToShop(@Nullable String keyword) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sell items.");
+            return;
+        }
+        if (context.shopService() == null) {
+            writeLineWithPrompt("There is no shop here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        var shopOpt = context.shopService().findShopInRoom(roomIdOpt.get());
+        if (shopOpt.isEmpty()) {
+            writeLineWithPrompt("There is no shop here.");
+            return;
+        }
+        ShopTransactionResult result = context.shopService().sellAll(player, shopOpt.get(), keyword);
+        if (result.success()) {
+            session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    @Override
     public void repairItem(String args) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to repair items.");

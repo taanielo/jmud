@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.server.Client;
@@ -553,6 +555,19 @@ public interface SocketCommandContext extends Client {
      * @param args the item name to sell
      */
     default void sellToShop(String args) {}
+
+    /**
+     * Sells every item in the player's inventory to the shop in the current room in one command
+     * (the {@code SELL ALL} form), optionally narrowed to items whose name contains {@code keyword}.
+     * Each item is paid at the shop's sell ratio and the player receives a single summarized line
+     * with the item count and total gold earned. Equipped gear is never touched.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param keyword optional case-insensitive substring restricting which inventory items are sold;
+     *                {@code null} sells the whole inventory
+     */
+    default void sellAllToShop(@Nullable String keyword) {}
 
     /**
      * Repairs the named damaged item in the player's possession, provided a blacksmith is present

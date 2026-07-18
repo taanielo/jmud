@@ -262,6 +262,71 @@ class ShopServiceTest {
             "Expected floor(25 * 0.5) = 12 gold");
     }
 
+    // ── sellAll ─────────────────────────────────────────────────────────
+
+    @Test
+    void sellAll_sellsEveryItem_andSumsGold() {
+        Item pelt = item("wolf-pelt", "Wolf Pelt", "A shaggy pelt.", 8);
+        Player player = playerWithGold(100)
+            .addItem(IRON_SWORD)     // floor(25*0.5)=12
+            .addItem(HEALTH_POTION)  // floor(10*0.5)=5
+            .addItem(pelt);          // floor(8*0.5)=4
+
+        ShopTransactionResult result = shopService.sellAll(player, shop, null);
+
+        assertTrue(result.success(), "Sell all should succeed: " + result.message());
+        // 100 + 12 + 5 + 4 = 121
+        assertEquals(121, result.updatedPlayer().getGold(), "Expected total sell proceeds added to gold");
+        assertTrue(result.updatedPlayer().getInventory().isEmpty(),
+            "Inventory should be empty after selling everything");
+        assertTrue(result.message().contains("3 items"), "Summary should report 3 items: " + result.message());
+        assertTrue(result.message().contains("21 gold"), "Summary should report 21 gold earned: " + result.message());
+    }
+
+    @Test
+    void sellAll_fails_whenInventoryEmpty() {
+        Player player = playerWithGold(50);
+
+        ShopTransactionResult result = shopService.sellAll(player, shop, null);
+
+        assertFalse(result.success());
+        assertTrue(result.message().equalsIgnoreCase("You have nothing to sell."),
+            "Expected friendly empty-inventory message: " + result.message());
+    }
+
+    @Test
+    void sellAll_withKeyword_sellsOnlyMatchingItems() {
+        Item peltOne = item("wolf-pelt", "Wolf Pelt", "A shaggy pelt.", 8);
+        Item peltTwo = item("bear-pelt", "Bear Pelt", "A thick pelt.", 12);
+        Player player = playerWithGold(0)
+            .addItem(IRON_SWORD)
+            .addItem(peltOne)   // floor(8*0.5)=4
+            .addItem(peltTwo);  // floor(12*0.5)=6
+
+        ShopTransactionResult result = shopService.sellAll(player, shop, "pelt");
+
+        assertTrue(result.success(), "Keyword sell should succeed: " + result.message());
+        assertEquals(10, result.updatedPlayer().getGold(), "Only the two pelts should be sold (4+6)");
+        assertTrue(result.updatedPlayer().getInventory().stream()
+                .anyMatch(i -> i.getId().equals(IRON_SWORD.getId())),
+            "Iron Sword should remain since it does not match 'pelt'");
+        assertEquals(1, result.updatedPlayer().getInventory().size(),
+            "Only the Iron Sword should remain in inventory");
+    }
+
+    @Test
+    void sellAll_withKeyword_fails_whenNoMatches() {
+        Player player = playerWithGold(0).addItem(IRON_SWORD);
+
+        ShopTransactionResult result = shopService.sellAll(player, shop, "pelt");
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("matching 'pelt'"),
+            "Expected no-match keyword message: " + result.message());
+        assertTrue(result.message().contains("nothing"),
+            "Expected friendly no-match message: " + result.message());
+    }
+
     // ── helpers ───────────────────────────────────────────────────────
 
     private static Item item(String id, String name, String description, int value) {
