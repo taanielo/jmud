@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "cooking-grand-isle-feast",
+  "name": "Grand Isle Feast",
+  "output_item": "grand-isle-feast",
+  "gold_cost": 30,
+  "min_skill": 4,
+  "materials": [
+    { "item": "fogfin-cod", "quantity": 2 },
+    { "item": "meat", "quantity": 1 },
+    { "item": "wild-herbs", "quantity": 2 }
+  ]
+}

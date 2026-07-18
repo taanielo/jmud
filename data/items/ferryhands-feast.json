@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "ferryhands-feast",
+  "name": "Ferryhand's Feast",
+  "description": "A heaped platter of pan-seared deckside mackerel and wild herbs, the kind of meal ferry crews cook up between crossings. A generous helping puts real steel in the belly.",
+  "attributes": {
+    "stats": {
+      "hunger": 80
+    }
+  },
+  "effects": [
+    {
+      "effect_id": "hearty-feast",
+      "duration_ticks": 90
+    }
+  ],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You work through {item}, the rich fish and herbs filling you with steady warmth."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} tucks into a platter of {item}."
+    }
+  ],
+  "weight": 2,
+  "value": 44
+}

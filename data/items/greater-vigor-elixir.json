@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "greater-vigor-elixir",
+  "name": "Greater Vigor Elixir",
+  "description": "A luminous emerald draught, thicker and more potent than a common vigor elixir. It floods the body with restorative warmth and clears the mind in a single swallow.",
+  "attributes": {
+    "stats": {
+      "hp": 45,
+      "mana": 25
+    }
+  },
+  "effects": [],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You quaff {item}."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 55
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "id": "greater-antivenom",
+  "name": "Greater Antivenom",
+  "description": "A dark violet philtre distilled from blightspore venom by an alchemist's steady hand. It purges even a void-touched poison from the blood and knits the ravaged flesh behind it.",
+  "attributes": {
+    "stats": {
+      "hp": 40
+    }
+  },
+  "effects": [
+    {
+      "effect_id": "poison",
+      "duration_ticks": 0,
+      "op": "REMOVE"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "quaff",
+      "channel": "self",
+      "text": "You quaff {item}."
+    },
+    {
+      "phase": "quaff",
+      "channel": "room",
+      "text": "{source} quaffs {item}."
+    }
+  ],
+  "weight": 1,
+  "value": 110
+}
