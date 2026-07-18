@@ -15,6 +15,7 @@ public record AbilityDto(
     int level,
     AbilityCostDto cost,
     AbilityCooldownDto cooldown,
+    Integer castTimeTicks,
     AbilityTargeting targeting,
     List<String> aliases,
     List<AbilityEffectDto> effects,

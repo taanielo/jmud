@@ -10,6 +10,7 @@
   "cooldown": {
     "ticks": 6
   },
+  "cast_time_ticks": 2,
   "targeting": "BENEFICIAL_GROUP",
   "aliases": ["chainheal", "cheal"],
   "effects": [

@@ -39,8 +39,19 @@ public class CastCommand extends RegistrableCommand {
                    CAST fireball              \u2014 cast Fireball on your current target
                    CAST heal self             \u2014 cast Heal on yourself
                    CAST lightning bolt goblin \u2014 cast Lightning Bolt at the goblin
+
+                 Cast time and interruption:
+                   Most spells resolve instantly, but a few powerful spells are CHANNELED:
+                   casting one takes several ticks, during which you are visibly casting and
+                   cannot start another ability or FLEE. If you take ANY damage while casting
+                   \u2014 from a mob, another player, or a damage-over-time effect \u2014 the cast is
+                   interrupted: the spell fizzles, its mana is NOT spent, and it goes on a
+                   short cooldown. COOLDOWNS and EFFECTS show what you are currently casting
+                   and how many ticks remain, so allies can see you are channeling.
+
                  To use skill-type abilities, use the USE command instead.
-                 See also: USE (all abilities), ABILITIES (list all known abilities)\
+                 See also: USE (all abilities), ABILITIES (list all known abilities),
+                           COOLDOWNS (live readiness and current cast)\
                """;
     }
 
