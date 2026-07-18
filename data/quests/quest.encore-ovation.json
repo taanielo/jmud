@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "encore-ovation",
+  "name": "Refuse the Encore",
+  "description": "The hollow ovations only spread the refusal; the empty seats only gave it a house to fill. Down past the final bow, on the wide dark stage where the whole roar of the ended hall pours in and drives back out without pause, the refusal has a name, and it is the Ovation — the applause given a body, the demand for one more piece made hostile and enormous and awake. It does not sit and it does not float and it did not resolve the way the Coda resolved; it applauds, endlessly, a towering shape of clapped insistence and repeating echo and standing call gathered into one will, and every measure of ovation it takes in it drives back out as a single wordless command: again. It has been calling for an encore since before there was a world to end, and now the ended music has come to it wearing your face and carrying the one thing the whole finished song ran out of — a living, unrepeated heartbeat, the last unspent measure, the encore it means to wring out of a work that already took its final bow. The Choir demanded a resolution and the Coda gave it; but the Ovation will not accept that any resolution is final, and it means to play your borrowed pulse out onto its stage over and over until there is nothing left to call back. Cross onto the stage, break the Ovation where it turns the whole roar of the refused ending onto you, and let the applause fall at last into the silence the Coda earned — or be the encore it has waited an eternity to play.",
+  "target_mob_id": "the-ovation",
+  "required_kills": 1,
+  "gold_reward": 1320,
+  "xp_reward": 3500,
+  "title_reward": "Curtain Call",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 50,
+  "recommended_level": 95,
+  "repeatable": false,
+  "prerequisite_quest_id": "encore-cull"
+}
