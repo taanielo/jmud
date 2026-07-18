@@ -186,6 +186,7 @@ import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.MapService;
 import io.taanielo.jmud.core.world.PlayerLocationService;
+import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomItemService;
 import io.taanielo.jmud.core.world.RoomPathfinder;
@@ -415,7 +416,11 @@ public record GameContext(
         // WAYFIND: turn-by-turn walking directions over the visible room graph (regular exits plus
         // globally-discovered hidden exits), with ferries only used to explain ferry-only routes.
         WayfindService wayfindService = new WayfindService(
-            areaRepository, new RoomPathfinder(), ferryRepository, playerLocationService::getVisibleExits);
+            areaRepository,
+            new RoomPathfinder(),
+            ferryRepository,
+            playerLocationService::getVisibleExits,
+            roomId -> roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue()));
 
         EncumbranceService encumbranceService = new EncumbranceService(
             raceRepository, classRepository, new EquipmentCarryResolver(itemRepository));
