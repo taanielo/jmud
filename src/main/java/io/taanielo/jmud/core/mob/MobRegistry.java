@@ -3314,6 +3314,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     private void runMobAi(MobInstance mob) {
+        // A mob winding up a telegraphed special is fully occupied channeling: it advances the
+        // countdown (landing the deferred blow when it elapses) and takes no other action this tick.
+        if (mob.hasPendingTelegraph()) {
+            advancePendingTelegraph(mob);
+            return;
+        }
         List<Username> candidates;
         Set<Username> engaged = mob.engagedPlayers();
         boolean packJoin = false;
@@ -3372,6 +3378,39 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         mob.engage(targetUsername);
         playerCombatTargets.put(targetUsername, mob.instanceId());
 
+        // A boss's telegraphed special winds up over several AI ticks instead of landing now:
+        // announce the wind-up, defer the blow, and spend this turn channeling (no normal hit). The
+        // deferred resolution happens in advancePendingTelegraph once the window elapses.
+        if (useSpecial && attack.telegraphs()) {
+            mob.beginTelegraph(attack.id(), targetUsername, attack.telegraphTicks());
+            announceTelegraph(mob, attack, targetUsername);
+            return;
+        }
+
+        resolveMobAttackAndPublish(mob, attack, target, targetUsername, candidates, packJoin,
+            firstEngagement, useSpecial);
+    }
+
+    /**
+     * Resolves a mob's attack against its target through the shared hit/crit/parry/block pipeline
+     * ({@link #resolveMobAttack}) and publishes the resulting messages, mount throw, on-hit effect,
+     * gear degradation, and any kill rewards. Shared by the immediate {@link #runMobAi} attack path and
+     * the deferred telegraph resolution ({@link #advancePendingTelegraph}) so a telegraphed special
+     * lands with outcomes identical to an instant one — only the timing differs. Runs on the tick
+     * thread (AGENTS.md §5).
+     *
+     * @param mob             the attacking mob
+     * @param attack          the resolved attack definition
+     * @param target          the current player snapshot being attacked
+     * @param targetUsername  the target's username
+     * @param candidates      the engaged players present in the mob's room (kill routing and AoE effects)
+     * @param packJoin        whether this engagement is a pack reinforcement (affects the first-engagement line)
+     * @param firstEngagement whether this is the target's first engagement with the mob this encounter
+     * @param useSpecial      whether this attack is the mob's special ability rather than its basic attack
+     */
+    private void resolveMobAttackAndPublish(
+        MobInstance mob, AttackDefinition attack, Player target, Username targetUsername,
+        List<Username> candidates, boolean packJoin, boolean firstEngagement, boolean useSpecial) {
         MobAttackOutcome outcome = resolveMobAttack(attack, target);
         if (!outcome.hit()) {
             // A miss deals no damage, wears no gear, and applies no on-hit effect. The player may
@@ -3466,6 +3505,94 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             playerEventBus.publish(targetUsername,
                 new GameActionResult(damagedPlayer, null, messages));
         }
+    }
+
+    /**
+     * Advances a mob's pending telegraphed special attack by one AI decision. If the target has
+     * disengaged, fled the room, or died before the blow lands the telegraph is cancelled with no
+     * damage (mirroring the {@link MobInstance#specialAbilityUsed()} reset-on-disengage logic).
+     * Otherwise the wind-up counter is decremented; while it is still counting down the mob keeps
+     * channeling and does nothing else, and when it elapses the deferred special resolves through the
+     * shared {@link #resolveMobAttackAndPublish} pipeline with outcomes identical to an instant-fire
+     * version. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the mob winding up a telegraphed special (must have a pending telegraph)
+     */
+    private void advancePendingTelegraph(MobInstance mob) {
+        Username targetUsername = mob.telegraphTarget();
+        AttackId attackId = mob.telegraphAttackId();
+        Player target =
+            targetUsername == null ? null : playerRepository.loadPlayer(targetUsername).orElse(null);
+        boolean targetValid = target != null && !target.isDead() && targetUsername != null
+            && mob.engagedPlayers().contains(targetUsername)
+            && roomService.getPlayersInRoom(mob.roomId()).contains(targetUsername);
+        if (attackId == null || !targetValid) {
+            mob.clearTelegraph();
+            return;
+        }
+        if (!mob.tickTelegraph()) {
+            // Still winding up — the mob is fully occupied channeling this tick.
+            return;
+        }
+        AttackDefinition attack = loadAttack(attackId);
+        if (attack == null) {
+            return;
+        }
+        List<Username> candidates = roomService.getPlayersInRoom(mob.roomId()).stream()
+            .filter(mob.engagedPlayers()::contains)
+            .toList();
+        resolveMobAttackAndPublish(mob, attack, target, targetUsername, candidates, false, false, true);
+    }
+
+    /**
+     * Announces the wind-up of a telegraphed special attack: renders the attack's
+     * {@link MessagePhase#TELEGRAPH} message on the {@link MessageChannel#SELF} channel to the target
+     * and on the {@link MessageChannel#ROOM} channel to the rest of the room, falling back to a generic
+     * warning line when the attack authors none. This is the fair warning that lets a player flee, heal,
+     * or pop a defensive cooldown before the blow lands. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob            the mob beginning its wind-up
+     * @param attack         the telegraphed special attack
+     * @param targetUsername the player the telegraphed attack is aimed at
+     */
+    private void announceTelegraph(MobInstance mob, AttackDefinition attack, Username targetUsername) {
+        String selfMessage = telegraphMessage(mob, attack, MessageChannel.SELF);
+        if (selfMessage != null) {
+            playerEventBus.publish(targetUsername,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(selfMessage))));
+        }
+        String roomMessage = telegraphMessage(mob, attack, MessageChannel.ROOM);
+        if (roomMessage != null) {
+            broadcastToRoomExcept(mob.roomId(), targetUsername, roomMessage);
+        }
+    }
+
+    /**
+     * Renders an attack's authored {@link MessagePhase#TELEGRAPH} message for the given channel, or a
+     * generic wind-up warning when the attack authors none.
+     *
+     * @param mob     the mob winding up the attack
+     * @param attack  the telegraphed attack
+     * @param channel the message channel to render (SELF for the target, ROOM for onlookers)
+     * @return the rendered telegraph line, or {@code null} when nothing should be shown on this channel
+     */
+    @Nullable
+    private String telegraphMessage(MobInstance mob, AttackDefinition attack, MessageChannel channel) {
+        for (MessageSpec spec : attack.messages()) {
+            if (spec.phase() == MessagePhase.TELEGRAPH && spec.channel() == channel) {
+                MessageContext context = new MessageContext(
+                    null, null, mob.template().name(), null, null, null, attack.name(), 0);
+                String rendered = messageRenderer.render(spec, context);
+                if (rendered != null && !rendered.isBlank()) {
+                    return rendered;
+                }
+            }
+        }
+        return switch (channel) {
+            case SELF, ROOM ->
+                "The " + mob.template().name() + " begins winding up " + attack.name() + "!";
+            default -> null;
+        };
     }
 
     /**

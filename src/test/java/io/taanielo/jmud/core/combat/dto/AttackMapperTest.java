@@ -33,6 +33,7 @@ class AttackMapperTest {
             "PIERCING",
             new AttackDto.AppliesEffectDto("poison", 40),
             null,
+            null,
             null
         );
 
@@ -58,6 +59,7 @@ class AttackMapperTest {
             "PIERCING",
             null,
             null,
+            null,
             null
         );
 
@@ -79,6 +81,7 @@ class AttackMapperTest {
             0,
             List.of(),
             "PIERCING",
+            null,
             null,
             null,
             null
@@ -105,6 +108,7 @@ class AttackMapperTest {
             "PIERCING",
             null,
             "RANGED",
+            null,
             null
         );
 
@@ -128,7 +132,8 @@ class AttackMapperTest {
             "BLUNT",
             null,
             null,
-            "FIRE"
+            "FIRE",
+            null
         );
 
         AttackDefinition attack = mapper.toDomain(dto);
@@ -151,12 +156,61 @@ class AttackMapperTest {
             "SLASHING",
             null,
             null,
-            "sonic"
+            "sonic",
+            null
         );
 
         AttackDefinition attack = mapper.toDomain(dto);
 
         assertEquals(DamageType.PHYSICAL, attack.damageType());
+    }
+
+    @Test
+    void mapsTelegraphTicksFromSchemaVersion7() {
+        AttackDto dto = new AttackDto(
+            AttackSchemaVersions.V7,
+            "attack.boss-slam",
+            "Devastating Slam",
+            40,
+            60,
+            5,
+            5,
+            10,
+            List.of(),
+            "BLUNT",
+            null,
+            null,
+            null,
+            3
+        );
+
+        AttackDefinition attack = mapper.toDomain(dto);
+
+        assertEquals(3, attack.telegraphTicks());
+    }
+
+    @Test
+    void defaultsTelegraphTicksToZeroWhenAbsent() {
+        AttackDto dto = new AttackDto(
+            AttackSchemaVersions.V6,
+            "attack.instant",
+            "instant",
+            1,
+            2,
+            0,
+            0,
+            0,
+            List.of(),
+            "SLASHING",
+            null,
+            null,
+            null,
+            null
+        );
+
+        AttackDefinition attack = mapper.toDomain(dto);
+
+        assertEquals(0, attack.telegraphTicks());
     }
 
     @Test
@@ -171,6 +225,7 @@ class AttackMapperTest {
             0,
             0,
             List.of(),
+            null,
             null,
             null,
             null,

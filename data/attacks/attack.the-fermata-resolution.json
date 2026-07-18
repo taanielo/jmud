@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "attack.the-fermata-resolution",
   "name": "The Resolution",
   "min_damage": 86,
@@ -9,11 +9,22 @@
   "damage_bonus": 22,
   "weapon_type": "BLUNT",
   "damage_type": "COLD",
+  "telegraph_ticks": 3,
   "applies_effect": {
     "effect_id": "freeze",
     "chance_percent": 95
   },
   "messages": [
+    {
+      "phase": "telegraph",
+      "channel": "self",
+      "text": "The Fermata draws back the Resolution — the arrested downbeat it has held since before the first breath of the world lifting to fall, the whole chamber going still around the pause about to end. There is a breath, no more, before the withheld stroke comes down on you."
+    },
+    {
+      "phase": "telegraph",
+      "channel": "room",
+      "text": "The Fermata draws back the Resolution, the eternity-long pause lifting to its end, the whole chamber falling still before the downbeat."
+    },
     {
       "phase": "attack_hit",
       "channel": "self",

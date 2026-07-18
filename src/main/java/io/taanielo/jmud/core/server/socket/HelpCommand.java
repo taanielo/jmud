@@ -125,7 +125,15 @@ public class HelpCommand extends RegistrableCommand {
         "  defence, piling onto you as extra attackers. Thin the pack before you commit — a stealth",
         "  pull, a crowd-control spell, or an area attack that hits several at once turns a deadly",
         "  swarm into a fair fight. A packmate only joins a fight already begun; it never ambushes",
-        "  you first, so hidden rogues still choose their moment.");
+        "  you first, so hidden rogues still choose their moment.",
+        "",
+        "  A few boss-tier foes TELEGRAPH a devastating signature attack. Instead of landing it",
+        "  instantly, the boss spends a turn winding up and announces what is coming (\"...begins",
+        "  gathering the Final Chord...\"), giving you a few ticks of warning before the blow falls.",
+        "  Use them: FLEE the room to dodge it outright, top yourself off with a heal, or pop a",
+        "  defensive cooldown so the hit lands on a braced target. If the boss dies or you leave the",
+        "  fight before the wind-up finishes, the attack simply never lands. Watch for the warning —",
+        "  the scariest hit in the fight is the one you can see coming.");
 
     private static final List<String> COOLDOWNS_TOPIC = List.of(
         "Cooldowns",

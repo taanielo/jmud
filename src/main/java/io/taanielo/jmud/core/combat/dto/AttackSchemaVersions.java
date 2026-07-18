@@ -11,6 +11,8 @@ public final class AttackSchemaVersions {
     public static final int V5 = 5;
     /** V6 adds the optional {@code damage_type} field (PHYSICAL, FIRE, COLD, POISON, …). */
     public static final int V6 = 6;
+    /** V7 adds the optional {@code telegraph_ticks} field (mob wind-up delay before a special lands). */
+    public static final int V7 = 7;
 
     private AttackSchemaVersions() {
     }

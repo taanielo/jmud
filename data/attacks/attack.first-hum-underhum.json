@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "id": "attack.first-hum-underhum",
   "name": "The Underhum",
   "min_damage": 80,
@@ -9,11 +9,22 @@
   "damage_bonus": 20,
   "weapon_type": "BLUNT",
   "damage_type": "COLD",
+  "telegraph_ticks": 3,
   "applies_effect": {
     "effect_id": "freeze",
     "chance_percent": 95
   },
   "messages": [
+    {
+      "phase": "telegraph",
+      "channel": "self",
+      "text": "The First Hum gathers itself to sound the Underhum — the first wordless tone of the world drawing up from the source, the pale cold stone thrumming as the note that was never a voice rises toward you. There is a moment, only a moment, before it rolls over you."
+    },
+    {
+      "phase": "telegraph",
+      "channel": "room",
+      "text": "The First Hum gathers itself to sound the Underhum, the first tone the world ever made rising cold and wordless from the source."
+    },
     {
       "phase": "attack_hit",
       "channel": "self",
