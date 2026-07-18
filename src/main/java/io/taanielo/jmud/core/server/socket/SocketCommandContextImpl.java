@@ -52,6 +52,7 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bank.BankTransactionResult;
 import io.taanielo.jmud.core.bank.VaultUpgradeTier;
 import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.craft.CraftOutcome;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
@@ -3353,7 +3354,70 @@ class SocketCommandContextImpl implements SocketCommandContext {
         } else {
             tier = "could kill you without effort";
         }
-        writeLineWithPrompt("The " + found.template().name() + " " + tier + ".");
+        String affinity = elementalAffinityLine(
+            found.template().resistances(), found.template().vulnerabilities());
+        String tierLine = "The " + found.template().name() + " " + tier + ".";
+        if (affinity.isEmpty()) {
+            writeLineWithPrompt(tierLine);
+        } else {
+            writeLineSafe(tierLine);
+            writeLineWithPrompt(affinity);
+        }
+    }
+
+    /**
+     * Formats the optional second {@code CONSIDER} line describing a mob's elemental affinity, or an
+     * empty string when the mob authors no {@code resistances}/{@code vulnerabilities}. Damage types
+     * are rendered with {@link DamageType#displayName()} so the wording matches combat narration, and
+     * are listed in {@link DamageType} declaration order so the output is deterministic regardless of
+     * the backing map's iteration order.
+     *
+     * @param resistances    the mob's per-{@link DamageType} resistance percentages; may be empty
+     * @param vulnerabilities the mob's per-{@link DamageType} vulnerability percentages; may be empty
+     * @return a full "It looks resistant to …" sentence, or an empty string when neither map applies
+     */
+    static String elementalAffinityLine(
+            Map<DamageType, Integer> resistances, Map<DamageType, Integer> vulnerabilities) {
+        String resisted = joinDamageTypes(resistances);
+        String vulnerable = joinDamageTypes(vulnerabilities);
+        if (resisted.isEmpty() && vulnerable.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("It looks ");
+        if (!resisted.isEmpty()) {
+            sb.append("resistant to ").append(resisted);
+        }
+        if (!vulnerable.isEmpty()) {
+            if (!resisted.isEmpty()) {
+                sb.append(" and ");
+            }
+            sb.append("vulnerable to ").append(vulnerable);
+        }
+        return sb.append('.').toString();
+    }
+
+    /**
+     * Joins the player-facing names of the damage types present in the given elemental map, in
+     * {@link DamageType} declaration order, using {@code " and "} to separate the final pair.
+     *
+     * @param elemental a resistance or vulnerability map keyed by {@link DamageType}
+     * @return a phrase such as {@code "cold"} or {@code "fire and poison"}, or an empty string
+     */
+    private static String joinDamageTypes(Map<DamageType, Integer> elemental) {
+        List<String> names = new ArrayList<>();
+        for (DamageType type : DamageType.values()) {
+            if (elemental.containsKey(type)) {
+                names.add(type.displayName());
+            }
+        }
+        if (names.isEmpty()) {
+            return "";
+        }
+        if (names.size() == 1) {
+            return names.get(0);
+        }
+        return String.join(", ", names.subList(0, names.size() - 1))
+            + " and " + names.get(names.size() - 1);
     }
 
     @Override
