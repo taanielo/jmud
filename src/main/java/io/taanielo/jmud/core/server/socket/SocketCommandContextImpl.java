@@ -4825,7 +4825,6 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Username leader = player.getUsername();
         String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
         String sub = parts[0];
-        String subArgs = parts[1];
         switch (sub) {
             case "ACCEPT" -> writeLineWithPrompt(guildWarService.accept(leader).message());
             case "DECLINE" -> writeLineWithPrompt(guildWarService.decline(leader).message());
