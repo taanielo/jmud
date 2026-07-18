@@ -1519,13 +1519,23 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
         LevelUpResult levelUpResult = levelUpService.awardXp(working.get(attacker.getUsername()), xpPerMember);
         Player afterXp = levelUpResult.player();
+        // Gold is split with the same divisor and "present in the room" eligibility as the XP split
+        // above: the roll is made once, then divided by every party member in the room (dead members
+        // count toward the divisor but receive nothing, mirroring the historical XP split). Integer
+        // division floors each share, so any remainder (rounding, or a dead member's unclaimed slice)
+        // is simply not paid out and the total handed to the party never exceeds the roll. A solo kill
+        // (divisor 1) is a no-op division and still pays the killer 100% of the roll, byte-for-byte.
+        int goldRolled = 0;
+        int goldShare = 0;
         if (mob.template().goldDrop() != null) {
-            int gold = mob.template().goldDrop().roll(random);
-            if (gold > 0) {
-                afterXp = afterXp.addGold(gold);
+            goldRolled = mob.template().goldDrop().roll(random);
+            if (goldRolled > 0) {
+                goldShare = goldRolled / Math.max(1, partyRecipients.size());
+                if (goldShare > 0) {
+                    afterXp = afterXp.addGold(goldShare);
+                }
                 messages.add(GameMessage.toSource(
-                    "The " + mob.template().name() + " drops " + gold + " gold coin"
-                        + (gold == 1 ? "" : "s") + "."));
+                    goldDropMessage(mob, goldRolled, goldShare, partyRecipients.size())));
             }
         }
         if (questKillService != null) {
@@ -1594,6 +1604,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 memberMsgs.add(GameMessage.toSource(
                     "You have advanced to level " + memberAfterXp.getLevel() + "!"));
             }
+            // Pay this member their split gold share (same divisor as the attacker's share above).
+            if (goldRolled > 0) {
+                if (goldShare > 0) {
+                    memberAfterXp = memberAfterXp.addGold(goldShare);
+                }
+                memberMsgs.add(GameMessage.toSource(
+                    goldDropMessage(mob, goldRolled, goldShare, partyRecipients.size())));
+            }
             if (questKillService != null) {
                 var memberKillResult = questKillService.recordKill(memberAfterXp, mob.template().id().getValue());
                 if (memberKillResult.isPresent()) {
@@ -1627,6 +1645,27 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
         }
         return afterXp;
+    }
+
+    /**
+     * Builds the gold-drop line shown to a single kill-reward recipient. A solo kill (party size 1)
+     * keeps the historical flat message ("The goblin drops 12 gold coins.") unchanged byte-for-byte;
+     * a party kill appends the recipient's own split share ("The goblin drops 12 gold coins. You
+     * receive 3.") so each member sees what they personally received rather than the full roll.
+     *
+     * @param mob        the slain mob whose name is reported
+     * @param goldRolled the total gold rolled for this kill (before splitting)
+     * @param share      the individual recipient's split share of {@code goldRolled}
+     * @param partySize  the divisor used for the split (party members present in the room)
+     * @return the message text to show the recipient
+     */
+    private String goldDropMessage(MobInstance mob, int goldRolled, int share, int partySize) {
+        String base = "The " + mob.template().name() + " drops " + goldRolled + " gold coin"
+            + (goldRolled == 1 ? "" : "s") + ".";
+        if (partySize <= 1) {
+            return base;
+        }
+        return base + " You receive " + share + ".";
     }
 
     /**
