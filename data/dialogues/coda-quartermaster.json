@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "coda-quartermaster-welcome",
+  "npc_id": "coda-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "You reached the after — the place the phrase becomes when it is finally allowed to end. I am the last measure before the silence, kept here to be of use while the resolving chord still rings. There is nothing past this hall but the close. Speak, and I will answer before the final beat lands.",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "What do you carry?", "target": "wares" },
+        { "text": "Not yet.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "Even here, at the resolving stroke, steel and cloth and resolve wear thin against the held silence. Lay your gear upon my forge and I will mend it, reforge it whole, or break it down for whatever still keeps the measure.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "All a body needs to hold its note at the close of the song: healing, mana, cure, vigor, food and light. LIST it and take your fill. There is no stall past me — only the last chord, and then the rest.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "My thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Hold your note true. The final measure counts every beat, and the silence forgives nothing left unresolved.",
+      "responses": []
+    }
+  }
+}
