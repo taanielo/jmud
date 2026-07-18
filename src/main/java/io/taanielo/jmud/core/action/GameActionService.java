@@ -76,6 +76,7 @@ import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaWaypointService;
+import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
@@ -176,6 +177,13 @@ public class GameActionService {
      * unavailable.
      */
     private @Nullable AreaWaypointService areaWaypointService;
+    /**
+     * Optional wayfinding service, used by {@link #wayfind} to resolve a destination area and compute
+     * turn-by-turn directions to it. {@code null} until the composition root wires it via
+     * {@link #setWayfindService(WayfindService)}; while absent, WAYFIND reports that the player cannot
+     * get their bearings.
+     */
+    private @Nullable WayfindService wayfindService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -505,6 +513,49 @@ public class GameActionService {
      */
     public void setAreaWaypointService(AreaWaypointService areaWaypointService) {
         this.areaWaypointService = Objects.requireNonNull(areaWaypointService, "Area waypoint service is required");
+    }
+
+    /**
+     * Injects the wayfinding service used by {@link #wayfind} to resolve destination areas and
+     * compute walking routes.
+     *
+     * <p>Called once by the composition root. When absent, WAYFIND reports that the player cannot get
+     * their bearings.
+     *
+     * @param wayfindService the shared wayfinding service
+     */
+    public void setWayfindService(WayfindService wayfindService) {
+        this.wayfindService = Objects.requireNonNull(wayfindService, "Wayfind service is required");
+    }
+
+    /**
+     * Handles the {@code WAYFIND} command: prints turn-by-turn walking directions from the player's
+     * current room to a named area, or, with a blank query, lists the current area and its charted
+     * neighbours.
+     *
+     * <p>This is a pure read of world and location state (AGENTS.md §5): it never moves the player,
+     * consumes no moves or cooldown, and never mutates game state. The heavy lifting — destination
+     * resolution and shortest-route search over the walkable room graph — lives in
+     * {@link WayfindService}; this method only resolves the player's current room and wraps the
+     * resulting lines as source-directed messages.
+     *
+     * @param source the player asking for directions; must not be null
+     * @param query  the raw argument after {@code WAYFIND} (blank lists nearby areas)
+     * @return a result carrying the directions or an explanatory message, never an exception
+     */
+    public GameActionResult wayfind(Player source, @Nullable String query) {
+        Objects.requireNonNull(source, "Source is required");
+        if (wayfindService == null) {
+            return GameActionResult.error("You cannot get your bearings here.");
+        }
+        RoomId currentRoom = roomService.findPlayerLocation(source.getUsername()).orElse(null);
+        if (currentRoom == null) {
+            return GameActionResult.error("You are nowhere; there is nothing to route from.");
+        }
+        List<GameMessage> messages = wayfindService.wayfind(currentRoom, query).stream()
+            .map(GameMessage::toSource)
+            .toList();
+        return new GameActionResult(null, null, messages);
     }
 
     /**

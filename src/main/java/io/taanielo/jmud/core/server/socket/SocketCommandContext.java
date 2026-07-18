@@ -452,6 +452,18 @@ public interface SocketCommandContext extends Client {
     default void bind(String args) {}
 
     /**
+     * Handles the {@code WAYFIND} command: with no argument lists the player's current area and its
+     * charted neighbours; with an area name or id it prints the shortest walking route (turn-by-turn
+     * compass directions plus a step count) to that area's waypoint room, or a friendly message when
+     * the area is unknown, ambiguous, or unreachable on foot.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code WAYFIND} (blank means "list nearby areas")
+     */
+    default void wayfind(String args) {}
+
+    /**
      * Assesses the danger of a mob in the same room and prints a qualitative tier message.
      *
      * <p>The default implementation is a no-op so that existing test stubs

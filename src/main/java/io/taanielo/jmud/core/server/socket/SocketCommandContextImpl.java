@@ -278,6 +278,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.areaWaypointService() != null) {
             this.gameActionService.setAreaWaypointService(context.areaWaypointService());
         }
+        if (context.wayfindService() != null) {
+            this.gameActionService.setWayfindService(context.wayfindService());
+        }
         this.gameActionService.setOnlinePlayerLookup(
             username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
     }
@@ -3069,6 +3072,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         GameActionResult result = gameActionService.bind(player);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void wayfind(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to get directions.");
+            return;
+        }
+        GameActionResult result = gameActionService.wayfind(session.getPlayer(), args);
         deliverResult(result);
         sendPrompt();
     }
