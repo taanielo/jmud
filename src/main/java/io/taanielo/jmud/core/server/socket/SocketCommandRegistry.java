@@ -194,6 +194,7 @@ public class SocketCommandRegistry {
         new ClaimCommand(registry);
         new VaultCommand(registry);
         new AuctionCommand(registry);
+        new BountyCommand(registry);
         new LockCommand(registry);
         new UnlockCommand(registry);
         new PickCommand(registry);

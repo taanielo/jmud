@@ -1179,6 +1179,19 @@ public interface SocketCommandContext extends Client {
     default void manageAuction(String args) {}
 
     /**
+     * Executes a {@code BOUNTY} sub-command: {@code POST <mob> <gold>}, {@code LIST}, or
+     * {@code CANCEL <mob>}. Escrows gold against a mob type, lists open bounties, or refunds the
+     * player's own unclaimed stake respectively; a bountied mob type's pooled reward is paid to
+     * whoever next kills it (announced server-wide) via the mob-death reward path.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "POST goblin 100"} or
+     *             {@code "CANCEL goblin"})
+     */
+    default void manageBounty(String args) {}
+
+    /**
      * Displays the bulletin board of the player's current room via the {@code BOARD} command:
      * every note pinned there, numbered oldest-first, with each note's author, timestamp, and text.
      *
