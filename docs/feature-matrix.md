@@ -125,6 +125,27 @@ buff/debuff/HoT abilities (`garrote`, `evasive-maneuvers`, `mana-shield`, `bone-
 `spell.hurricane`, `spell.siren-song`) reuse the AoE direct-damage pipeline. `HELP <class>` and
 `TRAIN LIST` pick these up automatically from `trainable_ability_ids`.
 
+Mythic tier (#715). Every class now has a seventh trainable ability gated at **level 75**, landing
+mid-Interval (73-80) one zone before the level-88 Coda cap, so the entire 60-88 endgame stretch opened
+up by The Undersong, The Interval and The Coda is no longer flat past the legendary tier. Each mythic
+ability introduces a new mechanic for its class rather than a bigger number: warrior
+`skill.intimidating-shout` (the warrior's first crowd control — a room-wide fear that fouls every foe's
+aim), adventurer `skill.sweeping-strike` (the generalist's first AoE — a wide swing across every foe),
+rogue `skill.blade-flurry` (the rogue's first AoE — a whirling flurry of blades across every foe),
+ranger `skill.pinning-shot` (the ranger's first single-target root/control), mage `spell.meteor-swarm`
+(the mage's first AoE — a rain of fire across every foe), necromancer `spell.doom` (the necromancer's
+first AoE control — a room-wide curse of dread sapping aim and strength), cleric `spell.mass-exorcism`
+(the cleric's first AoE control — a searing wave of holy light that routs every foe), druid
+`spell.entangling-roots` (the druid's first AoE control — grasping vines that root every foe), shaman
+`spell.earthbind-totem` (the shaman's first AoE control — a third totem that roots and slows every
+foe), bard `spell.virtuoso` (the bard's first personal power buff — a solo spiking its own attack and
+spellcraft) and paladin `spell.hammer-of-justice` (the paladin's first control — a single-target
+stun). Eight new status effects back the control/buff abilities (`intimidated`, `pinned`, `doomed`,
+`exorcised`, `rooted`, `earthbound`, `virtuoso`, `hammer-of-justice`); the AoE abilities reuse the AoE
+direct-damage/effect pipeline and the single-target control abilities follow the arcane-shackles
+damage+effect pattern. `HELP <class>` and `TRAIN LIST` pick these up automatically from
+`trainable_ability_ids`.
+
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |

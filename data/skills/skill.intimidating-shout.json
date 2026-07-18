@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "skill.intimidating-shout",
+  "name": "intimidating shout",
+  "type": "SKILL",
+  "level": 75,
+  "cost": {
+    "mana": 12,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "AoE",
+  "aliases": ["ishout", "shout", "intimidate"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 7
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "intimidated"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loose a bone-shaking bellow that frightens every foe around you, fouling their aim as you unleash {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} looses a bone-shaking bellow that sends every foe in the room flinching and cowering as they unleash {ability}!"
+    }
+  ]
+}

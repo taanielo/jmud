@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "rooted",
+  "name": "Rooted",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Grasping vines burst from the earth and coil around your legs, rooting you helplessly in place."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Grasping vines erupt and coil around {name}, rooting them fast in place."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The grasping vines wither and release your legs."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The vines rooting {name} wither and fall away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is rooted in place by a snarl of grasping vines."
+    }
+  ]
+}

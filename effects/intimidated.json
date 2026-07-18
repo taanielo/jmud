@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "intimidated",
+  "name": "Intimidated",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -5
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A bone-shaking bellow rattles your nerve; your hands shake and your swings go wide with fright."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} flinches and cowers, badly shaken by a terrifying bellow."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The dread of the bellow fades and your nerve steadies."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} shakes off their fright and steadies their guard."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks frightened and unsteady, their aim fouled by fear."
+    }
+  ]
+}

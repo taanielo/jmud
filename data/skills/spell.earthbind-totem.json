@@ -1,0 +1,40 @@
+{
+  "schema_version": 2,
+  "id": "spell.earthbind-totem",
+  "name": "earthbind totem",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 12,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "AoE",
+  "aliases": ["earthbind", "earthbindtotem", "ebind"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 6
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "earthbound"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You plant an earthbind totem whose pull grips the ground, rooting and slowing every foe around you as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} plants an earthbind totem, and the ground clutches at every foe in the room, dragging them down as they cast {ability}!"
+    }
+  ]
+}

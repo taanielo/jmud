@@ -31,6 +31,7 @@ class BardClassSeedingTest {
     private static final AbilityId ANTHEM_OF_RENEWAL = AbilityId.of("spell.anthem-of-renewal");
     private static final AbilityId WAR_SONG = AbilityId.of("spell.war-song");
     private static final AbilityId SIREN_SONG = AbilityId.of("spell.siren-song");
+    private static final AbilityId VIRTUOSO = AbilityId.of("spell.virtuoso");
 
     @Test
     void bardClassJsonLoadsCorrectly() throws Exception {
@@ -42,7 +43,7 @@ class BardClassSeedingTest {
         assertEquals("bard", bard.id().getValue());
         assertEquals("Bard", bard.name());
         assertEquals(List.of(BATTLE_HYMN, DISCORD), bard.startingAbilityIds());
-        assertEquals(List.of(HASTE, BLESS, DISSONANT_CHORD, ANTHEM_OF_RENEWAL, WAR_SONG, SIREN_SONG), bard.trainableAbilityIds());
+        assertEquals(List.of(HASTE, BLESS, DISSONANT_CHORD, ANTHEM_OF_RENEWAL, WAR_SONG, SIREN_SONG, VIRTUOSO), bard.trainableAbilityIds());
     }
 
     @Test
