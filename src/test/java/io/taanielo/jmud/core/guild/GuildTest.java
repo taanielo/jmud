@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.guild;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -235,5 +236,31 @@ class GuildTest {
 
         assertEquals(1, guild.vaultedItems().size());
         assertEquals(1, guild.withoutMember(BOB).vaultedItems().size());
+    }
+
+    @Test
+    void foundedGuildIsNotAtWarWithZeroWarWins() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertFalse(guild.isAtWar());
+        assertEquals(0, guild.warWins());
+        assertNull(guild.activeWar());
+    }
+
+    @Test
+    void withActiveWarAndWarWinAreAdditiveAndSurviveRosterChanges() {
+        GuildWar war = GuildWar.against(GuildId.of("rival"));
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE)
+            .withActiveWar(war)
+            .withWarWin()
+            .withMember(BOB);
+
+        assertTrue(guild.isAtWar());
+        assertEquals(GuildId.of("rival"), guild.activeWar().opponent());
+        assertEquals(1, guild.warWins());
+        // Clearing the war leaves the win count untouched.
+        Guild ended = guild.withActiveWar(null);
+        assertNull(ended.activeWar());
+        assertEquals(1, ended.warWins());
     }
 }

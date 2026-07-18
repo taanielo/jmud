@@ -37,6 +37,12 @@ import io.taanielo.jmud.core.authentication.Username;
  * a mob type" objective whose progress accrues from every member's kills. It is {@code null} for a guild
  * that has never been assigned one (e.g. a freshly loaded legacy guild); the {@link GuildQuestService}
  * lazily assigns one on first access, so no persistence migration is required.
+ *
+ * <p>{@code activeWar} is the guild's current {@link GuildWar} against a rival guild — a running tally of
+ * consensual duel wins between the two guilds' members (issue #731). It is {@code null} when the guild is
+ * not currently at war; a guild may only be in one war at a time (on either side). {@code warWins} is the
+ * guild's persistent count of guild wars won over its lifetime. Both are additive: files written before
+ * they existed load with no active war and zero wins, so no persistence migration is required.
  */
 public record Guild(
     GuildId id,
@@ -46,7 +52,9 @@ public record Guild(
     int treasuryGold,
     List<VaultedItem> vaultedItems,
     int lifetimeDepositedGold,
-    @Nullable GuildQuest activeGuildQuest
+    @Nullable GuildQuest activeGuildQuest,
+    @Nullable GuildWar activeWar,
+    int warWins
 ) {
 
     public Guild {
@@ -59,6 +67,9 @@ public record Guild(
         }
         if (lifetimeDepositedGold < 0) {
             throw new IllegalArgumentException("Guild lifetimeDepositedGold must not be negative");
+        }
+        if (warWins < 0) {
+            throw new IllegalArgumentException("Guild warWins must not be negative");
         }
         vaultedItems = List.copyOf(Objects.requireNonNull(vaultedItems, "Guild vaultedItems are required"));
     }
@@ -74,7 +85,8 @@ public record Guild(
      */
     public static Guild found(GuildId id, String name, Username leader) {
         return new Guild(
-            id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of(), 0, null);
+            id, name, leader, List.of(new GuildMember(leader, GuildRank.LEADER, 0)), 0, List.of(), 0, null,
+            null, 0);
     }
 
     /**
@@ -149,7 +161,8 @@ public record Guild(
         List<GuildMember> next = new ArrayList<>(members);
         next.add(new GuildMember(username, GuildRank.MEMBER, nextOrder));
         return new Guild(
-            id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest);
+            id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest,
+            activeWar, warWins);
     }
 
     /**
@@ -171,7 +184,7 @@ public record Guild(
         if (remaining.isEmpty()) {
             return new Guild(
                 id, name, leaderId, List.of(), treasuryGold, vaultedItems, lifetimeDepositedGold,
-                activeGuildQuest);
+                activeGuildQuest, activeWar, warWins);
         }
         Username newLeader = leaderId;
         if (leaderId.equals(username)) {
@@ -185,7 +198,7 @@ public record Guild(
         }
         return new Guild(
             id, name, newLeader, remaining, treasuryGold, vaultedItems, lifetimeDepositedGold,
-            activeGuildQuest);
+            activeGuildQuest, activeWar, warWins);
     }
 
     /**
@@ -207,7 +220,8 @@ public record Guild(
             .map(m -> m.username().equals(username) ? m.withRank(newRank) : m)
             .toList();
         return new Guild(
-            id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest);
+            id, name, leaderId, next, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest,
+            activeWar, warWins);
     }
 
     /**
@@ -224,7 +238,7 @@ public record Guild(
         }
         return new Guild(
             id, name, leaderId, members, treasuryGold + amount, vaultedItems,
-            lifetimeDepositedGold + amount, activeGuildQuest);
+            lifetimeDepositedGold + amount, activeGuildQuest, activeWar, warWins);
     }
 
     /**
@@ -244,7 +258,7 @@ public record Guild(
         }
         return new Guild(
             id, name, leaderId, members, treasuryGold - amount, vaultedItems, lifetimeDepositedGold,
-            activeGuildQuest);
+            activeGuildQuest, activeWar, warWins);
     }
 
     /**
@@ -258,7 +272,8 @@ public record Guild(
         List<VaultedItem> next = new ArrayList<>(vaultedItems);
         next.add(vaulted);
         return new Guild(
-            id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold, activeGuildQuest);
+            id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold, activeGuildQuest,
+            activeWar, warWins);
     }
 
     /**
@@ -277,7 +292,8 @@ public record Guild(
         List<VaultedItem> next = new ArrayList<>(vaultedItems);
         next.remove(index);
         return new Guild(
-            id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold, activeGuildQuest);
+            id, name, leaderId, members, treasuryGold, next, lifetimeDepositedGold, activeGuildQuest,
+            activeWar, warWins);
     }
 
     /**
@@ -290,6 +306,36 @@ public record Guild(
      */
     public Guild withActiveGuildQuest(@Nullable GuildQuest quest) {
         return new Guild(
-            id, name, leaderId, members, treasuryGold, vaultedItems, lifetimeDepositedGold, quest);
+            id, name, leaderId, members, treasuryGold, vaultedItems, lifetimeDepositedGold, quest,
+            activeWar, warWins);
+    }
+
+    /**
+     * Returns a copy of this guild with its active guild war set to {@code war}. Passing {@code null}
+     * clears the war (the guild is then free to declare or receive a new one).
+     *
+     * @param war the new active guild war, or {@code null} to clear it
+     * @return the updated guild
+     */
+    public Guild withActiveWar(@Nullable GuildWar war) {
+        return new Guild(
+            id, name, leaderId, members, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest,
+            war, warWins);
+    }
+
+    /**
+     * Returns a copy of this guild with its persistent lifetime guild-war win count incremented by one.
+     *
+     * @return the updated guild
+     */
+    public Guild withWarWin() {
+        return new Guild(
+            id, name, leaderId, members, treasuryGold, vaultedItems, lifetimeDepositedGold, activeGuildQuest,
+            activeWar, warWins + 1);
+    }
+
+    /** Returns {@code true} when this guild is currently engaged in a guild war. */
+    public boolean isAtWar() {
+        return activeWar != null;
     }
 }

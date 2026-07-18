@@ -68,6 +68,28 @@ class GuildRankingListingTest {
     }
 
     @Test
+    void rendersWarWinsColumn() {
+        Guild guild = Guild.found(GuildId.newId(), "Titans", Username.of("bob"))
+            .withWarWin().withWarWin();
+
+        List<String> lines = GuildRankingListing.format(List.of(guild));
+
+        assertTrue(lines.get(1).contains("2 war wins"));
+    }
+
+    @Test
+    void breaksLifetimeGoldTiesByWarWinsDescending() {
+        // Both guilds are level 1 with 0 lifetime gold, so guild-war wins break the tie.
+        Guild champions = Guild.found(GuildId.newId(), "Champions", Username.of("bob")).withWarWin();
+        Guild rookies = Guild.found(GuildId.newId(), "Rookies", Username.of("alice"));
+
+        List<String> lines = GuildRankingListing.format(List.of(rookies, champions));
+
+        assertTrue(lines.get(1).contains("Champions"));
+        assertTrue(lines.get(2).contains("Rookies"));
+    }
+
+    @Test
     void noGuildsShowsFriendlyMessage() {
         List<String> lines = GuildRankingListing.format(List.of());
 

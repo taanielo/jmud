@@ -14,9 +14,10 @@ import io.taanielo.jmud.core.guild.Guild;
  * <p>Kept free of any I/O so the ranking, ordering, and formatting logic can be
  * unit tested in isolation. Guilds are sorted by {@link Guild#level() level}
  * (highest tier first), with ties broken by {@link Guild#lifetimeDepositedGold()}
- * lifetime deposited gold descending, and finally by guild name for a stable,
- * deterministic order. Each line shows the guild's rank, name, level, member
- * count, and leader's username.
+ * lifetime deposited gold descending, then by {@link Guild#warWins() guild-war
+ * wins} descending (the PvP-earned axis, issue #731), and finally by guild name
+ * for a stable, deterministic order. Each line shows the guild's rank, name,
+ * level, member count, war wins, and leader's username.
  */
 public final class GuildRankingListing {
 
@@ -56,6 +57,7 @@ public final class GuildRankingListing {
         ranked.sort(
             Comparator.comparingInt((Guild g) -> g.level().rank()).reversed()
                 .thenComparing(Comparator.comparingInt(Guild::lifetimeDepositedGold).reversed())
+                .thenComparing(Comparator.comparingInt(Guild::warWins).reversed())
                 .thenComparing(Guild::name));
 
         List<String> lines = new ArrayList<>();
@@ -64,11 +66,12 @@ public final class GuildRankingListing {
         for (int i = 0; i < shown; i++) {
             Guild guild = ranked.get(i);
             lines.add(String.format(
-                "  %2d. %-24s L%d  %d members  led by %s",
+                "  %2d. %-24s L%d  %d members  %d war wins  led by %s",
                 i + 1,
                 guild.name(),
                 guild.level().rank(),
                 guild.memberCount(),
+                guild.warWins(),
                 guild.leaderId().getValue()));
         }
         if (ranked.size() > shown) {

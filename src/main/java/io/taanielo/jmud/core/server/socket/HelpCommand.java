@@ -149,6 +149,31 @@ public class HelpCommand extends RegistrableCommand {
         "  reads your own live cooldown timers so you can plan an opener or rotation",
         "  instead of guessing. It is read-only and never changes game state.");
 
+    private static final List<String> GUILD_WAR_TOPIC = List.of(
+        "Guild Wars",
+        "  A guild war is a declared, consensual rivalry between two guilds, scored by DUEL wins",
+        "  between their members. It is prestige only — no gold or items ever change hands.",
+        "",
+        "  Declaring: GUILD WAR <guild> — a guild leader challenges a rival guild. That guild's",
+        "  leader has 60 seconds to answer with GUILD WAR ACCEPT (the war begins) or GUILD WAR",
+        "  DECLINE (it is refused). Both propose and accept are leader-only, and a guild may be in",
+        "  only one war at a time — on either side. If the target never answers, the declaration",
+        "  quietly expires.",
+        "",
+        "  Scoring: while the war runs, any consensual DUEL that resolves between a member of one",
+        "  warring guild and a member of the other awards one war point to the winner's guild — on",
+        "  top of the duel's usual outcome (rankings, any DUEL WAGER gold). Membership is checked",
+        "  live at the moment the duel resolves, so someone who has left either guild no longer",
+        "  scores, and duels within the same guild or against outsiders never count.",
+        "",
+        "  Winning: the first guild to 5 war points wins automatically. A server-wide announcement",
+        "  fires and the winning guild's lifetime war-win count rises (shown in RANK GUILDS).",
+        "",
+        "  GUILD WAR CONCEDE — either leader may forfeit an active war early; the rival guild is",
+        "  credited the win with no threshold needed.",
+        "  GUILD WAR STATUS  — (or plain GUILD WAR while at war) shows the opponent, each side's",
+        "  current score, and the target to win.");
+
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
      * name and its aliases. Looked up after commands but before classes, so {@code HELP resistances}
@@ -174,7 +199,11 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("riposte", COMBAT_TOPIC),
         Map.entry("cooldowns", COOLDOWNS_TOPIC),
         Map.entry("cooldown", COOLDOWNS_TOPIC),
-        Map.entry("cd", COOLDOWNS_TOPIC)
+        Map.entry("cd", COOLDOWNS_TOPIC),
+        Map.entry("guild war", GUILD_WAR_TOPIC),
+        Map.entry("guild wars", GUILD_WAR_TOPIC),
+        Map.entry("guildwar", GUILD_WAR_TOPIC),
+        Map.entry("guildwars", GUILD_WAR_TOPIC)
     );
 
     private final SocketCommandRegistry registry;

@@ -544,6 +544,17 @@ public class GuildService {
     }
 
     /**
+     * Returns the guild with the given id, if any.
+     *
+     * @param guildId the guild id to look up
+     * @return the matching guild, or empty
+     */
+    public Optional<Guild> findById(GuildId guildId) {
+        Objects.requireNonNull(guildId, "guildId is required");
+        return Optional.ofNullable(guildsById.get(guildId));
+    }
+
+    /**
      * Returns the guild with the given name (case-insensitive), if any.
      *
      * @param name the guild name to look up
@@ -587,6 +598,20 @@ public class GuildService {
      * @param updated the guild whose active guild quest changed; must not be null
      */
     public synchronized void saveGuildQuestState(Guild updated) {
+        Objects.requireNonNull(updated, "updated is required");
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+    }
+
+    /**
+     * Persists an updated guild snapshot whose only change is its {@link Guild#activeWar() active guild
+     * war} or {@link Guild#warWins() lifetime war-win count} (issue #731). Membership, name and treasury
+     * indices are unaffected, so this replaces the cached snapshot and hands the write to the repository
+     * without re-indexing. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the guild whose guild-war state changed; must not be null
+     */
+    public synchronized void saveWarState(Guild updated) {
         Objects.requireNonNull(updated, "updated is required");
         guildsById.put(updated.id(), updated);
         repository.save(updated);
