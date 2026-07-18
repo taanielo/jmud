@@ -295,6 +295,21 @@ public class MobInstance {
     }
 
     /**
+     * Restores HP to this mob, clamped to its effective {@link #maxHp()}, and returns the new current
+     * HP. Used by healer mob AI to mend a wounded ally (issue #733); a heal never revives a mob at 0 HP
+     * further than a live mob would be healed, since dead mobs are excluded from heal targeting.
+     *
+     * @param amount the HP to restore; must be non-negative
+     * @return the mob's current HP after healing, never exceeding {@link #maxHp()}
+     */
+    public int heal(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("Heal amount must be non-negative, got " + amount);
+        }
+        return hp.updateAndGet(current -> Math.min(maxHp, current + amount));
+    }
+
+    /**
      * Called once when the mob dies — starts the respawn countdown, using the day or night
      * respawn delay from {@link MobTemplate#respawnTicks(TimeOfDay)} as appropriate.
      *

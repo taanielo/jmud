@@ -1,0 +1,27 @@
+{
+  "schema_version": 4,
+  "id": "bandit-medic",
+  "name": "Bandit Medic",
+  "max_hp": 45,
+  "xp_reward": 65,
+  "attack_id": "attack.bandit-medic",
+  "aggressive": true,
+  "faction_id": "bandits",
+  "spawn_room_id": "crumbling-courtyard",
+  "max_count": 1,
+  "respawn_ticks": 45,
+  "healer": true,
+  "heal_min": 8,
+  "heal_max": 16,
+  "heal_threshold": 50,
+  "loot": [
+    {
+      "item_id": "bandit-blade",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 12,
+    "max": 28
+  }
+}
