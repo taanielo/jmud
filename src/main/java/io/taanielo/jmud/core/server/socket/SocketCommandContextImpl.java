@@ -81,6 +81,8 @@ import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.GuildVaultResult;
 import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.guild.VaultedItem;
+import io.taanielo.jmud.core.mentor.MentorRank;
+import io.taanielo.jmud.core.mentor.MentorRankLadder;
 import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
@@ -2302,10 +2304,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 return;
             }
             String role = isMentee ? "mentee" : "mentor";
-            writeLineWithPrompt("You are the " + role + " in a mentor bond with " + partner + ". The mentee"
+            String bondLine = "You are the " + role + " in a mentor bond with " + partner + ". The mentee"
                 + " earns +" + MentorService.MENTEE_XP_BONUS_PERCENT
                 + "% bonus XP while grouped together. Bonded since "
-                + formatBondSince(player.mentorBondSince()) + ".");
+                + formatBondSince(player.mentorBondSince()) + ".";
+            // Show the guild standing to mentors (their perk applies) and to anyone with standing.
+            emitWithGuildLine(player, bondLine, !isMentee || player.menteesGraduated() > 0);
             return;
         }
         Optional<Username> proposer = mentorService().pendingProposer(player.getUsername());
@@ -2314,7 +2318,47 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 + " has offered to mentor you. Type MENTOR ACCEPT or MENTOR DECLINE.");
             return;
         }
-        writeLineWithPrompt("You have no active mentor bond.");
+        emitWithGuildLine(player, "You have no active mentor bond.", player.menteesGraduated() > 0);
+    }
+
+    /**
+     * Writes the primary status line, optionally followed by the Mentors' Guild standing line, ending
+     * with exactly one prompt.
+     */
+    private void emitWithGuildLine(Player player, String primaryLine, boolean showGuild) {
+        if (showGuild) {
+            connection.writeLine(primaryLine);
+            writeLineWithPrompt(mentorGuildLine(player));
+        } else {
+            writeLineWithPrompt(primaryLine);
+        }
+    }
+
+    /**
+     * Renders the player's Mentors' Guild standing line (issue #752): their current rank title, the
+     * shared XP perk it grants while mentoring, and progress toward the next rung. Falls back to an
+     * invitation to graduate a first mentee when they have no standing yet.
+     */
+    private String mentorGuildLine(Player player) {
+        MentorRankLadder ladder = mentorService().ranks();
+        int graduated = player.menteesGraduated();
+        Optional<MentorRank> current = ladder.currentRank(graduated);
+        Optional<MentorRank> next = ladder.nextRank(graduated);
+        StringBuilder line = new StringBuilder("Mentors' Guild: ");
+        if (current.isPresent()) {
+            MentorRank rank = current.get();
+            line.append("you are '").append(rank.title()).append("' (")
+                .append(graduated).append(graduated == 1 ? " mentee graduated" : " mentees graduated")
+                .append("), earning +").append(rank.mentorXpBonusPercent())
+                .append("% XP while grouped with your mentee.");
+        } else {
+            line.append("graduate your first mentee to earn a title and a mentoring XP perk.");
+        }
+        next.ifPresent(rank -> line.append(" Graduate ")
+            .append(rank.menteesRequired() - graduated)
+            .append(rank.menteesRequired() - graduated == 1 ? " more mentee to reach '" : " more mentees to reach '")
+            .append(rank.title()).append("'."));
+        return line.toString();
     }
 
     private void proposeMentor(Player player, String targetName) {

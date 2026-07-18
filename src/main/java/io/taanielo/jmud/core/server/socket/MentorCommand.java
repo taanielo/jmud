@@ -55,9 +55,14 @@ public class MentorCommand extends RegistrableCommand {
 
                While mentor and mentee are grouped in the same party and both share in a mob kill, the
                mentee earns a flat +20% bonus to their own XP share — added on top, never taken from
-               anyone else. The mentor gains no XP, but earns the title "the Mentor" the first time a
-               mentee graduates. A mentee graduates automatically once they reach the lesser of the
-               mentor's level minus 10 or level 20, ending the bond for both of you.\
+               anyone else. A mentee graduates automatically once they reach the lesser of the mentor's
+               level minus 10 or level 20, ending the bond for both of you.
+
+               Graduating mentees advances you up the Mentors' Guild: each rank grants a lasting title
+               ("the Mentor", "the Seasoned Mentor", "the Master Mentor", "the Grandmaster Mentor" at
+               1/3/5/10 lifetime graduations) and a growing guild perk — a bonus to your OWN XP share
+               (+5/10/15/20%) while you are grouped with your current mentee. MENTOR STATUS shows your
+               rank, active perk, and progress to the next rung.\
                """;
     }
 

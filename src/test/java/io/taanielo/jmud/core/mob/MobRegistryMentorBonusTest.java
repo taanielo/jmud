@@ -24,6 +24,8 @@ import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.mentor.MentorRank;
+import io.taanielo.jmud.core.mentor.MentorRankLadder;
 import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.party.PartyService;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
@@ -40,10 +42,11 @@ import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 
 /**
- * Verifies the mentor bond's kill-time effects (issue #751): a mentee whose mentor is also an
+ * Verifies the mentor bond's kill-time effects (issues #751, #752): a mentee whose mentor is also an
  * eligible recipient of the same party kill earns a flat +20% bonus on their own XP share (additive,
- * never taken from anyone else), and a mentee who reaches the graduation threshold auto-graduates —
- * ending the bond on both sides, incrementing the mentor's counter, and granting the mentor title.
+ * never taken from anyone else); a ranked mentor grouped with their mentee earns their Mentors' Guild
+ * perk bonus; and a mentee who reaches the graduation threshold auto-graduates — ending the bond on
+ * both sides, incrementing the mentor's counter, and granting the mentor rank title.
  */
 class MobRegistryMentorBonusTest {
 
@@ -51,6 +54,11 @@ class MobRegistryMentorBonusTest {
     private static final AttackId DEFAULT_ATTACK = AttackId.of(CombatSettings.DEFAULT_ATTACK_ID);
     private static final AttackDefinition ONE_DMG_ATTACK =
         new AttackDefinition(DEFAULT_ATTACK, "punch", 1, 1, 0, 0, 0, List.of());
+    private static final MentorRankLadder LADDER = new MentorRankLadder(List.of(
+        new MentorRank(1, "the Mentor", 5),
+        new MentorRank(3, "the Seasoned Mentor", 10),
+        new MentorRank(5, "the Master Mentor", 15),
+        new MentorRank(10, "the Grandmaster Mentor", 20)));
 
     private final Map<Username, List<GameActionResult>> captured = new ConcurrentHashMap<>();
     private StubPlayerRepository playerRepo;
@@ -101,7 +109,7 @@ class MobRegistryMentorBonusTest {
             partyService.accept(players[i].getUsername());
         }
         registry.setPartyService(partyService);
-        registry.setMentorService(new MentorService());
+        registry.setMentorService(new MentorService(LADDER));
         registry.init();
         return registry;
     }
@@ -168,6 +176,27 @@ class MobRegistryMentorBonusTest {
         assertNull(savedMentee.mentor(), "mentee's bond is cleared");
         assertEquals(1, savedMentor.menteesGraduated(), "graduation counter incremented once");
         assertTrue(savedMentor.titles().has(MentorService.MENTOR_TITLE), "mentor title persisted");
+    }
+
+    @Test
+    void rankedMentorEarnsGuildPerkXpWhileMentoring() {
+        // A rank-1 mentor (2 lifetime graduations → +5% guild perk) grouped with a low-level mentee.
+        // The mentee (level 5) is below the graduation threshold, so the bond survives this kill.
+        Player mentor = leveled("Mentor", 20).withMentee("Mentee", 1000L).withMenteesGraduated(2);
+        Player mentee = leveled("Mentee", 5).withMentor("Mentor", 1000L);
+        // xpReward 100, party of two → 50 each; the mentor's own share is boosted by +5% = 2.
+        MobRegistry registry = buildRegistry(goblin(100), mentor, mentee);
+
+        GameActionResult result = registry.processPlayerAttack(mentor, "Goblin", ROOM_ID);
+
+        List<String> mentorTexts = result.messages().stream().map(GameMessage::text).toList();
+        assertTrue(mentorTexts.stream()
+                .anyMatch(t -> t.equals("Your mentoring dedication grants you 2 bonus experience!")),
+            "Ranked mentor (the killer) should see their guild perk bonus: " + mentorTexts);
+        // Mentor received 50 base + 2 guild perk = 52; the mentee got their own +20% share untouched.
+        assertEquals(52, saved(mentor.getUsername()).getExperience(), "share + additive guild perk");
+        assertEquals(60, saved(mentee.getUsername()).getExperience(), "mentee's own +20% is unchanged");
+        assertEquals(2, saved(mentor.getUsername()).menteesGraduated(), "counter unchanged (no graduation)");
     }
 
     // ── stubs ─────────────────────────────────────────────────────────

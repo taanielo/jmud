@@ -1,5 +1,7 @@
 package io.taanielo.jmud.core.mentor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,11 +43,23 @@ public class MentorService implements Tickable {
     /** Flat percentage bonus added to a mentee's own party XP share on a shared kill. */
     public static final int MENTEE_XP_BONUS_PERCENT = 20;
 
-    /** Unique title granted to a mentor on their first graduated mentee. */
+    /** Unique title granted to a mentor on their first graduated mentee (the ladder's first rung). */
     public static final String MENTOR_TITLE = "the Mentor";
 
     /** target (mentee) → the pending proposal awaiting their response. */
     private final Map<Username, MentorProposal> proposals = new ConcurrentHashMap<>();
+
+    /** The Mentors' Guild rank ladder driving milestone titles and the shared mentor XP perk. */
+    private final MentorRankLadder ranks;
+
+    /**
+     * Creates a mentor service over the given Mentors' Guild rank ladder.
+     *
+     * @param ranks the rank ladder loaded from game data; must not be null
+     */
+    public MentorService(MentorRankLadder ranks) {
+        this.ranks = Objects.requireNonNull(ranks, "Mentor rank ladder is required");
+    }
 
     /**
      * Records a pending mentor proposal from {@code proposer} to {@code target}, starting the default
@@ -177,14 +191,42 @@ public class MentorService implements Tickable {
     }
 
     /**
+     * Returns the flat Mentors' Guild bonus XP a mentor earns on top of their own party XP share of
+     * {@code baseShare} while grouped with their bonded mentee, or 0 when the share is non-positive or
+     * the mentor's rank is unlocked no perk yet. The percentage scales with the mentor's lifetime
+     * graduated-mentee count (their guild standing). Additive: never taken from any other member.
+     *
+     * @param baseShare      the mentor's own computed party XP share for a kill
+     * @param graduatedCount the mentor's lifetime graduated-mentee count
+     * @return the bonus XP to add to that share
+     */
+    public int mentorBonusXp(int baseShare, int graduatedCount) {
+        if (baseShare <= 0) {
+            return 0;
+        }
+        int percent = ranks.mentorBonusPercent(graduatedCount);
+        return (int) Math.floor(baseShare * (percent / 100.0));
+    }
+
+    /**
+     * Returns the Mentors' Guild rank ladder driving milestone titles and the shared mentor XP perk.
+     *
+     * @return the immutable rank ladder
+     */
+    public MentorRankLadder ranks() {
+        return ranks;
+    }
+
+    /**
      * Applies graduation to a bonded {@code mentee}/{@code mentor} pair: both records have their bond
-     * cleared, the mentor's lifetime graduation counter is incremented, and — only when the mentor
-     * does not already hold it — the {@link #MENTOR_TITLE} is granted. Idempotent with respect to the
-     * title: a mentor who graduates several mentees earns the title exactly once.
+     * cleared, the mentor's lifetime graduation counter is incremented, and any Mentors' Guild rank
+     * milestone titles the new count has reached (and the mentor does not already hold) are granted.
+     * Idempotent with respect to titles: a mentor who graduates several mentees earns each rank title
+     * exactly once, and climbing to a higher rung grants only the newly reached title(s).
      *
      * @param mentee the graduating mentee (must currently be bonded to {@code mentor})
      * @param mentor the mentor whose mentee is graduating
-     * @return the updated players and whether this graduation earned the mentor their first title
+     * @return the updated players and the mentor titles newly earned by this graduation
      */
     public GraduationOutcome graduate(Player mentee, Player mentor) {
         Objects.requireNonNull(mentee, "Mentee is required");
@@ -193,22 +235,30 @@ public class MentorService implements Tickable {
         Player updatedMentor = mentor
             .withMenteesGraduated(mentor.menteesGraduated() + 1)
             .withoutMentorBond();
-        boolean firstTitleEarned = false;
-        if (!updatedMentor.titles().has(MENTOR_TITLE)) {
-            updatedMentor = updatedMentor.grantTitle(MENTOR_TITLE);
-            firstTitleEarned = true;
+        List<String> newlyEarnedTitles = new ArrayList<>();
+        for (String title : ranks.titlesEarnedAt(updatedMentor.menteesGraduated())) {
+            if (!updatedMentor.titles().has(title)) {
+                updatedMentor = updatedMentor.grantTitle(title);
+                newlyEarnedTitles.add(title);
+            }
         }
-        return new GraduationOutcome(updatedMentee, updatedMentor, firstTitleEarned);
+        return new GraduationOutcome(updatedMentee, updatedMentor, List.copyOf(newlyEarnedTitles));
     }
 
     /**
      * The result of {@link #graduate(Player, Player)}: the updated (bond-cleared) mentee and mentor,
-     * and whether this graduation earned the mentor their first {@link #MENTOR_TITLE}.
+     * and any Mentors' Guild rank titles this graduation newly earned the mentor (in ascending rank
+     * order, empty when none).
      *
-     * @param mentee           the mentee with their bond cleared
-     * @param mentor           the mentor with their bond cleared and counter incremented
-     * @param firstTitleEarned {@code true} when the mentor earned the mentor title for the first time
+     * @param mentee            the mentee with their bond cleared
+     * @param mentor            the mentor with their bond cleared and counter incremented
+     * @param newlyEarnedTitles the mentor rank titles newly granted by this graduation
      */
-    public record GraduationOutcome(Player mentee, Player mentor, boolean firstTitleEarned) {
+    public record GraduationOutcome(Player mentee, Player mentor, List<String> newlyEarnedTitles) {
+
+        /** Compact constructor defensively copying the title list. */
+        public GraduationOutcome {
+            newlyEarnedTitles = List.copyOf(newlyEarnedTitles);
+        }
     }
 }

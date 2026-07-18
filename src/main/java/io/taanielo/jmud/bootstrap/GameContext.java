@@ -113,7 +113,10 @@ import io.taanielo.jmud.core.guild.repository.json.JsonGuildQuestPoolRepository;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.mentor.MentorRankException;
+import io.taanielo.jmud.core.mentor.MentorRankLadder;
 import io.taanielo.jmud.core.mentor.MentorService;
+import io.taanielo.jmud.core.mentor.json.JsonMentorRankRepository;
 import io.taanielo.jmud.core.messaging.GossipHistory;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
@@ -495,7 +498,9 @@ public record GameContext(
         PartyService partyService = new PartyService();
         // Mentor bonds (issue #751): the transient proposal registry plus the pure XP-bonus/graduation
         // rules. Created before the mob registry so the shared kill path can apply the mentee bonus.
-        MentorService mentorService = new MentorService();
+        // The Mentors' Guild rank ladder (issue #752) — milestone titles and the shared mentor XP perk
+        // — is data-driven content loaded once here (AGENTS.md §11).
+        MentorService mentorService = new MentorService(createMentorRankLadder());
         // The guild repository is shared: GuildService owns the authoritative in-memory copy, while the
         // read-only RANK GUILDS command re-reads every persisted guild off the reader thread (like RANK
         // over players), so both are wired from the one repository instance (AGENTS.md §3.3, §5).
@@ -973,6 +978,14 @@ public record GameContext(
             return new JsonNewbieKitRepository().load();
         } catch (NewbieKitException e) {
             throw new IllegalStateException("Failed to initialize newbie kit: " + e.getMessage(), e);
+        }
+    }
+
+    private static MentorRankLadder createMentorRankLadder() {
+        try {
+            return new JsonMentorRankRepository().load();
+        } catch (MentorRankException e) {
+            throw new IllegalStateException("Failed to initialize mentor rank ladder: " + e.getMessage(), e);
         }
     }
 
