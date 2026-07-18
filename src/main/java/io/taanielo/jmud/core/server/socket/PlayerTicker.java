@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.effects.PlayerEffectTicker;
 import io.taanielo.jmud.core.healing.PlayerHealingTicker;
 import io.taanielo.jmud.core.player.PlayerRespawnTicker;
@@ -18,6 +19,8 @@ import io.taanielo.jmud.core.tick.system.CooldownSystem;
  *
  * <p>Stage execution order (matches the former separate-subscription order):
  * <ol>
+ *   <li><b>Spell cast</b> — counts down an in-progress channeled cast and resolves it when the
+ *       countdown reaches zero (see {@link SpellCastState})</li>
  *   <li><b>Command queue</b> — executes enqueued player commands (bounded per tick,
  *       see {@link PlayerCommandQueue})</li>
  *   <li><b>Ability cooldowns</b> — decrements all in-flight ability cooldown counters</li>
@@ -46,6 +49,7 @@ public class PlayerTicker implements Tickable {
     private final PlayerCommandQueue commandQueue;
     private final CooldownSystem abilityCooldowns;
     private final PlayerRespawnTicker respawnTicker;
+    private final SpellCastState spellCastState;
 
     /** Stage 4: effect ticking, enabled after login. */
     @Nullable
@@ -71,15 +75,18 @@ public class PlayerTicker implements Tickable {
      * @param commandQueue     drains player commands each tick; must not be null
      * @param abilityCooldowns decrements ability cooldown counters each tick; must not be null
      * @param respawnTicker    manages respawn countdown; must not be null
+     * @param spellCastState   counts down an in-progress channeled cast each tick; must not be null
      */
     public PlayerTicker(
         PlayerCommandQueue commandQueue,
         CooldownSystem abilityCooldowns,
-        PlayerRespawnTicker respawnTicker
+        PlayerRespawnTicker respawnTicker,
+        SpellCastState spellCastState
     ) {
         this.commandQueue = Objects.requireNonNull(commandQueue, "Command queue is required");
         this.abilityCooldowns = Objects.requireNonNull(abilityCooldowns, "Ability cooldowns is required");
         this.respawnTicker = Objects.requireNonNull(respawnTicker, "Respawn ticker is required");
+        this.spellCastState = Objects.requireNonNull(spellCastState, "Spell cast state is required");
     }
 
     /**
@@ -87,6 +94,10 @@ public class PlayerTicker implements Tickable {
      */
     @Override
     public void tick() {
+        // Stage 0: advance any in-progress channeled cast. Runs before the command drain so a cast
+        // begun this tick is not decremented until the following tick, and so a cast that completes
+        // resolves before the caster's new commands for this tick are processed.
+        spellCastState.tick();
         // Stage 1: drain and execute player commands
         commandQueue.tick();
         // Stage 2: decrement ability cooldowns
@@ -249,5 +260,12 @@ public class PlayerTicker implements Tickable {
      */
     PlayerRespawnTicker respawnTicker() {
         return respawnTicker;
+    }
+
+    /**
+     * Returns the always-active spell cast state (for beginning/interrupting channeled casts).
+     */
+    SpellCastState spellCastState() {
+        return spellCastState;
     }
 }

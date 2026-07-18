@@ -27,6 +27,7 @@ import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.ability.training.AbilityTrainingService;
 import io.taanielo.jmud.core.ability.training.TrainableAbilityStatus;
 import io.taanielo.jmud.core.ability.training.TrainingAttempt;
@@ -160,6 +161,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
     /** Format used to render bulletin-board note timestamps in the local time zone. */
     private static final DateTimeFormatter NOTE_TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
+    /**
+     * Ticks a channeled spell is locked out for after its cast is interrupted (issue #693). Short
+     * enough to keep the spell usable, long enough that interruption is not free to spam past.
+     */
+    private static final int INTERRUPTED_CAST_COOLDOWN_TICKS = 3;
 
     private final SocketClient client;
     private final ClientConnection connection;
@@ -1456,14 +1463,32 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     @Override
     public void useAbility(String args) {
+        useAbilityInternal(args, true);
+    }
+
+    /**
+     * Resolves a {@code USE} activation, optionally deferring a channeled ("cast time") ability
+     * instead of applying it inline (issue #693).
+     *
+     * @param args         the raw command arguments (ability name and optional target)
+     * @param allowChannel {@code true} for a fresh player command (may begin a channel);
+     *                     {@code false} when re-invoked by the tick loop to resolve a completed channel
+     */
+    private void useAbilityInternal(String args, boolean allowChannel) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to use abilities.");
+            return;
+        }
+        if (allowChannel && rejectIfCasting()) {
             return;
         }
         cancelRestIfActive();
         Player player = session.getPlayer();
         AbilityMatch match = abilityRegistry
             .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
+        if (allowChannel && beginChannelIfApplicable(match, player, () -> useAbilityInternal(args, false))) {
+            return;
+        }
         if (handleAoeCastIfApplicable(match, args, player)) {
             return;
         }
@@ -1524,8 +1549,23 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     @Override
     public void castSpell(String args) {
+        castSpellInternal(args, true);
+    }
+
+    /**
+     * Resolves a {@code CAST} activation, optionally deferring a channeled ("cast time") spell
+     * instead of applying it inline (issue #693).
+     *
+     * @param args         the raw command arguments (spell name and optional target)
+     * @param allowChannel {@code true} for a fresh player command (may begin a channel);
+     *                     {@code false} when re-invoked by the tick loop to resolve a completed channel
+     */
+    private void castSpellInternal(String args, boolean allowChannel) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to cast spells.");
+            return;
+        }
+        if (allowChannel && rejectIfCasting()) {
             return;
         }
         cancelRestIfActive();
@@ -1534,6 +1574,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
         if (match != null && match.ability().type() != io.taanielo.jmud.core.ability.AbilityType.SPELL) {
             writeLineWithPrompt("That is not a spell.");
+            return;
+        }
+        if (allowChannel && beginChannelIfApplicable(match, player, () -> castSpellInternal(args, false))) {
             return;
         }
         if (handleAoeCastIfApplicable(match, args, player)) {
@@ -1545,6 +1588,78 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GameActionResult result = gameActionService.useAbility(player, args);
         auditAbilityUse(match, result, args);
         deliverResult(result);
+        sendPrompt();
+    }
+
+    /**
+     * Rejects a fresh ability activation while a channeled cast is already in progress, so a caster
+     * cannot stack or queue abilities mid-channel (issue #693).
+     *
+     * @return {@code true} when the player is currently casting (and a refusal message was sent)
+     */
+    private boolean rejectIfCasting() {
+        SpellCastState castState = session.getSpellCastState();
+        if (castState.isCasting()) {
+            writeLineWithPrompt("You are already casting " + castState.castingAbilityName() + ".");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Begins a channeled ("cast time") spell instead of resolving it immediately, when the matched
+     * ability declares a positive {@link Ability#castTimeTicks()} (issue #693). The cast is validated
+     * (cooldown, affordability) up front, but the cost is spent only when it resolves — an interrupted
+     * cast never charges the caster. The countdown is advanced on the tick thread by
+     * {@link PlayerTicker}; on completion {@code resolution} re-runs the normal resolution path.
+     *
+     * @param match      the resolved ability match, or {@code null} when the input matched nothing
+     * @param player     the casting player
+     * @param resolution action that resolves the spell once the channel completes
+     * @return {@code true} when a channel was started (or refused) and the caller must stop
+     */
+    private boolean beginChannelIfApplicable(AbilityMatch match, Player player, Runnable resolution) {
+        if (match == null || match.ability().castTimeTicks() <= 0) {
+            return false;
+        }
+        Ability ability = match.ability();
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(ability.id())) {
+            writeLineWithPrompt("Ability is on cooldown ("
+                + cooldowns.remainingTicks(ability.id()) + " ticks remaining).");
+            return true;
+        }
+        if (!context.abilityCostResolver().canAfford(player, ability.cost())) {
+            writeLineWithPrompt("You lack the resources to cast that spell.");
+            return true;
+        }
+        session.getSpellCastState().begin(
+            ability.id(),
+            ability.name(),
+            ability.castTimeTicks(),
+            resolution,
+            () -> onCastInterrupted(ability));
+        connection.writeLine("You begin casting " + ability.name() + "...");
+        sendToRoom(player, player.getUsername().getValue() + " begins casting something arcane.");
+        sendPrompt();
+        return true;
+    }
+
+    /**
+     * Handles interruption of an in-progress channeled cast (issue #693): warns the caster and the
+     * room and puts the spell on a short cooldown so interruption cannot be spammed past. The spell's
+     * effect never applies and no cost was spent (the cost is deferred until resolution), so this is a
+     * clean fizzle. Runs on the tick thread from the shared damage hook in {@link PlayerSession}.
+     *
+     * @param ability the spell whose cast was interrupted
+     */
+    private void onCastInterrupted(Ability ability) {
+        session.getCooldownTracker().startCooldown(ability.id(), INTERRUPTED_CAST_COOLDOWN_TICKS);
+        connection.writeLine("Your casting is interrupted!");
+        Player current = session.getPlayer();
+        if (current != null) {
+            sendToRoom(current, current.getUsername().getValue() + "'s casting is interrupted!");
+        }
         sendPrompt();
     }
 
@@ -2777,6 +2892,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to flee.");
             return;
         }
+        if (session.getSpellCastState().isCasting()) {
+            writeLineWithPrompt("You cannot flee while casting a spell.");
+            return;
+        }
         Player player = session.getPlayer();
         RoomService.LookResult lookResult = roomService.look(player.getUsername(), session.getTextStyler());
         FleeResult result = gameActionService.flee(player, lookResult.room());
@@ -2932,6 +3051,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
             connection.writeLine(String.format("%-20s %-6s %s",
                 ability.name(), ability.type().name(), status));
         }
+        SpellCastState castState = session.getSpellCastState();
+        if (castState.isCasting()) {
+            connection.writeLine("Currently casting: " + castState.castingAbilityName()
+                + " (" + castState.ticksRemaining() + " ticks left)");
+        }
         sendPrompt();
     }
 
@@ -2942,7 +3066,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to view your effects.");
             return;
         }
-        List<String> lines = EffectListingFormatter.format(player.effects(), context.effectRepository());
+        List<String> lines = new ArrayList<>(
+            EffectListingFormatter.format(player.effects(), context.effectRepository()));
+        SpellCastState castState = session.getSpellCastState();
+        if (castState.isCasting()) {
+            lines.add("Currently casting: " + castState.castingAbilityName()
+                + " (" + castState.ticksRemaining() + " ticks left)");
+        }
         if (lines.isEmpty()) {
             writeLineWithPrompt("You have no active effects.");
             return;

@@ -17,6 +17,21 @@ public interface Ability {
 
     AbilityCooldown cooldown();
 
+    /**
+     * Number of ticks this ability must channel before its effect resolves.
+     *
+     * <p>{@code 0} (the default) means the ability is instant — it resolves on the tick it is
+     * invoked, exactly as every ability historically did. A positive value makes the ability a
+     * <em>channeled</em> cast: the caster is visibly casting for that many ticks, cannot start
+     * another ability or flee, and any damage taken interrupts the cast (see
+     * {@link io.taanielo.jmud.core.ability.SpellCastState}).
+     *
+     * @return the channel time in ticks; {@code 0} for an instant ability
+     */
+    default int castTimeTicks() {
+        return 0;
+    }
+
     AbilityTargeting targeting();
 
     List<String> aliases();

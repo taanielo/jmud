@@ -11,6 +11,7 @@
   "cooldown": {
     "ticks": 12
   },
+  "cast_time_ticks": 2,
   "targeting": "AoE",
   "aliases": ["sirensong", "siren", "song"],
   "effects": [

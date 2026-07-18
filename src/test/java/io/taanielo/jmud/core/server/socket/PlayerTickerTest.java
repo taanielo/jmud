@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.audit.AuditEntry;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSink;
@@ -160,7 +161,7 @@ class PlayerTickerTest {
         CooldownSystem cooldowns = new CooldownSystem();
         PlayerRespawnTicker respawnTicker = idleRespawnTicker();
 
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, respawnTicker);
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, respawnTicker, new SpellCastState());
 
         // Stage 6: resting — a fully-rested player triggers onFullyRested immediately.
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
@@ -192,7 +193,7 @@ class PlayerTickerTest {
         queue.enqueue(() -> order.add("tick1-command"));
 
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         ticker.tick();
         assertEquals(List.of("tick1-command"), order);
@@ -203,13 +204,63 @@ class PlayerTickerTest {
             "Command enqueued after first tick should run on second tick only");
     }
 
+    // ── Spell cast countdown (issue #693) ──────────────────────────────────────
+
+    @Test
+    void channeledCastResolvesAfterCastTimeElapses() {
+        PlayerCommandQueue queue = new PlayerCommandQueue();
+        CooldownSystem cooldowns = new CooldownSystem();
+        SpellCastState castState = new SpellCastState();
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), castState);
+
+        java.util.concurrent.atomic.AtomicBoolean resolved =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+        castState.begin(
+            io.taanielo.jmud.core.ability.AbilityId.of("spell.hurricane"),
+            "hurricane", 2,
+            () -> resolved.set(true),
+            () -> { });
+
+        ticker.tick();
+        assertFalse(resolved.get(), "cast must not resolve on the first countdown tick");
+        assertTrue(castState.isCasting());
+
+        ticker.tick();
+        assertTrue(resolved.get(), "cast must resolve once the cast time has elapsed");
+        assertFalse(castState.isCasting());
+    }
+
+    @Test
+    void interruptedChanneledCastNeverResolvesThroughTicker() {
+        PlayerCommandQueue queue = new PlayerCommandQueue();
+        CooldownSystem cooldowns = new CooldownSystem();
+        SpellCastState castState = new SpellCastState();
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), castState);
+
+        java.util.concurrent.atomic.AtomicBoolean resolved =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+        castState.begin(
+            io.taanielo.jmud.core.ability.AbilityId.of("spell.hurricane"),
+            "hurricane", 2,
+            () -> resolved.set(true),
+            () -> { });
+
+        ticker.tick();
+        castState.interrupt();
+
+        ticker.tick();
+        ticker.tick();
+        assertFalse(resolved.get(), "an interrupted cast must never resolve on later ticks");
+        assertFalse(castState.isCasting());
+    }
+
     // ── REST toggling ──────────────────────────────────────────────────────────
 
     @Test
     void restingStageInitiallyDisabled() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         assertFalse(ticker.isRestingEnabled(), "Resting stage must be disabled on construction");
     }
@@ -218,7 +269,7 @@ class PlayerTickerTest {
     void enableRestingActivatesStage() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
         RestingTicker restingTicker = new RestingTicker(
@@ -233,7 +284,7 @@ class PlayerTickerTest {
     void disableRestingDeactivatesStage() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
         RestingTicker restingTicker = new RestingTicker(
@@ -253,7 +304,7 @@ class PlayerTickerTest {
 
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
         RestingTicker restingTicker = new RestingTicker(
@@ -276,7 +327,7 @@ class PlayerTickerTest {
     void effectsStageInitiallyDisabled() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         assertFalse(ticker.isEffectsEnabled(), "Effects stage must be disabled on construction");
     }
@@ -285,7 +336,7 @@ class PlayerTickerTest {
     void healingStageInitiallyDisabled() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState());
 
         assertFalse(ticker.isHealingEnabled(), "Healing stage must be disabled on construction");
     }

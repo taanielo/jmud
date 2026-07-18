@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.CooldownTracker;
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
@@ -87,6 +88,15 @@ public class PlayerSession {
     private final AbilityCooldownTracker cooldownTracker = new CooldownTracker(abilityCooldowns);
     private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
     private final PlayerRespawnTicker respawnTicker;
+
+    /**
+     * Per-session channeled-cast state (issue #693). Holds the single in-progress "cast time" spell,
+     * counted down on the tick thread by {@link PlayerTicker}. Like the AFK/LFG flags above this is
+     * transient session state — never written to the persisted {@link Player}, so there is no
+     * save-schema change — and it is cancelled on death, logout, and reconnect. Every access is on the
+     * tick thread (AGENTS.md §5), so no synchronization is required.
+     */
+    private final SpellCastState spellCastState = new SpellCastState();
 
     /** Single composed ticker — one subscription per player session. */
     private final PlayerTicker playerTicker;
@@ -176,7 +186,7 @@ public class PlayerSession {
         this.respawnTicker = new PlayerRespawnTicker(
             this::getPlayer, respawnCallback, roomService, DeathSettings.respawnTicks()
         );
-        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker);
+        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker, spellCastState);
         this.textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
     }
 
@@ -193,7 +203,36 @@ public class PlayerSession {
     }
 
     public void setPlayer(Player player) {
+        Player previous = this.player;
         this.player = player;
+        interruptCastIfDamaged(previous, player);
+    }
+
+    /**
+     * Returns this session's channeled-cast state, the single home for an in-progress "cast time"
+     * spell (issue #693).
+     *
+     * @return the spell cast state; never null
+     */
+    public SpellCastState getSpellCastState() {
+        return spellCastState;
+    }
+
+    /**
+     * Interrupts any in-progress channeled cast when the player's HP dropped between {@code previous}
+     * and {@code updated}. This is the single shared damage hook (AGENTS.md §3.3): every player-state
+     * update flows through {@link #setPlayer(Player)} or {@link #replacePlayer(Player)} on the tick
+     * thread, so a mob hit, a PvP spell, or a damage-over-time effect all funnel here without the
+     * combat engines needing to know about sessions. Costs are only spent when a cast completes, so an
+     * interrupted cast never charges the caster (AGENTS.md §5).
+     */
+    private void interruptCastIfDamaged(@Nullable Player previous, @Nullable Player updated) {
+        if (previous == null || updated == null || !spellCastState.isCasting()) {
+            return;
+        }
+        if (updated.getVitals().hp() < previous.getVitals().hp()) {
+            spellCastState.interrupt();
+        }
     }
 
     public boolean isAuthenticated() {
@@ -443,7 +482,9 @@ public class PlayerSession {
      * effect ticks if active.
      */
     public void replacePlayer(Player updated) {
+        Player previous = player;
         player = updated;
+        interruptCastIfDamaged(previous, updated);
         enqueueSave(player);
         if (playerTicker.isEffectsEnabled()) {
             playerTicker.disableEffects();
@@ -564,6 +605,7 @@ public class PlayerSession {
         if (respawnTicker.isScheduled()) {
             return;
         }
+        spellCastState.cancelSilently();
         abilityCooldowns.clear();
         respawnTicker.schedule();
     }
@@ -645,6 +687,7 @@ public class PlayerSession {
         clearDialogue();
         clearAway();
         clearLfg();
+        spellCastState.cancelSilently();
     }
 
     /**
@@ -682,6 +725,7 @@ public class PlayerSession {
      */
     public void close() {
         connected = false;
+        spellCastState.cancelSilently();
         if (playerTickerSubscription != null) {
             playerTickerSubscription.unsubscribe();
         }

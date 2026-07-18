@@ -36,6 +36,7 @@ public class AbilityMapper {
             new AbilityCostDto(
                 ability.cost().mana(), ability.cost().move(), ability.cost().manaPerTarget()),
             new AbilityCooldownDto(ability.cooldown().ticks()),
+            ability.castTimeTicks() == 0 ? null : ability.castTimeTicks(),
             ability.targeting(),
             ability.aliases(),
             effects,
@@ -66,6 +67,7 @@ public class AbilityMapper {
             }
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
+        int castTimeTicks = dto.castTimeTicks() == null ? 0 : dto.castTimeTicks();
         return new AbilityDefinition(
             AbilityId.of(dto.id()),
             dto.name(),
@@ -73,6 +75,7 @@ public class AbilityMapper {
             dto.level(),
             new AbilityCost(manaCost, moveCost, manaPerTargetCost),
             new AbilityCooldown(cooldownDto.ticks()),
+            castTimeTicks,
             dto.targeting(),
             dto.aliases(),
             effects,
