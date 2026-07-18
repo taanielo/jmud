@@ -96,6 +96,28 @@ class GuildQuestServiceTest {
     }
 
     @Test
+    void sameGuildPartyLandingOneKillAdvancesSharedObjectiveExactlyOnce() {
+        // Alice and Bob belong to the same guild and group up. The mob-death path credits the shared
+        // guild quest for the actual killer only (once per mob death), never once per eligible party
+        // member (issue #700). One dire-wolf-equivalent kill by the party must advance the shared
+        // "required 2" objective by exactly one, leaving it incomplete — not two (which would complete
+        // and pay the treasury from a single death, the reported economy exploit).
+        guildService.create(ALICE, "Ironclad");
+        guildService.invite(ALICE, BOB, true);
+        guildService.accept(BOB);
+        service.activeQuestFor(ALICE); // assign "a" (rat, required 2)
+
+        // Exactly one recordKill per mob death (the killer's guild), as MobRegistry now does.
+        service.recordKill(ALICE, "rat");
+
+        GuildQuest quest = service.activeQuestFor(BOB).orElseThrow();
+        assertEquals(1, quest.currentKills(), "one mob death must credit the shared guild quest once");
+        assertFalse(quest.isComplete());
+        assertEquals(0, guildService.guildOf(ALICE).orElseThrow().treasuryGold(),
+            "a single kill must not complete a required-2 objective or pay the treasury");
+    }
+
+    @Test
     void nonMatchingKillDoesNotProgress() {
         guildService.create(ALICE, "Ironclad");
         service.activeQuestFor(ALICE); // "a" targets rat

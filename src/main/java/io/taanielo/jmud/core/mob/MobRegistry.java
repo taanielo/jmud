@@ -1487,6 +1487,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             }
         }
         // Cooperative guild quest: credit the killer's guild (if any) independently of personal quests.
+        // This is the ONLY guild-quest credit per mob death: the shared objective advances once per kill
+        // (for the actual killer's guild), never once per party member — crediting each eligible member
+        // in the party-reward loop below would advance the shared counter party-size times (issue #700).
         // Progress, completion payout and the [Guild] announcement are handled inside the service, which
         // mutates only guild state on this tick thread (AGENTS.md §5).
         if (guildQuestService != null) {
@@ -1549,9 +1552,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     }
                 }
             }
-            if (guildQuestService != null) {
-                guildQuestService.recordKill(memberAfterXp.getUsername(), mob.template().id().getValue());
-            }
+            // The cooperative guild quest is intentionally NOT credited here: it advances a single
+            // objective shared by the whole guild, so it must be recorded at most once per mob death
+            // (for the actual killer's guild only, above). Crediting each party member would advance
+            // the shared counter party-size times per kill (issue #700). Personal quests and faction
+            // reputation remain per-member because each player owns an independent slot for those.
             if (reputationService != null && factionId != null) {
                 int memberBefore = memberAfterXp.reputation().standing(factionId);
                 memberAfterXp = reputationService.recordKill(memberAfterXp, factionId);
