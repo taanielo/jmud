@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.world;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -140,6 +141,34 @@ public class RoomItemService {
             }
         }
         return Optional.ofNullable(best);
+    }
+
+    /**
+     * Finds every tracked corpse belonging to the named owner, ordered soonest-to-decay first.
+     *
+     * <p>Owner matching is case-insensitive. Because corpses decay purely by age, the returned list
+     * is ordered by ascending {@code spawnedAt} (oldest first), so the most urgent corpse to recover
+     * is at index 0. Unlike {@link #findCorpseByOwner(String)} — which the resurrection spell uses to
+     * target a fallen player's single most-recent corpse — this backs the {@code CORPSE ALL} /
+     * {@code CORPSE <n>} lookups, where a player who died more than once before recovering the first
+     * corpse can still locate every outstanding one.
+     *
+     * @param ownerName the name of the dead player whose corpses to find
+     * @return an unmodifiable list of tracked corpses (oldest/soonest-to-decay first), never null
+     */
+    public List<Corpse> findCorpsesByOwner(String ownerName) {
+        if (ownerName == null || ownerName.isBlank()) {
+            return List.of();
+        }
+        String normalized = ownerName.trim().toLowerCase(Locale.ROOT);
+        List<Corpse> matches = new ArrayList<>();
+        for (Corpse corpse : trackedCorpses) {
+            if (corpse.ownerName().toLowerCase(Locale.ROOT).equals(normalized)) {
+                matches.add(corpse);
+            }
+        }
+        matches.sort(Comparator.comparing(Corpse::spawnedAt));
+        return List.copyOf(matches);
     }
 
     /**

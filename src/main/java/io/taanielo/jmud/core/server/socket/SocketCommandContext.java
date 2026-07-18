@@ -468,11 +468,14 @@ public interface SocketCommandContext extends Client {
     /**
      * Handles the {@code CORPSE} command: reports where the player's tracked corpse lies, how much
      * gold it holds, how long remains before it decays, and turn-by-turn directions back to it — or
-     * that they have no corpse in the world.
+     * that they have no corpse in the world. With the {@code ALL} keyword it lists every outstanding
+     * corpse; with a numeric index it reports that specific corpse in full.
      *
      * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code CORPSE} (blank, {@code ALL}, or a corpse number)
      */
-    default void corpse() {}
+    default void corpse(String args) {}
 
     /**
      * Assesses the danger of a mob in the same room and prints a qualitative tier message.
