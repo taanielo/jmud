@@ -464,6 +464,15 @@ public interface SocketCommandContext extends Client {
     default void wayfind(String args) {}
 
     /**
+     * Handles the {@code CORPSE} command: reports where the player's tracked corpse lies, how much
+     * gold it holds, how long remains before it decays, and turn-by-turn directions back to it — or
+     * that they have no corpse in the world.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void corpse() {}
+
+    /**
      * Assesses the danger of a mob in the same room and prints a qualitative tier message.
      *
      * <p>The default implementation is a no-op so that existing test stubs

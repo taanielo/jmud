@@ -285,6 +285,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.wayfindService() != null) {
             this.gameActionService.setWayfindService(context.wayfindService());
         }
+        if (context.corpseLocatorService() != null) {
+            this.gameActionService.setCorpseLocatorService(context.corpseLocatorService());
+        }
         this.gameActionService.setOnlinePlayerLookup(
             username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
     }
@@ -3087,6 +3090,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         GameActionResult result = gameActionService.wayfind(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void corpse() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sense your corpse.");
+            return;
+        }
+        GameActionResult result = gameActionService.corpse(session.getPlayer());
         deliverResult(result);
         sendPrompt();
     }
