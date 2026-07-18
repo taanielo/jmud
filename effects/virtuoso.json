@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "virtuoso",
+  "name": "Virtuoso",
+  "duration_ticks": 24,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 6
+    },
+    {
+      "stat": "damage",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "You break into a soaring virtuoso solo, and the music floods your own veins; your strikes and your spellcraft sharpen to a brilliant edge."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} breaks into a soaring virtuoso solo, wreathing themselves in brilliant, driving music."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "Your virtuoso solo winds down and its brilliant edge fades from your strikes."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name}'s virtuoso solo winds down and falls silent."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is caught up in a soaring virtuoso solo, their every strike and spell keenly sharpened."
+    }
+  ]
+}

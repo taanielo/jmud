@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "pinned",
+  "name": "Pinned",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "An arrow nails through cloth and hide and pins you fast to the ground; you cannot break free to fight or flee cleanly."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "An arrow pins {name} to the ground, and they thrash helplessly against it."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "You wrench the pinning arrow loose and are free to move once more."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} tears the pinning arrow free and staggers loose."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is pinned in place by an arrow, unable to move freely."
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "id": "spell.entangling-roots",
+  "name": "entangling roots",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 13,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "cast_time_ticks": 2,
+  "targeting": "AoE",
+  "aliases": ["roots", "entanglingroots", "snare"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 7
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "rooted"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call up a spread of grasping vines that erupt from the earth and root every foe around you in place as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A spread of grasping vines erupts around {source}, rooting every foe in the room fast in place as they cast {ability}!"
+    }
+  ]
+}

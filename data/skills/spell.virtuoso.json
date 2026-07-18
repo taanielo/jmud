@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.virtuoso",
+  "name": "virtuoso",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 18
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["solo", "crescendo", "virtuososolo"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "virtuoso"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You break into a soaring virtuoso solo, and the music floods your own veins, sharpening your strikes and spellcraft to a brilliant edge."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} breaks into a soaring virtuoso solo, wreathing themselves in brilliant, driving music."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} breaks into a soaring virtuoso solo, the music building to a brilliant edge around them."
+    }
+  ]
+}
