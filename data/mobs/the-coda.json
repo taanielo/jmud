@@ -18,6 +18,14 @@
       "drop_chance": 1.0
     },
     {
+      "item_id": "the-closing-chord",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "signet-of-final-resolution",
+      "drop_chance": 0.45
+    },
+    {
       "item_id": "the-coda-map",
       "drop_chance": 1.0
     },

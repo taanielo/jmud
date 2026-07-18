@@ -1,0 +1,20 @@
+{
+  "schema_version": 15,
+  "id": "signet-of-final-resolution",
+  "name": "the Signet of Final Resolution",
+  "description": "A broad band worn on the Coda's own hand across the closing of its long chord, worked from a single released overtone drawn out at the instant of its resolving and set in finished cold so that it rings one low, settled tone against the finger and never quite reaches the silence it falls toward. Worn, it lays that same resolution across the wearer: the pulse steadies to the unhurried close of a phrase brought at last to its ending, and the cold of the band turns the bite of frost and stolen breath from the hand and forearm before it can reach the blood. It never warms, and it never quite finishes falling, always a hair short of the silence at the end of the song — and there is a deep, closing steadiness in it, the steadiness of a chord that has resolved and, resolving, will not be unsettled again.",
+  "attributes": {
+    "stats": {
+      "ac": 8,
+      "cold_resist": 34,
+      "hp": 22
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "finger",
+  "weight": 1,
+  "value": 800,
+  "rarity": "epic",
+  "attack_ref": null
+}
