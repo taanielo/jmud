@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "grand-feast",
+  "name": "Grand Feast",
+  "duration_ticks": 120,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 5
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "The grand feast fills you to bursting, iron in your belly and fire in your blood."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} rises from a grand feast, flushed and formidable."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The last warmth of the grand feast leaves you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} no longer glows with the strength of a grand feast."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks powerfully well-fed, as if from a grand feast."
+    }
+  ]
+}
