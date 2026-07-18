@@ -43,5 +43,7 @@
   },
   "vulnerabilities": {
     "cold": 50
-  }
+  },
+  "enrage_ticks": 18,
+  "enrage_damage_multiplier": 1.3
 }
