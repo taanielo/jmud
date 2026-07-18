@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "encore-cull",
+  "name": "Quiet the Empty Seats",
+  "description": "The Coda resolved and the hall would not empty. Step north from the threshold into the vast tier of empty seats, and you can hear what refusal sounds like: row upon row of vacant places still clapping, the applause of a house that was told the piece was over and would not accept it. Most of that clapping is only echo, the ended music breaking against cold stone and fading as it should. Some of it gathers. Some of the empty seats fold their applause back on themselves until the ovation takes a body — a hollow ovation, a knot of clapped insistence with no hands and no glad in it, that turns from the roar of the tier toward the one warm unrepeated pulse that walked in from the resolved chamber and calls, wordless and hungry, for it to play again. Left to gather they will pack the tier until the calling ahead cannot be reached, until the refusal has no seam a living heartbeat could slip through. Break five of the hollow ovations where they clap loudest among the empty seats, before the whole tier folds into one demand, and the way deeper into the refused ending may open to one who can still keep a beat the applause does not own.",
+  "target_mob_id": "encore-hollow-ovation",
+  "required_kills": 5,
+  "gold_reward": 480,
+  "xp_reward": 1360,
+  "recommended_level": 89
+}
