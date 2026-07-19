@@ -192,6 +192,7 @@ import io.taanielo.jmud.core.world.AmbientMessageEngine;
 import io.taanielo.jmud.core.world.AmbientMessageSettings;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
 import io.taanielo.jmud.core.world.DiscoveredExitsRepository;
+import io.taanielo.jmud.core.world.HazardDamageEngine;
 import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.MapService;
@@ -666,6 +667,22 @@ public record GameContext(
         // connection dropped and were not reclaimed within the grace period (issue #343).
         PlayerSessionRegistry playerSessionRegistry = new PlayerSessionRegistry();
         tickRegistry.register(new LinkdeadTimeoutTicker(playerSessionRegistry));
+
+        // Environmental hazards (issue #759): each tick, every player standing in a room that declares
+        // a hazard takes typed, resistance-mitigated damage. The HP change is routed back through the
+        // session's standard player-update path (registerHazardDamageSink), so hazard death reuses the
+        // normal death → corpse → respawn flow and interrupts an in-progress cast with no special-case.
+        // All mutation runs on the tick thread (AGENTS.md §5); the engine itself stays decoupled from
+        // the transport layer via the lookup/sink lambdas below.
+        tickRegistry.register(new HazardDamageEngine(
+            roomRepository,
+            playerLocationService,
+            equipmentResistanceResolver,
+            worldRandom,
+            messageBroadcaster,
+            username -> playerSessionRegistry.lookup(username).map(PlayerSession::getPlayer),
+            (username, damaged) -> playerSessionRegistry.lookup(username)
+                .ifPresent(session -> session.applyHazardDamage(damaged))));
 
         // Auction House: returns expired listings to their sellers each tick, crediting/mailing the
         // seller wherever they are (live session or on disk) via the same cross-player update path as

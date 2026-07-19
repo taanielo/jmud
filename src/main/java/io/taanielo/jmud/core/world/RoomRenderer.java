@@ -111,6 +111,11 @@ public class RoomRenderer {
         if (mode == DescriptionMode.FULL) {
             lines.add(room.describeFor(timeOfDay));
         }
+        // A standing hazard is always surfaced (even in BRIEF movement output) so the danger is never
+        // a surprise: a player can always retreat, gear up, or press on with full information.
+        if (room.hasHazard()) {
+            lines.add(room.getHazard().warningLine());
+        }
         lines.add("Exits: " + formatExits(room.getExits(), lockedExits));
         lines.add("Items: " + formatItems(room.getItems(), styler));
         lines.add("Occupants: " + formatOccupants(room.getOccupants(), viewer));

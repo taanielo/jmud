@@ -7729,6 +7729,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
         });
         // Register healing tick callback
         session.registerHealing(this::applyHealingUpdate);
+        // Route environmental-hazard damage through the same death-aware update path as healing/damage
+        // ticks (issue #759), so hazard death reuses the standard death → corpse → respawn flow and
+        // interrupts an in-progress channeled cast with no special-case.
+        session.registerHazardDamageSink(this::applyHealingUpdate);
         // Register hunger/thirst decay tick callback
         session.registerSustenance(this::applySustenanceUpdate, this::deliverSustenanceWarning);
         // Enqueue death-state check
