@@ -1,6 +1,7 @@
 package io.taanielo.jmud.core.mob;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
@@ -24,6 +25,11 @@ import io.taanielo.jmud.core.combat.repository.AttackRepository;
 import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
+import io.taanielo.jmud.core.quest.ActiveQuest;
+import io.taanielo.jmud.core.quest.QuestId;
+import io.taanielo.jmud.core.quest.QuestKillService;
+import io.taanielo.jmud.core.quest.QuestRepository;
+import io.taanielo.jmud.core.quest.QuestTemplate;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
@@ -189,7 +195,133 @@ class MobRegistryKillTrackingTest {
             "totalKills should be 1 after a tick kill via runPlayerCombat");
     }
 
+    // ── quest-kill decrement regression (issue #798) ──────────────────
+
+    private static final QuestId RAT_CATCHER_ID = QuestId.of("rat-catcher");
+
+    private QuestTemplate ratCatcher(int requiredKills) {
+        // The mob template used by these tests reports id "mob.rat", so the quest must target it.
+        return new QuestTemplate(
+            RAT_CATCHER_ID, "Rat Catcher", "Kill rats.", "mob.rat", requiredKills, 30, 75);
+    }
+
+    /**
+     * A quest-tracked kill via {@code processPlayerAttack} must expose the rewarded player (with the
+     * quest slot decremented) as the result's {@code updatedSource}, so the caller can sync the live
+     * session's cached player. Before the fix (issue #798) the kill path returned a {@code null}
+     * source and reloaded the player from disk, leaving the session cache stale so a following
+     * healing/HP tick re-saved the pre-kill quest state over the decrement.
+     */
+    @Test
+    void processPlayerAttack_exposesDecrementedQuestAsUpdatedSource() {
+        Player attacker = player("hero").withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 5));
+        MobTemplate template = templateWithHp(1); // one-shot
+        StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, new ArrayList<>(), persistenceQueue);
+        registry.setQuestKillService(new QuestKillService(new StubQuestRepository(List.of(ratCatcher(5)))));
+
+        GameActionResult result = registry.processPlayerAttack(attacker, "Rat", ROOM_ID);
+
+        assertNotNull(result.updatedSource(),
+            "A quest kill must return the rewarded player as updatedSource, not null (issue #798)");
+        ActiveQuest updatedQuest = result.updatedSource().getActiveQuest();
+        assertNotNull(updatedQuest);
+        assertEquals(4, updatedQuest.killsRemaining(),
+            "updatedSource must carry the decremented quest-kill count");
+
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
+    }
+
+    /**
+     * Reproduces the core race of issue #798: a stale pre-kill player snapshot re-saved to disk
+     * (exactly what the per-tick healing/HP ticker did with its cached session player) must not
+     * cause a subsequent kill to lose quest progress. The fix makes the kill path use the
+     * caller-supplied (session-synced) player as its base rather than a fresh disk reload, so the
+     * second kill decrements from {@code killsRemaining=1} to {@code 0} (quest complete) instead of
+     * re-reading the clobbered {@code killsRemaining=2} and stalling at {@code 1}.
+     */
+    @Test
+    void questKillDecrement_survivesStaleDiskReSaveBetweenKills() {
+        QuestTemplate template = ratCatcher(2); // two kills to complete
+        Player attacker = player("hero").withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 2));
+        MobTemplate mobTemplate = templateWithHp(1);
+
+        // First kill: decrement 2 -> 1, exposed as updatedSource for the session to adopt.
+        StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+        MobRegistry registry = buildRegistry(mobTemplate, attacker, playerRepo, new ArrayList<>(), persistenceQueue);
+        registry.setQuestKillService(new QuestKillService(new StubQuestRepository(List.of(template))));
+
+        GameActionResult first = registry.processPlayerAttack(attacker, "Rat", ROOM_ID);
+        assertNotNull(first.updatedSource());
+        Player synced = first.updatedSource();
+        assertEquals(1, synced.getActiveQuest().killsRemaining());
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
+
+        // Second kill against a fresh mob instance. The on-disk copy is deliberately the STALE
+        // pre-kill snapshot (killsRemaining=2), mimicking a healing tick that re-saved the un-synced
+        // session player. The kill must decrement from the synced session player (killsRemaining=1),
+        // not from that stale disk state.
+        StubPlayerRepository stalePlayerRepo = new StubPlayerRepository(attacker); // disk: killsRemaining=2
+        PersistenceQueue persistenceQueue2 = MobRegistryTestSupport.persistenceQueueFor(stalePlayerRepo);
+        MobRegistry registry2 =
+            buildRegistry(mobTemplate, synced, stalePlayerRepo, new ArrayList<>(), persistenceQueue2);
+        registry2.setQuestKillService(new QuestKillService(new StubQuestRepository(List.of(template))));
+
+        GameActionResult second = registry2.processPlayerAttack(synced, "Rat", ROOM_ID);
+        assertNotNull(second.updatedSource());
+        ActiveQuest afterSecond = second.updatedSource().getActiveQuest();
+        assertEquals(0, afterSecond.killsRemaining(),
+            "Second kill must decrement from the synced player, not the stale disk reload (issue #798)");
+        assertTrue(afterSecond.isComplete(), "Quest should be fulfilled after two kills");
+
+        assertTrue(persistenceQueue2.flush(Duration.ofSeconds(2)));
+        persistenceQueue2.close();
+    }
+
+    /**
+     * The tick-driven auto-attack path ({@code runPlayerCombat}) — the one the golden-path smoke test
+     * exercises — must publish the rewarded player as the event's {@code updatedSource} so the
+     * session's cached player (and thus the next healing-tick save) reflects the quest decrement.
+     */
+    @Test
+    void runPlayerCombat_publishesDecrementedQuestAsUpdatedSource() {
+        Player attacker = player("hero").withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 5));
+        MobTemplate template = templateWithHp(2); // survives first hit, dies on the tick
+        StubPlayerRepository playerRepo = new StubPlayerRepository(attacker);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+        List<GameActionResult> captured = new ArrayList<>();
+        MobRegistry registry = buildRegistry(template, attacker, playerRepo, captured, persistenceQueue);
+        registry.setQuestKillService(new QuestKillService(new StubQuestRepository(List.of(ratCatcher(5)))));
+
+        registry.processPlayerAttack(attacker, "Rat", ROOM_ID); // engage; mob survives
+        captured.clear();
+
+        registry.tick(); // killing blow via runPlayerCombat
+
+        GameActionResult killEvent = captured.getLast();
+        assertNotNull(killEvent.updatedSource(),
+            "The tick kill must publish the rewarded player as updatedSource (issue #798)");
+        assertEquals(4, killEvent.updatedSource().getActiveQuest().killsRemaining(),
+            "Published updatedSource must carry the decremented quest-kill count");
+
+        assertTrue(persistenceQueue.flush(Duration.ofSeconds(2)));
+        persistenceQueue.close();
+    }
+
     // ── stubs ─────────────────────────────────────────────────────────
+
+    private record StubQuestRepository(List<QuestTemplate> templates) implements QuestRepository {
+        @Override
+        public List<QuestTemplate> findAll() { return templates; }
+        @Override
+        public Optional<QuestTemplate> findById(QuestId id) {
+            return templates.stream().filter(t -> t.id().equals(id)).findFirst();
+        }
+    }
 
     private record StubMobTemplateRepository(List<MobTemplate> templates)
         implements MobTemplateRepository {

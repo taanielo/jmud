@@ -29,6 +29,7 @@ TEST_LINK="link$(date +%s)"
 TEST_CREA="crea$(date +%s)"
 TEST_CREB="creb$(date +%s)"
 TEST_DUMMY="dummy$(date +%s)"
+TEST_HERO="hero$(date +%s)"
 TEST_WS="wsock$(date +%s)"
 TEST_PARTY="ptla$(date +%s)"
 TEST_BYST="ptlb$(date +%s)"
@@ -105,6 +106,7 @@ cleanup() {
     rm -f "data/users/$TEST_CREA.json" "players/$TEST_CREA.json"
     rm -f "data/users/$TEST_CREB.json" "players/$TEST_CREB.json"
     rm -f "data/users/$TEST_DUMMY.json" "players/$TEST_DUMMY.json"
+    rm -f "data/users/$TEST_HERO.json" "players/$TEST_HERO.json"
     rm -f "data/users/$TEST_WS.json" "players/$TEST_WS.json"
     rm -f "data/users/$TEST_PARTY.json" "players/$TEST_PARTY.json"
     rm -f "data/users/$TEST_BYST.json" "players/$TEST_BYST.json"
@@ -744,6 +746,88 @@ else
     pass "non-member bystander received no PTELL"
 fi
 
+# ── phase 3e: golden-path first-hour playthrough (issue #798) ────────────────
+# The full new-player golden path, end to end, as a regression guard for the
+# "new player's first hour" design focus: create a character, see the survival
+# onboarding hints, arm up, accept the rat-catcher starter quest, walk to the
+# Muddy Hollow, win real fights against Giant Rats until the 5-kill objective is
+# fulfilled, return to the Courtyard, claim the reward, and prove the character
+# is still alive with the reward applied. Individual pieces (hints, equip verbs,
+# worded combat, quest accept) are covered by earlier phases and unit tests;
+# this phase is the only one that proves the whole chain works together.
+#
+# Uses its own throwaway character (like $TEST_DUMMY) so combat, movement and
+# quest state never collide with $TEST_USER, whom later assumptions place in the
+# training-yard. Navigation: training-yard --south--> sparring-pit --west-->
+# muddy-hollow (rats), back east/north/east to the Courtyard for QUEST COMPLETE.
+#
+# Timing note: only 3 Giant Rats spawn at once (max_count) and each respawns 15
+# ticks after death, so reaching 5 kills requires waiting out at least one
+# respawn wave — hence the long in-session look/wait beats and the generous
+# nc timeout below (mirrors the phase-4 45s precedent). The rats stay resident
+# in the hollow (data/mobs/rat.json wanders: false) so they are reliably present
+# when the hero arrives and after each respawn.
+log "Phase 3e: golden-path playthrough (create -> hints -> quest -> fights -> reward -> alive)"
+T3E="$OUT_DIR/phase3e-golden-path.txt"
+{
+    sleep 1.5
+    printf '%s\r\n' "$TEST_HERO"; sleep 1.5              # new username
+    printf '%s\r\n' "$TEST_PASS"; sleep 1.5              # password
+    printf '%s\r\n' "$TEST_PASS"; sleep 1.5              # confirm password
+    printf '%s\r\n' "human";   sleep 1.5                 # race
+    printf '%s\r\n' "warrior"; sleep 2                   # class -> enters the world
+    printf '%s\r\n' "wield training sword"; sleep 2      # arm up per the onboarding hint
+    printf '%s\r\n' "quest accept rat-catcher"; sleep 2  # accept the starter contract
+    printf '%s\r\n' "south"; sleep 2                     # training-yard -> sparring-pit
+    printf '%s\r\n' "west";  sleep 2                     # sparring-pit -> muddy-hollow
+    # First wave: clear the three spawned rats.
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "quest status"; sleep 2
+    # Wait out a respawn wave (respawn_ticks: 15), then finish the objective.
+    printf '%s\r\n' "look"; sleep 10
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "look"; sleep 8
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "kill giant rat"; sleep 6
+    printf '%s\r\n' "quest status"; sleep 2
+    # Return to the Courtyard to claim the reward from the Guild Clerk.
+    printf '%s\r\n' "east";  sleep 2                     # muddy-hollow -> sparring-pit
+    printf '%s\r\n' "north"; sleep 2                     # sparring-pit -> training-yard
+    printf '%s\r\n' "east";  sleep 2                     # training-yard -> courtyard
+    printf '%s\r\n' "quest complete"; sleep 2
+    printf '%s\r\n' "score"; sleep 2
+    printf '%s\r\n' "quit";  sleep 1
+} | timeout 150 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T3E"
+
+expect "$T3E" "golden path: character creation enters the world" 'Welcome to the realm!'
+# The survival onboarding hints (issue #782) must greet this brand-new character before
+# any fight — a fresh cross-check since this phase creates its own character.
+expect "$T3E" "golden path: onboarding teaches CONSIDER"      'CONSIDER .* size up an enemy'
+expect "$T3E" "golden path: onboarding points at the Guild Clerk" 'QUEST LIST at the Guild Clerk'
+expect "$T3E" "golden path: arms the starter weapon"         'You equip Training Sword'
+expect "$T3E" "golden path: accepts the rat-catcher contract" 'Contract accepted: Rat Catcher'
+expect "$T3E" "golden path: reaches the Muddy Hollow"        'Muddy Hollow'
+# A real kill credits quest progress; the per-kill line proves a fight was actually won
+# (worded combat verbs themselves are asserted in phase 2d2).
+expect "$T3E" "golden path: wins a fight and credits a kill" 'Rat Catcher: [1-9]/5 kills\.'
+# Reaching the 5th kill flips the contract to fulfilled (the kill service emits the
+# fulfilment line instead of a "5/5 kills" tick on the final kill).
+expect "$T3E" "golden path: fulfils the 5-kill objective"    'You have fulfilled your contract'
+expect "$T3E" "golden path: QUEST COMPLETE claims the reward" 'Contract complete: Rat Catcher'
+expect "$T3E" "golden path: quest reward gold/XP landed"     'You receive 30 gold and 75 experience'
+expect "$T3E" "golden path: earns the Rat Slayer title"      'You have earned the title: Rat Slayer'
+# Still alive and intact: SCORE shows a positive current HP, and the earned title is on record.
+expect "$T3E" "golden path: character survives with positive HP" 'HP    : [1-9][0-9]* / [0-9]+'
+expect "$T3E" "golden path: SCORE records the Rat Slayer title" 'Rat Slayer'
+if grep -qE 'You are DEAD|You have died|respawn' "$T3E"; then
+    fail "golden path: character died during the playthrough (no unavoidable newbie death expected)"
+else
+    pass "golden path: no death/respawn during the playthrough"
+fi
+
 # ── phase 4: graceful shutdown on SIGTERM ────────────────────────────────────
 # SIGTERM (the default kill signal) must trigger ShutdownCoordinator's orderly
 # sequence: stop accepting connections, notify clients, stop the tick scheduler,
@@ -832,6 +916,9 @@ else
     log "SMOKE TEST FAILED ($FAILURES of $CHECKS checks failed)"
     log "--- transcript phase 1 (tail) ---"; tail -15 "$T1"
     log "--- transcript phase 2 (tail) ---"; tail -15 "$T2"
+    if [ -n "${T3E:-}" ] && [ -f "$T3E" ]; then
+        log "--- transcript phase 3e golden-path (tail) ---"; tail -30 "$T3E"
+    fi
     log "--- server log (tail) ---";         tail -15 "$SERVER_LOG"
     if [ -n "${SHUTDOWN_LOG:-}" ] && [ -f "$SHUTDOWN_LOG" ]; then
         log "--- shutdown log window (tail) ---"; tail -15 "$SHUTDOWN_LOG"
