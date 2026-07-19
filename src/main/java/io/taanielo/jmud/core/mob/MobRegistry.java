@@ -3710,22 +3710,25 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     private void runMobAi(MobInstance mob) {
-        // A mob winding up a telegraphed special is fully occupied channeling: it advances the
-        // countdown (landing the deferred blow when it elapses) and takes no other action this tick.
-        if (mob.hasPendingTelegraph()) {
-            advancePendingTelegraph(mob);
-            return;
-        }
         // Snapshot any player-cast crowd-control lockout (issue #763) before consuming one AI decision
-        // of its duration. STUN removes the mob's action entirely this tick — mirroring the telegraph
-        // early-return above and a stunned player losing their turn — so it short-circuits before any
-        // targeting, flee, heal, or enrage advance and the mob never double-acts. ROOT and SILENCE let
-        // the mob keep acting but are honoured further down (flee suppressed for ROOT, special
-        // suppressed for SILENCE). The tick happens here, once, regardless of which control is active.
+        // of its duration. STUN removes the mob's action entirely this tick — mirroring a stunned
+        // player losing their turn — so it short-circuits before any targeting, flee, heal, or enrage
+        // advance and the mob never double-acts. ROOT and SILENCE let the mob keep acting but are
+        // honoured further down (flee suppressed for ROOT, special suppressed for SILENCE). The tick
+        // happens here, exactly once per AI decision, before the telegraph branch so a mob winding up a
+        // telegraphed special still burns down its control duration rather than freezing it (issue #775).
         boolean rooted = mob.isRooted();
         boolean silenced = mob.isSilenced();
         boolean stunned = mob.isStunned();
         mob.tickControl();
+        // A mob winding up a telegraphed special is fully occupied channeling: it advances the
+        // countdown (landing the deferred blow when it elapses) and takes no other action this tick. A
+        // STUN that is still in force when the wind-up would resolve interrupts it (issue #775); the
+        // snapshot taken above is passed in so the interrupt reflects the mob's state this decision.
+        if (mob.hasPendingTelegraph()) {
+            advancePendingTelegraph(mob, stunned);
+            return;
+        }
         if (stunned) {
             return;
         }
@@ -4061,11 +4064,21 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * Otherwise the wind-up counter is decremented; while it is still counting down the mob keeps
      * channeling and does nothing else, and when it elapses the deferred special resolves through the
      * shared {@link #resolveMobAttackAndPublish} pipeline with outcomes identical to an instant-fire
-     * version. Runs on the tick thread (AGENTS.md §5).
+     * version.
      *
-     * @param mob the mob winding up a telegraphed special (must have a pending telegraph)
+     * <p>A {@link ControlType#STUN} landed on the mob (issue #775) interrupts the channel: when the
+     * wind-up would otherwise resolve and the mob is still stunned this decision, the special is
+     * cancelled with no damage and the interruption is announced to the room. Because the control
+     * duration ticks down every AI decision — including the wind-up ticks (see {@link #runMobAi}) — a
+     * stun that expires before the wind-up completes lets the deferred blow still land, while ROOT and
+     * SILENCE (which never set {@code stunned}) leave the wind-up untouched. Runs on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param mob     the mob winding up a telegraphed special (must have a pending telegraph)
+     * @param stunned whether the mob was stunned at the start of this AI decision (snapshot in
+     *                {@link #runMobAi} before the control tick), used to interrupt the wind-up on resolve
      */
-    private void advancePendingTelegraph(MobInstance mob) {
+    private void advancePendingTelegraph(MobInstance mob, boolean stunned) {
         Username targetUsername = mob.telegraphTarget();
         AttackId attackId = mob.telegraphAttackId();
         Player target =
@@ -4079,6 +4092,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         }
         if (!mob.tickTelegraph()) {
             // Still winding up — the mob is fully occupied channeling this tick.
+            return;
+        }
+        // The wind-up has elapsed. If a hard STUN is still locking the mob down this decision it never
+        // gets the blow off: the channel is interrupted, the special is cancelled with no damage, and
+        // the room is told (issue #775). tickTelegraph already cleared the pending state.
+        if (stunned) {
+            announceTelegraphInterrupt(mob, attackId);
             return;
         }
         AttackDefinition attack = loadAttack(attackId);
@@ -4112,6 +4132,23 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (roomMessage != null) {
             broadcastToRoomExcept(mob.roomId(), targetUsername, roomMessage);
         }
+    }
+
+    /**
+     * Announces to everyone in the mob's room — the telegraph target included — that a well-timed STUN
+     * has interrupted a telegraphed special mid-wind-up, so the cancelled blow reads as a clear payoff
+     * rather than a silent no-op (issue #775). The attack name is resolved from {@code attackId} because
+     * {@link MobInstance#tickTelegraph()} has already cleared the pending telegraph state by this point.
+     * Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob      the mob whose wind-up was interrupted
+     * @param attackId the special attack that was cancelled, used to name it in the announcement
+     */
+    private void announceTelegraphInterrupt(MobInstance mob, AttackId attackId) {
+        AttackDefinition attack = loadAttack(attackId);
+        String attackName = attack != null ? attack.name() : "its attack";
+        broadcastToRoom(mob.roomId(),
+            "The " + mob.template().name() + "'s " + attackName + " is interrupted!");
     }
 
     /**
