@@ -40,21 +40,21 @@ level 5, and has a reason to keep playing.
 
 ### Exit criteria
 
-- [ ] Standard MUD verbs work for arming/wearing gear: `WIELD`/`WEAR`/`HOLD`
-      equip, `REMOVE` unequips (#777)
-- [ ] No unavoidable newbie death: no aggressive mob within 3 rooms of the
+- [x] Standard MUD verbs work for arming/wearing gear: `WIELD`/`WEAR`/`HOLD`
+      equip, `REMOVE` unequips (#777, merged via #784)
+- [x] No unavoidable newbie death: no aggressive mob within 3 rooms of the
       spawn room can kill a level-1 character faster than they can react, and
       any remaining danger is telegraphed *before* the player commits
-      (#778, #779, #780)
-- [ ] The player is armed from creation: newbie kit includes a starter weapon
-      (#781)
-- [ ] Survival commands (`CONSIDER`, `FLEE`, `EQUIP`/`WIELD`) are taught
-      in-game before the first fight (#782)
-- [ ] Every harmful effect a starter-area mob can apply has a counter
-      purchasable near the starter area (#783)
+      (#778 merged via #786, #779 merged via #787, #780 merged via #788)
+- [x] The player is armed from creation: newbie kit includes a starter weapon
+      (#781, merged via #789)
+- [x] Survival commands (`CONSIDER`, `FLEE`, `EQUIP`/`WIELD`) are taught
+      in-game before the first fight (#782, merged via #790)
+- [x] Every harmful effect a starter-area mob can apply has a counter
+      purchasable near the starter area (#783, merged via #792)
 - [ ] The starter quest chain walks the player along the safe difficulty ramp
       (training dummy → rat → kobold/goblin → spider), each completion hinting
-      at the next step (no issue yet — game-designer to file)
+      at the next step (#795)
 - [ ] A scripted golden-path playthrough (extension of `scripts/smoke-test.sh`)
       proves it end-to-end: create character → read hints → win first fight →
       complete first quest → still alive (no issue yet — game-designer to file)
