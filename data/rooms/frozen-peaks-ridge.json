@@ -1,5 +1,5 @@
 {
-  "schema_version": 8,
+  "schema_version": 10,
   "id": "frozen-peaks-ridge",
   "name": "Knife-Edge Ridge",
   "description": "A razor-thin ridge of wind-scoured rock and ice runs north, sheer drops falling away to either side into cloud. Rime coats every surface in feathered white, and the footing is glazed and unforgiving. Ahead the ridge widens toward a broad, exposed summit crowned with shattered ice.",
@@ -14,5 +14,11 @@
     "The wind gusts hard enough to stagger you, then falls to a sudden, watchful stillness.",
     "Feathers of rime break from the rocks and spin away into the void below.",
     "Far beneath the ridge, cloud churns and boils, hiding whatever waits at the bottom."
-  ]
+  ],
+  "hazard": {
+    "damage_type": "COLD",
+    "damage_min": 10,
+    "damage_max": 16,
+    "damage_message": "The wind knifes across the exposed ridge and its biting cold sinks into your bones!"
+  }
 }

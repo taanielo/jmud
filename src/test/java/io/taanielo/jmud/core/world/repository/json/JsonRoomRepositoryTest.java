@@ -15,11 +15,13 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
+import io.taanielo.jmud.core.world.RoomHazard;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -182,6 +184,102 @@ class JsonRoomRepositoryTest {
         assertTrue(loaded.get().hasHiddenExits());
         // A hidden exit stays out of the normal exit map.
         assertFalse(loaded.get().getExits().containsKey(Direction.DOWN));
+    }
+
+    @Test
+    void savesAndLoadsRoomWithHazard() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        RoomHazard hazard = new RoomHazard(DamageType.POISON, 4, 8, "Acrid gas burns your throat!");
+        Room room = new Room(
+            RoomId.of("gas-pocket"),
+            "Gas Pocket",
+            "A choking, gas-filled hollow.",
+            Map.of(),
+            List.of(),
+            List.of(),
+            Map.of(),
+            null,
+            null,
+            null,
+            false,
+            List.of(),
+            Map.of(),
+            hazard
+        );
+        roomRepository.save(room);
+
+        // Use a fresh repository instance so the read goes through the JSON file, not the cache.
+        JsonRoomRepository reloadedRepository = new JsonRoomRepository(itemRepository, dataRoot);
+        Optional<Room> loaded = reloadedRepository.findById(RoomId.of("gas-pocket"));
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().hasHazard());
+        assertEquals(hazard, loaded.get().getHazard());
+    }
+
+    @Test
+    void loadsLegacyRoomWithoutHazardAsNull() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        Path roomsDir = dataRoot.resolve("rooms");
+        Files.createDirectories(roomsDir);
+        Files.writeString(roomsDir.resolve("legacy-hazardless.json"), """
+            {
+              "schema_version": 2,
+              "id": "legacy-hazardless",
+              "name": "Legacy Room",
+              "description": "An old room with no hazard.",
+              "item_ids": [],
+              "exits": {}
+            }
+            """);
+
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Optional<Room> loaded = roomRepository.findById(RoomId.of("legacy-hazardless"));
+
+        assertTrue(loaded.isPresent());
+        assertFalse(loaded.get().hasHazard());
+        assertNull(loaded.get().getHazard());
+    }
+
+    @Test
+    void loadsRoomHazardFromV10Json() throws Exception {
+        Path dataRoot = tempDir.resolve("data");
+        Path roomsDir = dataRoot.resolve("rooms");
+        Files.createDirectories(roomsDir);
+        Files.writeString(roomsDir.resolve("magma.json"), """
+            {
+              "schema_version": 10,
+              "id": "magma",
+              "name": "Magma Ledge",
+              "description": "A searing ledge above molten rock.",
+              "item_ids": [],
+              "exits": {},
+              "hazard": {
+                "damage_type": "FIRE",
+                "damage_min": 12,
+                "damage_max": 20,
+                "damage_message": "Scalding heat sears your skin!"
+              }
+            }
+            """);
+
+        JsonItemRepository itemRepository = new JsonItemRepository(dataRoot);
+        JsonRoomRepository roomRepository = new JsonRoomRepository(itemRepository, dataRoot);
+
+        Optional<Room> loaded = roomRepository.findById(RoomId.of("magma"));
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().hasHazard());
+        RoomHazard hazard = loaded.get().getHazard();
+        assertEquals(DamageType.FIRE, hazard.damageType());
+        assertEquals(12, hazard.damageMin());
+        assertEquals(20, hazard.damageMax());
+        assertEquals("Scalding heat sears your skin!", hazard.damageMessage());
     }
 
     @Test

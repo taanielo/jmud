@@ -112,6 +112,15 @@ public class PlayerSession {
     private Consumer<Player> saveFailureHandler;
 
     /**
+     * Optional hook that applies an externally-computed HP update (e.g. environmental hazard damage)
+     * through the shared player-update path so death, corpse/respawn, cast-interrupt, and audit all
+     * fire for free (AGENTS.md §3.3). Wired by the transport adapter to the same {@code applyHealingUpdate}
+     * path used by the healing ticker; {@code null} until the player is fully in the world. Invoked only
+     * on the tick thread (AGENTS.md §5).
+     */
+    private @Nullable Consumer<Player> hazardDamageSink;
+
+    /**
      * Active NPC conversation state (see the {@code TALK}/{@code RESPOND} commands), or {@code null}
      * when the player is not talking to anyone. Held here — not on the persisted player — because a
      * conversation is transient session state that is cleared on room change, movement, or logout.
@@ -547,6 +556,33 @@ public class PlayerSession {
      */
     public void clearHealing() {
         playerTicker.disableHealing();
+    }
+
+    /**
+     * Registers the sink that routes an externally-computed HP update (environmental hazard damage)
+     * through the shared player-update path. Typically wired to the same {@code applyHealingUpdate}
+     * callback the healing ticker uses, so hazard death reuses the standard death → corpse → respawn
+     * flow and interrupts an in-progress channeled cast with no special-case (AGENTS.md §3.3).
+     *
+     * @param sink the update sink invoked with the damaged player on the tick thread
+     */
+    public void registerHazardDamageSink(Consumer<Player> sink) {
+        this.hazardDamageSink = Objects.requireNonNull(sink, "Hazard damage sink is required");
+    }
+
+    /**
+     * Applies an environmental-hazard HP update to this session through the registered sink. No-op
+     * when no sink is registered (the player is not yet fully in the world) or the player is absent
+     * or already dead. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the player after hazard damage has been subtracted
+     */
+    public void applyHazardDamage(Player updated) {
+        Objects.requireNonNull(updated, "Updated player is required");
+        if (hazardDamageSink == null || player == null || player.isDead()) {
+            return;
+        }
+        hazardDamageSink.accept(updated);
     }
 
     /**

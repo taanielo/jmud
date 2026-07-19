@@ -67,6 +67,27 @@ public class HelpCommand extends RegistrableCommand {
         "  EQUIPMENT to review the resistances your worn gear currently provides."
     );
 
+    private static final List<String> HAZARDS_TOPIC = List.of(
+        "Environmental Hazards",
+        "  Not every danger has teeth. Some rooms are lethal terrain in their own right: the",
+        "  Emberdeep's cooled-lava passages, the Frozen Peaks' wind-scoured ridges, the Undercity",
+        "  Sewers' gas-choked tunnels. Stand in one and the room itself hurts you, tick after tick,",
+        "  for as long as you remain.",
+        "",
+        "  A hazard is never a surprise. A hazardous room always names its danger plainly in its",
+        "  description with a line like:",
+        "",
+        "    (Hazard) A lethal fire hazard fills this room; matching resistance gear reduces the damage.",
+        "",
+        "  so you can always retreat, gear up, or press on with full information.",
+        "",
+        "  Hazard damage is typed — FIRE, COLD, or POISON — and is mitigated by the very same",
+        "  elemental-resistance gear that protects you from a mob's matching attack (see HELP",
+        "  resistances). A fire-resist cloak that shrugs off a fire wyrm's breath also shrugs off a",
+        "  lava passage's searing fumes, capped so resistance never grants full immunity. It plugs",
+        "  into the same HP path as combat: it can knock you out and kill you, and it interrupts a",
+        "  spell you are channeling. Gear for the zone before you enter it, not just before the boss.");
+
     private static final List<String> WORLD_EVENTS_TOPIC = List.of(
         "World Events",
         "  Every so often the world tears. On a randomized timer a WORLD EVENT opens: a rare,",
@@ -192,6 +213,9 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("resistances", RESISTANCE_TOPIC),
         Map.entry("resistance", RESISTANCE_TOPIC),
         Map.entry("resist", RESISTANCE_TOPIC),
+        Map.entry("hazard", HAZARDS_TOPIC),
+        Map.entry("hazards", HAZARDS_TOPIC),
+        Map.entry("environmental hazards", HAZARDS_TOPIC),
         Map.entry("world events", WORLD_EVENTS_TOPIC),
         Map.entry("world event", WORLD_EVENTS_TOPIC),
         Map.entry("worldevents", WORLD_EVENTS_TOPIC),
@@ -308,7 +332,7 @@ public class HelpCommand extends RegistrableCommand {
                 context.writeLineSafe(String.format("  %-12s %s", handler.name(), short_));
             }
         }
-        context.writeLineSafe("Topics: HELP combat, HELP resistances, HELP world events");
+        context.writeLineSafe("Topics: HELP combat, HELP resistances, HELP hazards, HELP world events");
         context.sendPrompt();
     }
 

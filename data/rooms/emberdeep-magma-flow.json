@@ -1,5 +1,5 @@
 {
-  "schema_version": 8,
+  "schema_version": 10,
   "id": "emberdeep-magma-flow",
   "name": "The Magma Flow",
   "description": "The passage opens onto a broad ledge above a slow river of molten rock, its surface a shifting crust of grey and gold that splits to bleed searing orange light. Heat rolls up in suffocating waves, and slabs of fallen stone form a precarious path across the flow. The roar of the magma is a constant, subterranean growl felt as much as heard.",
@@ -14,5 +14,11 @@
     "A bubble swells and bursts on the surface of the magma, flinging a spray of sparks into the dark.",
     "The molten river shifts its course with a grinding roar, and the heat surges to a blistering peak.",
     "A distant howl rolls up the flow, doubled and redoubled by the stone until it sounds like a whole pack at once."
-  ]
+  ],
+  "hazard": {
+    "damage_type": "FIRE",
+    "damage_min": 12,
+    "damage_max": 20,
+    "damage_message": "A wave of scalding heat rolls off the magma and sears your exposed skin!"
+  }
 }
