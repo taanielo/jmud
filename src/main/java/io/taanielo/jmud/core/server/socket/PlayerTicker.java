@@ -23,6 +23,8 @@ import io.taanielo.jmud.core.tick.system.CooldownSystem;
  *       countdown reaches zero (see {@link SpellCastState})</li>
  *   <li><b>Command queue</b> — executes enqueued player commands (bounded per tick,
  *       see {@link PlayerCommandQueue})</li>
+ *   <li><b>Auto-walk</b> — advances an in-progress {@code AUTOWALK} by one step, after the command
+ *       drain so a manual command this tick cancels the walk first (see {@link AutoWalkState})</li>
  *   <li><b>Ability cooldowns</b> — decrements all in-flight ability cooldown counters</li>
  *   <li><b>Respawn</b> — counts down the respawn timer and triggers respawn when due</li>
  *   <li><b>Effects</b> — applies per-tick effect events (only when enabled via
@@ -50,6 +52,7 @@ public class PlayerTicker implements Tickable {
     private final CooldownSystem abilityCooldowns;
     private final PlayerRespawnTicker respawnTicker;
     private final SpellCastState spellCastState;
+    private final AutoWalkState autoWalkState;
 
     /** Stage 4: effect ticking, enabled after login. */
     @Nullable
@@ -76,17 +79,20 @@ public class PlayerTicker implements Tickable {
      * @param abilityCooldowns decrements ability cooldown counters each tick; must not be null
      * @param respawnTicker    manages respawn countdown; must not be null
      * @param spellCastState   counts down an in-progress channeled cast each tick; must not be null
+     * @param autoWalkState    advances an in-progress auto-walk one step each tick; must not be null
      */
     public PlayerTicker(
         PlayerCommandQueue commandQueue,
         CooldownSystem abilityCooldowns,
         PlayerRespawnTicker respawnTicker,
-        SpellCastState spellCastState
+        SpellCastState spellCastState,
+        AutoWalkState autoWalkState
     ) {
         this.commandQueue = Objects.requireNonNull(commandQueue, "Command queue is required");
         this.abilityCooldowns = Objects.requireNonNull(abilityCooldowns, "Ability cooldowns is required");
         this.respawnTicker = Objects.requireNonNull(respawnTicker, "Respawn ticker is required");
         this.spellCastState = Objects.requireNonNull(spellCastState, "Spell cast state is required");
+        this.autoWalkState = Objects.requireNonNull(autoWalkState, "Auto-walk state is required");
     }
 
     /**
@@ -100,6 +106,10 @@ public class PlayerTicker implements Tickable {
         spellCastState.tick();
         // Stage 1: drain and execute player commands
         commandQueue.tick();
+        // Stage 1b: advance an in-progress auto-walk by one step. Runs after the command drain so a
+        // manual command dispatched this tick (which cancels the walk) always wins over a queued step
+        // — no autopilot step executes after the player takes manual control (issue #767).
+        autoWalkState.tick();
         // Stage 2: decrement ability cooldowns
         abilityCooldowns.tick();
         // Stage 3: respawn countdown / trigger
@@ -267,5 +277,12 @@ public class PlayerTicker implements Tickable {
      */
     SpellCastState spellCastState() {
         return spellCastState;
+    }
+
+    /**
+     * Returns the always-active auto-walk state (for beginning/cancelling an auto-walk).
+     */
+    AutoWalkState autoWalkState() {
+        return autoWalkState;
     }
 }

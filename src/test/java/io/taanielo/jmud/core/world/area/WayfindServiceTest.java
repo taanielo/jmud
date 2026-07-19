@@ -241,6 +241,88 @@ class WayfindServiceTest {
         assertEquals("No known route to Lost Island.", lines.get(0));
     }
 
+    @Test
+    void planAutoWalkReturnsWalkableRouteDirections() {
+        corridor("darkwood-trail", Direction.NORTH, "clearing");
+        corridor("clearing", Direction.UP, "peaks-gate");
+        Area darkwood = area("darkwood", "Darkwood Wilds", List.of("peaks"), "darkwood-trail", "clearing");
+        Area peaks = area("peaks", "Frozen Peaks", List.of(), "peaks-gate");
+        WayfindService service = service(List.of(darkwood, peaks), List.of());
+
+        WayfindService.AutoWalkPlan plan = service.planAutoWalk(RoomId.of("darkwood-trail"), "frozen peaks");
+
+        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Route);
+        WayfindService.AutoWalkPlan.Route route = (WayfindService.AutoWalkPlan.Route) plan;
+        assertEquals("Frozen Peaks", route.destinationName());
+        assertEquals(List.of(Direction.NORTH, Direction.UP), route.directions());
+    }
+
+    @Test
+    void planAutoWalkRefusesFerryRouteAndPointsAtWayfind() {
+        // Only the ferry crosses to the island — AUTOWALK must refuse rather than automate the ferry.
+        corridor("start", Direction.NORTH, "north-dock");
+        corridor("south-dock", Direction.EAST, "isle-shore");
+        roomNames.put(RoomId.of("north-dock"), "North Dock");
+        roomNames.put(RoomId.of("south-dock"), "South Dock");
+        Area mainland = area("mainland", "Mainland", List.of(), "start", "north-dock");
+        Area island = area("island", "Shrouded Isle", List.of(), "isle-shore");
+        Ferry ferry = new Ferry(
+            FerryId.of("coastal"),
+            "Coastal Ferry",
+            RoomId.of("coastal-ferry-deck"),
+            List.of(RoomId.of("north-dock"), RoomId.of("south-dock")),
+            15,
+            0,
+            List.of(),
+            List.of());
+        WayfindService service = service(List.of(mainland, island), List.of(ferry));
+
+        WayfindService.AutoWalkPlan plan = service.planAutoWalk(RoomId.of("start"), "shrouded isle");
+
+        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Blocked);
+        String message = ((WayfindService.AutoWalkPlan.Blocked) plan).message();
+        assertTrue(message.contains("Coastal Ferry"));
+        assertTrue(message.contains("WAYFIND Shrouded Isle"));
+    }
+
+    @Test
+    void planAutoWalkBlanksArePromptedForAnArea() {
+        Area here = area("here", "Starting Glade", List.of(), "glade");
+        WayfindService service = service(List.of(here), List.of());
+
+        WayfindService.AutoWalkPlan plan = service.planAutoWalk(RoomId.of("glade"), "");
+
+        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Blocked);
+        assertEquals("Auto-walk where? Try AUTOWALK <area name>.",
+            ((WayfindService.AutoWalkPlan.Blocked) plan).message());
+    }
+
+    @Test
+    void planAutoWalkAmbiguousQueryAsksToBeMoreSpecific() {
+        Area frost = area("frostwood", "Frostwood", List.of(), "frost-1");
+        Area frozen = area("frozen", "Frozen Peaks", List.of(), "frozen-1");
+        Area here = area("here", "Starting Glade", List.of(), "glade");
+        WayfindService service = service(List.of(frost, frozen, here), List.of());
+
+        WayfindService.AutoWalkPlan plan = service.planAutoWalk(RoomId.of("glade"), "fro");
+
+        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Blocked);
+        assertTrue(((WayfindService.AutoWalkPlan.Blocked) plan).message()
+            .startsWith("Which area did you mean?"));
+    }
+
+    @Test
+    void planAutoWalkAlreadyAtEntranceIsBlocked() {
+        Area peaks = area("peaks", "Frozen Peaks", List.of(), "peaks-gate");
+        WayfindService service = service(List.of(peaks), List.of());
+
+        WayfindService.AutoWalkPlan plan = service.planAutoWalk(RoomId.of("peaks-gate"), "peaks");
+
+        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Blocked);
+        assertEquals("You are already at the entrance to Frozen Peaks.",
+            ((WayfindService.AutoWalkPlan.Blocked) plan).message());
+    }
+
     private record StubAreaRepository(List<Area> areas) implements AreaRepository {
         @Override
         public List<Area> findAll() {

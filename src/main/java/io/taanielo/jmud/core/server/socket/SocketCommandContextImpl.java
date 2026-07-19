@@ -150,6 +150,7 @@ import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
@@ -1276,15 +1277,33 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to move.");
             return;
         }
+        performMove(direction);
+    }
+
+    /**
+     * Executes a single room transition in {@code direction} through the one canonical movement path:
+     * control-effect gating, move-point exhaustion, the {@link RoomService#move} transition, move-point
+     * spend, auto-dismount, arrival rendering, and auto-follow. All player-facing output (refusal or
+     * arrival) is emitted exactly as a manually-typed move, so the {@code AUTOWALK} auto-walker can drive
+     * this same chokepoint one direction at a time instead of duplicating movement logic (AGENTS.md §3.3).
+     *
+     * <p>Callers must have already verified the player is authenticated. Runs on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param direction the direction to move
+     * @return {@link MoveStepOutcome#MOVED} when the transition succeeded, otherwise
+     *     {@link MoveStepOutcome#BLOCKED} (a refusal/blocked message was already sent)
+     */
+    private MoveStepOutcome performMove(Direction direction) {
         if (refuseIfControlled(session.getPlayer(), ControlledAction.MOVE)) {
-            return;
+            return MoveStepOutcome.BLOCKED;
         }
         cancelRestIfActive();
         session.clearDialogue();
         Player player = session.getPlayer();
         if (movementCostService.isExhausted(player)) {
             writeLineWithPrompt(MovementCostService.EXHAUSTED_MESSAGE);
-            return;
+            return MoveStepOutcome.BLOCKED;
         }
         RoomService.LookResult currentLook = roomService.look(player.getUsername(), session.getTextStyler());
         Room oldRoom = currentLook.room();
@@ -1299,7 +1318,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
         renderMoveOutcome(player, direction, oldRoom, result, null);
         if (result.moved()) {
             triggerAutoFollow(player.getUsername(), fromRoom, direction);
+            return MoveStepOutcome.MOVED;
         }
+        return MoveStepOutcome.BLOCKED;
+    }
+
+    /** The result of a single {@link #performMove} step, used to drive the {@code AUTOWALK} auto-walker. */
+    private enum MoveStepOutcome {
+        /** The player successfully changed rooms. */
+        MOVED,
+        /** The step was refused or blocked (control effect, exhaustion, locked door, no exit, ...). */
+        BLOCKED
     }
 
     /**
@@ -3371,6 +3400,105 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GameActionResult result = gameActionService.corpse(session.getPlayer(), args);
         deliverResult(result);
         sendPrompt();
+    }
+
+    @Override
+    public void autoWalk(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to travel.");
+            return;
+        }
+        String trimmed = args == null ? "" : args.trim();
+        AutoWalkState walk = session.getAutoWalkState();
+        if ("stop".equalsIgnoreCase(trimmed)) {
+            if (walk.isWalking()) {
+                String destination = walk.destinationName();
+                walk.cancel();
+                writeLineWithPrompt("You stop travelling toward " + destination + ".");
+            } else {
+                writeLineWithPrompt("You are not auto-walking anywhere.");
+            }
+            return;
+        }
+        WayfindService wayfindService = context.wayfindService();
+        if (wayfindService == null) {
+            writeLineWithPrompt("You cannot get your bearings right now.");
+            return;
+        }
+        // Cannot begin a walk while already locked in combat (mirrors RECALL/AUTOASSIST).
+        if (context.mobRegistry() != null && context.mobRegistry().isInCombat(player.getUsername())) {
+            writeLineWithPrompt("You cannot auto-walk while in combat.");
+            return;
+        }
+        Optional<RoomId> currentRoom = roomService.findPlayerLocation(player.getUsername());
+        if (currentRoom.isEmpty()) {
+            writeLineWithPrompt("You cannot get your bearings here.");
+            return;
+        }
+        WayfindService.AutoWalkPlan plan = wayfindService.planAutoWalk(currentRoom.get(), trimmed);
+        switch (plan) {
+            case WayfindService.AutoWalkPlan.Blocked blocked -> writeLineWithPrompt(blocked.message());
+            case WayfindService.AutoWalkPlan.Route route -> {
+                // begin() replaces any walk already in progress, recomputed fresh from the current room.
+                walk.begin(route.destinationName(), route.directions(), this::advanceAutoWalk);
+                writeLineWithPrompt("You set off toward " + route.destinationName() + " ("
+                    + route.directions().size() + " step(s)). Type any command to stop.");
+            }
+        }
+    }
+
+    @Override
+    public void cancelAutoWalkIfActive() {
+        AutoWalkState walk = session.getAutoWalkState();
+        if (!walk.isWalking()) {
+            return;
+        }
+        String destination = walk.destinationName();
+        walk.cancel();
+        writeLineWithPrompt("You stop travelling toward " + destination + ".");
+    }
+
+    /**
+     * Advances the caller's in-progress {@code AUTOWALK} by one step. Invoked once per tick by the
+     * {@link PlayerTicker} auto-walk stage (after the command drain, so a manual command this tick has
+     * already cancelled the walk). Cancels the walk — with a one-line reason — when the player has left
+     * the world, has been pulled into combat, or the next step is blocked; and reports arrival when the
+     * final queued step lands. Reuses {@link #performMove} so every movement check (control effects,
+     * move-point cost, locked doors) is shared with a manual move, never bypassed (issue #767).
+     *
+     * <p>Runs on the tick thread (AGENTS.md §5).
+     */
+    private void advanceAutoWalk() {
+        AutoWalkState walk = session.getAutoWalkState();
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            walk.cancel();
+            return;
+        }
+        String destination = walk.destinationName();
+        if (context.mobRegistry() != null && context.mobRegistry().isInCombat(player.getUsername())) {
+            walk.cancel();
+            writeLineWithPrompt("You are pulled into combat and stop travelling toward " + destination + ".");
+            return;
+        }
+        if (!walk.hasNextStep()) {
+            // Defensive: nothing left to walk — treat as arrival.
+            walk.cancel();
+            return;
+        }
+        Direction direction = walk.nextStep();
+        MoveStepOutcome outcome = performMove(direction);
+        if (outcome != MoveStepOutcome.MOVED) {
+            // performMove already printed the refusal a manual move would show; add the travel notice.
+            walk.cancel();
+            writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
+            return;
+        }
+        if (!walk.hasNextStep()) {
+            walk.cancel();
+            writeLineWithPrompt("You arrive at " + destination + ".");
+        }
     }
 
     @Override

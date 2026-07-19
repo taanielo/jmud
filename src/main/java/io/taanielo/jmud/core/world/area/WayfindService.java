@@ -161,6 +161,82 @@ public class WayfindService {
     }
 
     /**
+     * Plans an {@code AUTOWALK} toward the area named by {@code rawQuery}, resolving the destination
+     * with the exact same exact-id / exact-name / partial-match / ambiguity rules as {@code WAYFIND}
+     * and then classifying the shortest route to that area's waypoint.
+     *
+     * <p>Auto-walk only automates pure walking: when the shortest route requires the ferry (i.e. the
+     * best route {@link #findBestRoute} finds contains a ferry leg), this returns a
+     * {@link AutoWalkPlan.Blocked} pointing the player at {@code WAYFIND} to cross manually, mirroring
+     * the ferry-leg detection already used to render ferry routes. A resolvable, purely-walkable
+     * destination returns {@link AutoWalkPlan.Route} carrying the ordered directions to follow. Every
+     * other outcome (unknown area, ambiguous query, blank query, already-at-entrance, no route, data
+     * read failure) returns {@link AutoWalkPlan.Blocked} with a ready-to-print message.
+     *
+     * <p>This is a pure in-memory read with no mutation, safe on the tick thread (AGENTS.md §5).
+     *
+     * @param currentRoom the room the player is standing in
+     * @param rawQuery    the raw argument after {@code AUTOWALK} (blank is rejected with a hint)
+     * @return the plan to act on: either a walkable {@link AutoWalkPlan.Route} or a
+     *     {@link AutoWalkPlan.Blocked} message
+     */
+    public AutoWalkPlan planAutoWalk(RoomId currentRoom, @Nullable String rawQuery) {
+        Objects.requireNonNull(currentRoom, "Current room is required");
+        List<Area> areas;
+        try {
+            areas = areaRepository.findAll();
+        } catch (RepositoryException e) {
+            log.warn("AUTOWALK could not read area data: {}", e.getMessage());
+            return new AutoWalkPlan.Blocked("You cannot get your bearings right now.");
+        }
+
+        String query = rawQuery == null ? "" : rawQuery.trim();
+        if (query.isEmpty()) {
+            return new AutoWalkPlan.Blocked("Auto-walk where? Try AUTOWALK <area name>.");
+        }
+
+        String needle = query.toLowerCase(Locale.ROOT);
+        Area exact = findExactMatch(needle, areas);
+        List<Area> matches;
+        if (exact != null) {
+            matches = List.of(exact);
+        } else {
+            matches = areas.stream()
+                .filter(area -> area.name().toLowerCase(Locale.ROOT).contains(needle)
+                    || area.id().getValue().toLowerCase(Locale.ROOT).contains(needle))
+                .toList();
+        }
+
+        if (matches.isEmpty()) {
+            return new AutoWalkPlan.Blocked("Unknown area — try WAYFIND with no arguments to see nearby areas.");
+        }
+        if (matches.size() > 1) {
+            String names = matches.stream().map(Area::name).collect(Collectors.joining(", "));
+            return new AutoWalkPlan.Blocked("Which area did you mean? Be more specific: " + names + ".");
+        }
+
+        Area destination = matches.get(0);
+        RoomId waypoint = destination.roomIds().get(0);
+        Optional<List<RouteStep>> route = findBestRoute(currentRoom, waypoint);
+        if (route.isEmpty()) {
+            return new AutoWalkPlan.Blocked("No known route to " + destination.name() + ".");
+        }
+        List<RouteStep> steps = route.get();
+        if (steps.isEmpty()) {
+            return new AutoWalkPlan.Blocked("You are already at the entrance to " + destination.name() + ".");
+        }
+        if (steps.stream().anyMatch(step -> step instanceof FerryStep)) {
+            return new AutoWalkPlan.Blocked("The route to " + destination.name()
+                + " crosses the Coastal Ferry, which AUTOWALK cannot board for you. Use WAYFIND "
+                + destination.name() + " to read the directions and cross manually.");
+        }
+        List<Direction> directions = steps.stream()
+            .map(step -> ((WalkStep) step).direction())
+            .toList();
+        return new AutoWalkPlan.Route(destination.name(), directions);
+    }
+
+    /**
      * Renders ferry-aware turn-by-turn directions between two arbitrary rooms, phrased for a named
      * destination. Shared by the {@code CORPSE} command so a fallen player can be routed back to
      * their remains with the exact same walking + single-ferry-leg routing {@code WAYFIND} uses.
@@ -341,6 +417,37 @@ public class WayfindService {
         @Override
         public String label() {
             return "board the " + ferryName + " at " + boardingDock + " and ride to " + arrivalDock;
+        }
+    }
+
+    /**
+     * The outcome of planning an {@code AUTOWALK}: either a walkable {@link Route} to begin, or a
+     * {@link Blocked} message to print (unknown/ambiguous area, ferry-required, already-there, etc.).
+     */
+    public sealed interface AutoWalkPlan permits AutoWalkPlan.Route, AutoWalkPlan.Blocked {
+
+        /**
+         * A resolvable, purely-walkable route to a destination area's waypoint.
+         *
+         * @param destinationName the destination area's display name
+         * @param directions      the ordered compass directions to follow, one per tick; never empty
+         */
+        record Route(String destinationName, List<Direction> directions) implements AutoWalkPlan {
+            public Route {
+                Objects.requireNonNull(destinationName, "Destination name is required");
+                directions = List.copyOf(directions);
+            }
+        }
+
+        /**
+         * A refusal: auto-walk cannot begin, and {@code message} should be shown to the player.
+         *
+         * @param message the ready-to-print, player-facing explanation
+         */
+        record Blocked(String message) implements AutoWalkPlan {
+            public Blocked {
+                Objects.requireNonNull(message, "Message is required");
+            }
         }
     }
 }
