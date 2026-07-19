@@ -52,7 +52,7 @@ level 5, and has a reason to keep playing.
       in-game before the first fight (#782, merged via #790)
 - [x] Every harmful effect a starter-area mob can apply has a counter
       purchasable near the starter area (#783, merged via #792)
-- [ ] The starter quest chain walks the player along the safe difficulty ramp
+- [x] The starter quest chain walks the player along the safe difficulty ramp
       (training dummy → rat → kobold/goblin → spider), each completion hinting
       at the next step (#795)
 - [ ] A scripted golden-path playthrough (extension of `scripts/smoke-test.sh`)

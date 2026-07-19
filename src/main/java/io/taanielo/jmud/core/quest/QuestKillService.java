@@ -217,8 +217,36 @@ public class QuestKillService {
             rewarded = unlockQuestAchievements(rewarded, messages);
         }
 
+        findNextChainedQuest(template).ifPresent(next ->
+            messages.add("Ask the Guild Clerk about the " + next.name() + " contract next."));
+
         return new CompletionResult(
             rewarded, lvResult.leveledUp(), List.copyOf(messages), itemGrant.droppedItems());
+    }
+
+    /**
+     * Finds the quest, if any, that is gated behind the just-completed one so the completion message
+     * can signpost the next rung of a quest chain (e.g. the starter ramp
+     * {@code rat-catcher → goblin-thrasher → kobold-hunter → spider-slayer}).
+     *
+     * <p>The lookup is a linear scan over {@link QuestRepository#findAll()} for the quest whose
+     * {@code prerequisiteQuestId} equals the completed quest's id. Quest chains are tiny, so the scan
+     * is cheap. Returns empty when the completed quest is the final rung (nothing is gated on it) or
+     * when quest data cannot be loaded.
+     *
+     * @param completed the quest that was just completed; must not be null
+     * @return the quest gated behind {@code completed}, or empty when there is none
+     */
+    private Optional<QuestTemplate> findNextChainedQuest(QuestTemplate completed) {
+        String completedId = completed.id().getValue();
+        try {
+            return questRepository.findAll().stream()
+                .filter(q -> completedId.equals(q.prerequisiteQuestId()))
+                .findFirst();
+        } catch (QuestRepositoryException e) {
+            log.warn("Failed to load quests for chain hint after {}: {}", completedId, e.getMessage());
+            return Optional.empty();
+        }
     }
 
     /**

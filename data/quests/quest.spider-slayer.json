@@ -8,5 +8,8 @@
   "gold_reward": 100,
   "xp_reward": 250,
   "reputation_reward_faction_id": "militia",
-  "reputation_reward_delta": 8
+  "reputation_reward_delta": 8,
+  "recommended_level": 4,
+  "repeatable": false,
+  "prerequisite_quest_id": "kobold-hunter"
 }
