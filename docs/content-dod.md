@@ -90,6 +90,29 @@ Two enforcement tiers per item:
 - [M] Recommended level set and honest (#518)
 - [M] Fits a quest chain or standalone arc; no dead-end prerequisites
 
+## Player journey
+
+A journey is a stretch of the intended player experience — the first session,
+levels 1–5, the first death and recovery, a zone's arc. Unlike entity DoDs, a
+journey is judged by **playing it**, not by data fields existing: every entity
+on a path can pass its own DoD while the path itself is unfun or lethal.
+Journeys are tracked per row in [`feature-matrix.md`](feature-matrix.md)
+§ Player journeys; the current experience goal lives in
+[`design-focus.md`](design-focus.md).
+
+- [M] Completable by the intended character band without out-of-band knowledge
+  (no wiki, no source-diving, no guessing nonstandard command verbs)
+- [M] No unavoidable death: any lethal threat on the journey's path is
+  telegraphed before the player commits to it
+- [M] Every command the journey requires is discoverable in-game before the
+  moment it is needed
+- [M] Each step signposts the next (quest hints, NPC dialogue, room
+  descriptions) — the player always has a reason to keep going
+- [M] Every harmful effect encountered on the journey has a counter obtainable
+  at that level band
+- [M] Verified end-to-end by a scripted playthrough (smoke-test phase) or a
+  dated manual testplay recorded in the matrix row
+
 ## System / mechanic (new engine-level feature)
 
 - [M] Player-facing HELP entry
