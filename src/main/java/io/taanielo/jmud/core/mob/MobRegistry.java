@@ -30,8 +30,10 @@ import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.achievement.Achievement;
 import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.action.GameActionResult;
+import io.taanielo.jmud.core.action.GameActionService;
 import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.NpcStealPort;
+import io.taanielo.jmud.core.action.PlayerDeathService;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bounty.BountyService;
@@ -114,6 +116,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private final PersistenceQueue persistenceQueue;
     private final PlayerEventBus playerEventBus;
     private final CombatRandom random;
+    /**
+     * Shared, canonical death resolver (issue #805). A mob's AI-driven kill routes through this so it
+     * produces the same corpse-drop, newbie-grace, real-respawn-room, and CORPSE-hint messaging as any
+     * other death path ({@link GameActionService#resolveDeathIfNeeded}), instead of a divergent copy.
+     */
+    private final PlayerDeathService playerDeathService;
     private LevelUpService levelUpService = new LevelUpService();
     private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
@@ -270,6 +278,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         this.persistenceQueue = Objects.requireNonNull(persistenceQueue, "Persistence queue is required");
         this.playerEventBus = Objects.requireNonNull(playerEventBus, "Player event bus is required");
         this.random = Objects.requireNonNull(random, "Random is required");
+        this.playerDeathService = new PlayerDeathService(this.roomService);
     }
 
     /**
@@ -4293,22 +4302,36 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         }
     }
 
+    /**
+     * Handles a player felled by a mob's own AI-driven attack. Delegates the corpse-drop, newbie-grace
+     * check, respawn-room resolution, and player-facing death messaging to the shared
+     * {@link PlayerDeathService} (attacker {@code null} marks a non-PvP death) so a mob kill reads
+     * exactly like every other death — "You have died.", the real respawn-room name, and the CORPSE
+     * hint — rather than the divergent copy this method used to carry (issue #805). Only the
+     * room-broadcast line is bespoke here, attributing the kill to the mob by name, which the shared
+     * path (which says "&lt;name&gt; has died." for a non-PvP death) cannot express. Runs on the tick
+     * thread (AGENTS.md §5).
+     *
+     * @param mob           the mob that dealt the killing blow
+     * @param damagedPlayer the player snapshot already reduced to zero HP by the mob's attack
+     * @param roomOccupants the players present in the mob's room, used for the kill-attribution broadcast
+     */
     private void handleMobKill(MobInstance mob, Player damagedPlayer, List<Username> roomOccupants) {
-        int droppedGold = damagedPlayer.getGold();
-        Player deadPlayer = damagedPlayer.withGold(0).die();
-        roomService.spawnCorpse(deadPlayer.getUsername(), mob.roomId(), droppedGold);
-        roomService.clearPlayerLocation(deadPlayer.getUsername());
+        GameActionResult deathResult = playerDeathService.resolveDeathIfNeeded(damagedPlayer, null);
+        Player deadPlayer = deathResult.updatedTarget();
         saveOrLog(deadPlayer);
         mob.disengage(deadPlayer.getUsername());
         playerCombatTargets.remove(deadPlayer.getUsername());
 
-        List<GameMessage> deathMessages = new ArrayList<>();
-        deathMessages.add(GameMessage.toSource(
-            "The " + mob.template().name() + " has slain you!"));
-        deathMessages.add(GameMessage.toSource(
-            "You will awaken in the " + io.taanielo.jmud.core.player.DeathSettings.RESPAWN_ROOM_ID + "."));
-        playerEventBus.publish(deadPlayer.getUsername(),
-            new GameActionResult(deadPlayer, null, deathMessages));
+        // Deliver only the victim-facing death lines; the shared path's generic "<name> has died."
+        // room broadcast is dropped in favour of the mob-attributed line published below.
+        List<GameMessage> victimMessages = deathResult.messages().stream()
+            .filter(message -> message.type() != GameMessage.Type.ROOM)
+            .toList();
+        if (!victimMessages.isEmpty()) {
+            playerEventBus.publish(deadPlayer.getUsername(),
+                new GameActionResult(deadPlayer, null, victimMessages));
+        }
 
         String roomMsg = deadPlayer.getUsername().getValue()
             + " has been slain by the " + mob.template().name() + "!";

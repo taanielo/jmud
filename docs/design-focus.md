@@ -27,18 +27,16 @@ it actually is, instead of drifting to the next novel feature.
 - If this file is missing or has no active focus, the game-designer falls back
   to its normal process (completeness audit, variety pressure).
 
-## Active focus: first death & recovery
+## No active focus
 
-_Declared 2026-07-19 immediately after the "new player's first hour" focus
-closed out all its exit criteria. `docs/feature-matrix.md` § Player journeys
-shows every journey row green except `First death & recovery`, which is
-`❌` on both "Commands discoverable" and "Scripted playthrough" — the clearest
-remaining weak spot on the board. Code inspection turned up a concrete bug
-feeding the discoverability gap: the death message hardcodes
-`DeathSettings.RESPAWN_ROOM_ID` ("training-yard") as raw text instead of
-resolving the player's real (possibly `BIND`-anchored) respawn room, and never
-mentions the `CORPSE`/`RESURRECT` recovery tools or that `HELP` has nothing on
-death at all._
+The "first death & recovery" focus closed on 2026-07-19 (see History). There is
+no active focus, so the game-designer falls back to its normal process
+(completeness audit, variety pressure) and may propose the next focus in a
+future cycle.
+
+## History
+
+### First death & recovery (2026-07-19 → 2026-07-19)
 
 **Goal**: a player who dies — for any reason, at any level — immediately
 understands what just happened, where they will wake up (correctly, matching
@@ -46,27 +44,28 @@ where they actually respawn), what they lost and what they kept, and how to
 get back to their gear, entirely from in-game text, without needing to guess
 a command or consult a wiki.
 
-### Exit criteria
+All exit criteria merged:
 
-- [ ] The death message names the player's real respawn room (respecting a
+- [x] The death message names the player's real respawn room (respecting a
       `BIND`-anchored `boundRoomId`) instead of a hardcoded raw room id, and
       teaches the `CORPSE` command as the way back to a dropped corpse; the
       grace-protected message states the grace level so a player understands
-      it is temporary (#802)
-- [ ] `HELP death` (aliases `HELP dying`, `HELP respawn`) explains what
+      it is temporary (#802, merged via #804)
+- [x] `HELP death` (aliases `HELP dying`, `HELP respawn`) explains what
       happens at 0 HP, the grace mechanic, corpse decay, and `RESURRECT`,
       mirroring the existing `HELP hazards`/`HELP combat` static topics
-      (#802)
-- [ ] A scripted playthrough (extension of `scripts/smoke-test.sh`) proves
+      (#802, merged via #804)
+- [x] A scripted playthrough (extension of `scripts/smoke-test.sh`) proves
       the whole journey end-to-end: a character dies (combat or environmental),
       the death message correctly names the real respawn room and mentions
       recovery tools, the player respawns in that same room, and — for a
-      non-grace death — `CORPSE` walks them back to their remains
-- [ ] The `First death & recovery` row in
+      non-grace death — `CORPSE` walks them back to their remains (#805 —
+      phase 5 forces a real non-grace death on a dedicated `grace_level=0`
+      server and asserts the death message, the respawn location, and the
+      `CORPSE` route back to the remains)
+- [x] The `First death & recovery` row in
       [`feature-matrix.md`](feature-matrix.md) § Player journeys is ✅ across
-      every column
-
-## History
+      every column (#805)
 
 ### The new player's first hour (2026-07-19 → 2026-07-19)
 
