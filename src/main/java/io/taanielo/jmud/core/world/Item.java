@@ -115,8 +115,7 @@ public class Item {
      * Id of the item set this equippable piece belongs to, or null when the item is part of no set.
      * Additive and optional: absent means the item grants no set bonus, so every pre-v16 item file
      * loads unchanged. Set membership is resolved into stacking threshold bonuses by
-     * {@link io.taanielo.jmud.core.combat.SetBonusResolver}; the item's own attributes are never
-     * mutated to fold these in.
+     * SetBonusResolver; the item's own attributes are never mutated to fold these in.
      */
     @Nullable ItemSetId setId;
 
