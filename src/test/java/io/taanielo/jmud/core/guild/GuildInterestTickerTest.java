@@ -47,6 +47,21 @@ class GuildInterestTickerTest {
         ticker.tick();
     }
 
+    /**
+     * Advances the clock by whole in-game days. With {@code ticksPerPhase = 1} a full day/night cycle (one
+     * NIGHT->DAY transition) is two ticks, so {@code days} in-game days take {@code days * 2} ticks.
+     */
+    private void advanceGameDays(int days) {
+        for (int i = 0; i < days * 2; i++) {
+            advanceOneTick();
+        }
+    }
+
+    /** Advances exactly one full interest period, which ends on a crediting boundary. */
+    private void advanceOneInterestPeriod() {
+        advanceGameDays(GuildInterestTicker.GAME_DAYS_PER_INTEREST_PERIOD);
+    }
+
     private Guild ironclad() {
         return guildService.guildOf(ALICE).orElseThrow();
     }
@@ -61,10 +76,22 @@ class GuildInterestTickerTest {
     }
 
     @Test
-    void creditsLevelScaledInterestOnNightToDayTransition() {
+    void doesNotCreditEveryNightToDayFlip() {
+        // A single in-game day (~100s at the default clock) must not trigger interest: the runaway
+        // ~100-second faucet of issue #785 is gone. Interest lands only once a full period elapses.
         guildService.deposit(ALICE, 1_000); // level 2 (2%)
-        advanceOneTick(); // DAY -> NIGHT
-        advanceOneTick(); // NIGHT -> DAY, new day -> credit
+
+        advanceGameDays(GuildInterestTicker.GAME_DAYS_PER_INTEREST_PERIOD - 1);
+
+        assertEquals(1_000, ironclad().treasuryGold());
+        assertTrue(broadcaster.messages.isEmpty());
+    }
+
+    @Test
+    void creditsLevelScaledInterestOncePerInterestPeriod() {
+        guildService.deposit(ALICE, 1_000); // level 2 (2%)
+
+        advanceOneInterestPeriod();
 
         assertEquals(1_020, ironclad().treasuryGold());
     }
@@ -75,8 +102,7 @@ class GuildInterestTickerTest {
         int lifetimeBefore = ironclad().lifetimeDepositedGold();
         GuildLevel levelBefore = ironclad().level();
 
-        advanceOneTick(); // DAY -> NIGHT
-        advanceOneTick(); // NIGHT -> DAY, new day -> credit
+        advanceOneInterestPeriod();
 
         assertEquals(lifetimeBefore, ironclad().lifetimeDepositedGold());
         assertEquals(levelBefore, ironclad().level());
@@ -85,8 +111,7 @@ class GuildInterestTickerTest {
     @Test
     void zeroBalanceGuildIsSkippedWithNoAnnouncement() {
         // No deposit: the treasury is empty, so no interest and no [Guild] spam.
-        advanceOneTick(); // DAY -> NIGHT
-        advanceOneTick(); // NIGHT -> DAY, new day
+        advanceOneInterestPeriod();
 
         assertEquals(0, ironclad().treasuryGold());
         assertTrue(broadcaster.messages.isEmpty());
@@ -97,8 +122,7 @@ class GuildInterestTickerTest {
         guildService.accept(inviteBob());
         guildService.deposit(ALICE, 1_000); // level 2 (2%) -> 20 interest
 
-        advanceOneTick(); // DAY -> NIGHT
-        advanceOneTick(); // NIGHT -> DAY, new day -> credit
+        advanceOneInterestPeriod();
 
         assertEquals(2, broadcaster.recipients.size());
         assertTrue(broadcaster.recipients.contains(ALICE));
@@ -111,8 +135,7 @@ class GuildInterestTickerTest {
     void subThresholdBalanceEarnsNothingAndIsSilent() {
         guildService.deposit(ALICE, 50); // level 1 (1%): 50 * 1% floors to 0
 
-        advanceOneTick(); // DAY -> NIGHT
-        advanceOneTick(); // NIGHT -> DAY, new day
+        advanceOneInterestPeriod();
 
         assertEquals(50, ironclad().treasuryGold());
         assertTrue(broadcaster.messages.isEmpty());

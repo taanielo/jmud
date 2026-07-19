@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.authentication.Username;
@@ -300,6 +302,36 @@ class GuildTest {
         Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
 
         assertThrows(IllegalArgumentException.class, () -> guild.creditTreasuryInterest(-1));
+    }
+
+    @Test
+    void creditingInterestNearTheCapClampsInsteadOfOverflowingToNegative() {
+        // A treasury a few gold below Integer.MAX_VALUE must not wrap to a negative balance (issue #785):
+        // it clamps at the cap and stays a valid, positive, withdrawable balance.
+        Guild guild = new Guild(
+            GuildId.of("g1"), "Ironclad", ALICE,
+            List.of(new GuildMember(ALICE, GuildRank.LEADER, 0)),
+            Integer.MAX_VALUE - 5, List.of(), 0, null, null, 0);
+
+        Guild credited = guild.creditTreasuryInterest(1_000);
+
+        assertEquals(Guild.TREASURY_CAP, credited.treasuryGold());
+        assertTrue(credited.treasuryGold() > 0);
+    }
+
+    @Test
+    void depositingNearTheCapClampsBothTreasuryAndLifetimeGold() {
+        Guild guild = new Guild(
+            GuildId.of("g1"), "Ironclad", ALICE,
+            List.of(new GuildMember(ALICE, GuildRank.LEADER, 0)),
+            Integer.MAX_VALUE - 5, List.of(), Integer.MAX_VALUE - 5, null, null, 0);
+
+        Guild deposited = guild.depositTreasury(1_000);
+
+        assertEquals(Guild.TREASURY_CAP, deposited.treasuryGold());
+        assertEquals(Guild.TREASURY_CAP, deposited.lifetimeDepositedGold());
+        assertTrue(deposited.treasuryGold() > 0);
+        assertTrue(deposited.lifetimeDepositedGold() > 0);
     }
 
     @Test

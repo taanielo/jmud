@@ -10,14 +10,21 @@ import io.taanielo.jmud.core.world.WorldClock;
 
 /**
  * World-level {@link Tickable} that pays passive, level-scaled treasury interest to every guild once per
- * game day (issue #773).
+ * interest period (issue #773, cadence corrected in issue #785).
  *
  * <p>The {@link WorldClock} flips deterministically between {@link TimeOfDay#DAY} and
- * {@link TimeOfDay#NIGHT}; a new day is the transition from {@code NIGHT} back to {@code DAY} — the same
- * boundary {@code GuildQuestRotationTicker}/{@code DailyQuestRotationTicker} use. On that boundary this
- * ticker credits each guild's treasury with {@link Guild#dailyTreasuryInterest()} (a level-scaled cut of
- * its <em>current</em> balance) and announces the amount to every online member on the {@code [Guild]}
- * channel. Interest is driven purely by tick-derived time, never the wall clock (AGENTS.md §5).
+ * {@link TimeOfDay#NIGHT}; a new in-game day is the transition from {@code NIGHT} back to {@code DAY} — the
+ * same boundary {@code GuildQuestRotationTicker}/{@code DailyQuestRotationTicker} use. With the default
+ * clock a full day/night cycle lasts only ~100 ticks (~100 real seconds), so crediting a full 1–5% on
+ * <em>every</em> such flip compounded into a runaway, withdrawable gold faucet (issue #785). Instead this
+ * ticker counts elapsed in-game days and credits interest only once every
+ * {@link #GAME_DAYS_PER_INTEREST_PERIOD} of them, so the effective interest cadence is a genuinely long,
+ * deterministic period rather than every ~100 seconds.
+ *
+ * <p>On a crediting boundary it adds {@link Guild#dailyTreasuryInterest()} (a level-scaled cut of the
+ * guild's <em>current</em> balance) to each treasury and announces the amount to every online member on the
+ * {@code [Guild]} channel. Interest is driven purely by tick-derived time, never the wall clock
+ * (AGENTS.md §5).
  *
  * <p>Interest is credited to {@link Guild#treasuryGold()} only, via {@link Guild#creditTreasuryInterest}
  * — never {@link Guild#depositTreasury}, which would also bump {@link Guild#lifetimeDepositedGold()} and
@@ -30,10 +37,19 @@ import io.taanielo.jmud.core.world.WorldClock;
  */
 public class GuildInterestTicker implements Tickable {
 
+    /**
+     * Number of in-game day/night cycles that make up one interest-bearing period. With the default clock
+     * (~100 ticks ≈ ~100 real seconds per cycle) this is roughly one real-time day, so a level-scaled
+     * 1–5% credit lands about once a day rather than every ~100 seconds — restoring the "modest passive
+     * daily interest" the design intends and preventing the compounding hyperinflation of issue #785.
+     */
+    static final int GAME_DAYS_PER_INTEREST_PERIOD = 864;
+
     private final WorldClock worldClock;
     private final GuildService guildService;
     private final MessageBroadcaster messageBroadcaster;
     private TimeOfDay previousTimeOfDay;
+    private long gameDaysElapsed;
 
     /**
      * Creates the interest ticker.
@@ -52,8 +68,9 @@ public class GuildInterestTicker implements Tickable {
     }
 
     /**
-     * Detects a night-to-day transition and, when one occurs, credits every guild's treasury with its
-     * level-scaled daily interest. Must only be called on the tick thread.
+     * Detects a night-to-day transition, counts it as one elapsed in-game day, and credits every guild's
+     * treasury with its level-scaled interest only once a full {@link #GAME_DAYS_PER_INTEREST_PERIOD} of
+     * them have elapsed. Must only be called on the tick thread.
      */
     @Override
     public void tick() {
@@ -61,6 +78,10 @@ public class GuildInterestTicker implements Tickable {
         boolean newDay = previousTimeOfDay == TimeOfDay.NIGHT && current == TimeOfDay.DAY;
         previousTimeOfDay = current;
         if (!newDay) {
+            return;
+        }
+        gameDaysElapsed++;
+        if (gameDaysElapsed % GAME_DAYS_PER_INTEREST_PERIOD != 0) {
             return;
         }
         for (Guild guild : guildService.allGuilds()) {
