@@ -3,7 +3,7 @@
   "is_outdoor": true,
   "id": "darkwood-trail",
   "name": "Darkwood Trail",
-  "description": "A narrow dirt path winds into a dense, shadow-choked forest.",
+  "description": "A narrow dirt path winds north into a dense, shadow-choked forest. The trees crowd closer with every step, and the keep's watchmen will tell you only seasoned adventurers follow this trail past the treeline. Back to the south lies the safety of the courtyard.",
   "item_ids": [],
   "exits": {
     "south": "courtyard",

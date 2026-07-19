@@ -7,5 +7,10 @@
   "exits": {
     "east": "sparring-pit",
     "north": "dark-burrow"
-  }
+  },
+  "ambient_messages": [
+    "A faint clicking of mandibles carries down from the dark burrow to the north.",
+    "The cold mud sucks at your boots with every shift of your weight.",
+    "Something skitters in the tunnel to the north, then goes silent."
+  ]
 }
