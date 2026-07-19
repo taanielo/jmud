@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "battle-standard",
+  "name": "Battle Standard",
+  "duration_ticks": 30,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A battle standard snaps overhead and you rally to its colours, striking harder and guarding surer."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} rallies to the snapping colours of a battle standard."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The battle standard is furled and its rallying strength fades from you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The battle standard rallying {name} is furled and its strength fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} stands rallied beneath a snapping battle standard, striking harder and guarding surer."
+    }
+  ]
+}

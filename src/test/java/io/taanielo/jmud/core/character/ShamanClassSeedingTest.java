@@ -34,6 +34,7 @@ class ShamanClassSeedingTest {
     private static final AbilityId HEALING_TOTEM = AbilityId.of("spell.healing-totem");
     private static final AbilityId CHAIN_HEAL = AbilityId.of("spell.chain-heal");
     private static final AbilityId EARTHBIND_TOTEM = AbilityId.of("spell.earthbind-totem");
+    private static final AbilityId CLEANSING_WATERS = AbilityId.of("spell.cleansing-waters");
 
     @Test
     void shamanClassJsonLoadsCorrectly() throws Exception {
@@ -45,7 +46,7 @@ class ShamanClassSeedingTest {
         assertEquals("shaman", shaman.id().getValue());
         assertEquals("Shaman", shaman.name());
         assertEquals(List.of(ANCESTRAL_WARD, CURE, LIGHTNING_BOLT), shaman.startingAbilityIds());
-        assertEquals(List.of(HASTE, REGROWTH, FLAME_SHOCK, STORMCALL_TOTEM, HEALING_TOTEM, CHAIN_HEAL, EARTHBIND_TOTEM), shaman.trainableAbilityIds());
+        assertEquals(List.of(HASTE, REGROWTH, FLAME_SHOCK, STORMCALL_TOTEM, HEALING_TOTEM, CHAIN_HEAL, EARTHBIND_TOTEM, CLEANSING_WATERS), shaman.trainableAbilityIds());
     }
 
     @Test

@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.kidney-shot",
+  "name": "kidney shot",
+  "type": "SKILL",
+  "level": 85,
+  "cost": {
+    "move": 14
+  },
+  "cooldown": {
+    "ticks": 16
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["kidney", "kidneyshot", "ks"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 9
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "kidney-shot"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You drive a brutal kidney shot into {target}, and the shock of it drops them helpless and reeling."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} drives a brutal kidney shot into you, and the world whites out as you crumple, stunned and helpless!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} drives a brutal kidney shot into {target}, who crumples, stunned and reeling."
+    }
+  ]
+}
