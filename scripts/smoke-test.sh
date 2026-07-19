@@ -212,12 +212,14 @@ expect "$T1" "SCORE shows Level"                  'Level : [0-9]+'
 # Core attributes (issue #524): SCORE lists the four derived attributes STR/INT/WIS/AGI.
 expect "$T1" "SCORE shows core attributes"        'Attrs : STR [0-9]+  INT [0-9]+  WIS [0-9]+  AGI [0-9]+'
 expect "$T1" "SCORE shows AC"                     'AC    : [0-9]+'
-# Newbie starting kit (issue #519): a fresh character receives a small gold purse plus
-# provisions (bread + waterskin) so they can eat, drink and buy a meal before their first
-# fight. Values are data-driven in data/newbie-kit.json.
+# Newbie starting kit (issue #519, #781): a fresh character receives a small gold purse,
+# provisions (bread + waterskin) so they can eat, drink and buy a meal, and a basic
+# training sword so their first fights are not bare-fisted. Values are data-driven in
+# data/newbie-kit.json.
 expect "$T1" "SCORE shows a non-zero starting gold purse" 'Gold  : [1-9][0-9]*'
 expect "$T1" "INVENTORY holds starter bread"      'Loaf of Bread'
 expect "$T1" "INVENTORY holds starter waterskin"  'Waterskin'
+expect "$T1" "INVENTORY holds starter training sword" 'Training Sword'
 # Bulk item handling (issue #641): DROP ALL empties the unequipped starter pack onto the floor
 # in one summarized line, and GET ALL scoops it all back up in one command. GET ALL also sweeps
 # the Training Yard's authored fixtures (iron sword, potions, locked chest) since it takes every

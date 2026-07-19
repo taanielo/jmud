@@ -2,6 +2,7 @@
   "schema_version": 1,
   "starting_gold": 40,
   "starting_items": [
+    { "item": "training-sword", "quantity": 1 },
     { "item": "bread", "quantity": 2 },
     { "item": "water", "quantity": 2 }
   ]
