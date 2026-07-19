@@ -33,6 +33,7 @@ TEST_HERO="hero$(date +%s)"
 TEST_WS="wsock$(date +%s)"
 TEST_PARTY="ptla$(date +%s)"
 TEST_BYST="ptlb$(date +%s)"
+TEST_DEATH="dead$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -85,6 +86,16 @@ shutdown_server_pid() {
     pgrep -f -- "--telnet-port $SHUTDOWN_TELNET_PORT" | head -1
 }
 
+# Phase 5 runs its own dedicated installDist server instance (same plain-`java`
+# pattern as phase 4) on its own ports, launched with jmud.death.grace_level=0 so
+# a level-1 throwaway character takes the real corpse-drop death path instead of
+# newbie grace — see the phase 5 comment for why a second instance is needed.
+DEATH_TELNET_PORT="${SMOKE_DEATH_TELNET_PORT:-4691}"
+DEATH_SSH_PORT="${SMOKE_DEATH_SSH_PORT:-4692}"
+death_server_pid() {
+    pgrep -f -- "--telnet-port $DEATH_TELNET_PORT" | head -1
+}
+
 cleanup() {
     local pid
     pid="$(server_pid || true)"
@@ -100,6 +111,10 @@ cleanup() {
     if [ -n "${pid:-}" ]; then
         kill -9 "$pid" 2>/dev/null
     fi
+    pid="$(death_server_pid || true)"
+    if [ -n "${pid:-}" ]; then
+        kill -9 "$pid" 2>/dev/null
+    fi
     rm -f "data/users/$TEST_USER.json" "players/$TEST_USER.json"
     rm -f "data/users/$TEST_ROGUE.json" "players/$TEST_ROGUE.json"
     rm -f "data/users/$TEST_LINK.json" "players/$TEST_LINK.json"
@@ -110,6 +125,7 @@ cleanup() {
     rm -f "data/users/$TEST_WS.json" "players/$TEST_WS.json"
     rm -f "data/users/$TEST_PARTY.json" "players/$TEST_PARTY.json"
     rm -f "data/users/$TEST_BYST.json" "players/$TEST_BYST.json"
+    rm -f "data/users/$TEST_DEATH.json" "players/$TEST_DEATH.json"
     # Restore the committed bulletin board so the smoke test leaves no trace.
     if [ -f "$BOARD_BACKUP" ]; then
         cp "$BOARD_BACKUP" "$BOARD_FILE"
@@ -907,6 +923,130 @@ else
     fi
 fi
 
+# ── phase 5: death → respawn → corpse recovery playthrough (issue #805) ───────
+# The full first-death journey, end to end, as the regression guard for the
+# "first death & recovery" design focus: a throwaway character dies for real in a
+# non-grace state, sees a death message that names its real respawn room and
+# teaches CORPSE, actually respawns in that named room, and then uses CORPSE to
+# chart a route back to its remains. The individual pieces (grace mechanic #520,
+# real-room + CORPSE messaging #802/#804, HELP death) are covered by unit tests
+# and earlier work; this phase is the only thing that proves the whole chain
+# holds together over real telnet.
+#
+# Forcing a *real* (corpse-dropping) death is the crux. The starter area is
+# intentionally non-lethal for a grace-level character (the just-closed "first
+# hour" focus), and a fresh level-1 character is normally newbie-grace protected
+# (jmud.death.grace_level, default 5) so it would keep everything on death. So
+# this phase launches its own dedicated server instance from the installDist
+# binary phase 4 already built (plain `java`, mirroring phase 4's need to bypass
+# `./gradlew run`), overriding jmud.death.grace_level=0 via JMUD_OPTS so grace
+# never applies and the corpse path is always taken. jmud.death.respawn_ticks is
+# also stretched so the respawn never races the still-in-flight movement commands.
+#
+# Navigation: the character walks out of the safe starter town north into the
+# forest to the Wolf Den — Training Yard -e-> Courtyard -n-> Darkwood Trail -n->
+# Tangled Undergrowth -e-> Wolf Den. Every room on this route is ungated
+# (min_level 0, no locked exits), and the Wolf Den is a dead-end holding up to two
+# aggressive, non-wandering Dire Wolves (55 HP each, hitting 5-14/tick), so a ~20-HP
+# level-1 character is beaten to death there within a few ticks with no risk of the
+# wolves following or the character escaping. grace_level=0 drops its gold/items
+# into a corpse where it fell; it then respawns in the Training Yard and CORPSE
+# routes it back. Corpses are transient (in-memory), so this instance leaves no
+# data files behind beyond the throwaway user, which cleanup removes.
+log "Phase 5: death → respawn → corpse recovery (dedicated grace_level=0 server)"
+DEATH_LOG="$OUT_DIR/server-death.log"
+if [ ! -x "$JMUD_BIN" ]; then
+    log "+ ./gradlew installDist --console=plain -q (phase 5 needs the install binary)"
+    ./gradlew installDist --console=plain -q > "$OUT_DIR/installDist-death.log" 2>&1 || true
+fi
+if [ ! -x "$JMUD_BIN" ]; then
+    fail "phase 5: install binary $JMUD_BIN unavailable — cannot run death playthrough"
+elif nc -z 127.0.0.1 "$DEATH_TELNET_PORT" 2>/dev/null; then
+    fail "port $DEATH_TELNET_PORT already in use — cannot run death phase"
+else
+    JMUD_OPTS="-Djmud.death.grace_level=0 -Djmud.death.respawn_ticks=15" \
+        "$JMUD_BIN" --telnet-port "$DEATH_TELNET_PORT" --ssh-port "$DEATH_SSH_PORT" \
+        > "$DEATH_LOG" 2>&1 &
+
+    waited=0
+    until nc -z 127.0.0.1 "$DEATH_TELNET_PORT" 2>/dev/null; do
+        sleep 1
+        waited=$((waited + 1))
+        if [ "$waited" -ge "$STARTUP_TIMEOUT" ]; then
+            fail "death-test server did not open port $DEATH_TELNET_PORT within ${STARTUP_TIMEOUT}s"
+            break
+        fi
+    done
+
+    if [ -z "$(death_server_pid || true)" ]; then
+        fail "death-test server not running after startup"
+    else
+        T5="$OUT_DIR/phase5-death-recovery.txt"
+        {
+            sleep 1.5
+            printf '%s\r\n' "$TEST_DEATH"; sleep 1.5   # new username
+            printf '%s\r\n' "$TEST_PASS";  sleep 1.5   # password
+            printf '%s\r\n' "$TEST_PASS";  sleep 1.5   # confirm password
+            printf '%s\r\n' "human";       sleep 1.5   # race
+            printf '%s\r\n' "warrior";     sleep 2     # class -> enters the world
+            # Walk north out of the safe town into the forest to the dead-end Wolf Den.
+            printf '%s\r\n' "east";  sleep 2   # Training Yard -> Courtyard
+            printf '%s\r\n' "north"; sleep 2   # Courtyard -> Darkwood Trail
+            printf '%s\r\n' "north"; sleep 2   # Darkwood Trail -> Tangled Undergrowth
+            printf '%s\r\n' "east";  sleep 3   # Tangled Undergrowth -> Wolf Den (Dire Wolves)
+            # Stop moving: the aggressive Dire Wolves beat the ~20-HP character to death
+            # within a few ticks. No further movement is issued, so the respawn (which the
+            # stretched respawn_ticks holds well past this point) can never relocate us.
+            printf '%s\r\n' "look";   sleep 25  # die, then wait out the respawn ticker
+            printf '%s\r\n' "look";   sleep 5   # confirm we are back in the Training Yard
+            printf '%s\r\n' "corpse"; sleep 3   # chart the route back to the remains
+            printf '%s\r\n' "quit";   sleep 1
+        } | timeout 120 nc 127.0.0.1 "$DEATH_TELNET_PORT" | tr -d '\r' > "$T5"
+
+        # Slice the transcript from the respawn onward so the respawn-room and CORPSE-route
+        # assertions cannot accidentally match the identical Training Yard the character
+        # started in, nor the corpse line inside the death message (mirrors the phase-3c
+        # PRE_CREATION slice technique).
+        AFTER_RESPAWN="$OUT_DIR/phase5-after-respawn.txt"
+        sed -n '/You awaken in the starting room/,$p' "$T5" > "$AFTER_RESPAWN"
+
+        expect "$T5" "death: character dies for real"                 'You have died\.'
+        # The death message names the real respawn room by its display name (issue #802/#804),
+        # never a raw room id.
+        expect "$T5" "death: names the real respawn room by name"     'You will awaken in Training Yard\.'
+        if grep -qiE 'awaken in training-yard' "$T5"; then
+            fail "death message leaked the raw respawn room id instead of its display name"
+        else
+            pass "death message uses the room display name, not a raw id"
+        fi
+        # A non-grace death drops a corpse and teaches CORPSE as the way back (issue #804).
+        expect "$T5" "death: took the non-grace corpse path"          'Your corpse lies in .*holding your gold and items'
+        expect "$T5" "death: mentions CORPSE as the way back"         'Type CORPSE to be walked back to it'
+        if grep -q 'You keep your belongings this time' "$T5"; then
+            fail "death took the newbie-grace path — grace_level=0 override did not apply"
+        else
+            pass "death was not newbie-grace protected (real corpse death)"
+        fi
+        # The player actually respawns in that same named room after the respawn tick.
+        expect "$AFTER_RESPAWN" "respawn: player awakens after the respawn tick" 'You awaken in the starting room'
+        expect "$AFTER_RESPAWN" "respawn: back in the named Training Yard"        'Training Yard'
+        # CORPSE walks the player back to their remains: it names the corpse room and charts
+        # turn-by-turn directions (the "N step(s) away:" route rendered by WAYFIND).
+        expect "$AFTER_RESPAWN" "corpse: reports where the remains lie"           'Your corpse lies in'
+        expect "$AFTER_RESPAWN" "corpse: charts a route back to the remains"      'step\(s\) away:'
+
+        DEATH_PID="$(death_server_pid || true)"
+        if [ -n "${DEATH_PID:-}" ]; then
+            kill "$DEATH_PID" 2>/dev/null
+            for _ in 1 2 3 4 5; do
+                kill -0 "$DEATH_PID" 2>/dev/null || break
+                sleep 1
+            done
+            kill -0 "$DEATH_PID" 2>/dev/null && kill -9 "$DEATH_PID" 2>/dev/null
+        fi
+    fi
+fi
+
 # ── summary ──────────────────────────────────────────────────────────────────
 log ""
 if [ "$FAILURES" -eq 0 ]; then
@@ -919,9 +1059,15 @@ else
     if [ -n "${T3E:-}" ] && [ -f "$T3E" ]; then
         log "--- transcript phase 3e golden-path (tail) ---"; tail -30 "$T3E"
     fi
+    if [ -n "${T5:-}" ] && [ -f "$T5" ]; then
+        log "--- transcript phase 5 death-recovery (tail) ---"; tail -30 "$T5"
+    fi
     log "--- server log (tail) ---";         tail -15 "$SERVER_LOG"
     if [ -n "${SHUTDOWN_LOG:-}" ] && [ -f "$SHUTDOWN_LOG" ]; then
         log "--- shutdown log window (tail) ---"; tail -15 "$SHUTDOWN_LOG"
+    fi
+    if [ -n "${DEATH_LOG:-}" ] && [ -f "$DEATH_LOG" ]; then
+        log "--- death server log (tail) ---"; tail -15 "$DEATH_LOG"
     fi
     exit 1
 fi
