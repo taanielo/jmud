@@ -55,11 +55,17 @@ level 5, and has a reason to keep playing.
 - [x] The starter quest chain walks the player along the safe difficulty ramp
       (training dummy → rat → kobold/goblin → spider), each completion hinting
       at the next step (#795)
-- [ ] A scripted golden-path playthrough (extension of `scripts/smoke-test.sh`)
+- [x] A scripted golden-path playthrough (extension of `scripts/smoke-test.sh`)
       proves it end-to-end: create character → read hints → win first fight →
-      complete first quest → still alive (no issue yet — game-designer to file)
-- [ ] The `First session` and `Levels 1–5` rows in
+      complete first quest → still alive (#798 — phase 3e drives create → hints →
+      WIELD → accept rat-catcher → kill Giant Rats to 5/5 → QUEST COMPLETE →
+      SCORE shows positive HP + 30g/75xp reward + Rat Slayer title; also fixed
+      the rats wandering unbounded out of the hollow, `data/mobs/rat.json`
+      `wanders: false`)
+- [x] The `First session` and `Levels 1–5` rows in
       [`feature-matrix.md`](feature-matrix.md) § Player journeys are all ✅
+      (both rows now ✅ across every column after #798 flipped Scripted
+      playthrough)
 
 ## History
 
