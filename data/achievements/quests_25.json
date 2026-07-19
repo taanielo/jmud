@@ -4,5 +4,6 @@
   "name": "Quest Veteran",
   "description": "Complete 25 one-time contracts.",
   "condition": "quests_completed",
-  "threshold": 25
+  "threshold": 25,
+  "title_reward": "the Contracted"
 }

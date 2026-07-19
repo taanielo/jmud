@@ -9,5 +9,10 @@
   "spawn_room_id": "dark-burrow",
   "max_count": 2,
   "respawn_ticks": 20,
-  "loot": []
+  "loot": [
+    {
+      "item_id": "spider-silk",
+      "drop_chance": 0.5
+    }
+  ]
 }

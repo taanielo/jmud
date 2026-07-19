@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.curse-of-tongues",
+  "name": "curse of tongues",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 13
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["tongues", "curseoftongues", "cot"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 7
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "tongue-tied"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You lay a curse of tongues on {target}, and their words twist to gibberish, choking off any spell before it can be spoken."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} lays a curse of tongues on you, and your words twist to gibberish, smothering every spell you try to voice!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} lays a curse of tongues on {target}, twisting their speech to gibberish."
+    }
+  ]
+}

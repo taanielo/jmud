@@ -5,7 +5,7 @@
   "max_hp": 80,
   "attack_id": "attack.ice-elemental",
   "aggressive": true,
-  "tags": ["ice", "elemental", "frozen-peaks"],
+  "tags": ["ice", "elemental", "frozen-peaks", "pack"],
   "spawn_room_id": "frozen-peaks-glacier",
   "max_count": 2,
   "respawn_ticks": 35,

@@ -35,7 +35,9 @@ public class SummonCommand extends RegistrableCommand {
                  Conjures a temporary pet mob that fights hostile mobs in your room and awards you
                  their experience and loot. The pet fades away after a while, or when it is
                  destroyed. You may have only one pet at a time. SUMMON DISMISS releases it early.
-                 Requires having learned the summon spell and enough mana.\
+                 Requires having learned the summon spell and enough mana.
+                 The pet's power (its max HP and the damage it deals) scales with your level at the
+                 moment you summon it, so a higher-level caster's pet is tougher and hits harder.\
                """;
     }
 

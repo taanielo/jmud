@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -26,9 +27,14 @@ public class DuelCommand extends RegistrableCommand {
     public String longDescription() {
         return """
                Usage: DUEL <player>
+                      DUEL WAGER <player> <gold>
                  Challenges a player in your room to a consensual duel. They must ACCEPT within 30
-                 seconds to engage. Duels are fought to near death; the loser drops no items or gold
-                 and the winner gains no experience.\
+                 seconds to engage. The base DUEL <player> is always free and risk-free: the loser
+                 drops no items or gold and the winner gains no experience.
+                 DUEL WAGER <player> <gold> instead stakes a positive whole number of gold; you must
+                 hold that much to challenge, and the accepting player must still hold it when they
+                 ACCEPT. On resolution the wager transfers from the loser to the winner (clamped to
+                 the loser's remaining gold). Forfeits, disconnects, and timeouts move no gold.\
                """;
     }
 
@@ -39,6 +45,11 @@ public class DuelCommand extends RegistrableCommand {
             return Optional.empty();
         }
         String args = parts[1];
+        String[] argParts = args.split("\\s+", 2);
+        if (argParts.length >= 1 && "WAGER".equals(argParts[0].toUpperCase(Locale.ROOT))) {
+            String wagerArgs = argParts.length > 1 ? argParts[1] : "";
+            return Optional.of(new SocketCommandMatch(this, context -> context.initiateWagerDuel(wagerArgs)));
+        }
         return Optional.of(new SocketCommandMatch(this, context -> context.initiateDuel(args)));
     }
 }

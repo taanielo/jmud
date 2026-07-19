@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "id": "earthbound",
+  "name": "Earthbound",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "control": "root",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "The ground drags at your feet as an earthbind totem's pull roots and slows you, every step turned to leaden effort."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "The earth clutches at {name}'s feet, dragging them down and slowing their movements."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The totem's pull releases you and your feet come free of the clinging earth."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The earth releases its grip on {name} and they move freely again."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is held fast by an earthbind totem, feet dragging in the clinging earth."
+    }
+  ]
+}

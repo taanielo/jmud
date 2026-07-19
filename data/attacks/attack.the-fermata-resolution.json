@@ -1,0 +1,44 @@
+{
+  "schema_version": 7,
+  "id": "attack.the-fermata-resolution",
+  "name": "The Resolution",
+  "min_damage": 86,
+  "max_damage": 114,
+  "hit_bonus": 9,
+  "crit_bonus": 8,
+  "damage_bonus": 22,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "telegraph_ticks": 3,
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 95
+  },
+  "messages": [
+    {
+      "phase": "telegraph",
+      "channel": "self",
+      "text": "The Fermata draws back the Resolution — the arrested downbeat it has held since before the first breath of the world lifting to fall, the whole chamber going still around the pause about to end. There is a breath, no more, before the withheld stroke comes down on you."
+    },
+    {
+      "phase": "telegraph",
+      "channel": "room",
+      "text": "The Fermata draws back the Resolution, the eternity-long pause lifting to its end, the whole chamber falling still before the downbeat."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Fermata lets the whole stroke fall at last — the Resolution, the downbeat it has held back since before the first breath of the world, the entire arrested eternity of the pause between one pulse of the Hum and the next released in a single crushing beat, and it lands on your borrowed heartbeat like the end of everything, folding breath and warmth and count under a stroke that was never meant to fall on anything living. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Fermata unleashes the Resolution and the whole chamber falls with it, the withheld beat of an eternity coming down in one cold stroke, and you press flat to the frost-sheeted floor and let the resolving measure crash over you until the last of the downbeat spends itself and the pause begins again."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Fermata bends the entire Resolution down onto you alone, every beat it has held back since the world drew its first breath falling on your single pulse at once, and for one endless drowning instant your borrowed rhythm is seized and completed and spent, your own heart tolling the downbeat that means to be the last one it ever keeps! The blow {verb} you!"
+    }
+  ]
+}

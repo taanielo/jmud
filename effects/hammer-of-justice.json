@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "id": "hammer-of-justice",
+  "name": "Stunned by Hammer of Justice",
+  "duration_ticks": 4,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "control": "stun",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -6
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -6
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A hammer of holy force slams into you and the world goes white; you reel, stunned and unable to mount any real defence or attack."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A hammer of holy force slams into {name}, and they reel, stunned and staggering."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The ringing in your skull fades and your wits and guard return."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} shakes off the stunning blow and recovers their footing."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is stunned and reeling from a hammer of holy force."
+    }
+  ]
+}

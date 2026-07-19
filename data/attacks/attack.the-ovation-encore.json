@@ -1,0 +1,44 @@
+{
+  "schema_version": 7,
+  "id": "attack.the-ovation-encore",
+  "name": "The Encore",
+  "min_damage": 120,
+  "max_damage": 156,
+  "hit_bonus": 12,
+  "crit_bonus": 10,
+  "damage_bonus": 29,
+  "weapon_type": "BLUNT",
+  "damage_type": "PHYSICAL",
+  "telegraph_ticks": 3,
+  "applies_effect": {
+    "effect_id": "dazed",
+    "chance_percent": 96
+  },
+  "messages": [
+    {
+      "phase": "telegraph",
+      "channel": "self",
+      "text": "The Ovation gathers the whole hall into the Encore — every empty seat, every clamoring echo, every standing call drawing back at once into one indrawn breath of applause before it demands the extra piece the world was never meant to play. You have a heartbeat, perhaps two, before the roar comes down on you."
+    },
+    {
+      "phase": "telegraph",
+      "channel": "room",
+      "text": "The Ovation gathers the whole roaring hall into the Encore, the refused ending drawing back into one terrible indrawn breath of applause before the demand for more crashes down."
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Ovation sounds the whole of itself at last — the Encore, the one more piece the finished world was never written to play, every empty seat and clamoring echo and standing call crashing down in a single wall of applause that wrings the extra measure out of you by force, playing your borrowed pulse out onto the stage past the point your music was ever meant to stop. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Ovation unleashes the Encore and the whole hall roars down with it, an eternity of refused ending crashing onto the stage at once, and you press flat beneath the wall of applause and let the demand break over you until the last of the roar spends itself and the calling begins again."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Ovation bends the entire Encore down onto you alone, the whole refusal of a hall that will not let the world end crashing onto your single pulse at once, and for one drowning instant your borrowed rhythm is seized and wrung and played out onto the stage, your own heart hammering out the extra measure the finished song was never supposed to have! The blow {verb} you!"
+    }
+  ]
+}

@@ -153,6 +153,18 @@ public class RoomService {
     }
 
     /**
+     * Respawns a player at their preferred (BIND) room when it still resolves, otherwise at the
+     * default starting room.
+     *
+     * @param username        the player to respawn
+     * @param preferredRoomId the player's bound respawn room, or {@code null} to use the default
+     * @return the room id the player was actually placed into
+     */
+    public RoomId respawnPlayer(Username username, @Nullable RoomId preferredRoomId) {
+        return locationService.respawnPlayer(username, preferredRoomId);
+    }
+
+    /**
      * Relocates a player directly to the given room, bypassing exit and lock checks.
      *
      * <p>Used when a player is moved by fiat rather than by walking — for example the Cleric
@@ -215,6 +227,20 @@ public class RoomService {
      */
     public Optional<Corpse> findCorpseByOwner(String ownerName) {
         return itemService.findCorpseByOwner(ownerName);
+    }
+
+    /**
+     * Finds every tracked corpse belonging to the named owner, ordered soonest-to-decay first.
+     *
+     * <p>Backs the {@code CORPSE ALL} / {@code CORPSE <n>} lookups so a player who died more than
+     * once before recovering the first corpse can still locate every outstanding one. Delegates to
+     * {@link RoomItemService#findCorpsesByOwner(String)}.
+     *
+     * @param ownerName the name of the dead player whose corpses to find
+     * @return an unmodifiable list of tracked corpses (oldest/soonest-to-decay first), never null
+     */
+    public List<Corpse> findCorpsesByOwner(String ownerName) {
+        return itemService.findCorpsesByOwner(ownerName);
     }
 
     /**

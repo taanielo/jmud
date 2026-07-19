@@ -30,6 +30,8 @@ TEST_CREA="crea$(date +%s)"
 TEST_CREB="creb$(date +%s)"
 TEST_DUMMY="dummy$(date +%s)"
 TEST_WS="wsock$(date +%s)"
+TEST_PARTY="ptla$(date +%s)"
+TEST_BYST="ptlb$(date +%s)"
 TEST_PASS="smoketest123"
 STARTUP_TIMEOUT=90
 FAILURES=0
@@ -104,6 +106,8 @@ cleanup() {
     rm -f "data/users/$TEST_CREB.json" "players/$TEST_CREB.json"
     rm -f "data/users/$TEST_DUMMY.json" "players/$TEST_DUMMY.json"
     rm -f "data/users/$TEST_WS.json" "players/$TEST_WS.json"
+    rm -f "data/users/$TEST_PARTY.json" "players/$TEST_PARTY.json"
+    rm -f "data/users/$TEST_BYST.json" "players/$TEST_BYST.json"
     # Restore the committed bulletin board so the smoke test leaves no trace.
     if [ -f "$BOARD_BACKUP" ]; then
         cp "$BOARD_BACKUP" "$BOARD_FILE"
@@ -187,7 +191,10 @@ T1="$OUT_DIR/phase1-new-user.txt"
 # starter quest (issue #518). QUEST LIST/ACCEPT/STATUS resolve at the Guild Clerk
 # but do not require standing in the Courtyard to inspect the contract board.
 run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
-    "score" "inventory" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" "quit"
+    "score" "inventory" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" \
+    "drop all" "get all" \
+    "drop iron sword" "drop health potion" "drop poisonous potion" "drop a treasure chest" \
+    "quit"
 
 # Note: the prompt is written without a trailing newline, so command output
 # can share a line with it — don't anchor patterns with ^ unless the line is
@@ -210,6 +217,14 @@ expect "$T1" "SCORE shows AC"                     'AC    : [0-9]+'
 expect "$T1" "SCORE shows a non-zero starting gold purse" 'Gold  : [1-9][0-9]*'
 expect "$T1" "INVENTORY holds starter bread"      'Loaf of Bread'
 expect "$T1" "INVENTORY holds starter waterskin"  'Waterskin'
+# Bulk item handling (issue #641): DROP ALL empties the unequipped starter pack onto the floor
+# in one summarized line, and GET ALL scoops it all back up in one command. GET ALL also sweeps
+# the Training Yard's authored fixtures (iron sword, potions, locked chest) since it takes every
+# floor item, not just what the player dropped; static room items never respawn once picked up
+# (no restock mechanism exists), so the drop-iron-sword/etc. commands below put them back on the
+# floor for every later phase (2c chest checks, 2d2 combat) and every future test/player run.
+expect "$T1" "DROP ALL drops the whole pack"      'You drop .+\. \([0-9]+ items?\)'
+expect "$T1" "GET ALL recovers the whole pack"    'You get .+\. \([0-9]+ items?\)'
 expect "$T1" "QUEST LIST shows the contract board" 'Available Contracts'
 expect "$T1" "QUEST LIST shows a recommended level column" 'Lvl'
 expect "$T1" "QUEST LIST offers the starter quest"  'rat-catcher'
@@ -645,6 +660,76 @@ else
 fi
 expect "$T3C_B" "creation completes and enters the world" 'Welcome to the realm!'
 expect "$T3C_B" "post-creation prompt rendered"           '\[[0-9]+/[0-9]+hp .*\]'
+
+# ── phase 3d: party chat (PTELL) reaches members across rooms, not bystanders ─
+# PTELL <message> (and free text after PARTY) is a private party-wide channel: it
+# reaches every ONLINE party member regardless of room, and nobody else. This
+# phase forms a two-player party (A leader, B member), plus a co-located
+# non-member bystander C. A sends one PTELL while co-located with B and C (so C
+# not receiving it proves the channel is party-scoped, not a room broadcast),
+# then walks north and sends a second PTELL (which B still receives in the start
+# room, proving cross-room delivery). Needs the partner accounts to exist first.
+log "Phase 3d: PTELL party chat crosses rooms and skips non-members"
+run_session "$OUT_DIR/phase3d-createB.txt" "$TEST_PARTY" "$TEST_PASS" "$TEST_PASS" \
+    "human" "warrior" "quit"
+run_session "$OUT_DIR/phase3d-createC.txt" "$TEST_BYST" "$TEST_PASS" "$TEST_PASS" \
+    "human" "warrior" "quit"
+
+T3D_A="$OUT_DIR/phase3d-leader.txt"
+T3D_B="$OUT_DIR/phase3d-member.txt"
+T3D_C="$OUT_DIR/phase3d-bystander.txt"
+
+# B: member — logs in, waits for the invite, accepts, then stays in the start room.
+{
+    sleep 1.5
+    printf '%s\r\n' "$TEST_PARTY"; sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"
+    sleep 10                                  # wait until A has formed and invited
+    printf '%s\r\n' "party accept"
+    sleep 18                                  # remain in the start room to receive PTELLs
+    printf '%s\r\n' "quit"; sleep 1
+} | timeout 60 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T3D_B" &
+B_PID=$!
+
+# C: bystander — logs in, does nothing, stays co-located with B. Must see nothing.
+{
+    sleep 1.5
+    printf '%s\r\n' "$TEST_BYST"; sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"
+    sleep 28
+    printf '%s\r\n' "quit"; sleep 1
+} | timeout 60 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T3D_C" &
+C_PID=$!
+
+# A: leader — forms the party, invites B, sends a co-located PTELL, walks north,
+# sends a cross-room PTELL, then disbands and quits.
+{
+    sleep 1.5
+    printf '%s\r\n' "$TEST_USER"; sleep 1.5
+    printf '%s\r\n' "$TEST_PASS"; sleep 3
+    printf '%s\r\n' "party form"; sleep 2
+    printf '%s\r\n' "party invite $TEST_PARTY"; sleep 8   # let B accept
+    printf '%s\r\n' "ptell party-scoped-hello"; sleep 3   # co-located with B and C
+    printf '%s\r\n' "north"; sleep 3                       # move away from B and C
+    printf '%s\r\n' "ptell cross-room-hello"; sleep 3      # B still receives it
+    printf '%s\r\n' "south"; sleep 1
+    printf '%s\r\n' "party disband"; sleep 1
+    printf '%s\r\n' "quit"; sleep 1
+} | timeout 60 nc 127.0.0.1 "$TELNET_PORT" | tr -d '\r' > "$T3D_A" &
+A_PID=$!
+
+wait "$A_PID" 2>/dev/null
+wait "$B_PID" 2>/dev/null
+wait "$C_PID" 2>/dev/null
+
+expect "$T3D_A" "leader sees its own PTELL echo"        "\\[Party\\] You: party-scoped-hello"
+expect "$T3D_B" "member receives co-located PTELL"      "\\[Party\\] $TEST_USER: party-scoped-hello"
+expect "$T3D_B" "member receives cross-room PTELL"      "\\[Party\\] $TEST_USER: cross-room-hello"
+if grep -q "party-scoped-hello" "$T3D_C"; then
+    fail "non-member bystander received a PTELL (channel is not party-scoped)"
+else
+    pass "non-member bystander received no PTELL"
+fi
 
 # ── phase 4: graceful shutdown on SIGTERM ────────────────────────────────────
 # SIGTERM (the default kill signal) must trigger ShutdownCoordinator's orderly

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "ruins-quartz-vein",
+  "room_id": "collapsed-tower",
+  "yield_item": "rough-quartz",
+  "respawn_ticks": 30,
+  "name": "quartz-studded rubble",
+  "look_description": "Veins of cloudy quartz glitter in the fallen masonry of the tower, waiting to be prised loose (GATHER)."
+}

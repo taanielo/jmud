@@ -51,6 +51,13 @@ public class Room {
      * the room has no secret exits; never null.
      */
     Map<Direction, RoomId> hiddenExits;
+    /**
+     * Optional standing environmental hazard: when set, every player physically present in this
+     * room periodically takes typed, resistance-mitigated damage. The hazard is always surfaced in
+     * the rendered room description so it is never a surprise. A null value means the terrain is
+     * inert and deals no damage.
+     */
+    @Nullable RoomHazard hazard;
 
     /**
      * Light level at or above which a room is considered naturally lit (needs no carried light).
@@ -246,6 +253,41 @@ public class Room {
         List<String> ambientMessages,
         Map<Direction, RoomId> hiddenExits
     ) {
+        this(id, name, description, exits, items, occupants, lockedExits, minLevel, nightDescription,
+            lightLevel, outdoor, ambientMessages, hiddenExits, null);
+    }
+
+    /**
+     * Constructs a room with all optional attributes including a standing environmental hazard.
+     *
+     * @param lockedExits       map of direction to required key item id for exits that start locked
+     * @param minLevel          the recommended/minimum level to enter this room, or {@code null} if none
+     * @param nightDescription  the description shown at night instead of {@code description}, or
+     *                          {@code null} if the room looks the same at night
+     * @param lightLevel        the ambient light level ({@code 0} pitch dark, {@code 1} dim,
+     *                          {@code 2}+ lit), or {@code null} for a naturally lit room
+     * @param outdoor           {@code true} if the room is exposed to the sky and subject to weather
+     * @param ambientMessages   the pool of atmospheric flavour lines the room emits occasionally
+     * @param hiddenExits       map of direction to destination room id for secret exits that are
+     *                          hidden from the room's exit listing until discovered via SEARCH
+     * @param hazard            the standing environmental hazard, or {@code null} for inert terrain
+     */
+    public Room(
+        RoomId id,
+        String name,
+        String description,
+        Map<Direction, RoomId> exits,
+        List<Item> items,
+        List<Username> occupants,
+        Map<Direction, ItemId> lockedExits,
+        @Nullable Integer minLevel,
+        @Nullable String nightDescription,
+        @Nullable Integer lightLevel,
+        boolean outdoor,
+        List<String> ambientMessages,
+        Map<Direction, RoomId> hiddenExits,
+        @Nullable RoomHazard hazard
+    ) {
         this.id = Objects.requireNonNull(id, "Room id is required");
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Room name must not be blank");
@@ -262,6 +304,16 @@ public class Room {
         this.outdoor = outdoor;
         this.ambientMessages = List.copyOf(Objects.requireNonNull(ambientMessages, "Ambient messages are required"));
         this.hiddenExits = Map.copyOf(Objects.requireNonNull(hiddenExits, "Hidden exits map is required"));
+        this.hazard = hazard;
+    }
+
+    /**
+     * Returns whether this room declares a standing environmental hazard.
+     *
+     * @return {@code true} if {@link #getHazard()} is non-null
+     */
+    public boolean hasHazard() {
+        return hazard != null;
     }
 
     /**

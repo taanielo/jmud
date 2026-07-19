@@ -1,0 +1,20 @@
+{
+  "schema_version": 8,
+  "id": "unsung-hall-of-refusal",
+  "name": "The Hall of Refusal",
+  "description": "The stair opens into a long, low hall whose vaulted ceiling has been hung so thick with muffling cloth that the dark seems to sag under its own weight. This is where the refusal is kept, where the Unsung first made their stand against the chord, and the walls remember it: gouged deep with the same word over and over in a hundred failing hands, a word you cannot read but understand at once to mean *no*. Mute sentries keep the hall, wrapped throat to crown in the sound-drinking cloth, and they turn toward you not at any noise you make but at the mere fact of you, an intrusion in the held quiet. Three ways lead on from here. East, a gallery where the guttering light catches on rows of something pale and small. West, a barricade thrown up from bone and silence together. And down, past both, where the dark thickens toward whatever the Unsung have set at the bottom of themselves to protect.",
+  "item_ids": [],
+  "exits": {
+    "up": "unsung-threshold",
+    "east": "unsung-gallery-of-cut-throats",
+    "west": "unsung-barricade",
+    "down": "unsung-catacomb-of-dissent"
+  },
+  "min_level": 58,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A mute sentry shifts its weight from one foot to the other, its wrappings drinking even the whisper of cloth on cloth, and stills again.",
+    "The gouged word on the wall seems for a moment to deepen, as though a hundred silent hands were carving it anew.",
+    "Your own breathing sounds suddenly loud and wrong in the held quiet, and you find yourself trying, absurdly, to breathe softer."
+  ]
+}

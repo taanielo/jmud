@@ -17,7 +17,8 @@
       "kind": "VITALS",
       "stat": "HP",
       "operation": "DECREASE",
-      "amount": 6
+      "amount": 6,
+      "damage_type": "POISON"
     },
     {
       "kind": "EFFECT",

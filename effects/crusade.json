@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "crusade",
+  "name": "Crusade",
+  "duration_ticks": 30,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 5
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Righteous crusading zeal fills you, and your strikes sharpen to a keen, unerring edge."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is wreathed in righteous crusading zeal."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The crusading zeal fades and the keen edge leaves your strikes."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The crusading zeal wreathing {name} fades away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wreathed in righteous crusading zeal, their strikes keen and unerring."
+    }
+  ]
+}

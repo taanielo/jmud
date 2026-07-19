@@ -263,6 +263,78 @@ class BankServiceTest {
             "message should tell the player to lighten their load");
     }
 
+    // ── vault upgrade ─────────────────────────────────────────────────
+
+    @Test
+    void effectiveVaultCapacity_defaultsToBaseForTierZero() {
+        Player player = Player.of(user(), "{hp}hp>");
+
+        assertEquals(BankSettings.DEFAULT_VAULT_CAPACITY, bankService.effectiveVaultCapacity(player));
+    }
+
+    @Test
+    void upgradeVault_success_deductsGoldAndRaisesTier() {
+        Player player = playerWithGold(6_000, 0);
+
+        BankTransactionResult result = bankService.upgradeVault(player);
+
+        assertTrue(result.success());
+        Player updated = result.updatedPlayer();
+        assertEquals(1_000, updated.getGold(), "cost should come from carried gold only");
+        assertEquals(1, updated.vault().capacityTier());
+        assertEquals(BankSettings.DEFAULT_VAULT_CAPACITY + 10, bankService.effectiveVaultCapacity(updated));
+    }
+
+    @Test
+    void upgradeVault_failure_insufficientGoldLeavesStateUnchanged() {
+        Player player = playerWithGold(100, 0);
+
+        BankTransactionResult result = bankService.upgradeVault(player);
+
+        assertFalse(result.success());
+        assertNull(result.updatedPlayer());
+        assertEquals(0, player.vault().capacityTier(), "tier must not change on failure");
+    }
+
+    @Test
+    void upgradeVault_failure_alreadyAtMaxTier() {
+        Player base = Player.of(user(), "{hp}hp>").withGold(1_000_000);
+        Player player = base.withVault(base.vault().withCapacityTier(VaultUpgradeTier.TIER_THREE.rank()));
+
+        BankTransactionResult result = bankService.upgradeVault(player);
+
+        assertFalse(result.success());
+        assertNull(result.updatedPlayer());
+        assertTrue(result.message().toLowerCase(Locale.ROOT).contains("maximum"));
+    }
+
+    @Test
+    void upgradeVault_thenStoreItem_respectsNewCapacity() {
+        BankService smallVault = new BankService(new StubBankRepository(BANK), 1);
+        Player player = playerWithGold(6_000, 0)
+            .withInventory(List.of(item("sword", "a sword", 5), item("shield", "a shield", 8)));
+
+        // Base capacity 1 → filling one slot then storing another fails.
+        Player afterFirst = smallVault.storeItem(player, "a sword").updatedPlayer();
+        assertFalse(smallVault.storeItem(afterFirst, "a shield").success(), "base vault should be full");
+
+        // Buying tier 1 (+10) lifts the cap, so the second item now fits.
+        Player upgraded = smallVault.upgradeVault(afterFirst).updatedPlayer();
+        assertEquals(11, smallVault.effectiveVaultCapacity(upgraded));
+        BankTransactionResult stored = smallVault.storeItem(upgraded, "a shield");
+        assertTrue(stored.success());
+        assertEquals(2, stored.updatedPlayer().getBankedItems().size());
+    }
+
+    @Test
+    void purchasedVaultTier_surviveDeath() {
+        Player upgraded = bankService.upgradeVault(playerWithGold(6_000, 0)).updatedPlayer();
+
+        Player dead = upgraded.die();
+
+        assertEquals(1, dead.vault().capacityTier(), "purchased tier should survive death");
+    }
+
     // ── death survival ────────────────────────────────────────────────
 
     @Test

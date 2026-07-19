@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "pipe-rib-organist",
+  "name": "a pipe-rib organist",
+  "max_hp": 500,
+  "attack_id": "attack.pipe-rib-organist",
+  "aggressive": true,
+  "tags": ["bone", "undead", "bonelight-choir"],
+  "spawn_room_id": "bonelight-organ-loft",
+  "max_count": 2,
+  "respawn_ticks": 60,
+  "xp_reward": 600,
+  "loot": [
+    {
+      "item_id": "resonant-bonelight-shard",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 130,
+    "max": 210
+  }
+}

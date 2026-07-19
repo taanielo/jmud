@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "encore-wisp",
+  "name": "an encore wisp",
+  "max_hp": 1420,
+  "attack_id": "attack.encore-wisp",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-encore"],
+  "spawn_room_id": "encore-final-bow",
+  "max_count": 1,
+  "respawn_ticks": 95,
+  "xp_reward": 2160,
+  "loot": [
+    {
+      "item_id": "unspent-encore",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 420,
+    "max": 580
+  }
+}

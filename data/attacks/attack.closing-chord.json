@@ -1,0 +1,59 @@
+{
+  "schema_version": 6,
+  "id": "attack.closing-chord",
+  "name": "the closing chord",
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "min_damage": 40,
+  "max_damage": 58,
+  "hit_bonus": 12,
+  "crit_bonus": 13,
+  "damage_bonus": 17,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You bring the closing chord down on {target} and the whole resolving weight of it lands at once, ending the note of them in a single settled fall of cold. Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} brings the closing chord down on you and the blow arrives resolved, the cold of it closing over the sound of your own pulse before it drives through. The strike {verb} you!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} brings the closing chord down on {target}, and a single low resolving tone settles through the cold as the blow lands and ends."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You swing the closing chord down at {target} and the resolving weight sweeps past, its low tone falling on through empty cold without an ending to close."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} swings the closing chord down at you and the settled weight passes by, dragging a wake of cold resolution where it should have struck."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} swings the closing chord down at {target} and the resolving blow finds only air, its low tone thinning back into the cold unfinished."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You loose the whole closing chord at once, and the ending the Coda kept from the world's last resolution falls on {target} entire, closing the note of them the way a coda closes a song! Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} looses the closing chord and its long-held resolution comes down on you all together, the cold closing over you from every side at once like the silence after the final chord! The strike {verb} you!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} looses the closing chord into {target}, and the low resolving tone it releases stands settled in the cold air a moment too long, as if the whole song had come at last to its ending."
+    }
+  ]
+}

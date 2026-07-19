@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "encore-hollow-ovation",
+  "name": "a hollow ovation",
+  "max_hp": 1300,
+  "attack_id": "attack.encore-hollow-ovation",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-encore"],
+  "spawn_room_id": "encore-empty-seats",
+  "max_count": 2,
+  "respawn_ticks": 86,
+  "xp_reward": 1900,
+  "loot": [
+    {
+      "item_id": "unspent-encore",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 380,
+    "max": 530
+  }
+}

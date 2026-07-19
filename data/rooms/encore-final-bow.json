@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "encore-final-bow",
+  "name": "The Final Bow",
+  "description": "The hall narrows past the stage into a long approach where the rows of empty seats lean in from both sides, close and steep and roaring, funneling every scrap of the ovation toward a single point ahead. This is the final bow, the moment the players step out to meet the applause one last time — except that here the bow never finishes and the players never leave, because the hall will not let them. The roar is a physical thing now, a pressure driving down the narrowing corridor with the whole weight of a refused ending behind it, and you can feel the difference from the Coda's final measure in your chest: the measure counted down toward a close, and this counts up, swelling, gathering, driving toward not an ending but a beginning that should never come, the impossible extra piece the hall has decided to have. Ahead the corridor opens into a wide stage drowned in applause, and something stands at the center of it with the whole ovation pouring into it and out of it at once, taller and louder the nearer you come, the demand for more given a body and a will. The way back leads south to the hall of empty seats; ahead, north, is the ovation itself, and it has been waiting for an encore since before the world learned how to end.",
+  "item_ids": [],
+  "exits": {
+    "south": "encore-empty-seats",
+    "north": "encore-ovation"
+  },
+  "min_level": 93,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The applause funneling down the narrowing corridor swells another degree, driving forward, gathering toward the stage where the encore means to begin.",
+    "The leaning seats roar louder on both sides at once, and the pressure of the refused ending presses you onward toward the thing that leads the call.",
+    "Ahead, the ovation gathers a fraction higher, the demand for one more piece swelling toward the moment it will have you step out and be it."
+  ]
+}

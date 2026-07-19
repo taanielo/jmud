@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.silence",
+  "name": "silence",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 11
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["silencespell", "hush"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "silenced"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You weave a smothering silence around {target}, choking off any spell before it can be spoken."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} weaves a smothering silence around you, choking off your voice before you can cast!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} weaves a smothering silence around {target}."
+    }
+  ]
+}

@@ -150,6 +150,39 @@ public final class WhoListing {
             Predicate<Username> isAway,
             Function<Username, String> levelClassResolver,
             Function<Username, String> lfgResolver) {
+        return format(onlineNames, tagResolver, titleResolver, isFriend, isAway, levelClassResolver,
+            lfgResolver, name -> "");
+    }
+
+    /**
+     * Formats the given online player names into fully-decorated display lines, additionally appending
+     * each player's marital-status suffix (issue #649).
+     *
+     * <p>Behaves like {@link #format(List, Function, Function, Predicate, Predicate, Function, Function)}
+     * but appends the result of {@code marriedResolver} (e.g. {@code " (Married to Alice)"}) at the very
+     * end of each line. The resolver must return an empty string when a player is unmarried, never
+     * {@code null}. The rendered order is {@code name + levelClass + guildTag + title + afk + lfg +
+     * married}.
+     *
+     * @param onlineNames        the authenticated, connected player names to list
+     * @param tagResolver        resolves the guild-tag suffix for each name
+     * @param titleResolver      resolves the active-title suffix for each name
+     * @param isFriend           tests whether each name is on the viewer's friends list
+     * @param isAway             tests whether each name is currently away from keyboard
+     * @param levelClassResolver resolves the level/class suffix for each name
+     * @param lfgResolver        resolves the looking-for-group suffix for each name
+     * @param marriedResolver    resolves the marital-status suffix for each name
+     * @return the lines to render, never empty
+     */
+    public static List<String> format(
+            List<Username> onlineNames,
+            Function<Username, String> tagResolver,
+            Function<Username, String> titleResolver,
+            Predicate<Username> isFriend,
+            Predicate<Username> isAway,
+            Function<Username, String> levelClassResolver,
+            Function<Username, String> lfgResolver,
+            Function<Username, String> marriedResolver) {
         Objects.requireNonNull(onlineNames, "Online names are required");
         Objects.requireNonNull(tagResolver, "Tag resolver is required");
         Objects.requireNonNull(titleResolver, "Title resolver is required");
@@ -157,6 +190,7 @@ public final class WhoListing {
         Objects.requireNonNull(isAway, "Away predicate is required");
         Objects.requireNonNull(levelClassResolver, "Level/class resolver is required");
         Objects.requireNonNull(lfgResolver, "LFG resolver is required");
+        Objects.requireNonNull(marriedResolver, "Married resolver is required");
         List<String> lines = new ArrayList<>(onlineNames.size() + 2);
         lines.add(HEADER);
         for (Username name : onlineNames) {
@@ -167,7 +201,8 @@ public final class WhoListing {
             String prefix = isFriend.test(resolved) ? "* " : "  ";
             String afk = isAway.test(resolved) ? " [AFK]" : "";
             String lfg = Objects.requireNonNullElse(lfgResolver.apply(resolved), "");
-            lines.add(prefix + resolved.getValue() + levelClass + tag + title + afk + lfg);
+            String married = Objects.requireNonNullElse(marriedResolver.apply(resolved), "");
+            lines.add(prefix + resolved.getValue() + levelClass + tag + title + afk + lfg + married);
         }
         lines.add(footer(onlineNames.size()));
         return List.copyOf(lines);

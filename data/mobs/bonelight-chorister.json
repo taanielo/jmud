@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "bonelight-chorister",
+  "name": "a bonelight chorister",
+  "max_hp": 460,
+  "attack_id": "attack.bonelight-chorister",
+  "aggressive": true,
+  "tags": ["bone", "undead", "bonelight-choir"],
+  "spawn_room_id": "bonelight-ossuary-processional",
+  "max_count": 3,
+  "respawn_ticks": 55,
+  "xp_reward": 560,
+  "loot": [
+    {
+      "item_id": "resonant-bonelight-shard",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 120,
+    "max": 190
+  }
+}

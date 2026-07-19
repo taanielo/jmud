@@ -1,11 +1,17 @@
 {
-  "schema_version": 2,
+  "schema_version": 10,
   "id": "sewers-tunnel",
   "name": "Sewers Tunnel",
-  "description": "A narrow brick tunnel half-flooded with stagnant, oily water. Something viscous glistens on the walls, and skittering echoes ahead in the dark.",
+  "description": "A narrow brick tunnel half-flooded with stagnant, oily water. Something viscous glistens on the walls, and skittering echoes ahead in the dark. A haze of greenish sewer gas hangs thick in the still air, stinging the eyes and burning the throat.",
   "item_ids": [],
   "exits": {
     "west": "sewers-entrance",
     "south": "sewers-cistern"
+  },
+  "hazard": {
+    "damage_type": "POISON",
+    "damage_min": 4,
+    "damage_max": 8,
+    "damage_message": "You choke on a lungful of acrid sewer gas and your throat burns with poison!"
   }
 }

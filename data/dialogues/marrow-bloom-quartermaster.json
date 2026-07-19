@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "marrow-bloom-quartermaster-welcome",
+  "npc_id": "marrow-bloom-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Mind the spores — they take root in what they can, and an open pack is an invitation. I keep my stall dry and my forge hot against the rot. What does the Bloom need mending in you?",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "What do you carry?", "target": "wares" },
+        { "text": "Not yet.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "The damp eats leather and pits steel faster than any blade down here. Bring your gear to my forge and I'll mend it, reforge it whole, or break it down for what the rot hasn't claimed.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "Everything a body needs to keep from being digested: healing and mana draughts, cure for the spore-sickness, vigor, food, and light enough to see the threads before they see you. LIST it and take your fill.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "My thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Keep your pack shut. It feeds on the careless.",
+      "responses": []
+    }
+  }
+}

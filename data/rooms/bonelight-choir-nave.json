@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "bonelight-choir-nave",
+  "name": "The Choir Nave",
+  "description": "The far arch lets you out into the nave itself, the great heart of the cathedral, and the single held note that has followed you down through every chamber finally resolves into what makes it: a choir. The whole vast space, floor to unseen vault, is one continuous body of fused bone arranged into rank on rising rank of throats — thousands upon thousands of skulls, jaws propped open, tiered like a congregation without end — and every one of them is singing. It is not a sound anymore at this range but a substance, a single unified voice woven from every throat the Marrow Bloom ever silenced, calcified and ordered and given back its breath, and it holds you where you stand. At the nave's focus, where all the ranks converge, the choir has grown itself a conductor: a towering figure of knitted spine and fused wing-bone and a corona of open, singing skulls, turning now, without hurry, its countless mouths bending their one note toward you until the whole cathedral is aimed at you like a struck chord. This is what the hunger built. It has been waiting to add your voice to it.",
+  "item_ids": [],
+  "exits": {
+    "up": "bonelight-bell-crypt",
+    "down": "unsung-threshold"
+  },
+  "min_level": 54,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The choir's single voice swells until the fused-bone ranks tremble, and for a moment your own breath is dragged into the note.",
+    "A tier of propped-open skulls turns as one to face you, and the unified voice bends a fraction nearer.",
+    "The conductor lifts a limb of fused wing-bone, and ten thousand throats draw the same slow breath together."
+  ]
+}

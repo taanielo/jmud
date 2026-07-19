@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "unsung-barricade-warden",
+  "name": "a barricade warden",
+  "max_hp": 640,
+  "attack_id": "attack.unsung-barricade-warden",
+  "aggressive": true,
+  "tags": ["undead", "silent", "the-unsung"],
+  "spawn_room_id": "unsung-barricade",
+  "max_count": 1,
+  "respawn_ticks": 90,
+  "xp_reward": 780,
+  "loot": [
+    {
+      "item_id": "woven-silence-skein",
+      "drop_chance": 0.25
+    }
+  ],
+  "gold_drop": {
+    "min": 170,
+    "max": 260
+  }
+}

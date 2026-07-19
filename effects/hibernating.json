@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "id": "hibernating",
+  "name": "Hibernating",
+  "duration_ticks": 4,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "control": "stun",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -6
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -6
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -5
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A deep wintry stillness drags you into forced hibernation; you slump helpless and unable to act."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} slumps into a forced hibernation, stilled helpless by a wintry chill."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The forced hibernation releases you and warmth creeps back into your limbs."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} stirs and shakes off the forced hibernation."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is locked in a forced hibernation, helpless and unable to act."
+    }
+  ]
+}

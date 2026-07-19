@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "id": "berserker-rage",
+  "name": "Berserker Rage",
+  "duration_ticks": 24,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 7
+    },
+    {
+      "stat": "damage",
+      "op": "add",
+      "amount": 5
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 6
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A red berserker rage floods your limbs; your blows land harder and faster, though your guard falls away."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is seized by a red berserker rage, all fury and no guard."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The berserker rage burns out of you and your guard steadies again."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The berserker rage drains out of {name}, and their guard returns."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is gripped by a berserker rage, striking wildly with their guard thrown to the wind."
+    }
+  ]
+}

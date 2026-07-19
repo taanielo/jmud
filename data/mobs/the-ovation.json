@@ -1,0 +1,43 @@
+{
+  "schema_version": 4,
+  "id": "the-ovation",
+  "name": "the Ovation",
+  "max_hp": 2600,
+  "attack_id": "attack.the-ovation",
+  "special_attack_id": "attack.the-ovation-encore",
+  "aggressive": true,
+  "world_boss": true,
+  "tags": ["construct", "resonant", "boss", "the-encore"],
+  "spawn_room_id": "encore-ovation",
+  "max_count": 1,
+  "respawn_ticks": 360,
+  "xp_reward": 5600,
+  "loot": [
+    {
+      "item_id": "unspent-encore",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "the-final-encore",
+      "drop_chance": 0.5
+    },
+    {
+      "item_id": "medal-of-the-standing-ovation",
+      "drop_chance": 0.45
+    },
+    {
+      "item_id": "the-encore-map",
+      "drop_chance": 1.0
+    },
+    {
+      "item_id": "world-atlas",
+      "drop_chance": 0.1
+    }
+  ],
+  "gold_drop": {
+    "min": 1150,
+    "max": 1700
+  },
+  "enrage_ticks": 22,
+  "enrage_damage_multiplier": 1.75
+}

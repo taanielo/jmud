@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "id": "spell.ignite",
+  "name": "ignite",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 13
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["combust", "immolate", "burn"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 6,
+      "damage_type": "FIRE"
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "ignited"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You ignite {target} with a gout of raw arcane flame that catches and keeps burning, gnawing at them for moments to come."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} ignites you with a gout of arcane flame that catches on your flesh and will not go out!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} ignites {target} with a gout of clinging arcane flame."
+    }
+  ]
+}

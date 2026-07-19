@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "undersong-quartermaster-welcome",
+  "npc_id": "undersong-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Few come this deep, and fewer come prepared. I am the last forge and the last full pack before the Source. Speak — what do you need?",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "What do you carry?", "target": "wares" },
+        { "text": "Not yet.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "The hum below wears at everything given time — steel, resolve, memory. Bring me your gear and I'll mend it, forge anew, or break it down for what's still good.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "Every draught you'll want at the bottom of the world: healing, mana, cure, vigor — plus food and light. LIST it and take your fill. There is no shop past me.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "My thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Do not hum along. It answers.",
+      "responses": []
+    }
+  }
+}

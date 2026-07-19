@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.unsung-barricade-warden",
+  "name": "a crushing press",
+  "min_damage": 52,
+  "max_damage": 74,
+  "hit_bonus": 6,
+  "crit_bonus": 5,
+  "damage_bonus": 14,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 55
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The barricade warden sets its shoulder like the rampart it keeps and drives you back into the stacked bone, and the packed silence there closes over you in a wave of breath-stealing cold. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The barricade warden throws its whole immovable weight at you and you slip aside from the sally-gap as it crashes past without a sound."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The barricade warden pins you against the rampart and leans, and the whole weight of the barricade's silence bears down through it, crushing the warmth and the air out of you at once! The blow {verb} you!"
+    }
+  ]
+}

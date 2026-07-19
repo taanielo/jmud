@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "interval-metronome-wraith",
+  "name": "a metronome-wraith",
+  "max_hp": 840,
+  "attack_id": "attack.interval-metronome-wraith",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-interval"],
+  "spawn_room_id": "interval-hollow-measure",
+  "max_count": 3,
+  "respawn_ticks": 80,
+  "xp_reward": 1180,
+  "loot": [
+    {
+      "item_id": "held-breath-splinter",
+      "drop_chance": 0.28
+    }
+  ],
+  "gold_drop": {
+    "min": 240,
+    "max": 360
+  }
+}

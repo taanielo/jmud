@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "leatherworking-direhide-cowl",
+  "name": "Direhide Cowl",
+  "output_item": "direhide-cowl",
+  "gold_cost": 90,
+  "min_skill": 4,
+  "materials": [
+    { "item": "wolf-pelt", "quantity": 2 },
+    { "item": "dire-wolf-fang", "quantity": 2 },
+    { "item": "troll-tooth", "quantity": 1 }
+  ]
+}

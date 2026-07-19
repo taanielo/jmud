@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "jewelcrafting-starcut-heartgem",
+  "name": "Starcut Heartgem",
+  "output_item": "starcut-heartgem",
+  "gold_cost": 150,
+  "min_skill": 4,
+  "materials": [
+    { "item": "raw-garnet", "quantity": 4 },
+    { "item": "rough-quartz", "quantity": 3 }
+  ]
+}

@@ -108,6 +108,35 @@ class SocketCommandDispatcherTest {
         assertTrue(executed.get());
     }
 
+    @Test
+    void cancelsAutoWalkForNonAutoWalkCommand() {
+        AtomicBoolean executed = new AtomicBoolean(false);
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        registry.register(new TestCommand("north", executed));
+        AuditService auditService = new AuditService(new NoOpAuditSink(), Clock.systemUTC(), () -> 0L, () -> "test");
+        SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
+
+        TestContext context = new TestContext(livePlayer());
+        dispatcher.dispatch(context, "north", "corr-5");
+
+        assertTrue(context.cancelAutoWalkCalled, "Any non-AUTOWALK command must cancel an in-progress auto-walk");
+        assertTrue(executed.get(), "The command should still run after cancelling the walk");
+    }
+
+    @Test
+    void doesNotCancelAutoWalkForAutoWalkCommandItself() {
+        AtomicBoolean executed = new AtomicBoolean(false);
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        registry.register(new TestCommand("autowalk", executed));
+        AuditService auditService = new AuditService(new NoOpAuditSink(), Clock.systemUTC(), () -> 0L, () -> "test");
+        SocketCommandDispatcher dispatcher = new SocketCommandDispatcher(registry, auditService);
+
+        TestContext context = new TestContext(livePlayer());
+        dispatcher.dispatch(context, "autowalk peaks", "corr-6");
+
+        assertFalse(context.cancelAutoWalkCalled, "AUTOWALK must not cancel itself via the dispatcher hook");
+    }
+
     private static Player livePlayer() {
         return new Player(
             User.of(Username.of("sparky"), Password.hash("pw", 1000)),
@@ -150,6 +179,7 @@ class SocketCommandDispatcherTest {
         private final Player player;
         private String lastMessage;
         private boolean clearAwayCalled;
+        private boolean cancelAutoWalkCalled;
 
         private TestContext(Player player) {
             this.player = player;
@@ -158,6 +188,11 @@ class SocketCommandDispatcherTest {
         @Override
         public void clearAwayIfActive() {
             clearAwayCalled = true;
+        }
+
+        @Override
+        public void cancelAutoWalkIfActive() {
+            cancelAutoWalkCalled = true;
         }
 
         @Override

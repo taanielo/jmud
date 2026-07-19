@@ -1,0 +1,21 @@
+{
+  "schema_version": 15,
+  "id": "the-final-encore",
+  "name": "the Final Encore",
+  "description": "The great two-handed maul the Ovation swung to demand one more piece of a finished world — a weapon of refusal made solid, its head a roar of applause caught at the instant it crashed down and grown to killing weight, bound in a lattice of clapped air that presses one low insistent beat against the hand and never quite falls silent. Where the Coda's Closing Chord held the ending after the last beat, this holds the refusal of it: the demand that will not let a phrase be over, kept from spending itself so that it might be spent on something else instead. Drawn back, it gathers the whole unspent roar of the hall into its head; brought down, it does not merely strike but calls for more, ending the note of the thing it hits only to demand another, the way an audience refuses to let a performance close — insistently, and with a crash that rings on after the blow like a hall roaring for one last piece. It is the loudest and most restless weapon yet drawn from the deep song, and it lands hardest for the hand willing to keep swinging, to answer every ending with one more measure.",
+  "attributes": {
+    "stats": {
+      "strength": 14,
+      "dexterity": 11,
+      "hp": 26
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 6,
+  "value": 1240,
+  "rarity": "epic",
+  "attack_ref": "attack.the-final-encore",
+  "two_handed": true
+}

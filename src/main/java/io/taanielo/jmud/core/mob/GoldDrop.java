@@ -8,7 +8,10 @@ import io.taanielo.jmud.core.combat.CombatRandom;
  * Defines the gold-drop range for a mob template.
  *
  * <p>When a mob carrying a {@code GoldDrop} is killed, a random integer
- * in {@code [min, max]} (inclusive) is awarded to the killing player.
+ * in {@code [min, max]} (inclusive) is rolled once. A solo killer receives the
+ * whole amount; when the kill is shared by a party the roll is split evenly across
+ * the eligible members present in the room (see {@code MobRegistry}), mirroring the
+ * XP split.
  */
 public record GoldDrop(int min, int max) {
 

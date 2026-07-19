@@ -80,6 +80,7 @@ import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaId;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.AreaWaypointService;
 import io.taanielo.jmud.core.world.area.WorldAtlas;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
@@ -1400,6 +1401,188 @@ class GameActionServiceTest {
         }
     }
 
+    // ── bulk get/drop (GET ALL, GET ALL FROM, DROP ALL) ───────────────────
+
+    @Nested
+    class BulkItemTests {
+
+        private Item floorItem(String id, String name, int weight) {
+            return Item.builder(ItemId.of(id), name, "A thing.", ItemAttributes.empty())
+                .weight(weight)
+                .value(1)
+                .build();
+        }
+
+        private GameActionService serviceWith(RoomService rooms, EncumbranceService encumbrance) {
+            return new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(1)),
+                rooms,
+                (s, i) -> Optional.empty(),
+                new TestCooldowns(),
+                encumbrance);
+        }
+
+        private EncumbranceService overburdenOverWeight(int limit) {
+            return new EncumbranceService(new StubRaceRepository(), new StubClassRepository()) {
+                @Override
+                public boolean isOverburdened(Player player) {
+                    return player.getInventory().stream().mapToInt(Item::getWeight).sum() > limit;
+                }
+            };
+        }
+
+        @Test
+        void getAllInEmptyRoomReportsNothing() {
+            GameActionResult result = service.getAllItems(attacker);
+
+            assertNull(result.updatedSource());
+            assertEquals("There is nothing here to get.", result.messages().getFirst().text());
+        }
+
+        @Test
+        void getAllPicksUpSingleItem() {
+            roomService.dropItem(attacker.getUsername(), floorItem("torch", "a torch", 1));
+
+            GameActionResult result = service.getAllItems(attacker);
+
+            assertEquals("You get a torch. (1 item)", result.messages().getFirst().text());
+            assertTrue(result.updatedSource().getInventory().stream()
+                .anyMatch(i -> i.getId().equals(ItemId.of("torch"))));
+        }
+
+        @Test
+        void getAllPicksUpEveryFloorItemStaticAndTransient() {
+            Item dagger = floorItem("dagger", "a rusty dagger", 1);
+            Room room = new Room(ROOM_A, "Room A", "A quiet room.", Map.of(), List.of(dagger), List.of());
+            RoomService rooms = new RoomService(new TestRoomRepository(Map.of(ROOM_A, room)), ROOM_A);
+            rooms.ensurePlayerLocation(attacker.getUsername());
+            rooms.dropItem(attacker.getUsername(), floorItem("coins", "3 gold coins", 1));
+            rooms.dropItem(attacker.getUsername(), floorItem("torch", "a torch", 1));
+            GameActionService svc = serviceWith(rooms, testEncumbranceService());
+
+            GameActionResult result = svc.getAllItems(attacker);
+
+            assertEquals("You get a rusty dagger, 3 gold coins, and a torch. (3 items)",
+                result.messages().getFirst().text());
+            List<Item> inv = result.updatedSource().getInventory();
+            assertTrue(inv.stream().anyMatch(i -> i.getId().equals(ItemId.of("dagger"))));
+            assertTrue(inv.stream().anyMatch(i -> i.getId().equals(ItemId.of("coins"))));
+            assertTrue(inv.stream().anyMatch(i -> i.getId().equals(ItemId.of("torch"))));
+            assertTrue(rooms.look(attacker.getUsername()).room().getItems().isEmpty());
+        }
+
+        @Test
+        void getAllStopsWhenOverburdenedAndKeepsPriorPickups() {
+            roomService.dropItem(attacker.getUsername(), floorItem("a-torch", "a torch", 5));
+            roomService.dropItem(attacker.getUsername(), floorItem("b-lantern", "a lantern", 5));
+            roomService.dropItem(attacker.getUsername(), floorItem("c-anvil", "an anvil", 5));
+            GameActionService svc = serviceWith(roomService, overburdenOverWeight(10));
+
+            GameActionResult result = svc.getAllItems(attacker);
+
+            // The first two fit (total weight 10); the anvil would exceed the limit.
+            assertEquals("You get a torch and a lantern. (2 items)", result.messages().getFirst().text());
+            assertTrue(result.messages().stream().anyMatch(
+                m -> m.text().equals("You are carrying too much to pick up an anvil.")));
+            assertEquals(2, result.updatedSource().getInventory().size());
+            // The anvil is left resting on the floor.
+            assertTrue(roomService.look(attacker.getUsername()).room().getItems().stream()
+                .anyMatch(i -> i.getId().equals(ItemId.of("c-anvil"))));
+        }
+
+        @Test
+        void getAllFromContainerMovesEverythingToInventory() {
+            Item bag = Item.builder(ItemId.of("bag"), "a bag", "A small bag.", ItemAttributes.empty())
+                .weight(1)
+                .value(5)
+                .container(io.taanielo.jmud.core.world.ContainerState.of(3))
+                .build()
+                .withContainedItem(floorItem("sword", "a sword", 1))
+                .withContainedItem(floorItem("shield", "a shield", 1));
+            Player p = attacker.addItem(bag);
+
+            GameActionResult result = service.getAllFromContainer(p, "bag");
+
+            assertEquals("You get a sword and a shield from a bag. (2 items)",
+                result.messages().getFirst().text());
+            List<Item> inv = result.updatedSource().getInventory();
+            assertTrue(inv.stream().anyMatch(i -> i.getId().equals(ItemId.of("sword")) && !i.isContainer()));
+            assertTrue(inv.stream().anyMatch(i -> i.getId().equals(ItemId.of("shield")) && !i.isContainer()));
+            Item updatedBag = inv.stream().filter(Item::isContainer).findFirst().orElseThrow();
+            assertEquals(0, updatedBag.containedItemCount());
+        }
+
+        @Test
+        void getAllFromContainerReportsEmptyContainer() {
+            Item bag = Item.builder(ItemId.of("bag"), "a bag", "A small bag.", ItemAttributes.empty())
+                .weight(1)
+                .value(5)
+                .container(io.taanielo.jmud.core.world.ContainerState.of(3))
+                .build();
+            Player p = attacker.addItem(bag);
+
+            GameActionResult result = service.getAllFromContainer(p, "bag");
+
+            assertEquals("There is nothing in a bag.", result.messages().getFirst().text());
+            assertNull(result.updatedSource());
+        }
+
+        @Test
+        void dropAllReportsWhenNothingToDrop() {
+            GameActionResult result = service.dropAllItems(attacker);
+
+            assertEquals("You have nothing to drop.", result.messages().getFirst().text());
+            assertNull(result.updatedSource());
+        }
+
+        @Test
+        void dropAllDropsEveryUnequippedItem() {
+            Player p = attacker.addItem(floorItem("sword", "a sword", 1))
+                .addItem(floorItem("torch", "a torch", 1));
+
+            GameActionResult result = service.dropAllItems(p);
+
+            assertEquals("You drop a sword and a torch. (2 items)", result.messages().getFirst().text());
+            assertTrue(result.updatedSource().getInventory().isEmpty());
+        }
+
+        @Test
+        void dropAllSkipsEquippedItemsWithoutUnequipping() {
+            Item weapon = floorItem("sword", "a sword", 1);
+            Item torch = floorItem("torch", "a torch", 1);
+            Player carrying = attacker.addItem(weapon).addItem(torch);
+            Player equipped = carrying.withEquipment(
+                carrying.getEquipment().equip(EquipmentSlot.WEAPON, weapon.getId()));
+
+            GameActionResult result = service.dropAllItems(equipped);
+
+            assertEquals("You drop a torch. (1 item)", result.messages().getFirst().text());
+            List<Item> inv = result.updatedSource().getInventory();
+            assertEquals(1, inv.size());
+            assertEquals(ItemId.of("sword"), inv.getFirst().getId());
+            // The equipped weapon is neither dropped nor unequipped.
+            assertTrue(result.updatedSource().getEquipment().isEquipped(weapon.getId()));
+        }
+
+        @Test
+        void dropAllReportsNothingWhenOnlyEquippedItemsCarried() {
+            Item weapon = floorItem("sword", "a sword", 1);
+            Player carrying = attacker.addItem(weapon);
+            Player equipped = carrying.withEquipment(
+                carrying.getEquipment().equip(EquipmentSlot.WEAPON, weapon.getId()));
+
+            GameActionResult result = service.dropAllItems(equipped);
+
+            assertEquals("You have nothing to drop.", result.messages().getFirst().text());
+            assertNull(result.updatedSource());
+        }
+    }
+
     // ── recall ───────────────────────────────────────────────────────────
 
     @Nested
@@ -1561,6 +1744,163 @@ class GameActionServiceTest {
             assertFalse(result.metadata().containsKey("recalled"));
             assertNull(result.updatedSource(), "Scroll must not be consumed when recall is on cooldown");
             assertTrue(result.messages().getFirst().text().contains("recovering"));
+        }
+    }
+
+    // ── bind ───────────────────────────────────────────────────────────────
+
+    @Nested
+    class BindTests {
+
+        private static final RoomId ROOM_TOWN = RoomId.of("town");
+        private static final RoomId ROOM_WAYPOINT = RoomId.of("haven-gate");
+        private static final RoomId ROOM_DEEP = RoomId.of("haven-depths");
+
+        private RoomService bindRoomService;
+        private boolean inCombat;
+        private GameActionService bindService;
+        private Player player;
+
+        @BeforeEach
+        void setUpBind() {
+            Room town = new Room(
+                ROOM_TOWN, "Town Square", "The town square.",
+                Map.of(Direction.NORTH, ROOM_WAYPOINT), List.of(), List.of()
+            );
+            Room gate = new Room(
+                ROOM_WAYPOINT, "Haven Gate", "The entrance to Haven.",
+                Map.of(Direction.SOUTH, ROOM_TOWN, Direction.NORTH, ROOM_DEEP), List.of(), List.of()
+            );
+            Room depths = new Room(
+                ROOM_DEEP, "Haven Depths", "Deep within Haven.",
+                Map.of(Direction.SOUTH, ROOM_WAYPOINT), List.of(), List.of()
+            );
+            bindRoomService = new RoomService(
+                new TestRoomRepository(Map.of(ROOM_TOWN, town, ROOM_WAYPOINT, gate, ROOM_DEEP, depths)),
+                ROOM_TOWN
+            );
+            inCombat = false;
+            player = player("pilgrim");
+            bindRoomService.ensurePlayerLocation(player.getUsername());
+
+            bindService = new GameActionService(
+                testAbilityRegistry(), new BasicAbilityCostResolver(),
+                new EffectEngine(new StubEffectRepository(Map.of())),
+                new CombatEngine(
+                    new StubAttackRepository(Map.of()),
+                    new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                    new FixedCombatRandom(10, 3, 100)
+                ),
+                bindRoomService,
+                (source, input) -> Optional.empty(),
+                new CooldownTracker(new CooldownSystem()),
+                testEncumbranceService(),
+                p -> inCombat
+            );
+            bindService.setAreaWaypointService(havenWaypointService());
+        }
+
+        private AreaWaypointService havenWaypointService() {
+            Area haven = new Area(
+                AreaId.of("haven"), "Haven",
+                List.of(ROOM_WAYPOINT, ROOM_DEEP), List.of(), List.of("HAVEN ART"),
+                new io.taanielo.jmud.core.world.area.LevelRange(1, 5));
+            AreaRepository areas = new AreaRepository() {
+                @Override
+                public List<Area> findAll() {
+                    return List.of(haven);
+                }
+
+                @Override
+                public Optional<Area> findById(AreaId id) {
+                    return haven.id().equals(id) ? Optional.of(haven) : Optional.empty();
+                }
+
+                @Override
+                public Optional<WorldAtlas> findAtlas() {
+                    return Optional.empty();
+                }
+            };
+            return new AreaWaypointService(areas);
+        }
+
+        @Test
+        void bindWithNoArgsReportsDefaultWhenNeverBound() {
+            String status = bindService.describeBindPoint(player);
+
+            assertTrue(status.contains("Greystone Town (default)"), status);
+        }
+
+        @Test
+        void bindAtWaypointSetsAnchorAndConfirms() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+
+            GameActionResult result = bindService.bind(player);
+
+            assertTrue(result.metadata().containsKey("bound"));
+            assertNotNull(result.updatedSource());
+            assertEquals(ROOM_WAYPOINT.getValue(), result.updatedSource().boundRoomId());
+            assertTrue(result.messages().stream().anyMatch(m -> m.text().contains("Haven")), "confirmation names the area");
+        }
+
+        @Test
+        void reportAfterBindNamesTheBoundArea() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            Player bound = bindService.bind(player).updatedSource();
+
+            String status = bindService.describeBindPoint(bound);
+
+            assertTrue(status.contains("Haven"), status);
+        }
+
+        @Test
+        void recallReturnsToBoundWaypointInsteadOfTown() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            Player bound = bindService.bind(player).updatedSource();
+            // Walk deeper, then recall — should land at the bound waypoint, not the starting town.
+            bindRoomService.move(bound.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_DEEP, bindRoomService.findPlayerLocation(bound.getUsername()).orElseThrow());
+
+            GameActionResult result = bindService.recall(bound);
+
+            assertTrue(result.metadata().containsKey("recalled"));
+            assertEquals(ROOM_WAYPOINT, bindRoomService.findPlayerLocation(bound.getUsername()).orElseThrow());
+        }
+
+        @Test
+        void recallWithoutBindingStillReturnsToStartingTown() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_WAYPOINT, bindRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+
+            GameActionResult result = bindService.recall(player);
+
+            assertTrue(result.metadata().containsKey("recalled"));
+            assertEquals(ROOM_TOWN, bindRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+        }
+
+        @Test
+        void bindOutsideAWaypointRoomFails() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            assertEquals(ROOM_DEEP, bindRoomService.findPlayerLocation(player.getUsername()).orElseThrow());
+
+            GameActionResult result = bindService.bind(player);
+
+            assertFalse(result.metadata().containsKey("bound"));
+            assertNull(result.updatedSource());
+            assertTrue(result.messages().getFirst().text().contains("waypoint"));
+        }
+
+        @Test
+        void bindWhileInCombatFails() {
+            bindRoomService.move(player.getUsername(), Direction.NORTH);
+            inCombat = true;
+
+            GameActionResult result = bindService.bind(player);
+
+            assertFalse(result.metadata().containsKey("bound"));
+            assertNull(result.updatedSource());
+            assertTrue(result.messages().getFirst().text().contains("FLEE"));
         }
     }
 

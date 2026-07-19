@@ -1,0 +1,59 @@
+{
+  "schema_version": 6,
+  "id": "attack.caesura-stroke",
+  "name": "the caesura stroke",
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "min_damage": 36,
+  "max_damage": 52,
+  "hit_bonus": 10,
+  "crit_bonus": 11,
+  "damage_bonus": 15,
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "You let the caesura stroke fall on {target} and the weapon keeps back all but a hair of the blow, and that withheld sliver of cold stops their pulse against the count for the length of a held breath. Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "target",
+      "text": "{source} lets the caesura stroke fall on you and the blow arrives arrested, the cold of it pressing the breath still in your chest before it drives through. The strike {verb} you!"
+    },
+    {
+      "phase": "attack_hit",
+      "channel": "room",
+      "text": "{source} lets the caesura stroke fall on {target}, and for the length of a held beat everything near seems to pause with it before the cold lands."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "You draw the caesura stroke down at {target} and the blow hangs an instant too long, arrested in its own pause, and passes through nothing but held cold."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "target",
+      "text": "{source} draws the caesura stroke down at you and the arrested weight sweeps past, dragging a wake of stillness where it should have struck."
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "room",
+      "text": "{source} draws the caesura stroke down at {target} and the held blow finds only air, the pause of it thinning back into the cold."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "You loose the whole held eternity of the caesura stroke at once, and the pause the Fermata kept for an age falls on {target} entire, stopping the beat of them mid-count! Your strike {verb} them!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "target",
+      "text": "{source} looses the caesura stroke and the arrested age behind it comes down on you all together, the cold catching your heart between one beat and the next and holding it there! The strike {verb} you!"
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "room",
+      "text": "{source} looses the caesura stroke into {target}, and the held instant it releases stands in the cold air a moment too long, as if the Fermata itself had let a breath go."
+    }
+  ]
+}

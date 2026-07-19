@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.action;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,6 +43,7 @@ import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectRepository;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
@@ -138,7 +140,62 @@ class GameActionServiceSearchTest {
         assertTrue(messageText(result).contains("emerge from the shadows"));
     }
 
+    @Test
+    void nonRogueChanceIsFlatFiftyPercent() {
+        assertEquals(0.5d, GameActionService.calculateSearchSuccessChance(false, 1), 1e-9);
+        assertEquals(0.5d, GameActionService.calculateSearchSuccessChance(false, 50), 1e-9,
+            "Non-rogue chance must not scale with level");
+    }
+
+    @Test
+    void rogueChanceIsHigherThanBaseAndScalesWithLevel() {
+        double level1 = GameActionService.calculateSearchSuccessChance(true, 1);
+        double level5 = GameActionService.calculateSearchSuccessChance(true, 5);
+        assertTrue(level1 > 0.5d, "A level-1 rogue must beat the flat 50% base chance");
+        assertTrue(level5 > level1, "Rogue chance must increase with level");
+    }
+
+    @Test
+    void rogueChanceIsCappedBelowCertainty() {
+        double veryHighLevel = GameActionService.calculateSearchSuccessChance(true, 1000);
+        assertTrue(veryHighLevel < 1.0d, "A search must never be guaranteed");
+        assertEquals(0.9d, veryHighLevel, 1e-9, "Rogue chance is capped at the max");
+    }
+
+    @Test
+    void rogueSucceedsOnARollANonRogueWouldMiss() {
+        // Rogue level 10 => 0.5 + 0.02*10 = 0.70 success chance.
+        // nextDouble() = 600000/1_000_000 = 0.6: below 0.70 (rogue hit) but at/above 0.5 (non-rogue miss).
+        GameActionService service = service(GameActionServiceSearchTest::notInCombat, 600_000);
+
+        GameActionResult rogueResult = service.searchForHiddenExits(rogueOfLevel(alice, 10));
+
+        assertTrue(messageText(rogueResult).contains("hidden passage"),
+            "A high-level rogue should succeed where the flat base chance would miss");
+        assertTrue(exitsLine().contains("down"), "Rogue's successful search should reveal the exit");
+    }
+
+    @Test
+    void nonRogueMissesOnTheSameRollTheRogueHits() {
+        // nextDouble() = 0.6 >= 0.5 base chance: a non-rogue misses on the roll a level-10 rogue clears.
+        GameActionService service = service(GameActionServiceSearchTest::notInCombat, 600_000);
+
+        GameActionResult result = service.searchForHiddenExits(player(alice));
+
+        assertTrue(messageText(result).contains("nothing new"),
+            "A non-rogue must miss on a roll above the flat base chance");
+        assertFalse(exitsLine().contains("down"), "A missed search must not reveal the exit");
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    private static Player rogueOfLevel(Username username, int level) {
+        return new Player(
+            User.of(username, Password.hash("pw", 1000)),
+            level, 0L, PlayerVitals.defaults(), List.of(), "prompt", false,
+            List.of(), null, ClassId.of("rogue"));
+    }
+
 
     private String exitsLine() {
         return roomService.look(alice).lines().stream()

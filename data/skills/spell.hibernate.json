@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "id": "spell.hibernate",
+  "name": "hibernate",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 14
+  },
+  "cooldown": {
+    "ticks": 16
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["hibernation", "slumber"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 5,
+      "damage_type": "COLD"
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "hibernating"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call a deep wintry stillness over {target}, and a forced hibernation drags them helplessly into sleep."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls a deep wintry stillness over you, and a crushing hibernation drags you helplessly into sleep!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls a wintry stillness over {target}, who slumps into a forced hibernation."
+    }
+  ]
+}

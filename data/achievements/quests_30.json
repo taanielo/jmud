@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "quests_30",
+  "name": "Legend of the Realm",
+  "description": "Complete 30 one-time contracts.",
+  "condition": "quests_completed",
+  "threshold": 30,
+  "title_reward": "the Legendary"
+}

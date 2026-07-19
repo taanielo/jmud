@@ -1,0 +1,20 @@
+{
+  "schema_version": 3,
+  "id": "shroudweave-hood",
+  "name": "Shroudweave Hood",
+  "description": "A master tailor's hood, its grave-linen shroud stitched over a lining of spider silk so fine it seems spun from shadow. Drawn up, it stills the wearer's every distraction and pours cold, clear power into their spellcraft — a garment fit for an archmage.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "intellect": 2,
+      "wisdom": 2,
+      "mana": 12
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "head",
+  "weight": 1,
+  "value": 165,
+  "attack_ref": null
+}

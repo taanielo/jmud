@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.mob;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -19,10 +20,13 @@ import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityCost;
 import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
+import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityOperation;
 import io.taanielo.jmud.core.ability.AbilityStat;
+import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.achievement.Achievement;
 import io.taanielo.jmud.core.achievement.AchievementService;
 import io.taanielo.jmud.core.action.GameActionResult;
@@ -30,6 +34,7 @@ import io.taanielo.jmud.core.action.GameMessage;
 import io.taanielo.jmud.core.action.NpcStealPort;
 import io.taanielo.jmud.core.action.PlayerEventBus;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackEffectApplication;
 import io.taanielo.jmud.core.combat.AttackId;
@@ -40,6 +45,7 @@ import io.taanielo.jmud.core.combat.CombatSettings;
 import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
+import io.taanielo.jmud.core.combat.ParryResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.ShieldBlockResolver;
@@ -47,12 +53,17 @@ import io.taanielo.jmud.core.combat.flavor.DamageVerb;
 import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
 import io.taanielo.jmud.core.combat.flavor.TargetConditionTable;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.effects.ControlType;
+import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
+import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.faction.Faction;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.faction.ReputationService;
+import io.taanielo.jmud.core.guild.GuildQuestService;
+import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
@@ -65,6 +76,7 @@ import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.LevelUpService.LevelUpResult;
 import io.taanielo.jmud.core.player.Player;
+import io.taanielo.jmud.core.player.PlayerIdentity;
 import io.taanielo.jmud.core.player.PlayerMount;
 import io.taanielo.jmud.core.player.PlayerPets;
 import io.taanielo.jmud.core.player.PlayerRepository;
@@ -106,8 +118,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     private final MessageRenderer messageRenderer = new MessageRenderer();
     /** Optional quest kill hook; may be null when quests are disabled. */
     private QuestKillService questKillService;
+    /** Optional cooperative guild-quest kill hook; may be null when guilds are disabled. */
+    private GuildQuestService guildQuestService;
+    /** Optional player-funded bounty payout hook; may be null when bounties are disabled. */
+    private BountyService bountyService;
     /** Optional party service for XP splitting and round-robin loot; may be null when disabled. */
     private PartyService partyService;
+    /** Optional mentor service for the mentee XP bonus and bond graduation; may be null when disabled. */
+    private MentorService mentorService;
     /** Optional encumbrance service used to skip full-inventory members in round-robin loot; may be null. */
     private EncumbranceService encumbranceService;
     /** Optional effect engine used to apply on-hit status effects (e.g. poison); may be null when disabled. */
@@ -159,6 +177,15 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     private ShieldBlockResolver shieldBlockResolver = ShieldBlockResolver.noOp();
     /**
+     * Resolves whether a defending player wielding a melee weapon parries a mob's landing melee swing
+     * (taking zero damage) and ripostes the mob for their mainhand weapon's damage. Defaults to a
+     * no-op (no parry possible) until the composition root injects the real resolver. This resolver
+     * governs the <em>player</em>-side parry of a mob's swing; a mob's own parry of a player's melee
+     * attack is a separate, data-authored trait (see {@link MobTemplate#parryChancePercent()} and
+     * {@link #resolveMobParry}).
+     */
+    private ParryResolver parryResolver = ParryResolver.noOp();
+    /**
      * Optional worded-damage verb table. When set, a mob's hit message can substitute {@code {verb}}
      * with the classic-MUD damage tier (e.g. "MAULS") resolved from the damage dealt as a percentage
      * of the victim's maximum HP. Null leaves {@code {verb}} rendering as an empty string.
@@ -185,6 +212,24 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
     /** Data tag marking a mob that never flees regardless of how badly wounded it is. */
     private static final String FEARLESS_TAG = "fearless";
+
+    /** Ability id of the rogue BACKSTAB skill, which gains bonus damage when opened from stealth. */
+    private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
+
+    /**
+     * Extra flat damage a BACKSTAB deals when the attacker strikes a mob from stealth, mirroring the
+     * PvP path in {@link io.taanielo.jmud.core.action.GameActionService}. Applied after the hit/crit
+     * roll so, like PvP, the crit multiplier scales only the ability's own damage, not this bonus.
+     */
+    private static final int STEALTH_BACKSTAB_BONUS_DAMAGE = 10;
+
+    /**
+     * Data tag marking a <em>pack</em> mob. A pack mob never starts a fresh fight on its own: it
+     * only reinforces an existing one, joining against a player already engaged with a different
+     * alive mob in the same room (see {@link #playersEngagedWithRoommates} and
+     * {@link #isPackOnlyInitiator}). Additive and optional — see {@code docs/data-schema.md}.
+     */
+    private static final String PACK_TAG = "pack";
 
     private final ConcurrentHashMap<UUID, MobInstance> instances = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Username, UUID> playerCombatTargets = new ConcurrentHashMap<>();
@@ -234,6 +279,31 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     public void setQuestKillService(QuestKillService questKillService) {
         this.questKillService = questKillService;
+    }
+
+    /**
+     * Registers the cooperative guild-quest service credited alongside personal quests when a guild
+     * member kills a mob. This is a parallel path to {@link #setQuestKillService(QuestKillService)}: it
+     * advances the killer's guild's shared guild quest without touching the player's personal quest
+     * slots.
+     *
+     * @param guildQuestService the service to notify on mob death; may be null to disable
+     */
+    public void setGuildQuestService(GuildQuestService guildQuestService) {
+        this.guildQuestService = guildQuestService;
+    }
+
+    /**
+     * Registers the bounty service consulted when a mob is killed. When a slain mob's template has one
+     * or more open player-funded bounties, the pooled reward is paid to the killer (split across their
+     * eligible party exactly like the mob's gold drop), announced server-wide, and the bounties close.
+     * This is an independent parallel path to {@link #setQuestKillService(QuestKillService)} /
+     * {@link #setGuildQuestService(GuildQuestService)}; it never touches quest progress.
+     *
+     * @param bountyService the service to consult on mob death; may be null to disable bounty payouts
+     */
+    public void setBountyService(BountyService bountyService) {
+        this.bountyService = bountyService;
     }
 
     /**
@@ -330,6 +400,19 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
+     * Registers the resolver that lets a player wielding a melee weapon parry a mob's landing melee
+     * swing and riposte the mob, mirroring the PvP {@link io.taanielo.jmud.core.combat.CombatEngine}.
+     * When not set, a no-op resolver leaves mob swings unparryable. This governs only the player-side
+     * parry; a mob's own parry of a player's melee attack is a data-authored trait resolved separately
+     * (see {@link MobTemplate#parryChancePercent()} and {@link #resolveMobParry}).
+     *
+     * @param parryResolver the parry resolver; must not be null
+     */
+    public void setParryResolver(ParryResolver parryResolver) {
+        this.parryResolver = Objects.requireNonNull(parryResolver, "Parry resolver is required");
+    }
+
+    /**
      * Registers the worded-damage verb table used to substitute {@code {verb}} in a mob's hit message
      * with the classic-MUD damage tier (e.g. "MAULS"). When not set, {@code {verb}} renders empty.
      *
@@ -420,6 +503,40 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     private String playerMissMessage(MobInstance mob) {
         return "You swing at the " + mob.template().name() + " but miss.";
+    }
+
+    /**
+     * Builds the self-facing line shown to a player who has parried a mob's melee swing and riposted
+     * it, so the zero-damage swing and the free counter-strike are both explained. Uses the
+     * worded-damage verb table (and the target-condition table for the mob's remaining health) when
+     * available, mirroring {@link #playerStrikeMessage}; otherwise falls back to a numeric line.
+     *
+     * @param mob           the mob whose swing was parried and which now takes the riposte
+     * @param riposteDamage the damage the player's riposte dealt to the mob
+     * @param remaining     the mob's remaining HP after the riposte
+     * @return the parry/riposte message text to show the defending player
+     */
+    private String playerParryMessage(MobInstance mob, int riposteDamage, int remaining) {
+        String mobName = mob.template().name();
+        if (damageVerbTable == null) {
+            return "You parry the " + mobName + "'s attack and riposte for " + riposteDamage
+                + " damage. (" + remaining + " HP remaining)";
+        }
+        int maxHp = mob.template().maxHp();
+        DamageVerb verb = damageVerbTable.verbFor(Math.max(1, riposteDamage), maxHp);
+        StringBuilder text = new StringBuilder("You parry the ")
+            .append(mobName)
+            .append("'s attack and ")
+            .append(verb.secondPerson())
+            .append(" it in return!");
+        if (targetConditionTable != null && remaining > 0) {
+            text.append(" The ")
+                .append(mobName)
+                .append(' ')
+                .append(targetConditionTable.describe(remaining, maxHp))
+                .append('.');
+        }
+        return text.toString();
     }
 
     /**
@@ -558,10 +675,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
 
     /**
      * The outcome of a mob's melee attack against a player: whether it landed, whether a shield
-     * blocked it (reducing damage), and the final damage dealt after block and elemental-resistance
-     * mitigation (zero on a miss).
+     * blocked it (reducing damage), the final damage dealt to the player after block and
+     * elemental-resistance mitigation (zero on a miss or a parry), whether the player parried the
+     * swing (taking zero damage) and, when parried, the riposte damage the player deals back to the
+     * mob.
      */
-    private record MobAttackOutcome(boolean hit, boolean blocked, int damage) {
+    private record MobAttackOutcome(boolean hit, boolean blocked, int damage, boolean parried, int riposteDamage) {
     }
 
     /**
@@ -576,11 +695,18 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * ({@link #mitigateForDefender}) still applies. All rolls go through the seeded
      * {@link CombatRandom} port so outcomes stay replayable.
      *
+     * <p>Once the mob has {@link MobInstance#isEnraged() enraged} (issue #745) its landed damage is
+     * scaled up by {@link MobTemplate#enrageDamageMultiplier()} before the shield-block and
+     * elemental-resistance mitigation still apply, so an enraged boss hits harder while a defender's
+     * gear keeps mattering. A parry (zero damage) and a miss are unaffected. Non-enraged mobs — every
+     * ordinary mob — are numerically unchanged.
+     *
      * @param attack the mob's resolved attack definition
      * @param target the defending player
+     * @param mob    the attacking mob, consulted for its per-encounter enrage boost
      * @return the resolved hit/block/damage outcome
      */
-    private MobAttackOutcome resolveMobAttack(AttackDefinition attack, Player target) {
+    private MobAttackOutcome resolveMobAttack(AttackDefinition attack, Player target, MobInstance mob) {
         int defenderAc = armorResolver.totalAc(target)
             + classArmorBonusResolver.armorBonus(target)
             + raceArmorBonusResolver.armorBonus(target);
@@ -588,9 +714,21 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             CombatSettings.baseHitChance() + attack.hitBonus() - defenderAc,
             CombatSettings.MIN_HIT_CHANCE, CombatSettings.MAX_HIT_CHANCE);
         if (random.roll(1, 100) > hitChance) {
-            return new MobAttackOutcome(false, false, 0);
+            return new MobAttackOutcome(false, false, 0, false, 0);
         }
-        int damage = rollDamage(attack);
+        // Parry takes precedence over the shield block: a player wielding a melee weapon may fully
+        // avoid the mob's melee swing (zero damage) and riposte the mob with their mainhand weapon.
+        // Ranged mob attacks are never parried. Only roll when a parry is possible so a non-parrying
+        // defender leaves the RNG stream — and every legacy result — unchanged. (The mirror case — a
+        // mob parrying the player's own melee attack — is handled separately in resolveMobParry.)
+        ParryResolver.Parry parry = attack.isRanged()
+            ? ParryResolver.Parry.none()
+            : parryResolver.resolve(target);
+        if (parry.canParry() && random.roll(1, 100) <= clamp(parry.chancePercent(), 0, 100)) {
+            int riposte = rollDamage(parry.riposteAttack(), target);
+            return new MobAttackOutcome(true, false, 0, true, riposte);
+        }
+        int damage = mob.applyEnrageMultiplier(rollDamage(attack));
         boolean blocked = false;
         ShieldBlockResolver.ShieldBlock shieldBlock = shieldBlockResolver.resolve(target);
         if (shieldBlock.canBlock()) {
@@ -601,7 +739,137 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             }
         }
         damage = mitigateForDefender(damage, target, attack.damageType());
-        return new MobAttackOutcome(true, blocked, damage);
+        return new MobAttackOutcome(true, blocked, damage, false, 0);
+    }
+
+    /**
+     * The outcome of a defensively-trained mob's parry roll against a player's just-landed melee hit:
+     * whether it parried (fully negating that swing's damage) and, when it did, the riposte damage the
+     * mob deals back to the player together with the mob's own attack definition that produced it (so
+     * an authored {@link MessagePhase#ATTACK_PARRY} line can be rendered).
+     */
+    private record MobParryOutcome(boolean parried, int riposteDamage, @Nullable AttackDefinition riposteAttack) {
+
+        private static final MobParryOutcome NONE = new MobParryOutcome(false, 0, null);
+
+        static MobParryOutcome none() {
+            return NONE;
+        }
+    }
+
+    /**
+     * Rolls a defensively-trained mob's parry against a player's just-landed <em>melee</em> hit,
+     * mirroring the player-side {@link ParryResolver} on the mob defender. The chance is the mob's
+     * authored {@link MobTemplate#parryChancePercent()} clamped to
+     * {@code [CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE]}; a mob with no
+     * authored parry chance never rolls, so every existing (non-parrying) mob leaves the seeded
+     * {@link CombatRandom} stream — and every legacy fight — numerically unchanged. On a parry the
+     * mob ripostes for a fresh roll of its own basic attack's damage. Only the melee attack paths
+     * ({@link #processPlayerAttack} and the tick-driven {@link #runPlayerCombat}) call this; the
+     * ranged (SHOOT), AoE-spell, and summoned-pet damage paths never do (documented melee-only scope).
+     *
+     * @param mob the defending mob
+     * @return the parry outcome; {@link MobParryOutcome#none()} when the mob cannot or does not parry
+     */
+    private MobParryOutcome resolveMobParry(MobInstance mob) {
+        int chance = clamp(
+            mob.template().parryChancePercent(),
+            CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE);
+        if (chance <= 0 || random.roll(1, 100) > chance) {
+            return MobParryOutcome.none();
+        }
+        AttackDefinition riposteAttack =
+            mob.template().attackId() != null ? loadAttack(mob.template().attackId()) : null;
+        int riposteDamage = riposteAttack != null ? rollDamage(riposteAttack) : 0;
+        return new MobParryOutcome(true, riposteDamage, riposteAttack);
+    }
+
+    /**
+     * Builds the self-facing line shown to a player whose melee attack was parried by a defensively
+     * trained mob, which then riposted for {@code riposteDamage}. Renders an authored
+     * {@link MessagePhase#ATTACK_PARRY} SELF-channel message on the mob's attack when present (so a
+     * guard's flavour text surfaces), else a sensible generic line using the worded-damage verb table
+     * when available, mirroring {@link #mobAttackMessage}.
+     *
+     * @param mob           the parrying mob
+     * @param riposteAttack the mob's attack definition powering the riposte (may be {@code null})
+     * @param riposteDamage the riposte damage dealt back to the attacking player
+     * @param playerMaxHp   the attacker's maximum HP, used to resolve the {@code {verb}} damage tier
+     * @return the rendered message text to show the parried attacker
+     */
+    private String mobParryMessage(
+        MobInstance mob, @Nullable AttackDefinition riposteAttack, int riposteDamage, int playerMaxHp) {
+        if (riposteAttack != null) {
+            String rendered = renderMobParrySpec(
+                mob, riposteAttack, MessageChannel.SELF, riposteDamage, playerMaxHp);
+            if (rendered != null) {
+                return rendered;
+            }
+        }
+        String mobName = mob.template().name();
+        if (damageVerbTable != null && riposteDamage > 0) {
+            DamageVerb verb = damageVerbTable.verbFor(riposteDamage, playerMaxHp);
+            return "The " + mobName + " parries your attack and " + verb.thirdPerson()
+                + " you for " + riposteDamage + "!";
+        }
+        return "The " + mobName + " parries your attack and ripostes for "
+            + riposteDamage + " damage!";
+    }
+
+    /**
+     * Broadcasts a mob-parry to the other players in the combat room, so bystanders see a defensively
+     * trained mob turn aside an attacker's blow and strike back. Renders an authored
+     * {@link MessagePhase#ATTACK_PARRY} ROOM-channel message on the mob's attack when present, else a
+     * generic line. The parrying attacker is skipped (they receive the SELF line instead).
+     *
+     * @param mob           the parrying mob
+     * @param attacker      the attacker whose blow was parried (excluded from the broadcast)
+     * @param riposteAttack the mob's attack definition powering the riposte (may be {@code null})
+     * @param riposteDamage the riposte damage dealt back to the attacker
+     * @param roomId        the combat room
+     */
+    private void broadcastMobParry(
+        MobInstance mob, Username attacker, @Nullable AttackDefinition riposteAttack,
+        int riposteDamage, RoomId roomId) {
+        String rendered = riposteAttack == null ? null
+            : renderMobParrySpec(mob, riposteAttack, MessageChannel.ROOM, riposteDamage, 0);
+        String roomMsg = rendered != null ? rendered
+            : "The " + mob.template().name() + " parries " + attacker.getValue()
+                + "'s attack and strikes back!";
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(attacker)) {
+                continue;
+            }
+            playerEventBus.publish(occupant,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(roomMsg))));
+        }
+    }
+
+    /**
+     * Renders the mob's authored {@link MessagePhase#ATTACK_PARRY} message on the given channel, or
+     * {@code null} when the attack declares none (or it renders blank), so callers fall back to a
+     * generic line. Mirrors the placeholder/verb substitution used by {@link #mobAttackMessage}.
+     */
+    @Nullable
+    private String renderMobParrySpec(
+        MobInstance mob, AttackDefinition attack, MessageChannel channel, int riposteDamage, int maxHp) {
+        for (MessageSpec spec : attack.messages()) {
+            if (spec.phase() != MessagePhase.ATTACK_PARRY || spec.channel() != channel) {
+                continue;
+            }
+            DamageVerb verb = riposteDamage > 0 && damageVerbTable != null && maxHp > 0
+                ? damageVerbTable.verbFor(riposteDamage, maxHp)
+                : null;
+            MessageContext context = new MessageContext(
+                null, null, mob.template().name(), null, null, null, attack.name(), riposteDamage,
+                verb == null ? null : verb.thirdPerson(),
+                verb == null ? null : verb.secondPerson());
+            String rendered = messageRenderer.render(spec, context);
+            if (rendered != null && !rendered.isBlank()) {
+                return rendered;
+            }
+        }
+        return null;
     }
 
     private static int clamp(int value, int min, int max) {
@@ -615,6 +883,16 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     public void setPartyService(PartyService partyService) {
         this.partyService = partyService;
+    }
+
+    /**
+     * Registers the mentor service used to apply the mentee XP bonus and drive bond graduation on
+     * shared mob kills.
+     *
+     * @param mentorService the mentor service; may be null to disable the mentor XP bonus
+     */
+    public void setMentorService(MentorService mentorService) {
+        this.mentorService = mentorService;
     }
 
     /**
@@ -782,10 +1060,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 continue;
             }
             // A mob may initiate combat when it is inherently aggressive, when it belongs to a
-            // faction (its hostility is then decided per-player in runMobAi from reputation), or
-            // when it is already engaged in a fight.
+            // faction (its hostility is then decided per-player in runMobAi from reputation), when
+            // it is a pack mob and a room-mate already has a player engaged (it reinforces that
+            // fight — see runMobAi), or when it is already engaged in a fight.
             boolean couldInitiate = mob.template().aggressive()
-                || (reputationService != null && mob.template().factionId() != null);
+                || (reputationService != null && mob.template().factionId() != null)
+                || (mob.template().hasTag(PACK_TAG) && !playersEngagedWithRoommates(mob).isEmpty());
             if (!couldInitiate && mob.engagedPlayers().isEmpty()) {
                 continue;
             }
@@ -957,16 +1237,40 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (attack == null) {
             return GameActionResult.error("Combat error: attack definition not found.");
         }
+        // A fresh engagement is one where the mob was not already fighting anyone: only such an
+        // opening attack fans out auto-assist to party-mates (a subsequent swing against the same
+        // already-engaged mob must not re-trigger it).
+        boolean freshEngagement = mob.engagedPlayers().isEmpty();
         // Engage first so a swing that misses still commits the attacker to the fight, exactly as a
         // landing strike does; the auto-attack then continues on the next tick (runPlayerCombat).
         mob.engage(attacker.getUsername());
         playerCombatTargets.put(attacker.getUsername(), mob.instanceId());
+        if (freshEngagement) {
+            autoAssistPartyMembers(attacker, mob, roomId);
+        }
 
         List<GameMessage> messages = new ArrayList<>();
         HitOutcome outcome = resolvePlayerHit(attacker, attack);
         if (!outcome.hit()) {
             messages.add(GameMessage.toSource(playerMissMessage(mob)));
             return new GameActionResult(null, null, messages);
+        }
+        // A defensively-trained mob may parry the otherwise-landing melee blow: the player deals zero
+        // damage this swing and the mob ripostes with its own attack. Melee-only — the SHOOT/AoE/pet
+        // paths never reach here. A mob with no authored parry chance never rolls (see resolveMobParry).
+        MobParryOutcome parry = resolveMobParry(mob);
+        if (parry.parried()) {
+            int playerMaxHp = attacker.getVitals().getMaxHp();
+            messages.add(GameMessage.toSource(
+                mobParryMessage(mob, parry.riposteAttack(), parry.riposteDamage(), playerMaxHp)));
+            broadcastMobParry(mob, attacker.getUsername(), parry.riposteAttack(),
+                parry.riposteDamage(), roomId);
+            Player damaged = attacker.withVitals(attacker.getVitals().damage(parry.riposteDamage()));
+            if (damaged.getVitals().hp() <= 0) {
+                handleMobKill(mob, damaged, roomService.getPlayersInRoom(roomId));
+                return new GameActionResult(null, null, messages);
+            }
+            return new GameActionResult(damaged, null, messages);
         }
         int damage = outcome.damage();
         int remaining = mob.takeDamage(damage);
@@ -976,6 +1280,50 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             awardMobKill(mob, attacker, roomId, messages);
         }
         return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Auto-assist fan-out (issue #709): when {@code attacker} opens a <em>fresh</em> fight against
+     * {@code mob} (one that was not already engaged), every other party member present in
+     * {@code roomId} who has opted in via {@code AUTOASSIST ON} is automatically joined to the fight,
+     * exactly as if they had typed {@code ASSIST <attacker>}. A member is skipped when they are the
+     * attacker themselves, already in combat ({@link #isInCombat}), resting, dead, or their live state
+     * cannot be resolved. Each joined member receives their own confirmation line via the same
+     * {@link PlayerEventBus} path used for combat messages.
+     *
+     * <p>Only the mob's first engagement reaches this method (guarded by the caller), so a subsequent
+     * swing against the same mob never re-triggers it, and the mob-side pack-assist reinforcement path
+     * (a different entry point) never fans out player auto-assist. When the attacker is solo,
+     * {@link PartyService#getPartyMembersInRoom} returns only the attacker, so nothing happens. Runs on
+     * the tick thread via the attacker's command queue (AGENTS.md §5).
+     *
+     * @param attacker the player who opened the fight
+     * @param mob      the freshly engaged mob
+     * @param roomId   the room the fight is taking place in
+     */
+    private void autoAssistPartyMembers(Player attacker, MobInstance mob, RoomId roomId) {
+        if (partyService == null) {
+            return;
+        }
+        List<Username> members = partyService.getPartyMembersInRoom(
+            attacker.getUsername(), roomId, roomService::findPlayerLocation);
+        for (Username member : members) {
+            if (member.equals(attacker.getUsername()) || isInCombat(member)) {
+                continue;
+            }
+            Player memberPlayer = playerRepository.loadPlayer(member).orElse(null);
+            if (memberPlayer == null
+                || !memberPlayer.isAutoAssistEnabled()
+                || memberPlayer.isDead()
+                || memberPlayer.isResting()) {
+                continue;
+            }
+            mob.engage(member);
+            playerCombatTargets.put(member, mob.instanceId());
+            playerEventBus.publish(member, new GameActionResult(null, null, List.of(
+                GameMessage.toSource("You automatically join " + attacker.getUsername().getValue()
+                    + "'s fight against the " + mob.template().name() + "!"))));
+        }
     }
 
     /**
@@ -1208,15 +1556,55 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         int xpPerMember = (int) Math.floor(
             (double) mob.template().xpReward() / Math.max(1, partyRecipients.size()));
 
-        LevelUpResult levelUpResult = levelUpService.awardXp(working.get(attacker.getUsername()), xpPerMember);
+        // Mentor bond (issue #751): a mentee whose mentor is also an eligible recipient of this kill
+        // earns a flat bonus on top of their own share. The mentor of a present mentee likewise earns a
+        // Mentors' Guild perk bonus (issue #752) scaling with their rank. Both are purely additive —
+        // never subtracted from any other member — so the pool paid to the rest of the party is
+        // unchanged. A recipient is at most one of the two (a bond is one-to-one), so they never stack.
+        int attackerMenteeBonus = menteeBonusXp(working.get(attacker.getUsername()), eligible, xpPerMember);
+        int attackerMentorGuildBonus = mentorGuildBonusXp(working.get(attacker.getUsername()), eligible, xpPerMember);
+        LevelUpResult levelUpResult = levelUpService.awardXp(
+            working.get(attacker.getUsername()), xpPerMember + attackerMenteeBonus + attackerMentorGuildBonus);
         Player afterXp = levelUpResult.player();
+        // Gold is split with the same divisor and "present in the room" eligibility as the XP split
+        // above: the roll is made once, then divided by every party member in the room (dead members
+        // count toward the divisor but receive nothing, mirroring the historical XP split). Integer
+        // division floors each share, so any remainder (rounding, or a dead member's unclaimed slice)
+        // is simply not paid out and the total handed to the party never exceeds the roll. A solo kill
+        // (divisor 1) is a no-op division and still pays the killer 100% of the roll, byte-for-byte.
+        int goldRolled = 0;
+        int goldShare = 0;
         if (mob.template().goldDrop() != null) {
-            int gold = mob.template().goldDrop().roll(random);
-            if (gold > 0) {
-                afterXp = afterXp.addGold(gold);
+            goldRolled = mob.template().goldDrop().roll(random);
+            if (goldRolled > 0) {
+                goldShare = goldRolled / Math.max(1, partyRecipients.size());
+                if (goldShare > 0) {
+                    afterXp = afterXp.addGold(goldShare);
+                }
                 messages.add(GameMessage.toSource(
-                    "The " + mob.template().name() + " drops " + gold + " gold coin"
-                        + (gold == 1 ? "" : "s") + "."));
+                    goldDropMessage(mob, goldRolled, goldShare, partyRecipients.size())));
+            }
+        }
+        // Player-funded bounty payout: if this mob type carries open bounties, claim the pooled reward
+        // and split it across the same eligible (alive, in-room) recipients as the gold drop. Unlike a
+        // raw gold drop, escrowed bounty gold must be conserved, so the divisor is the count of members
+        // actually paid (eligible, never dead) and any rounding remainder goes to the killer — the pooled
+        // stake is handed out in full, never created or destroyed. claim() also fires the server-wide
+        // announcement and closes the paid entries. A no-op on an ordinary un-bountied kill.
+        int bountyShare = 0;
+        if (bountyService != null) {
+            int bountyTotal = bountyService.claim(
+                mob.template().id().getValue(), attacker.getUsername(), mob.template().name());
+            if (bountyTotal > 0) {
+                int recipients = Math.max(1, eligible.size());
+                bountyShare = bountyTotal / recipients;
+                int killerShare = bountyShare + (bountyTotal - bountyShare * recipients);
+                if (killerShare > 0) {
+                    afterXp = afterXp.addGold(killerShare);
+                }
+                messages.add(GameMessage.toSource(
+                    "You claim " + killerShare + " gold in bounty for slaying the "
+                        + mob.template().name() + "!"));
             }
         }
         if (questKillService != null) {
@@ -1227,6 +1615,15 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     messages.add(GameMessage.toSource(msg));
                 }
             }
+        }
+        // Cooperative guild quest: credit the killer's guild (if any) independently of personal quests.
+        // This is the ONLY guild-quest credit per mob death: the shared objective advances once per kill
+        // (for the actual killer's guild), never once per party member — crediting each eligible member
+        // in the party-reward loop below would advance the shared counter party-size times (issue #700).
+        // Progress, completion payout and the [Guild] announcement are handled inside the service, which
+        // mutates only guild state on this tick thread (AGENTS.md §5).
+        if (guildQuestService != null) {
+            guildQuestService.recordKill(afterXp.getUsername(), mob.template().id().getValue());
         }
         FactionId factionId = mob.template().factionId();
         if (reputationService != null && factionId != null) {
@@ -1243,6 +1640,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         afterXp = afterXp.withTotalKills(afterXp.getTotalKills() + 1);
         messages.add(GameMessage.toSource(
             "You gain " + xpPerMember + " experience points."));
+        if (attackerMenteeBonus > 0) {
+            messages.add(GameMessage.toSource(
+                "Your mentor's guidance grants you " + attackerMenteeBonus + " bonus experience!"));
+        }
+        if (attackerMentorGuildBonus > 0) {
+            messages.add(GameMessage.toSource(
+                "Your mentoring dedication grants you " + attackerMentorGuildBonus + " bonus experience!"));
+        }
         if (levelUpResult.leveledUp()) {
             messages.add(GameMessage.toSource(
                 "You have advanced to level " + afterXp.getLevel() + "!"));
@@ -1253,6 +1658,10 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             afterXp = achievementResult.player();
             for (Achievement unlocked : achievementResult.newlyUnlocked()) {
                 messages.add(GameMessage.toSource("Achievement unlocked: " + unlocked.name() + "!"));
+                String titleReward = unlocked.titleReward();
+                if (titleReward != null) {
+                    messages.add(GameMessage.toSource("Title earned: " + titleReward + "!"));
+                }
             }
         }
 
@@ -1261,20 +1670,53 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         // Kill-quest progress and faction reputation are credited to each eligible member too, exactly
         // as if they had landed the kill individually (issue #395), so grouped questing rewards the
         // whole party consistently with the XP/loot split above.
+        // Final per-member state and message lists are accumulated here rather than saved inline, so a
+        // mentor-bond graduation pass (issue #751) can fold its cross-player bond changes into the same
+        // single save/publish per member below (a fresh reload+save of a mentor would otherwise clobber
+        // the XP just applied while the persistence queue writes behind).
+        Map<Username, Player> finalStates = new LinkedHashMap<>();
+        Map<Username, List<GameMessage>> memberMsgLists = new LinkedHashMap<>();
         for (Username member : eligible) {
             if (member.equals(attacker.getUsername())) {
                 continue;
             }
-            LevelUpResult memberLvl = levelUpService.awardXp(working.get(member), xpPerMember);
+            int memberMenteeBonus = menteeBonusXp(working.get(member), eligible, xpPerMember);
+            int memberMentorGuildBonus = mentorGuildBonusXp(working.get(member), eligible, xpPerMember);
+            LevelUpResult memberLvl = levelUpService.awardXp(
+                working.get(member), xpPerMember + memberMenteeBonus + memberMentorGuildBonus);
             Player memberAfterXp = memberLvl.player()
                 .withTotalKills(memberLvl.player().getTotalKills() + 1);
             List<GameMessage> memberMsgs = new ArrayList<>();
             memberMsgs.add(GameMessage.toSource(
                 "Your party slay the " + mob.template().name()
                     + "! You gain " + xpPerMember + " experience points."));
+            if (memberMenteeBonus > 0) {
+                memberMsgs.add(GameMessage.toSource(
+                    "Your mentor's guidance grants you " + memberMenteeBonus + " bonus experience!"));
+            }
+            if (memberMentorGuildBonus > 0) {
+                memberMsgs.add(GameMessage.toSource(
+                    "Your mentoring dedication grants you " + memberMentorGuildBonus + " bonus experience!"));
+            }
             if (memberLvl.leveledUp()) {
                 memberMsgs.add(GameMessage.toSource(
                     "You have advanced to level " + memberAfterXp.getLevel() + "!"));
+            }
+            // Pay this member their split gold share (same divisor as the attacker's share above).
+            if (goldRolled > 0) {
+                if (goldShare > 0) {
+                    memberAfterXp = memberAfterXp.addGold(goldShare);
+                }
+                memberMsgs.add(GameMessage.toSource(
+                    goldDropMessage(mob, goldRolled, goldShare, partyRecipients.size())));
+            }
+            // Pay this member their equal share of any claimed bounty (same divisor as the killer's
+            // share above; the killer additionally absorbed the rounding remainder for conservation).
+            if (bountyShare > 0) {
+                memberAfterXp = memberAfterXp.addGold(bountyShare);
+                memberMsgs.add(GameMessage.toSource(
+                    "You claim " + bountyShare + " gold in bounty for slaying the "
+                        + mob.template().name() + "!"));
             }
             if (questKillService != null) {
                 var memberKillResult = questKillService.recordKill(memberAfterXp, mob.template().id().getValue());
@@ -1285,6 +1727,11 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     }
                 }
             }
+            // The cooperative guild quest is intentionally NOT credited here: it advances a single
+            // objective shared by the whole guild, so it must be recorded at most once per mob death
+            // (for the actual killer's guild only, above). Crediting each party member would advance
+            // the shared counter party-size times per kill (issue #700). Personal quests and faction
+            // reputation remain per-member because each player owns an independent slot for those.
             if (reputationService != null && factionId != null) {
                 int memberBefore = memberAfterXp.reputation().standing(factionId);
                 memberAfterXp = reputationService.recordKill(memberAfterXp, factionId);
@@ -1296,14 +1743,174 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                         + (memberAfter < memberBefore ? " decreases." : " increases.")));
                 }
             }
-            saveOrLog(memberAfterXp);
             List<GameMessage> lootMsgs = memberMessages.get(member);
             if (lootMsgs != null) {
                 memberMsgs.addAll(lootMsgs);
             }
-            playerEventBus.publish(member, new GameActionResult(memberAfterXp, null, memberMsgs));
+            finalStates.put(member, memberAfterXp);
+            memberMsgLists.put(member, memberMsgs);
+        }
+
+        // Mentor-bond graduation pass (issue #751): the attacker joins the pool so a bond in either
+        // direction (attacker as mentor or mentee) is handled uniformly. Runs after all XP is settled.
+        finalStates.put(attacker.getUsername(), afterXp);
+        applyMentorGraduations(finalStates, memberMsgLists, messages, attacker.getUsername());
+        afterXp = finalStates.get(attacker.getUsername());
+
+        // Single save + publish per member, now carrying any graduation bond change.
+        for (Username member : eligible) {
+            if (member.equals(attacker.getUsername())) {
+                continue;
+            }
+            Player memberFinal = finalStates.get(member);
+            saveOrLog(memberFinal);
+            playerEventBus.publish(member,
+                new GameActionResult(memberFinal, null, memberMsgLists.get(member)));
         }
         return afterXp;
+    }
+
+    /**
+     * Returns the flat bonus XP a mentee recipient earns on this kill, or 0 when the mentor bond is
+     * inactive: no mentor service, the recipient has no mentor, or their mentor is not one of the
+     * eligible in-room recipients of this same kill's split. The bonus is purely additive.
+     *
+     * @param recipient the recipient whose share might be boosted
+     * @param eligible  the alive, in-room recipients of this kill (potential mentors)
+     * @param baseShare the recipient's own computed XP share before the bonus
+     * @return the bonus XP to add to {@code baseShare}, or 0
+     */
+    private int menteeBonusXp(Player recipient, List<Username> eligible, int baseShare) {
+        if (mentorService == null || recipient == null) {
+            return 0;
+        }
+        String mentorName = recipient.mentor();
+        if (mentorName == null) {
+            return 0;
+        }
+        Username mentorUser = Username.of(mentorName);
+        if (!eligible.contains(mentorUser)) {
+            return 0;
+        }
+        return mentorService.menteeBonusXp(baseShare);
+    }
+
+    /**
+     * Returns the flat Mentors' Guild perk bonus XP a mentor recipient earns on this kill (issue #752),
+     * or 0 when the perk is inactive: no mentor service, the recipient has no mentee, their mentee is
+     * not one of the eligible in-room recipients of this same kill's split, or their guild rank has
+     * unlocked no perk yet. The bonus is purely additive and scales with the mentor's rank.
+     *
+     * @param recipient the recipient whose share might be boosted for actively mentoring
+     * @param eligible  the alive, in-room recipients of this kill (potential mentees)
+     * @param baseShare the recipient's own computed XP share before the bonus
+     * @return the bonus XP to add to {@code baseShare}, or 0
+     */
+    private int mentorGuildBonusXp(Player recipient, List<Username> eligible, int baseShare) {
+        if (mentorService == null || recipient == null) {
+            return 0;
+        }
+        String menteeName = recipient.mentee();
+        if (menteeName == null) {
+            return 0;
+        }
+        Username menteeUser = Username.of(menteeName);
+        if (!eligible.contains(menteeUser)) {
+            return 0;
+        }
+        return mentorService.mentorBonusXp(baseShare, recipient.menteesGraduated());
+    }
+
+    /**
+     * Graduates every bonded mentee in {@code finalStates} who has reached their (also-present)
+     * mentor's graduation threshold: the bond is cleared on both sides, the mentor's lifetime counter
+     * ticks up, and their first graduated mentee earns the mentor title. Both players' updated states
+     * are written back into {@code finalStates} and a graduation notice is routed to each — the
+     * attacker's via {@code attackerMessages}, everyone else's via {@code memberMsgLists}. Runs on the
+     * tick thread; no I/O or RNG (AGENTS.md §5).
+     *
+     * @param finalStates     mutable map of every recipient's settled state, updated in place
+     * @param memberMsgLists  mutable per-member message lists for non-attacker recipients
+     * @param attackerMessages the attacker-facing message sink
+     * @param attackerName    the killer's username, used to route their own graduation messages
+     */
+    private void applyMentorGraduations(
+        Map<Username, Player> finalStates,
+        Map<Username, List<GameMessage>> memberMsgLists,
+        List<GameMessage> attackerMessages,
+        Username attackerName) {
+        if (mentorService == null) {
+            return;
+        }
+        for (Username menteeName : List.copyOf(finalStates.keySet())) {
+            Player menteePlayer = finalStates.get(menteeName);
+            String mentorName = menteePlayer.mentor();
+            if (mentorName == null) {
+                continue;
+            }
+            Username mentorUser = Username.of(mentorName);
+            Player mentorPlayer = finalStates.get(mentorUser);
+            if (mentorPlayer == null) {
+                // Mentor is not a recipient of this kill; graduation waits until they group up again.
+                continue;
+            }
+            String mentorsMentee = mentorPlayer.mentee();
+            if (mentorsMentee == null || !Username.of(mentorsMentee).equals(menteeName)) {
+                continue;
+            }
+            if (!mentorService.hasGraduated(menteePlayer.getLevel(), mentorPlayer.getLevel())) {
+                continue;
+            }
+            MentorService.GraduationOutcome outcome = mentorService.graduate(menteePlayer, mentorPlayer);
+            finalStates.put(menteeName, outcome.mentee());
+            finalStates.put(mentorUser, outcome.mentor());
+            graduationSink(menteeName, attackerName, attackerMessages, memberMsgLists).add(
+                GameMessage.toSource("You have graduated under " + mentorUser.getValue()
+                    + "'s mentorship! Your mentor bond has ended. Go forth, adventurer."));
+            List<GameMessage> mentorSink =
+                graduationSink(mentorUser, attackerName, attackerMessages, memberMsgLists);
+            mentorSink.add(GameMessage.toSource("Your mentee " + menteeName.getValue()
+                + " has graduated! Your mentor bond has ended."));
+            for (String earnedTitle : outcome.newlyEarnedTitles()) {
+                mentorSink.add(GameMessage.toSource("Title earned: " + earnedTitle + "!"));
+            }
+        }
+    }
+
+    /**
+     * Resolves the message sink for a graduation notice: the attacker's own list when {@code who} is
+     * the killer, otherwise their per-member list (created on demand).
+     */
+    private List<GameMessage> graduationSink(
+        Username who,
+        Username attackerName,
+        List<GameMessage> attackerMessages,
+        Map<Username, List<GameMessage>> memberMsgLists) {
+        if (who.equals(attackerName)) {
+            return attackerMessages;
+        }
+        return memberMsgLists.computeIfAbsent(who, ignored -> new ArrayList<>());
+    }
+
+    /**
+     * Builds the gold-drop line shown to a single kill-reward recipient. A solo kill (party size 1)
+     * keeps the historical flat message ("The goblin drops 12 gold coins.") unchanged byte-for-byte;
+     * a party kill appends the recipient's own split share ("The goblin drops 12 gold coins. You
+     * receive 3.") so each member sees what they personally received rather than the full roll.
+     *
+     * @param mob        the slain mob whose name is reported
+     * @param goldRolled the total gold rolled for this kill (before splitting)
+     * @param share      the individual recipient's split share of {@code goldRolled}
+     * @param partySize  the divisor used for the split (party members present in the room)
+     * @return the message text to show the recipient
+     */
+    private String goldDropMessage(MobInstance mob, int goldRolled, int share, int partySize) {
+        String base = "The " + mob.template().name() + " drops " + goldRolled + " gold coin"
+            + (goldRolled == 1 ? "" : "s") + ".";
+        if (partySize <= 1) {
+            return base;
+        }
+        return base + " You receive " + share + ".";
     }
 
     /**
@@ -1722,7 +2329,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return GameActionResult.error(
                 "You lack the mana to unleash " + spell.name() + " (" + scaledMana + " needed).");
         }
-        int baseDamage = aoeSpellDamage(spell);
+        int baseDamage = abilityHpDamage(spell);
+        DamageType damageType = abilityDamageType(spell);
 
         Player updated = caster.withVitals(caster.getVitals().consumeMana(scaledMana));
 
@@ -1755,10 +2363,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 }
                 continue;
             }
-            int damage = outcome.damage();
+            // Apply this mob's elemental resistance/vulnerability for the spell's damage type
+            // (untyped/physical spells are unaffected) before the hit lands.
+            ElementalOutcome elemental = applyMobElemental(outcome.damage(), mob, damageType);
+            int damage = elemental.damage();
+            String qualifier = elementalQualifier(damageType, elemental.reaction());
             int remaining = mob.takeDamage(damage);
             messages.add(GameMessage.toSource(
-                aoeStrikeMessage(spell, mobName, damage, remaining, outcome.crit())));
+                aoeStrikeMessage(spell, mobName, damage, remaining, outcome.crit(), qualifier)));
             if (!mob.isAlive()) {
                 updated = applyMobKillRewards(mob, updated, roomId, messages);
                 continue;
@@ -1776,16 +2388,19 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     }
 
     /**
-     * Returns the damage an AoE spell deals to each target: the sum of its HP-decreasing
-     * {@link io.taanielo.jmud.core.ability.AbilityEffectKind#VITALS} effects. Non-damage effects
-     * (status effects, cures) are ignored on the mob path, which has no persistent effect model.
+     * Returns the damage a harmful ability deals to a mob target: the sum of its HP-decreasing
+     * {@link io.taanielo.jmud.core.ability.AbilityEffectKind#VITALS} effects. Shared by the
+     * area-of-effect ({@link #processPlayerAoeSpell}) and single-target
+     * ({@link #processPlayerSingleTargetAbility}) mob paths. Non-damage effects contribute no damage
+     * here; the mob path has no persistent stat-modifier effect model, but a control-classified effect
+     * still lands its mechanical lockout on a mob via {@link #applyAbilityControlToMob} (issue #763).
      *
-     * @param spell the AoE spell
-     * @return the per-target damage (zero when the spell defines no HP-decrease effect)
+     * @param ability the harmful ability
+     * @return the damage (zero when the ability defines no HP-decrease effect)
      */
-    private static int aoeSpellDamage(Ability spell) {
+    private static int abilityHpDamage(Ability ability) {
         int damage = 0;
-        for (AbilityEffect effect : spell.effects()) {
+        for (AbilityEffect effect : ability.effects()) {
             if (effect.kind() == AbilityEffectKind.VITALS
                 && effect.stat() == AbilityStat.HP
                 && effect.operation() == AbilityOperation.DECREASE) {
@@ -1793,6 +2408,109 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             }
         }
         return damage;
+    }
+
+    /**
+     * Returns the elemental {@link DamageType} a harmful ability's damage carries, parsed from the
+     * (raw-string) {@code damageType} tag on its first damaging {@code VITALS} effect that declares
+     * one. Abilities with no tagged effect deal {@link DamageType#PHYSICAL} (untyped) damage, which is
+     * never resisted or amplified by a mob's elemental resistance/vulnerability — so today's untyped
+     * spells and every melee/ranged attack are unaffected.
+     *
+     * @param ability the harmful ability
+     * @return the ability's damage type, or {@link DamageType#PHYSICAL} when untyped
+     */
+    private static DamageType abilityDamageType(Ability ability) {
+        for (AbilityEffect effect : ability.effects()) {
+            if (effect.kind() == AbilityEffectKind.VITALS
+                && effect.stat() == AbilityStat.HP
+                && effect.operation() == AbilityOperation.DECREASE) {
+                DamageType type = DamageType.fromString(effect.damageType());
+                if (type != DamageType.PHYSICAL) {
+                    return type;
+                }
+            }
+        }
+        return DamageType.PHYSICAL;
+    }
+
+    /**
+     * How a mob's elemental identity reacted to an incoming typed ability hit: it resisted the
+     * element (took reduced damage), was vulnerable to it (took extra damage), or was unaffected
+     * (untyped damage, or a type it neither resists nor is weak to).
+     */
+    private enum ElementalReaction {
+        NONE, RESISTED, VULNERABLE
+    }
+
+    /**
+     * The result of applying a mob's elemental resistance/vulnerability to a rolled ability hit: the
+     * adjusted damage (never below 1) and which reaction, if any, occurred (used to narrate the hit).
+     */
+    private record ElementalOutcome(int damage, ElementalReaction reaction) {
+    }
+
+    /**
+     * Applies the target mob's elemental resistance or vulnerability for the given {@link DamageType}
+     * to a rolled ability hit, mirroring the player-side equipment mitigation in
+     * {@link #mitigateForDefender}. Untyped/{@link DamageType#PHYSICAL} damage is returned unchanged so
+     * melee, ranged, and untagged spells behave exactly as before. Resistance is capped at
+     * {@link CombatSettings#maxResistancePercent()} so a resisted hit always lands for at least a
+     * fraction of its rolled damage (never fully negated); vulnerability is capped generously at
+     * {@link MobTemplate#MAX_VULNERABILITY_PERCENT}. Rounding matches the equipment path
+     * ({@link Math#round}) and the result is floored at 1.
+     *
+     * @param rawDamage the rolled (post-crit) damage before elemental adjustment, at least 1
+     * @param mob       the target mob whose elemental identity applies
+     * @param type      the incoming ability's damage type
+     * @return the adjusted damage and the reaction that occurred
+     */
+    private ElementalOutcome applyMobElemental(int rawDamage, MobInstance mob, DamageType type) {
+        if (!type.isResistible()) {
+            return new ElementalOutcome(rawDamage, ElementalReaction.NONE);
+        }
+        MobTemplate template = mob.template();
+        int resist = template.resistancePercent(type);
+        if (resist > 0) {
+            int capped = Math.min(resist, CombatSettings.maxResistancePercent());
+            int adjusted = Math.max(1, (int) Math.round(rawDamage * ((100 - capped) / 100.0)));
+            return new ElementalOutcome(adjusted, ElementalReaction.RESISTED);
+        }
+        int vuln = template.vulnerabilityPercent(type);
+        if (vuln > 0) {
+            int capped = Math.min(vuln, MobTemplate.MAX_VULNERABILITY_PERCENT);
+            int adjusted = Math.max(1, (int) Math.round(rawDamage * ((100 + capped) / 100.0)));
+            return new ElementalOutcome(adjusted, ElementalReaction.VULNERABLE);
+        }
+        return new ElementalOutcome(rawDamage, ElementalReaction.NONE);
+    }
+
+    /**
+     * Builds the short strike-message qualifier that makes a mob's elemental reaction legible to the
+     * caster (e.g. "The flames sizzle weakly against its resilient hide — " for a resisted fire hit),
+     * so players learn a matchup without consulting a spreadsheet. Returns an empty string for
+     * {@link ElementalReaction#NONE}.
+     *
+     * @param type     the incoming damage type
+     * @param reaction the reaction the mob's elemental identity produced
+     * @return a qualifier prefix (with trailing separator), or an empty string when there is no reaction
+     */
+    private static String elementalQualifier(DamageType type, ElementalReaction reaction) {
+        return switch (reaction) {
+            case NONE -> "";
+            case RESISTED -> switch (type) {
+                case FIRE -> "The flames sizzle weakly against its resilient hide — ";
+                case COLD -> "The frost barely bites its hardened form — ";
+                case POISON -> "The venom struggles against its resilient blood — ";
+                case PHYSICAL -> "";
+            };
+            case VULNERABLE -> switch (type) {
+                case FIRE -> "The flames roar hungrily against it — ";
+                case COLD -> "The frost sinks deep into it — ";
+                case POISON -> "The venom courses freely through it — ";
+                case PHYSICAL -> "";
+            };
+        };
     }
 
     /**
@@ -1805,12 +2523,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * @param damage    the damage this target took
      * @param remaining the target's HP after the strike
      * @param crit      whether this target was struck for a critical hit
+     * @param qualifier an elemental resist/vulnerability prefix (empty when the hit was neither)
      * @return the message text to show the caster for this target
      */
     private static String aoeStrikeMessage(
-        Ability spell, String mobName, int damage, int remaining, boolean crit) {
+        Ability spell, String mobName, int damage, int remaining, boolean crit, String qualifier) {
         String critPrefix = crit ? "A critical hit! " : "";
-        return critPrefix + "Your " + spell.name() + " strikes the " + mobName + " for "
+        return qualifier + critPrefix + "Your " + spell.name() + " strikes the " + mobName + " for "
             + damage + " damage. (" + remaining + " HP remaining)";
     }
 
@@ -1824,6 +2543,257 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      */
     private static String aoeMissMessage(Ability spell, String mobName) {
         return "Your " + spell.name() + " crackles harmlessly past the " + mobName + ".";
+    }
+
+    /**
+     * Returns whether a live, attackable mob matching {@code nameInput} is present in {@code roomId},
+     * so the CAST/USE command routing can decide whether a harmful single-target ability names a mob
+     * (routed here) or a player (left to the generic ability path for duels/PvP). A pet or an
+     * {@code "npc"}-tagged mob is not attackable and does not match, so naming one falls through to the
+     * generic path exactly as it does today.
+     *
+     * @param roomId    the room to search
+     * @param nameInput the raw target-name input typed after the ability
+     * @return {@code true} when an attackable mob in the room matches the name
+     */
+    public boolean hasAttackableMob(RoomId roomId, String nameInput) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (nameInput == null || nameInput.isBlank()) {
+            return false;
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), nameInput);
+        return mob != null && !mob.isPet() && !mob.template().hasTag("npc");
+    }
+
+    /**
+     * Processes a harmful single-target ability (a {@link AbilityTargeting#HARMFUL},
+     * {@link AbilityTargeting#HARMFUL_OPENER}, or {@link AbilityTargeting#HARMFUL_UNDEAD} spell or
+     * skill) cast at a mob in the caster's room, mirroring {@link #processPlayerAoeSpell} for a single
+     * target. Backs {@code CAST <ability> <mob>} / {@code USE <ability> <mob>} against a monster; the
+     * generic ability engine ({@code GameActionService.useAbility}) still owns the same abilities aimed
+     * at another <em>player</em> (duels/PvP), so this path is entered only when the named target is a
+     * mob (see {@link #hasAttackableMob}).
+     *
+     * <p>All mutation runs on the tick thread via the caster's command queue (AGENTS.md §5). The strike
+     * rolls to hit and crit through the same seeded {@link #resolveHit} used by melee, ranged, and AoE
+     * (a single-target ability can therefore miss or crit, not just land a flat number). Damage is the
+     * sum of the ability's HP-decreasing {@code VITALS} effects ({@link #abilityHpDamage}). A killing
+     * blow awards the normal kill rewards (loot, XP, gold, quest credit, reputation, achievements)
+     * through {@link #applyMobKillRewards}. The ability's mana/move cost is deducted on any resolved
+     * cast (hit or miss) and folded into the returned {@link GameActionResult#updatedSource()}; a
+     * validation failure (no target, undead gate, opener gate, or insufficient resources) spends
+     * nothing and returns an error with no {@code updatedSource}, so the caller starts no cooldown.
+     *
+     * <p>{@link AbilityTargeting#HARMFUL_UNDEAD} gates on the mob's {@code "undead"} tag; a
+     * {@link AbilityTargeting#HARMFUL_OPENER} refuses when the caster is already engaged in combat and,
+     * when opened from stealth, deals {@link #STEALTH_BACKSTAB_BONUS_DAMAGE} bonus damage before
+     * breaking stealth — matching the PvP behaviour in
+     * {@link io.taanielo.jmud.core.action.GameActionService}.
+     *
+     * @param caster      the casting player
+     * @param ability     the resolved harmful single-target ability
+     * @param targetInput the raw mob-name input naming the target
+     * @param roomId      the caster's current room
+     * @return result whose {@code updatedSource} is the caster with cost (and any kill rewards) applied
+     *         on a resolved cast, plus strike/miss messages; or an error with no state change
+     */
+    public GameActionResult processPlayerSingleTargetAbility(
+        Player caster, Ability ability, String targetInput, RoomId roomId) {
+        Objects.requireNonNull(caster, "Caster is required");
+        Objects.requireNonNull(ability, "Ability is required");
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (targetInput == null || targetInput.isBlank()) {
+            return GameActionResult.error("You must specify a target.");
+        }
+        MobInstance mob = findMobByName(getMobsInRoom(roomId), targetInput);
+        if (mob == null || !mob.isAlive() || mob.isPet() || mob.template().hasTag("npc")) {
+            return GameActionResult.error("No such target here.");
+        }
+        // Opener gate: a HARMFUL_OPENER (backstab) may only start a fight, never continue one.
+        if (ability.targeting() == AbilityTargeting.HARMFUL_OPENER
+            && isInCombat(caster.getUsername())) {
+            return GameActionResult.error(
+                "You can only backstab as an opener — you are already in combat.");
+        }
+        // Undead gate: HARMFUL_UNDEAD (holy damage) only affects undead-tagged mobs.
+        if (ability.targeting() == AbilityTargeting.HARMFUL_UNDEAD
+            && !mob.template().hasTag("undead")) {
+            return GameActionResult.error("Your holy power has no effect on that creature.");
+        }
+        AbilityCost cost = ability.cost();
+        if (caster.getVitals().mana() < cost.mana() || caster.getVitals().move() < cost.move()) {
+            return GameActionResult.error("You lack the resources to use that ability.");
+        }
+        Player updated = caster.withVitals(
+            caster.getVitals().consumeMana(cost.mana()).consumeMove(cost.move()));
+
+        int baseDamage = abilityHpDamage(ability);
+        DamageType damageType = abilityDamageType(ability);
+        String mobName = mob.template().name();
+        boolean struckFromStealth = caster.isStealthActive();
+        List<GameMessage> messages = new ArrayList<>();
+
+        // The strike rolls hit and crit through the same seeded resolution as a melee swing, ranged
+        // shot, and AoE spell (issue #651): a single-target ability can miss a mob or crit it.
+        HitOutcome outcome = resolveSpellHit(caster, baseDamage);
+        if (!outcome.hit()) {
+            messages.add(GameMessage.toSource(singleTargetMissMessage(ability, mobName)));
+            // A missed strike still engages the mob, exactly as a missed melee swing does.
+            mob.engage(caster.getUsername());
+            playerCombatTargets.put(caster.getUsername(), mob.instanceId());
+            updated = breakStealthAfterStrike(updated, struckFromStealth, mobName, roomId, messages);
+            return new GameActionResult(updated, null, messages);
+        }
+        int damage = outcome.damage();
+        // Stealth opener bonus (backstab): a strike from the shadows adds flat bonus damage before it
+        // lands, matching the PvP path (the crit multiplier has already been applied to the ability's
+        // own damage, so the bonus itself is never doubled).
+        if (struckFromStealth && BACKSTAB_ABILITY_ID.equals(ability.id())) {
+            damage += STEALTH_BACKSTAB_BONUS_DAMAGE;
+            messages.add(GameMessage.toSource(
+                "Your strike from the shadows lands with deadly precision (+"
+                    + STEALTH_BACKSTAB_BONUS_DAMAGE + " damage)!"));
+        }
+        // Apply the target mob's elemental resistance/vulnerability for this ability's damage type
+        // (untyped/physical abilities are unaffected) before the hit lands.
+        ElementalOutcome elemental = applyMobElemental(damage, mob, damageType);
+        damage = elemental.damage();
+        String qualifier = elementalQualifier(damageType, elemental.reaction());
+        int remaining = mob.takeDamage(damage);
+        messages.add(GameMessage.toSource(
+            singleTargetStrikeMessage(ability, mobName, damage, remaining, outcome.crit(), qualifier)));
+        updated = breakStealthAfterStrike(updated, struckFromStealth, mobName, roomId, messages);
+        if (!mob.isAlive()) {
+            updated = applyMobKillRewards(mob, updated, roomId, messages);
+            return new GameActionResult(updated, null, messages);
+        }
+        // Land any crowd-control lockout the ability carries (root/silence/stun) on the surviving mob,
+        // mirroring what the same effect does to a player in PvP (issue #763). Only the mechanical
+        // lockout is applied — the effect's flat stat modifiers are deliberately not carried to mobs.
+        applyAbilityControlToMob(ability, mob, caster.getUsername(), roomId, messages);
+        mob.engage(caster.getUsername());
+        playerCombatTargets.put(caster.getUsername(), mob.instanceId());
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Applies to a live mob any crowd-control lockout named by a harmful ability's {@code EFFECT}
+     * effects (issue #763). For each such effect whose authored {@link EffectDefinition#control()}
+     * classification is present, the mob is locked down for the effect's
+     * {@link EffectDefinition#durationTicks() duration} via {@link MobInstance#applyControl}, and a
+     * short self/room line narrates the lockout landing so a party can see it and coordinate. Reuses
+     * the same authored {@code control} data the player effect path reads (via {@link EffectEngine});
+     * a no-op when no effect engine is wired, the ability carries no control effect, or the named
+     * effect is unclassified. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param ability  the resolved harmful ability that just landed
+     * @param mob      the surviving target mob to lock down
+     * @param caster   the casting player, excluded from the room broadcast (they get the self line)
+     * @param roomId   the mob's room, whose other players see the lockout land
+     * @param messages the mutable self-facing message list to append the lockout notice to
+     */
+    private void applyAbilityControlToMob(
+        Ability ability, MobInstance mob, Username caster, RoomId roomId, List<GameMessage> messages) {
+        if (effectEngine == null) {
+            return;
+        }
+        for (AbilityEffect effect : ability.effects()) {
+            if (effect.kind() != AbilityEffectKind.EFFECT) {
+                continue;
+            }
+            EffectDefinition definition;
+            try {
+                definition = effectEngine.definition(EffectId.of(effect.effectId())).orElse(null);
+            } catch (EffectRepositoryException e) {
+                log.warn("Failed to resolve control effect {}: {}", effect.effectId(), e.getMessage());
+                continue;
+            }
+            if (definition == null) {
+                continue;
+            }
+            Optional<ControlType> control = definition.control();
+            if (control.isEmpty() || definition.durationTicks() <= 0) {
+                continue;
+            }
+            ControlType type = control.get();
+            mob.applyControl(type, definition.durationTicks());
+            String mobName = mob.template().name();
+            messages.add(GameMessage.toSource(
+                "The " + mobName + " is " + type.descriptor() + "!"));
+            String roomLine = "The " + mobName + " is " + type.descriptor() + "!";
+            for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+                if (occupant.equals(caster)) {
+                    continue;
+                }
+                playerEventBus.publish(occupant,
+                    new GameActionResult(null, null, List.of(GameMessage.toSource(roomLine))));
+            }
+            return;
+        }
+    }
+
+    /**
+     * Breaks a caster's stealth after a harmful single-target strike lands or misses a mob, mirroring
+     * the PvP behaviour where any deliberate ability use against a distinct target emerges the caster
+     * from the shadows. A no-op (returning the caster unchanged) when the caster was not stealthed.
+     *
+     * @param caster            the (cost-charged) caster
+     * @param struckFromStealth whether the caster was stealthed when the strike resolved
+     * @param mobName           the struck mob's display name, used in the room broadcast
+     * @param roomId            the caster's room, whose other players see the reveal
+     * @param messages          the mutable self-facing message list to append the reveal notice to
+     * @return the caster with stealth cleared, or unchanged when not stealthed
+     */
+    private Player breakStealthAfterStrike(
+        Player caster, boolean struckFromStealth, String mobName, RoomId roomId, List<GameMessage> messages) {
+        if (!struckFromStealth) {
+            return caster;
+        }
+        Player revealed = caster.withStealth(false);
+        messages.add(GameMessage.toSource("You emerge from the shadows."));
+        String casterName = caster.getUsername().getValue();
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            if (occupant.equals(caster.getUsername())) {
+                continue;
+            }
+            playerEventBus.publish(occupant, new GameActionResult(null, null, List.of(
+                GameMessage.toSource(casterName + " emerges from the shadows and strikes the "
+                    + mobName + "!"))));
+        }
+        return revealed;
+    }
+
+    /**
+     * Builds the self-facing line shown to a caster whose harmful single-target ability landed on a
+     * mob, mirroring the AoE/melee/ranged strike phrasing. A critical hit is prefixed with a "critical
+     * hit!" notice so a crit reads distinctly from a normal strike.
+     *
+     * @param ability   the ability being used
+     * @param mobName   the struck mob's display name
+     * @param damage    the damage this strike dealt
+     * @param remaining the mob's HP after the strike
+     * @param crit      whether this strike was a critical hit
+     * @param qualifier an elemental resist/vulnerability prefix (empty when the hit was neither)
+     * @return the message text to show the caster
+     */
+    private static String singleTargetStrikeMessage(
+        Ability ability, String mobName, int damage, int remaining, boolean crit, String qualifier) {
+        String critPrefix = crit ? "A critical hit! " : "";
+        return qualifier + critPrefix + "Your " + ability.name() + " strikes the " + mobName + " for "
+            + damage + " damage. (" + remaining + " HP remaining)";
+    }
+
+    /**
+     * Builds the self-facing line shown to a caster whose harmful single-target ability missed a mob
+     * outright, so a single-target ability can miss rather than always landing for a flat amount
+     * (issue #651).
+     *
+     * @param ability the ability being used
+     * @param mobName the missed mob's display name
+     * @return the miss message text to show the caster
+     */
+    private static String singleTargetMissMessage(Ability ability, String mobName) {
+        return "Your " + ability.name() + " fails to connect with the " + mobName + ".";
     }
 
     /**
@@ -1921,7 +2891,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return GameActionResult.error("Your summons fizzles — nothing answers the call.");
         }
         MobInstance pet = MobInstance.summoned(
-            petTemplate, roomId, caster.getUsername(), petTemplate.summonDurationTicks());
+            petTemplate, roomId, caster.getUsername(), caster.getLevel(),
+            petTemplate.summonDurationTicks());
         instances.put(pet.instanceId(), pet);
 
         Player updated = caster.withVitals(caster.getVitals().consumeMana(manaCost));
@@ -1978,6 +2949,12 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
     static final int MAX_PET_NAME_LENGTH = 24;
 
     /**
+     * Maximum length of a companion's custom roleplay description (see the DESCRIBE command). Shares
+     * the player-description cap so a companion description and a player description use one limit.
+     */
+    static final int MAX_PET_DESCRIPTION_LENGTH = PlayerIdentity.MAX_DESCRIPTION_LENGTH;
+
+    /**
      * Permanently tames (charms) a charmable mob in the tamer's room, turning it into a persistent
      * companion that follows its owner between rooms and fights at their side. The captured wild mob
      * is removed from the world and scheduled to respawn, a tamed instance is spawned in its place,
@@ -2021,7 +2998,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         mob.scheduleRespawn(currentTimeOfDay());
         endCombatForMob(mob);
 
-        MobInstance pet = MobInstance.tamed(mob.template(), roomId, tamer.getUsername());
+        MobInstance pet = MobInstance.tamed(mob.template(), roomId, tamer.getUsername(), tamer.getLevel());
         instances.put(pet.instanceId(), pet);
 
         Player updated = tamer.withTamedPets(tamer.pets().tame(mob.template().id().getValue()));
@@ -2105,6 +3082,152 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             "Your companion shall henceforth be known as " + trimmedName + ".")));
     }
 
+    /**
+     * Returns the given player's own live tamed companions, in no particular order. Shared by the
+     * companion-targeting commands (NAME/DESCRIBE) so they resolve against exactly the pets the player
+     * controls.
+     *
+     * @param owner the owning player's username
+     * @return the owner's live tamed companions (never null, may be empty)
+     */
+    private List<MobInstance> ownedLiveCompanions(Username owner) {
+        return instances.values().stream()
+            .filter(m -> m.isTamed() && m.isAlive() && owner.equals(m.owner()))
+            .toList();
+    }
+
+    /**
+     * Returns whether the given player owns a live tamed companion matching {@code token} by its
+     * current display name or template name (same resolution the NAME command uses). Lets the
+     * DESCRIBE command decide whether a leading token targets one of the player's companions (pet
+     * description) or is the start of the player's own roleplay description. Runs on the tick thread.
+     *
+     * @param owner the player whose companions to check
+     * @param token the leading target token typed by the player
+     * @return {@code true} when the token resolves to one of the player's live companions
+     */
+    public boolean ownsCompanionMatching(Player owner, String token) {
+        Objects.requireNonNull(owner, "Owner is required");
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+        return findMobByName(ownedLiveCompanions(owner.getUsername()), token) != null;
+    }
+
+    /**
+     * Applies a DESCRIBE action to one of the player's own tamed companions (see the DESCRIBE
+     * command). The companion is matched among the player's live pets by its current display name or
+     * template name (same targeting as NAME). The {@code descriptionArg} selects the action:
+     * <ul>
+     *   <li>blank/{@code null} — query: report the current custom description, or a not-set hint,
+     *       to the owner only, with no state change.</li>
+     *   <li>{@code CLEAR}/{@code NONE} — clear the custom description back to the generic LOOK line.</li>
+     *   <li>anything else — set the custom description (capped at
+     *       {@link #MAX_PET_DESCRIPTION_LENGTH} characters).</li>
+     * </ul>
+     * On a set/clear the live instance and the owner's persisted {@link PlayerPets} record are both
+     * updated so the description shows on LOOK immediately and survives logout/login and respawn. Runs
+     * on the tick thread via the owner's command queue (AGENTS.md §5).
+     *
+     * @param owner          the player describing their companion
+     * @param companionInput the target companion token (template or existing custom name)
+     * @param descriptionArg the description text, or a query/CLEAR/NONE directive as above
+     * @return result whose {@code updatedSource} is the owner with the change persisted on a
+     *         successful set/clear; a message-only result on a query; or an error with no state change
+     *         when targeting/validation fails
+     */
+    public GameActionResult describeCompanion(
+        Player owner, String companionInput, @Nullable String descriptionArg) {
+        Objects.requireNonNull(owner, "Owner is required");
+        if (companionInput == null || companionInput.isBlank()) {
+            return GameActionResult.error("Usage: DESCRIBE <companion> <description>");
+        }
+        MobInstance target = findMobByName(ownedLiveCompanions(owner.getUsername()), companionInput);
+        if (target == null) {
+            return GameActionResult.error(
+                "You have no companion called \"" + companionInput.trim() + "\".");
+        }
+        String templateId = target.template().id().getValue();
+        String customName = target.customName();
+        String arg = descriptionArg == null ? "" : descriptionArg.trim();
+
+        if (arg.isEmpty()) {
+            String current = target.customDescription();
+            if (current == null) {
+                return new GameActionResult(null, null, List.of(GameMessage.toSource(
+                    "Your " + target.displayName() + " has no custom description set. Use DESCRIBE "
+                        + companionInput.trim() + " <text> to set one.")));
+            }
+            return new GameActionResult(null, null, List.of(
+                GameMessage.toSource("Description of " + target.displayName() + ":"),
+                GameMessage.toSource("  " + current)));
+        }
+
+        if (arg.equalsIgnoreCase("CLEAR") || arg.equalsIgnoreCase("NONE")) {
+            if (target.customDescription() == null) {
+                return GameActionResult.error(
+                    "Your " + target.displayName() + " has no custom description to clear.");
+            }
+            target.setDescription(null);
+            Player updated = owner.withTamedPets(
+                owner.pets().withDescription(templateId, customName, null));
+            saveOrLog(updated);
+            return new GameActionResult(updated, null, List.of(GameMessage.toSource(
+                "Your " + target.displayName() + "'s description has been cleared.")));
+        }
+
+        if (arg.length() > MAX_PET_DESCRIPTION_LENGTH) {
+            return GameActionResult.error("That description is too long (" + arg.length()
+                + " characters); the limit is " + MAX_PET_DESCRIPTION_LENGTH + ".");
+        }
+        target.setDescription(arg);
+        Player updated = owner.withTamedPets(
+            owner.pets().withDescription(templateId, customName, arg));
+        saveOrLog(updated);
+        return new GameActionResult(updated, null, List.of(GameMessage.toSource(
+            "Your " + target.displayName() + "'s description has been set.")));
+    }
+
+    /**
+     * Resolves the LOOK-at-a-creature text for a mob matching {@code token} in {@code roomId}, used by
+     * the LOOK command when its target is not a player. When the mob is a tamed companion carrying a
+     * custom description (see the DESCRIBE command) that description is shown; otherwise a generic
+     * "nothing special" line is shown — a companion's description hint ("none set") is never shown here,
+     * only to its owner via DESCRIBE. Returns empty when no live mob in the room matches the token, so
+     * the caller can report that nothing was seen. Safe to call from the tick thread.
+     *
+     * @param roomId the room to search
+     * @param token  the target token typed by the player
+     * @return the LOOK lines to display, or empty when no mob matches
+     */
+    public Optional<List<String>> describeMobOnLook(RoomId roomId, String token) {
+        Objects.requireNonNull(roomId, "Room id is required");
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
+        }
+        String normalized = token.trim().toLowerCase(Locale.ROOT);
+        List<MobInstance> matches = getMobsInRoom(roomId).stream()
+            .filter(m -> nameMatches(m.displayName(), normalized) || nameMatches(m.template().name(), normalized))
+            .toList();
+        if (matches.isEmpty()) {
+            return Optional.empty();
+        }
+        // Several mobs in the room may match the token — e.g. a tamed companion carrying a custom
+        // description standing beside a wild mob of the same species freshly spawned at start-up.
+        // Prefer a match with a custom description so a described pet's text is shown deterministically
+        // rather than depending on the (unordered) mob-instance iteration order, which otherwise makes
+        // LOOK non-deterministic when a wild same-species mob shares the room.
+        MobInstance mob = matches.stream()
+            .filter(m -> m.customDescription() != null)
+            .findFirst()
+            .orElse(matches.get(0));
+        String description = mob.customDescription();
+        if (description != null) {
+            return Optional.of(List.of(description));
+        }
+        return Optional.of(List.of("You see nothing special about " + mob.displayName() + "."));
+    }
+
     /** Composite key pairing a tamed pet's template id and custom name for spawn deduplication. */
     private static String liveKey(String templateId, @Nullable String customName) {
         return templateId + " " + (customName == null ? "" : customName);
@@ -2139,7 +3262,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                 log.warn("Tamed pet template {} for player {} no longer exists", templateId, username);
                 continue;
             }
-            MobInstance pet = MobInstance.tamed(template, roomId, username, entry.customName());
+            MobInstance pet = MobInstance.tamed(
+                template, roomId, username, owner.getLevel(), entry.customName(),
+                entry.customDescription());
             instances.put(pet.instanceId(), pet);
         }
     }
@@ -2276,7 +3401,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         // melee swing (issue #595), so a pet can miss its foe outright or crit it for bonus damage.
         HitOutcome petOutcome = resolveMobVsMobHit(petAttack);
         if (petOutcome.hit()) {
-            int damage = petOutcome.damage();
+            // Scale the resolved hit by the owner's level (see CompanionScaling) so a high-level
+            // owner's companion hits harder than the same template obtained by a low-level owner.
+            int damage = pet.scaleCompanionDamage(petOutcome.damage());
             int remaining = foe.takeDamage(damage);
             messages.add(GameMessage.toSource(
                 petStrikeMessage(petName, foeName, damage, remaining, petOutcome.crit())));
@@ -2518,12 +3645,105 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         return candidates.get(random.roll(0, candidates.size() - 1));
     }
 
+    /**
+     * Builds the first-engagement flavour line shown to a player as a mob joins the fight against
+     * them. A {@code pack} mob reinforcing an existing fight ({@code packJoin}) gets a distinct
+     * "snarls and lunges to its packmate's defense" line so the player can tell a den has woken,
+     * rather than the generic solo-aggro lunge.
+     *
+     * @param mob      the mob entering combat
+     * @param packJoin whether this engagement is a pack mob reinforcing a room-mate's fight
+     * @return the self-facing first-engagement message
+     */
+    private String firstEngagementMessage(MobInstance mob, boolean packJoin) {
+        if (packJoin) {
+            return "Another " + mob.template().name()
+                + " snarls and lunges to its packmate's defense!";
+        }
+        return "The " + mob.template().name() + " lunges at you!";
+    }
+
+    /**
+     * Reports whether {@code mob} is a mob that would <em>not</em> initiate combat on its own but
+     * carries the {@code pack} tag, so its first engagement must be restricted to reinforcing an
+     * existing fight (see {@link #playersEngagedWithRoommates}). A mob that is inherently aggressive
+     * or belongs to a faction already initiates independently, so the pack restriction does not
+     * apply to it even when it also carries the tag.
+     *
+     * @param mob the mob under evaluation
+     * @return {@code true} when the mob may only act as a pack reinforcement this engagement
+     */
+    private boolean isPackOnlyInitiator(MobInstance mob) {
+        boolean independentInitiator = mob.template().aggressive()
+            || (reputationService != null && mob.template().factionId() != null);
+        return !independentInitiator && mob.template().hasTag(PACK_TAG);
+    }
+
+    /**
+     * Returns the players currently in {@code mob}'s room who are already engaged in combat with a
+     * different alive, non-pet mob in that same room. These are the only players a {@code pack} mob
+     * may join against: a pack mob reinforces a fight already started (by the player attacking any
+     * mob, or by an aggressive/faction room-mate), it never starts a fresh one. Runs on the tick
+     * thread over the live instance map (AGENTS.md §5).
+     *
+     * @param mob the pack mob looking for a fight to join
+     * @return the in-room players engaged with a room-mate mob, or an empty list when none
+     */
+    private List<Username> playersEngagedWithRoommates(MobInstance mob) {
+        RoomId roomId = mob.roomId();
+        Set<Username> engagedByRoommates = new HashSet<>();
+        for (MobInstance other : instances.values()) {
+            if (other.instanceId().equals(mob.instanceId()) || other.isPet() || !other.isAlive()) {
+                continue;
+            }
+            if (!other.roomId().equals(roomId)) {
+                continue;
+            }
+            engagedByRoommates.addAll(other.engagedPlayers());
+        }
+        if (engagedByRoommates.isEmpty()) {
+            return List.of();
+        }
+        return roomService.getPlayersInRoom(roomId).stream()
+            .filter(engagedByRoommates::contains)
+            .toList();
+    }
+
     private void runMobAi(MobInstance mob) {
+        // Snapshot any player-cast crowd-control lockout (issue #763) before consuming one AI decision
+        // of its duration. STUN removes the mob's action entirely this tick — mirroring a stunned
+        // player losing their turn — so it short-circuits before any targeting, flee, heal, or enrage
+        // advance and the mob never double-acts. ROOT and SILENCE let the mob keep acting but are
+        // honoured further down (flee suppressed for ROOT, special suppressed for SILENCE). The tick
+        // happens here, exactly once per AI decision, before the telegraph branch so a mob winding up a
+        // telegraphed special still burns down its control duration rather than freezing it (issue #775).
+        boolean rooted = mob.isRooted();
+        boolean silenced = mob.isSilenced();
+        boolean stunned = mob.isStunned();
+        mob.tickControl();
+        // A mob winding up a telegraphed special is fully occupied channeling: it advances the
+        // countdown (landing the deferred blow when it elapses) and takes no other action this tick. A
+        // STUN that is still in force when the wind-up would resolve interrupts it (issue #775); the
+        // snapshot taken above is passed in so the interrupt reflects the mob's state this decision.
+        if (mob.hasPendingTelegraph()) {
+            advancePendingTelegraph(mob, stunned);
+            return;
+        }
+        if (stunned) {
+            return;
+        }
         List<Username> candidates;
         Set<Username> engaged = mob.engagedPlayers();
+        boolean packJoin = false;
         if (!engaged.isEmpty()) {
             List<Username> inRoom = roomService.getPlayersInRoom(mob.roomId());
             candidates = engaged.stream().filter(inRoom::contains).toList();
+        } else if (isPackOnlyInitiator(mob)) {
+            // A pack mob with no fight of its own only reinforces an existing one: its first target
+            // must already be engaged with a different mob in the same room, never a fresh victim.
+            // Restricting the candidate set here is what keeps "pack" from behaving like "aggressive".
+            candidates = playersEngagedWithRoommates(mob);
+            packJoin = true;
         } else {
             candidates = roomService.getPlayersInRoom(mob.roomId());
         }
@@ -2531,8 +3751,15 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return;
         }
         // Before committing to an attack (and before TAUNT target selection, so an active taunter
-        // cannot pin a cornered mob), give a badly wounded mob a chance to break off and flee.
-        if (tryMobFlee(mob)) {
+        // cannot pin a cornered mob), give a badly wounded mob a chance to break off and flee — unless
+        // it is rooted (issue #763), which suppresses the #567 low-HP flee so it fights on in place.
+        if (!rooted && tryMobFlee(mob)) {
+            return;
+        }
+        // A healer-tagged mob spends this decision mending a wounded ally instead of attacking
+        // (issue #733). Placed after the telegraph and flee gates above so a healer mid-wind-up or
+        // mid-flee never also heals on the same tick.
+        if (tryMobHeal(mob)) {
             return;
         }
         Username targetUsername = selectAiTarget(mob, candidates);
@@ -2555,9 +3782,25 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             && !reputationService.isHostile(target.reputation(), mob.template().factionId())) {
             return;
         }
+        // Each sustained attack decision against an already-engaged target advances this encounter's
+        // enrage clock (issue #745), so crossing the authored threshold enrages the mob exactly once
+        // and announces it to the room. Gated on {@code !firstEngagement} so the opening swing of a
+        // fresh pull — and a pack-assist join (#617), which is always a first engagement — starts the
+        // clock rather than advancing it, and so never enrages on the same tick it joins. The
+        // telegraph, flee (#567), and healer (#733) gates above have already returned for those
+        // decisions, so a mid-wind-up, mid-flee, or heal tick never advances the clock either;
+        // telegraph wind-up ticks return in advancePendingTelegraph and likewise never count.
+        if (!firstEngagement && mob.advanceEnrage()) {
+            announceEnrage(mob);
+        }
+        // A silenced mob (issue #763) is barred from voicing its signature spell: force its basic
+        // attack regardless of specialAttackId/specialAbilityUsed, mirroring how silence blocks a
+        // player's CAST while leaving melee untouched. The special is not consumed, so it becomes
+        // available again once the silence expires.
         boolean useSpecial = mob.template().specialAttackId() != null
             && !mob.specialAbilityUsed()
-            && firstEngagement;
+            && firstEngagement
+            && !silenced;
         AttackDefinition attack = loadAttack(
             useSpecial ? mob.template().specialAttackId() : mob.template().attackId());
         if (attack == null) {
@@ -2570,7 +3813,155 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         mob.engage(targetUsername);
         playerCombatTargets.put(targetUsername, mob.instanceId());
 
-        MobAttackOutcome outcome = resolveMobAttack(attack, target);
+        // A boss's telegraphed special winds up over several AI ticks instead of landing now:
+        // announce the wind-up, defer the blow, and spend this turn channeling (no normal hit). The
+        // deferred resolution happens in advancePendingTelegraph once the window elapses.
+        if (useSpecial && attack.telegraphs()) {
+            mob.beginTelegraph(attack.id(), targetUsername, attack.telegraphTicks());
+            announceTelegraph(mob, attack, targetUsername);
+            return;
+        }
+
+        resolveMobAttackAndPublish(mob, attack, target, targetUsername, candidates, packJoin,
+            firstEngagement, useSpecial);
+    }
+
+    /**
+     * Announces to everyone in the mob's room that it has just enraged (issue #745), telegraphing the
+     * stepped-up danger so a drawn-out boss fight visibly turns rather than silently doing more damage.
+     * Called exactly once per encounter, on the AI decision that crosses the mob's
+     * {@link MobTemplate#enrageTicks()} threshold. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the mob that has just enraged
+     */
+    private void announceEnrage(MobInstance mob) {
+        String name = mob.template().name();
+        // Boss names are authored lower-case-"the"-prefixed ("the Fermata"); render a natural
+        // sentence-initial subject ("The Fermata") rather than a doubled "The the Fermata".
+        String subject = name.regionMatches(true, 0, "the ", 0, 4)
+            ? "The " + name.substring(4)
+            : "The " + name;
+        broadcastToRoom(mob.roomId(), subject + "'s eyes blaze with fury — it grows enraged!");
+    }
+
+    /**
+     * Gives a healer-tagged mob (see {@link HealerProfile}) the chance to mend a wounded ally instead
+     * of attacking this AI decision (issue #733). When the mob carries a healer profile and a
+     * different alive, non-pet mob in its room is wounded at or below the authored threshold (and not
+     * already at full HP), the healer restores a seeded {@code [healMin, healMax]} roll to the
+     * most-wounded such ally (clamped to that ally's max HP) and announces it to the room, spending
+     * this decision on the heal. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob the mob taking its AI decision
+     * @return {@code true} when the mob healed an ally this decision (and must not also attack);
+     *         {@code false} when it is not a healer or no ally needs healing (it attacks normally)
+     */
+    private boolean tryMobHeal(MobInstance mob) {
+        HealerProfile profile = mob.template().healerProfile();
+        if (profile == null) {
+            return false;
+        }
+        MobInstance ally = selectHealTarget(mob, profile);
+        if (ally == null) {
+            return false;
+        }
+        int amount = random.roll(profile.healMin(), profile.healMax());
+        ally.heal(amount);
+        String message = "The " + mob.template().name() + " chants over the "
+            + ally.template().name() + "'s wounds — it looks steadier!";
+        broadcastToRoom(mob.roomId(), message);
+        return true;
+    }
+
+    /**
+     * Selects the ally a healer mob should mend this decision: the most-wounded (lowest HP ratio)
+     * different, alive, non-pet mob in the healer's room whose current HP is at or below the profile's
+     * {@link HealerProfile#thresholdPercent()} of its maximum and is not already full. Ties are broken
+     * deterministically by lower absolute current HP, then by instance id, so the choice never depends
+     * on room iteration order. Returns {@code null} when no ally qualifies.
+     *
+     * @param healer  the healer mob
+     * @param profile the healer's profile supplying the wounded threshold
+     * @return the ally to heal, or {@code null} when none is wounded enough
+     */
+    @Nullable
+    private MobInstance selectHealTarget(MobInstance healer, HealerProfile profile) {
+        MobInstance best = null;
+        for (MobInstance ally : getMobsInRoom(healer.roomId())) {
+            if (ally.instanceId().equals(healer.instanceId()) || ally.isPet()) {
+                continue;
+            }
+            int max = ally.maxHp();
+            int current = ally.currentHp();
+            if (current >= max) {
+                continue;
+            }
+            if ((long) current * 100 > (long) profile.thresholdPercent() * max) {
+                continue;
+            }
+            if (best == null || isMoreWounded(ally, best)) {
+                best = ally;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Deterministic "more wounded" ordering used to pick a healer's target: a lower current/max HP
+     * ratio wins; ties break on lower absolute current HP, then on instance id.
+     *
+     * @param candidate the mob being considered
+     * @param incumbent the current best (most-wounded-so-far) mob
+     * @return {@code true} when {@code candidate} is more wounded than {@code incumbent}
+     */
+    private static boolean isMoreWounded(MobInstance candidate, MobInstance incumbent) {
+        long lhs = (long) candidate.currentHp() * incumbent.maxHp();
+        long rhs = (long) incumbent.currentHp() * candidate.maxHp();
+        if (lhs != rhs) {
+            return lhs < rhs;
+        }
+        if (candidate.currentHp() != incumbent.currentHp()) {
+            return candidate.currentHp() < incumbent.currentHp();
+        }
+        return candidate.instanceId().compareTo(incumbent.instanceId()) < 0;
+    }
+
+    /**
+     * Publishes a message to every player in the given room. Unlike {@link #broadcastToRoomExcept},
+     * no occupant is excluded — used for mob-only actions such as a healer mending an ally where the
+     * event is equally relevant to every onlooker. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param roomId  the room whose occupants receive the message
+     * @param message the line to send
+     */
+    private void broadcastToRoom(RoomId roomId, String message) {
+        for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+            playerEventBus.publish(occupant,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(message))));
+        }
+    }
+
+    /**
+     * Resolves a mob's attack against its target through the shared hit/crit/parry/block pipeline
+     * ({@link #resolveMobAttack}) and publishes the resulting messages, mount throw, on-hit effect,
+     * gear degradation, and any kill rewards. Shared by the immediate {@link #runMobAi} attack path and
+     * the deferred telegraph resolution ({@link #advancePendingTelegraph}) so a telegraphed special
+     * lands with outcomes identical to an instant one — only the timing differs. Runs on the tick
+     * thread (AGENTS.md §5).
+     *
+     * @param mob             the attacking mob
+     * @param attack          the resolved attack definition
+     * @param target          the current player snapshot being attacked
+     * @param targetUsername  the target's username
+     * @param candidates      the engaged players present in the mob's room (kill routing and AoE effects)
+     * @param packJoin        whether this engagement is a pack reinforcement (affects the first-engagement line)
+     * @param firstEngagement whether this is the target's first engagement with the mob this encounter
+     * @param useSpecial      whether this attack is the mob's special ability rather than its basic attack
+     */
+    private void resolveMobAttackAndPublish(
+        MobInstance mob, AttackDefinition attack, Player target, Username targetUsername,
+        List<Username> candidates, boolean packJoin, boolean firstEngagement, boolean useSpecial) {
+        MobAttackOutcome outcome = resolveMobAttack(attack, target, mob);
         if (!outcome.hit()) {
             // A miss deals no damage, wears no gear, and applies no on-hit effect. The player may
             // still be drawn into the fight — thrown from a mount and shown the first-engagement
@@ -2586,8 +3977,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
             }
             if (firstEngagement && !useSpecial) {
-                messages.add(GameMessage.toSource(
-                    "The " + mob.template().name() + " lunges at you!"));
+                messages.add(GameMessage.toSource(firstEngagementMessage(mob, packJoin)));
             }
             messages.add(GameMessage.toSource(
                 mobAttackMessage(mob, attack, MessagePhase.ATTACK_MISS, useSpecial, 0,
@@ -2598,6 +3988,41 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (playerChanged) {
                 saveOrLog(missedPlayer);
             }
+            playerEventBus.publish(targetUsername,
+                new GameActionResult(publishedSource, null, messages));
+            return;
+        }
+
+        if (outcome.parried()) {
+            // The player parried the mob's melee swing: they take zero damage and riposte the mob with
+            // their mainhand weapon. Being drawn into combat still throws a rider from their mount and
+            // shows the first-engagement lunge, mirroring a landing hit's non-damage side effects.
+            List<GameMessage> messages = new ArrayList<>();
+            Player parriedPlayer = target;
+            boolean playerChanged = false;
+            if (parriedPlayer.isMounted()) {
+                String mountName = parriedPlayer.mount().mountName();
+                parriedPlayer = parriedPlayer.withMount(PlayerMount.dismounted());
+                playerChanged = true;
+                messages.add(GameMessage.toSource(
+                    "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
+            }
+            if (firstEngagement && !useSpecial) {
+                messages.add(GameMessage.toSource(firstEngagementMessage(mob, packJoin)));
+            }
+            int riposteDamage = outcome.riposteDamage();
+            int remaining = mob.takeDamage(riposteDamage);
+            messages.add(GameMessage.toSource(playerParryMessage(mob, riposteDamage, remaining)));
+            if (!mob.isAlive()) {
+                // A riposte can slay the mob outright — award the kill in memory so any mount change is
+                // preserved through the reward path, exactly as a normal player kill would.
+                parriedPlayer = applyMobKillRewards(mob, parriedPlayer, mob.roomId(), messages);
+                playerChanged = true;
+            }
+            if (playerChanged) {
+                saveOrLog(parriedPlayer);
+            }
+            Player publishedSource = playerChanged ? parriedPlayer : null;
             playerEventBus.publish(targetUsername,
                 new GameActionResult(publishedSource, null, messages));
             return;
@@ -2618,8 +4043,7 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
                     "The " + mob.template().name() + "'s assault throws you from " + mountName + "!"));
             }
             if (firstEngagement && !useSpecial) {
-                messages.add(GameMessage.toSource(
-                    "The " + mob.template().name() + " lunges at you!"));
+                messages.add(GameMessage.toSource(firstEngagementMessage(mob, packJoin)));
             }
             MessagePhase phase = outcome.blocked() ? MessagePhase.ATTACK_BLOCK : MessagePhase.ATTACK_HIT;
             messages.add(GameMessage.toSource(
@@ -2631,6 +4055,128 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             playerEventBus.publish(targetUsername,
                 new GameActionResult(damagedPlayer, null, messages));
         }
+    }
+
+    /**
+     * Advances a mob's pending telegraphed special attack by one AI decision. If the target has
+     * disengaged, fled the room, or died before the blow lands the telegraph is cancelled with no
+     * damage (mirroring the {@link MobInstance#specialAbilityUsed()} reset-on-disengage logic).
+     * Otherwise the wind-up counter is decremented; while it is still counting down the mob keeps
+     * channeling and does nothing else, and when it elapses the deferred special resolves through the
+     * shared {@link #resolveMobAttackAndPublish} pipeline with outcomes identical to an instant-fire
+     * version.
+     *
+     * <p>A {@link ControlType#STUN} landed on the mob (issue #775) interrupts the channel: when the
+     * wind-up would otherwise resolve and the mob is still stunned this decision, the special is
+     * cancelled with no damage and the interruption is announced to the room. Because the control
+     * duration ticks down every AI decision — including the wind-up ticks (see {@link #runMobAi}) — a
+     * stun that expires before the wind-up completes lets the deferred blow still land, while ROOT and
+     * SILENCE (which never set {@code stunned}) leave the wind-up untouched. Runs on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param mob     the mob winding up a telegraphed special (must have a pending telegraph)
+     * @param stunned whether the mob was stunned at the start of this AI decision (snapshot in
+     *                {@link #runMobAi} before the control tick), used to interrupt the wind-up on resolve
+     */
+    private void advancePendingTelegraph(MobInstance mob, boolean stunned) {
+        Username targetUsername = mob.telegraphTarget();
+        AttackId attackId = mob.telegraphAttackId();
+        Player target =
+            targetUsername == null ? null : playerRepository.loadPlayer(targetUsername).orElse(null);
+        boolean targetValid = target != null && !target.isDead() && targetUsername != null
+            && mob.engagedPlayers().contains(targetUsername)
+            && roomService.getPlayersInRoom(mob.roomId()).contains(targetUsername);
+        if (attackId == null || !targetValid) {
+            mob.clearTelegraph();
+            return;
+        }
+        if (!mob.tickTelegraph()) {
+            // Still winding up — the mob is fully occupied channeling this tick.
+            return;
+        }
+        // The wind-up has elapsed. If a hard STUN is still locking the mob down this decision it never
+        // gets the blow off: the channel is interrupted, the special is cancelled with no damage, and
+        // the room is told (issue #775). tickTelegraph already cleared the pending state.
+        if (stunned) {
+            announceTelegraphInterrupt(mob, attackId);
+            return;
+        }
+        AttackDefinition attack = loadAttack(attackId);
+        if (attack == null) {
+            return;
+        }
+        List<Username> candidates = roomService.getPlayersInRoom(mob.roomId()).stream()
+            .filter(mob.engagedPlayers()::contains)
+            .toList();
+        resolveMobAttackAndPublish(mob, attack, target, targetUsername, candidates, false, false, true);
+    }
+
+    /**
+     * Announces the wind-up of a telegraphed special attack: renders the attack's
+     * {@link MessagePhase#TELEGRAPH} message on the {@link MessageChannel#SELF} channel to the target
+     * and on the {@link MessageChannel#ROOM} channel to the rest of the room, falling back to a generic
+     * warning line when the attack authors none. This is the fair warning that lets a player flee, heal,
+     * or pop a defensive cooldown before the blow lands. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob            the mob beginning its wind-up
+     * @param attack         the telegraphed special attack
+     * @param targetUsername the player the telegraphed attack is aimed at
+     */
+    private void announceTelegraph(MobInstance mob, AttackDefinition attack, Username targetUsername) {
+        String selfMessage = telegraphMessage(mob, attack, MessageChannel.SELF);
+        if (selfMessage != null) {
+            playerEventBus.publish(targetUsername,
+                new GameActionResult(null, null, List.of(GameMessage.toSource(selfMessage))));
+        }
+        String roomMessage = telegraphMessage(mob, attack, MessageChannel.ROOM);
+        if (roomMessage != null) {
+            broadcastToRoomExcept(mob.roomId(), targetUsername, roomMessage);
+        }
+    }
+
+    /**
+     * Announces to everyone in the mob's room — the telegraph target included — that a well-timed STUN
+     * has interrupted a telegraphed special mid-wind-up, so the cancelled blow reads as a clear payoff
+     * rather than a silent no-op (issue #775). The attack name is resolved from {@code attackId} because
+     * {@link MobInstance#tickTelegraph()} has already cleared the pending telegraph state by this point.
+     * Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param mob      the mob whose wind-up was interrupted
+     * @param attackId the special attack that was cancelled, used to name it in the announcement
+     */
+    private void announceTelegraphInterrupt(MobInstance mob, AttackId attackId) {
+        AttackDefinition attack = loadAttack(attackId);
+        String attackName = attack != null ? attack.name() : "its attack";
+        broadcastToRoom(mob.roomId(),
+            "The " + mob.template().name() + "'s " + attackName + " is interrupted!");
+    }
+
+    /**
+     * Renders an attack's authored {@link MessagePhase#TELEGRAPH} message for the given channel, or a
+     * generic wind-up warning when the attack authors none.
+     *
+     * @param mob     the mob winding up the attack
+     * @param attack  the telegraphed attack
+     * @param channel the message channel to render (SELF for the target, ROOM for onlookers)
+     * @return the rendered telegraph line, or {@code null} when nothing should be shown on this channel
+     */
+    @Nullable
+    private String telegraphMessage(MobInstance mob, AttackDefinition attack, MessageChannel channel) {
+        for (MessageSpec spec : attack.messages()) {
+            if (spec.phase() == MessagePhase.TELEGRAPH && spec.channel() == channel) {
+                MessageContext context = new MessageContext(
+                    null, null, mob.template().name(), null, null, null, attack.name(), 0);
+                String rendered = messageRenderer.render(spec, context);
+                if (rendered != null && !rendered.isBlank()) {
+                    return rendered;
+                }
+            }
+        }
+        return switch (channel) {
+            case SELF, ROOM ->
+                "The " + mob.template().name() + " begins winding up " + attack.name() + "!";
+            default -> null;
+        };
     }
 
     /**
@@ -2797,6 +4343,26 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (!outcome.hit()) {
                 messages.add(GameMessage.toSource(playerMissMessage(mob)));
                 playerEventBus.publish(username, new GameActionResult(null, null, messages));
+                continue;
+            }
+            // A defensively-trained mob may parry this auto-attack swing: the player deals zero damage
+            // and the mob ripostes with its own attack, symmetric to the player-side parry on the mob's
+            // swing (resolveMobAttack). Melee-only; a non-parrying mob never rolls (resolveMobParry).
+            MobParryOutcome parry = resolveMobParry(mob);
+            if (parry.parried()) {
+                int playerMaxHp = player.getVitals().getMaxHp();
+                messages.add(GameMessage.toSource(
+                    mobParryMessage(mob, parry.riposteAttack(), parry.riposteDamage(), playerMaxHp)));
+                broadcastMobParry(mob, username, parry.riposteAttack(),
+                    parry.riposteDamage(), playerRoom);
+                Player damaged = player.withVitals(player.getVitals().damage(parry.riposteDamage()));
+                if (damaged.getVitals().hp() <= 0) {
+                    playerEventBus.publish(username, new GameActionResult(null, null, messages));
+                    handleMobKill(mob, damaged, roomService.getPlayersInRoom(playerRoom));
+                    continue;
+                }
+                saveOrLog(damaged);
+                playerEventBus.publish(username, new GameActionResult(damaged, null, messages));
                 continue;
             }
             int damage = outcome.damage();

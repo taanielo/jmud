@@ -228,6 +228,102 @@ class PartyServiceTest {
         assertFalse(result.success());
     }
 
+    // ── KICK ──────────────────────────────────────────────────────────
+
+    @Test
+    void kick_leaderRemovesMember() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+
+        PartyResult result = partyService.kick(ALICE, BOB);
+
+        assertTrue(result.success());
+        assertFalse(partyService.findParty(BOB).isPresent());
+        Optional<Party> party = partyService.findParty(ALICE);
+        assertTrue(party.isPresent());
+        assertEquals(List.of(ALICE, CAROL), party.get().memberIds());
+        assertEquals(ALICE, party.get().leaderId());
+    }
+
+    @Test
+    void kick_clearsFollowRelationshipOfKickedMember() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+        partyService.follow(BOB, ALICE, true);
+
+        partyService.kick(ALICE, BOB);
+
+        assertTrue(partyService.leaderOf(BOB).isEmpty());
+    }
+
+    @Test
+    void kick_failsWhenCallerIsNotLeader() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+        partyService.invite(ALICE, CAROL, true);
+        partyService.accept(CAROL);
+
+        PartyResult result = partyService.kick(BOB, CAROL);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("leader"));
+        assertTrue(partyService.findParty(CAROL).isPresent());
+    }
+
+    @Test
+    void kick_failsWhenTargetIsSelf() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+
+        PartyResult result = partyService.kick(ALICE, ALICE);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("cannot kick yourself"));
+        assertTrue(partyService.findParty(ALICE).isPresent());
+    }
+
+    @Test
+    void kick_downToOneMemberDisbandsParty() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+
+        PartyResult result = partyService.kick(ALICE, BOB);
+
+        assertTrue(result.success());
+        assertTrue(result.message().contains("disbanded"));
+        assertFalse(partyService.findParty(ALICE).isPresent());
+        assertFalse(partyService.findParty(BOB).isPresent());
+    }
+
+    @Test
+    void kick_failsWhenTargetNotAMember() {
+        partyService.form(ALICE);
+        partyService.invite(ALICE, BOB, true);
+        partyService.accept(BOB);
+
+        PartyResult result = partyService.kick(ALICE, CAROL);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("not a member of your party"));
+    }
+
+    @Test
+    void kick_failsWhenCallerNotInParty() {
+        PartyResult result = partyService.kick(ALICE, BOB);
+
+        assertFalse(result.success());
+        assertTrue(result.message().contains("not in a party"));
+    }
+
     // ── XP SPLIT (getPartyMembersInRoom) ──────────────────────────────
 
     @Test

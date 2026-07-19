@@ -1,0 +1,14 @@
+{
+  "schema_version": 15,
+  "id": "resolved-overtone",
+  "name": "a resolved overtone",
+  "description": "A single released overtone caught at the instant of its resolution and somehow kept from ending — a bead of the higher voice that lifts loose from a struck note as it decays, drawn out of the Coda's closing chord and held in a lattice of finished cold that rings one last unhurried tone against the palm, always a hair short of the silence it is falling toward and never quite reaching it. It is rarer than a mote of underhum resonance and stranger than a splinter of held breath: where the mote rings a note that outlasts silence and the splinter holds a stillness that outlasts sound, this is the resolution itself, the released ending of the world's oldest chord, kept from completing so that a hand might work it before it decays to nothing. Bonewrights and rune-singers speak of it in the hushed way of people naming a thing they are not sure should exist, certain it could be worked into a ward that ends every blow the way a chord ends a phrase, or an edge that resolves whatever it strikes — but only by a hand willing to let a little of itself resolve along with the note it means to shape.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 220,
+  "rarity": "epic"
+}

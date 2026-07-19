@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "tailoring-silkweave-gloves",
+  "name": "Silkweave Gloves",
+  "output_item": "silkweave-gloves",
+  "gold_cost": 25,
+  "materials": [
+    { "item": "spider-silk", "quantity": 2 }
+  ]
+}

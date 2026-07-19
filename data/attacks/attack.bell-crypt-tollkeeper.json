@@ -1,0 +1,28 @@
+{
+  "schema_version": 5,
+  "id": "attack.bell-crypt-tollkeeper",
+  "name": "a tolling blow",
+  "min_damage": 48,
+  "max_damage": 68,
+  "hit_bonus": 6,
+  "crit_bonus": 5,
+  "damage_bonus": 13,
+  "weapon_type": "BLUNT",
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The tollkeeper swings a great fused cluster of skull-bells at you on its braided cord, and it tolls once, deep and final, as it slams into you. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The tollkeeper hauls a booming skull-bell round at your head and you drop under it as it tolls through the empty air where you stood."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The tollkeeper catches you between two swinging clusters and they toll together through you, and for a heartbeat you are the clapper of the whole crypt! The blow {verb} you!"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "id": "spell.doom",
+  "name": "doom",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 13,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "cast_time_ticks": 2,
+  "targeting": "AoE",
+  "aliases": ["doom", "curse-of-doom", "dread"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "doomed"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You speak a word of doom and a shroud of dread settles over every foe around you, sapping their strength and their aim as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} speaks a word of doom, and a shroud of dread settles over every foe in the room as they cast {ability}!"
+    }
+  ]
+}

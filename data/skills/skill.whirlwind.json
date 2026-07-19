@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "skill.whirlwind",
+  "name": "whirlwind",
+  "type": "SKILL",
+  "level": 60,
+  "cost": {
+    "mana": 10,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "AoE",
+  "aliases": ["ww", "spin", "whirl"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 13
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You plant your feet and spin into a whirlwind of steel, your blade shearing across every foe as you unleash {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} spins into a whirlwind of steel, their blade carving across every foe as they unleash {ability}!"
+    }
+  ]
+}

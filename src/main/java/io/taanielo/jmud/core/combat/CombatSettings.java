@@ -28,6 +28,18 @@ public final class CombatSettings {
      */
     public static final int MAX_HIT_CHANCE = 95;
 
+    /**
+     * Lower bound applied to a defender's resolved parry chance. Held at {@code 0} so a baseline-agility
+     * defender never parries, leaving all-baseline fights (and their RNG streams) numerically unchanged.
+     */
+    public static final int MIN_PARRY_CHANCE = 0;
+
+    /**
+     * Upper bound applied to a defender's resolved parry chance, so agility investment tops out at a
+     * meaningful-but-not-dominant chance to fully avoid an incoming melee hit and riposte.
+     */
+    public static final int MAX_PARRY_CHANCE = 25;
+
     private static final GameConfig CONFIG = GameConfig.load();
 
     private CombatSettings() {

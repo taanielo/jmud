@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "voidscar-quartermaster-welcome",
+  "npc_id": "voidscar-quartermaster",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Most who reach the rift's edge have no wish to go down it again without supplies. Wise. I hold the last forge before the dark. What do you need?",
+      "responses": [
+        { "text": "Can you repair my gear?", "target": "repair" },
+        { "text": "What do you carry?", "target": "wares" },
+        { "text": "Nothing yet.", "target": "end" }
+      ]
+    },
+    "repair": {
+      "text": "The cold below gnaws at steel as surely as it does at courage. Bring me your battered gear and I'll set it right, forge you something new, or salvage what's past saving.",
+      "responses": [
+        { "text": "And your stock?", "target": "wares" },
+        { "text": "Understood.", "target": "end" }
+      ]
+    },
+    "wares": {
+      "text": "Potions, cure-draughts, elixirs of vigor, and lantern-oil above all — the Voidscar eats light. LIST and stock up before you descend.",
+      "responses": [
+        { "text": "About that repair...", "target": "repair" },
+        { "text": "Thanks.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Mind the dark. It minds you.",
+      "responses": []
+    }
+  }
+}

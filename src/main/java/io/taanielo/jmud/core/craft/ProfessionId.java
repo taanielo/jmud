@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.craft;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -23,6 +24,19 @@ public record ProfessionId(String value) {
     public static final ProfessionId COOKING = new ProfessionId("cooking");
     /** The enchanting profession backing the {@code ENCHANT} command. */
     public static final ProfessionId ENCHANTING = new ProfessionId("enchanting");
+    /** The leatherworking profession backing the {@code TAN} command. */
+    public static final ProfessionId LEATHERWORKING = new ProfessionId("leatherworking");
+    /** The jewelcrafting profession backing the {@code CUT} command. */
+    public static final ProfessionId JEWELCRAFTING = new ProfessionId("jewelcrafting");
+    /** The tailoring profession backing the {@code SEW} command. */
+    public static final ProfessionId TAILORING = new ProfessionId("tailoring");
+
+    /**
+     * All professions known to the game, in a stable display order. New professions must be appended
+     * here so read-only surfaces (e.g. {@code SCORE}) pick them up without further edits.
+     */
+    private static final List<ProfessionId> KNOWN = List.of(
+        BLACKSMITHING, ALCHEMY, COOKING, ENCHANTING, LEATHERWORKING, JEWELCRAFTING, TAILORING);
 
     public ProfessionId {
         Objects.requireNonNull(value, "Profession id is required");
@@ -40,5 +54,14 @@ public record ProfessionId(String value) {
     public static ProfessionId of(String value) {
         return new ProfessionId(Objects.requireNonNull(value, "Profession id is required")
             .trim().toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Returns all professions known to the game, in a stable display order.
+     *
+     * @return an immutable list of every known profession id
+     */
+    public static List<ProfessionId> known() {
+        return KNOWN;
     }
 }

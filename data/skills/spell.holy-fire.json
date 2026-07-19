@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "id": "spell.holy-fire",
+  "name": "holy fire",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 13
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["holyfire", "brand", "consecrate"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 6,
+      "damage_type": "FIRE"
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "holy-fire"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You brand {target} with a pillar of holy fire that clings and keeps burning, searing them long after the strike."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} brands you with a pillar of holy fire that clings to your flesh and will not go out!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} brands {target} with a clinging pillar of holy fire."
+    }
+  ]
+}

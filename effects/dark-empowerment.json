@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "dark-empowerment",
+  "name": "Dark Empowerment",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "crit_chance",
+      "op": "add",
+      "amount": 4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Necrotic power floods into you and your servants, quickening every strike with dark hunger."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Necrotic power floods into {name}, wreathing them in dark hunger."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The borrowed necrotic power ebbs out of you and your minions."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The necrotic power wreathing {name} ebbs away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wreathed in hungering necrotic power that sharpens every strike."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 8,
+  "id": "coda-overtone-hall",
+  "name": "The Hall of Loosed Overtones",
+  "description": "The threshold opens into a vast resonant hall where all the overtones the music kept locked inside its held notes are finally coming free. Where the Interval was a place of poised, arrested stillness, this is the opposite motion made visible: the released ring of a struck thing spreading outward in slow bright rings, the higher voices that live above every sounded note lifting loose one after another now that the note is at last permitted to decay. The air is full of them, faint overlapping tones climbing and thinning and letting go, and the cold that carries them no longer holds anything back — it simply moves, unhurried, the way sound moves through a hall built to let it die beautifully. This is the body of the ending, the space a chord fills in the instant after it is struck for the last time, when everything it was is spreading out and coming apart into its own overtones. Your heartbeat is one more voice among the loosed ring here, and for the first time in the whole descent nothing reaches to seize it; the place has no need to borrow your rhythm, because it is not waiting to begin. It is ending, and it is taking you with it toward the close. Passages break the ringing walls east and west, and at the hall's far end the floor falls away toward a final measure, and past that, the resolving chord.",
+  "item_ids": [],
+  "exits": {
+    "up": "coda-threshold",
+    "east": "coda-falling-stroke",
+    "west": "coda-last-silence",
+    "down": "coda-final-measure"
+  },
+  "min_level": 81,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A single overtone lifts loose from the ringing air, climbs impossibly high and thin, and lets go, and the whole hall seems to exhale after it.",
+    "The slow bright rings of a released note spread out across the floor, pass through you without seizing anything, and thin away into the cold.",
+    "For a moment the loosed voices overlap into something almost like a chord, then drift apart again, each one taking its own unhurried time to end."
+  ]
+}

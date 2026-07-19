@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.hammer-of-justice",
+  "name": "hammer of justice",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 14
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["hammer", "hoj", "justice"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 9
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "hammer-of-justice"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a hammer of holy force that slams into {target} and leaves them reeling and stunned."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls down a hammer of holy force that slams into you and leaves you reeling and stunned!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls down a hammer of holy force that hammers {target} to their knees."
+    }
+  ]
+}

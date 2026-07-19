@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.meteor-swarm",
+  "name": "meteor swarm",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 14,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "cast_time_ticks": 2,
+  "targeting": "AoE",
+  "aliases": ["meteor", "meteorswarm", "swarm"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 13,
+      "damage_type": "FIRE"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You tear open the sky and call down a rain of blazing meteors that hammer every foe around you as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "The sky splits above {source} and a rain of blazing meteors hammers every foe in the room as they cast {ability}!"
+    }
+  ]
+}

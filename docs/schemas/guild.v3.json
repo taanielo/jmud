@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:guild:v3",
+  "title": "Guild (v3)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "leader_id",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Persisted guild schema version. Version 3 adds the additive lifetime-deposit counter (lifetime_deposited_gold) that drives the guild's level and level-scaled vault capacity; v1/v2 files load unchanged with a lifetime total of 0 (guild level 1).",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque, stable guild id (a UUID). Independent of the display name and used as the file name."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "description": "Unique (case-insensitive) display name shown as the WHO tag."
+    },
+    "leader_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Username of the current guild leader; must also appear in members with rank LEADER."
+    },
+    "members": {
+      "type": "array",
+      "description": "The guild roster, in no particular order; ordering for display is derived from join_order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "rank",
+          "join_order"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rank": {
+            "type": "string",
+            "enum": ["LEADER", "OFFICER", "MEMBER"]
+          },
+          "join_order": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Monotonically increasing sequence number; lower means longer-tenured. Used to pick a successor leader when the leader departs."
+          }
+        }
+      }
+    },
+    "treasury_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Shared guild treasury balance. Optional and additive: files written before this field existed load with a treasury of 0. Members deposit via GUILD DEPOSIT; only the leader withdraws via GUILD WITHDRAW."
+    },
+    "vaulted_items": {
+      "type": "array",
+      "default": [],
+      "description": "Shared guild item vault. Optional and additive: files written before this field existed (schema_version 1) load with an empty vault. Any member deposits via GUILD STORE; only the leader or an officer claims via GUILD CLAIM. Items are moved, never copied. Capped at the guild's level-scaled vault capacity (see lifetime_deposited_gold).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "depositor"
+        ],
+        "properties": {
+          "item": {
+            "type": "object",
+            "description": "The stored item in its persisted DTO form (see the item schema, e.g. docs/schemas/item.v11.json)."
+          },
+          "depositor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Username of the member who deposited the item."
+          }
+        }
+      }
+    },
+    "lifetime_deposited_gold": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Running total of every gold piece ever deposited into the treasury via GUILD DEPOSIT over the guild's whole lifetime. Only ever increases (GUILD WITHDRAW never reduces it). Drives the guild level (1-5) on fixed thresholds — 0/500/2,000/5,000/15,000 — which in turn scales the shared vault capacity (40/50/60/70/80 slots). Optional and additive: files written before this field existed (schema_version 1 or 2) load with a total of 0, i.e. guild level 1."
+    }
+  }
+}

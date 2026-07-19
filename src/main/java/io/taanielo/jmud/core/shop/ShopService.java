@@ -282,4 +282,61 @@ public class ShopService {
             updated
         );
     }
+
+    /**
+     * Sells every item in the player's inventory to the shop in one batch (the {@code SELL ALL}
+     * form), optionally narrowed to items whose name contains {@code keyword}. Each item is paid out
+     * at the shop's sell ratio using the same {@link #adjustedSellValue} pricing as single-item
+     * {@link #sell}, then the whole sweep is folded into one updated {@link Player} (inventory
+     * cleared of the sold items, gold increased by the total) and a single summarized message.
+     *
+     * <p>Only the player's unequipped {@link Player#getInventory()} is considered — equipped gear is
+     * never touched. Like the rest of this service, this is a pure function over the immutable
+     * {@link Player} value; the caller applies the returned copy on the tick thread (AGENTS.md §5).
+     *
+     * @param player  the selling player
+     * @param shop    the shop being visited
+     * @param keyword optional case-insensitive substring to restrict which inventory items are sold;
+     *                {@code null} or blank sells the whole inventory
+     * @return a success carrying the updated player and summary line, or a failure (unchanged player)
+     *         when there is nothing to sell
+     */
+    public ShopTransactionResult sellAll(Player player, Shop shop, @Nullable String keyword) {
+        Objects.requireNonNull(player, "player is required");
+        Objects.requireNonNull(shop, "shop is required");
+        String filter = keyword == null ? null : keyword.trim().toLowerCase(Locale.ROOT);
+        boolean hasFilter = filter != null && !filter.isEmpty();
+
+        List<Item> toSell = new ArrayList<>();
+        for (Item invItem : player.getInventory()) {
+            if (hasFilter && !invItem.getName().toLowerCase(Locale.ROOT).contains(filter)) {
+                continue;
+            }
+            toSell.add(invItem);
+        }
+
+        if (toSell.isEmpty()) {
+            if (hasFilter) {
+                return ShopTransactionResult.failure(
+                    "You have nothing matching '" + keyword.trim() + "' to sell.");
+            }
+            return ShopTransactionResult.failure("You have nothing to sell.");
+        }
+
+        int total = 0;
+        Player updated = player;
+        for (Item item : toSell) {
+            int earned = adjustedSellValue((int) Math.floor(item.getValue() * shop.sellRatio()), player, shop);
+            total += earned;
+            updated = updated.removeItem(item);
+        }
+        updated = updated.addGold(total);
+
+        String noun = toSell.size() == 1 ? " item" : " items";
+        return ShopTransactionResult.success(
+            "You sell " + toSell.size() + noun + " to the shopkeeper for " + total + " gold. "
+                + "You now have " + updated.getGold() + " gold.",
+            updated
+        );
+    }
 }

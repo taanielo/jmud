@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.coda-last-silence-wisp",
+  "name": "a swallowing quiet",
+  "min_damage": 78,
+  "max_damage": 106,
+  "hit_bonus": 12,
+  "crit_bonus": 9,
+  "damage_bonus": 19,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 64
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The last-silence wisp folds the quiet that comes after the final note around your throat, and the swallowing stillness of it drives in cold and total, hungry for the one pulse still sounding in all that finished silence. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The last-silence wisp reaches its swallowing quiet toward you and the finished cold gathers to close, and you keep your heartbeat moving and slip through the stillness before it can settle around you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The last-silence wisp wraps the whole of its finished quiet around your single pulse at once, and the swallowing cold drives so deep that for one drowning instant even the sound of your own blood seems about to be taken into the silence! The blow {verb} you!"
+    }
+  ]
+}

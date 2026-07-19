@@ -47,6 +47,7 @@ import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
+import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.messaging.MessageContext;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.party.PartyService;
@@ -73,7 +74,11 @@ import io.taanielo.jmud.core.world.ItemIdentificationService;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.Area;
 import io.taanielo.jmud.core.world.area.AreaMapService;
+import io.taanielo.jmud.core.world.area.AreaWaypointService;
+import io.taanielo.jmud.core.world.area.CorpseLocatorService;
+import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
 /**
@@ -136,6 +141,13 @@ public class GameActionService {
      */
     private DuelService duelService = new DuelService();
     /**
+     * Optional guild-war scorer, consulted when a duel resolves so a win between members of two warring
+     * guilds awards a war point to the winner's guild (issue #731). {@code null} until the composition
+     * root wires the shared instance via {@link #setGuildWarService(GuildWarService)}; while absent,
+     * duels resolve exactly as before with no guild-war side effect.
+     */
+    private @Nullable GuildWarService guildWarService;
+    /**
      * Shared party registry, used by {@link #resurrect} to confirm the caster and their target
      * belong to the same party. {@code null} until the composition root wires the shared instance via
      * {@link #setPartyService(PartyService)}; while absent, resurrection rejects every target.
@@ -167,6 +179,27 @@ public class GameActionService {
      * while absent, reading a map reports that its markings cannot be made out.
      */
     private @Nullable AreaMapService areaMapService;
+    /**
+     * Optional resolver of area waypoints, used by {@link #bind} to check whether a player is standing
+     * in a zone's entrance room. {@code null} until the composition root wires it via
+     * {@link #setAreaWaypointService(AreaWaypointService)}; while absent, BIND reports that binding is
+     * unavailable.
+     */
+    private @Nullable AreaWaypointService areaWaypointService;
+    /**
+     * Optional wayfinding service, used by {@link #wayfind} to resolve a destination area and compute
+     * turn-by-turn directions to it. {@code null} until the composition root wires it via
+     * {@link #setWayfindService(WayfindService)}; while absent, WAYFIND reports that the player cannot
+     * get their bearings.
+     */
+    private @Nullable WayfindService wayfindService;
+    /**
+     * Optional corpse-locator service, used by {@link #corpse} to report where a fallen player's
+     * remains lie and route them back. {@code null} until the composition root wires it via
+     * {@link #setCorpseLocatorService(CorpseLocatorService)}; while absent, CORPSE reports that the
+     * player cannot sense their corpse.
+     */
+    private @Nullable CorpseLocatorService corpseLocatorService;
     private final MessageEmitter messageEmitter = new MessageEmitter();
     private final ItemIdentificationService identificationService = new ItemIdentificationService();
     private final AtomicLong scrollCounter = new AtomicLong();
@@ -179,6 +212,8 @@ public class GameActionService {
     private static final ItemId RECALL_SCROLL_ID = ItemId.of("scroll-of-recall");
     /** Metadata key set by {@link #recall} on a successful teleport. */
     private static final String RECALL_METADATA_KEY = "recalled";
+    /** Metadata key set by {@link #bind} on a successful anchor change. */
+    private static final String BIND_METADATA_KEY = "bound";
     /** Ability id of the rogue BACKSTAB skill, which gains a bonus when opened from stealth. */
     private static final AbilityId BACKSTAB_ABILITY_ID = AbilityId.of("skill.backstab");
     /** Ability id of the Cleric RESURRECTION spell, resolved by dedicated logic in {@link #resurrect}. */
@@ -191,8 +226,12 @@ public class GameActionService {
     private static final int STEAL_SUCCESS_PERCENT_PER_LEVEL = 3;
     /** Maximum STEAL success percentage, regardless of rogue level. */
     private static final int STEAL_MAX_SUCCESS_PERCENT = 90;
-    /** Probability that a single SEARCH attempt uncovers the room's undiscovered hidden exits. */
-    private static final double SEARCH_SUCCESS_CHANCE = 0.5d;
+    /** Base probability that a single SEARCH attempt uncovers the room's undiscovered hidden exits. */
+    static final double SEARCH_BASE_SUCCESS_CHANCE = 0.5d;
+    /** Additional SEARCH success probability granted per rogue level, on top of the base chance. */
+    static final double SEARCH_ROGUE_SUCCESS_CHANCE_PER_LEVEL = 0.02d;
+    /** Maximum SEARCH success probability for a rogue, regardless of level (never guaranteed). */
+    static final double SEARCH_ROGUE_MAX_SUCCESS_CHANCE = 0.9d;
 
     /**
      * Creates a game action service with the given domain dependencies.
@@ -441,6 +480,19 @@ public class GameActionService {
     }
 
     /**
+     * Injects the shared guild-war scorer so that a resolved duel between members of two warring guilds
+     * awards a war point to the winner's guild (issue #731).
+     *
+     * <p>Called once by the composition root. When absent, duels resolve exactly as before with no
+     * guild-war side effect, so tests and non-guild code paths need no extra wiring.
+     *
+     * @param guildWarService the shared guild-war service
+     */
+    public void setGuildWarService(GuildWarService guildWarService) {
+        this.guildWarService = Objects.requireNonNull(guildWarService, "Guild war service is required");
+    }
+
+    /**
      * Injects the shared weather engine so that outdoor combat picks up ambient weather modifiers.
      *
      * <p>Called once by the composition root. When absent, combat resolves with no environmental
@@ -477,6 +529,133 @@ public class GameActionService {
      */
     public void setAreaMapService(AreaMapService areaMapService) {
         this.areaMapService = Objects.requireNonNull(areaMapService, "Area map service is required");
+    }
+
+    /**
+     * Injects the resolver used by {@link #bind} to check whether the player's current room is a
+     * zone's waypoint (entrance) room.
+     *
+     * <p>Called once by the composition root. When absent, BIND reports that anchoring a recall point
+     * is unavailable.
+     *
+     * @param areaWaypointService the shared area waypoint resolver
+     */
+    public void setAreaWaypointService(AreaWaypointService areaWaypointService) {
+        this.areaWaypointService = Objects.requireNonNull(areaWaypointService, "Area waypoint service is required");
+    }
+
+    /**
+     * Injects the wayfinding service used by {@link #wayfind} to resolve destination areas and
+     * compute walking routes.
+     *
+     * <p>Called once by the composition root. When absent, WAYFIND reports that the player cannot get
+     * their bearings.
+     *
+     * @param wayfindService the shared wayfinding service
+     */
+    public void setWayfindService(WayfindService wayfindService) {
+        this.wayfindService = Objects.requireNonNull(wayfindService, "Wayfind service is required");
+    }
+
+    /**
+     * Handles the {@code WAYFIND} command: prints turn-by-turn walking directions from the player's
+     * current room to a named area, or, with a blank query, lists the current area and its charted
+     * neighbours.
+     *
+     * <p>This is a pure read of world and location state (AGENTS.md §5): it never moves the player,
+     * consumes no moves or cooldown, and never mutates game state. The heavy lifting — destination
+     * resolution and shortest-route search over the walkable room graph — lives in
+     * {@link WayfindService}; this method only resolves the player's current room and wraps the
+     * resulting lines as source-directed messages.
+     *
+     * @param source the player asking for directions; must not be null
+     * @param query  the raw argument after {@code WAYFIND} (blank lists nearby areas)
+     * @return a result carrying the directions or an explanatory message, never an exception
+     */
+    public GameActionResult wayfind(Player source, @Nullable String query) {
+        Objects.requireNonNull(source, "Source is required");
+        if (wayfindService == null) {
+            return GameActionResult.error("You cannot get your bearings here.");
+        }
+        RoomId currentRoom = roomService.findPlayerLocation(source.getUsername()).orElse(null);
+        if (currentRoom == null) {
+            return GameActionResult.error("You are nowhere; there is nothing to route from.");
+        }
+        List<GameMessage> messages = wayfindService.wayfind(currentRoom, query).stream()
+            .map(GameMessage::toSource)
+            .toList();
+        return new GameActionResult(null, null, messages);
+    }
+
+    /**
+     * Injects the corpse-locator service used by {@link #corpse} to report a fallen player's remains
+     * and route them back.
+     *
+     * <p>Called once by the composition root. When absent, CORPSE reports that the player cannot sense
+     * their corpse.
+     *
+     * @param corpseLocatorService the shared corpse-locator service
+     */
+    public void setCorpseLocatorService(CorpseLocatorService corpseLocatorService) {
+        this.corpseLocatorService = Objects.requireNonNull(corpseLocatorService, "Corpse locator service is required");
+    }
+
+    /**
+     * Handles the {@code CORPSE} command: tells the player where their tracked corpse lies, how much
+     * gold it holds, how long remains before it decays, and turn-by-turn directions back to it — or
+     * that they have no corpse at all.
+     *
+     * <p>This is a pure read of world and location state (AGENTS.md §5): it never moves the player,
+     * consumes no moves or cooldown, and never mutates game state. The routing and formatting live in
+     * {@link CorpseLocatorService}; this method only resolves the player's current room and their
+     * tracked corpse and wraps the resulting lines as source-directed messages.
+     *
+     * <p>The optional {@code args} selects the reporting mode: blank reports the single most-urgent
+     * corpse (with a trailing count line when more than one is outstanding); {@code ALL} lists every
+     * outstanding corpse numbered soonest-to-decay first; a positive integer reports that numbered
+     * corpse in full. Any other argument yields a short usage line.
+     *
+     * @param source the player asking about their corpse; must not be null
+     * @param args   the raw argument after {@code CORPSE} (blank, {@code ALL}, or a corpse number)
+     * @return a result carrying the corpse report, never an exception
+     */
+    public GameActionResult corpse(Player source, String args) {
+        Objects.requireNonNull(source, "Source is required");
+        if (corpseLocatorService == null) {
+            return GameActionResult.error("You cannot sense your corpse right now.");
+        }
+        RoomId currentRoom = roomService.findPlayerLocation(source.getUsername()).orElse(null);
+        if (currentRoom == null) {
+            return GameActionResult.error("You are nowhere; there is nothing to route from.");
+        }
+        List<Corpse> corpses = roomService.findCorpsesByOwner(source.getUsername().getValue());
+        String trimmed = args == null ? "" : args.trim();
+        List<String> lines;
+        if (trimmed.isEmpty()) {
+            lines = corpseLocatorService.locateMostUrgent(currentRoom, corpses);
+        } else if (trimmed.equalsIgnoreCase("ALL")) {
+            lines = corpseLocatorService.locateAll(currentRoom, corpses);
+        } else {
+            Integer index = parsePositiveInt(trimmed);
+            if (index == null) {
+                lines = List.of("Usage: CORPSE, CORPSE ALL, or CORPSE <number>.");
+            } else {
+                lines = corpseLocatorService.locateIndexed(currentRoom, corpses, index);
+            }
+        }
+        List<GameMessage> messages = lines.stream()
+            .map(GameMessage::toSource)
+            .toList();
+        return new GameActionResult(null, null, messages);
+    }
+
+    private static @Nullable Integer parsePositiveInt(String value) {
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**
@@ -541,6 +720,26 @@ public class GameActionService {
      * @return a result carrying the challenge messages, or an error describing why it was rejected
      */
     public GameActionResult initiatePlayerDuel(Player initiator, String targetName) {
+        return initiatePlayerDuel(initiator, targetName, 0L);
+    }
+
+    /**
+     * Initiates a consensual duel, optionally staked with a gold wager, by sending a challenge to a
+     * player in the same room (issue #661).
+     *
+     * <p>All the validation of the unwagered form applies (blank name, self-target, absent target,
+     * either party already in combat). When {@code wager} is positive, the challenger must currently
+     * hold at least that much gold, otherwise the challenge is rejected. No gold is escrowed or moved
+     * here — the wager is recorded on the transient duel state and only transferred loser-to-winner
+     * when the duel resolves in {@link #endPlayerDuel}. A wager of {@code 0} produces the ordinary,
+     * risk-free challenge with byte-for-byte identical messaging.
+     *
+     * @param initiator  the challenging player
+     * @param targetName the raw name of the player to challenge
+     * @param wager      the gold to stake, or {@code 0} for an ordinary risk-free duel
+     * @return a result carrying the challenge messages, or an error describing why it was rejected
+     */
+    public GameActionResult initiatePlayerDuel(Player initiator, String targetName, long wager) {
         Objects.requireNonNull(initiator, "Initiator is required");
         String normalized = targetName == null ? "" : targetName.trim();
         if (normalized.isEmpty()) {
@@ -548,6 +747,10 @@ public class GameActionService {
         }
         if (isEngagedInCombat(initiator)) {
             return GameActionResult.error("You cannot start a duel while in combat.");
+        }
+        if (wager > 0 && initiator.getGold() < wager) {
+            return GameActionResult.error(
+                "You do not have " + wager + " gold to wager (you have " + initiator.getGold() + ").");
         }
         Optional<Player> targetMatch = abilityTargetResolver.resolve(initiator, normalized);
         if (targetMatch.isEmpty()) {
@@ -560,13 +763,23 @@ public class GameActionService {
         if (isEngagedInCombat(target)) {
             return GameActionResult.error(target.getUsername().getValue() + " is already in combat.");
         }
-        duelService.requestDuel(initiator.getUsername(), target.getUsername());
+        duelService.requestDuel(initiator.getUsername(), target.getUsername(), wager);
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You challenge " + target.getUsername().getValue() + " to a duel."));
-        messages.add(GameMessage.toPlayer(
-            target.getUsername(),
-            initiator.getUsername().getValue()
-                + " challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout."));
+        if (wager > 0) {
+            messages.add(GameMessage.toSource(
+                "You challenge " + target.getUsername().getValue() + " to a duel wagering " + wager
+                    + " gold."));
+            messages.add(GameMessage.toPlayer(
+                target.getUsername(),
+                initiator.getUsername().getValue() + " challenges you to a duel wagering " + wager
+                    + " gold. Type ACCEPT to engage or wait 30s for timeout."));
+        } else {
+            messages.add(GameMessage.toSource("You challenge " + target.getUsername().getValue() + " to a duel."));
+            messages.add(GameMessage.toPlayer(
+                target.getUsername(),
+                initiator.getUsername().getValue()
+                    + " challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout."));
+        }
         return new GameActionResult(null, null, messages);
     }
 
@@ -591,13 +804,37 @@ public class GameActionService {
             return GameActionResult.error("You have no pending duel challenge.");
         }
         Username challenger = challengerMatch.get();
+        long wager = duelService.wagerOf(target.getUsername());
+        if (wager > 0 && target.getGold() < wager) {
+            // The accepting player can no longer cover the stake: cancel the challenge outright so no
+            // dangling pending state lingers, move no gold, and tell both players why (issue #661).
+            duelService.clearFor(target.getUsername());
+            List<GameMessage> rejection = new ArrayList<>();
+            rejection.add(GameMessage.toSource(
+                "You do not have " + wager + " gold to cover the wager; the duel is called off."));
+            rejection.add(GameMessage.toPlayer(
+                challenger,
+                target.getUsername().getValue()
+                    + " cannot cover the " + wager + " gold wager; the duel is called off."));
+            return new GameActionResult(null, null, rejection);
+        }
         duelService.activate(challenger, target.getUsername());
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource(
-            "You accept " + challenger.getValue() + "'s duel. Combat begins!"));
-        messages.add(GameMessage.toPlayer(
-            challenger,
-            target.getUsername().getValue() + " accepts your duel. Combat begins!"));
+        if (wager > 0) {
+            messages.add(GameMessage.toSource(
+                "You accept " + challenger.getValue() + "'s duel wagering " + wager
+                    + " gold. Combat begins!"));
+            messages.add(GameMessage.toPlayer(
+                challenger,
+                target.getUsername().getValue() + " accepts your duel wagering " + wager
+                    + " gold. Combat begins!"));
+        } else {
+            messages.add(GameMessage.toSource(
+                "You accept " + challenger.getValue() + "'s duel. Combat begins!"));
+            messages.add(GameMessage.toPlayer(
+                challenger,
+                target.getUsername().getValue() + " accepts your duel. Combat begins!"));
+        }
         return new GameActionResult(null, null, messages);
     }
 
@@ -623,7 +860,19 @@ public class GameActionService {
     public GameActionResult endPlayerDuel(Player survivor, Player loser) {
         Objects.requireNonNull(survivor, "Survivor is required");
         Objects.requireNonNull(loser, "Loser is required");
+        // Read the staked wager before ending the duel (which drops the transient state), then apply
+        // it as a single atomic transfer clamped to the loser's live gold — no escrow, nothing to
+        // roll back (issue #661).
+        long wager = duelService.wagerOf(survivor.getUsername());
         duelService.endDuel(survivor.getUsername(), loser.getUsername());
+        // Guild-war scoring (issue #731): if the two duellists belong to guilds currently at war with
+        // each other, this resolved win scores a war point for the survivor's guild. Membership is read
+        // live here (not snapshotted at war declaration), so an ex-member no longer counts; same-guild,
+        // unguilded and non-warring duels are no-ops. Runs on the tick thread alongside every other
+        // mutation below (AGENTS.md §5).
+        if (guildWarService != null) {
+            guildWarService.recordDuelWin(survivor.getUsername(), loser.getUsername());
+        }
         Player updatedSurvivor = survivor.withDuelWins(survivor.getDuelWins() + 1);
         PlayerVitals nearDeathVitals =
             loser.getVitals().hp() <= 0 ? loser.getVitals().heal(1) : loser.getVitals();
@@ -634,6 +883,16 @@ public class GameActionService {
         List<GameMessage> messages = new ArrayList<>();
         messages.add(GameMessage.toSource(
             "You have defeated " + loser.getUsername().getValue() + " in the duel!"));
+        int transfer = (int) Math.min(wager, Math.max(0, nearDeathLoser.getGold()));
+        if (transfer > 0) {
+            updatedSurvivor = updatedSurvivor.addGold(transfer);
+            nearDeathLoser = nearDeathLoser.addGold(-transfer);
+            messages.add(GameMessage.toSource(
+                "You win " + transfer + " gold from the wager!"));
+            messages.add(GameMessage.toPlayer(
+                loser.getUsername(),
+                "You lose " + transfer + " gold from the wager."));
+        }
         messages.add(GameMessage.toSource("Duel ended."));
         messages.add(GameMessage.toPlayer(
             loser.getUsername(),
@@ -673,11 +932,11 @@ public class GameActionService {
         }
         RoomService.LookResult currentLook = roomService.look(source.getUsername());
         Room oldRoom = currentLook.room();
-        var destinationId = roomService.respawnPlayer(source.getUsername());
+        var destinationId = roomService.respawnPlayer(source.getUsername(), boundRoomIdOf(source));
         cooldownTracker.startCooldown(RECALL_COOLDOWN_KEY, RECALL_COOLDOWN_TICKS);
 
         List<GameMessage> messages = new ArrayList<>();
-        messages.add(GameMessage.toSource("You recall to town in a flash of light."));
+        messages.add(GameMessage.toSource("You recall to your bind point in a flash of light."));
         String playerName = source.getUsername().getValue();
         if (oldRoom != null && !oldRoom.getId().equals(destinationId)) {
             messages.add(GameMessage.toRoomAt(
@@ -687,6 +946,92 @@ public class GameActionService {
             destinationId, source.getUsername(), playerName + " arrives in a flash of light."));
 
         return new GameActionResult(null, null, messages, Map.of(RECALL_METADATA_KEY, true));
+    }
+
+    /**
+     * Resolves the player's preferred RECALL/respawn room from their BIND anchor, or {@code null} when
+     * they have never bound (so the caller falls back to the default starting room).
+     *
+     * @param source the player whose bind anchor to resolve
+     * @return the bound {@link RoomId}, or {@code null} when unbound
+     */
+    private @Nullable RoomId boundRoomIdOf(Player source) {
+        String bound = source.boundRoomId();
+        return bound == null || bound.isBlank() ? null : RoomId.of(bound);
+    }
+
+    /**
+     * Anchors the player's personal RECALL/respawn point to the waypoint (entrance) room of their
+     * current area, so subsequent recalls and death respawns return them here instead of the default
+     * starting town.
+     *
+     * <p>Mirrors {@link #recall}'s guards: binding is rejected while dueling or in active combat (the
+     * player should FLEE first). It further requires the player to be standing in an area's waypoint
+     * room — the room already used as that zone's entrance ({@code room_ids[0]}) — so a player must
+     * reach a zone under their own power before anchoring to it. This preserves the corpse-run risk
+     * inside a zone; only the tax of walking the whole world back from town is removed. Binding never
+     * moves the player and has no cooldown.
+     *
+     * <p>On success the returned {@link GameActionResult#updatedSource()} carries the player with the
+     * new anchor (persisted by the caller) and metadata key {@code "bound"}. Every rejection returns a
+     * specific message and leaves the existing anchor untouched. Tick-thread only (AGENTS.md §5).
+     *
+     * @param source the player attempting to bind
+     * @return a success result with the re-anchored player, or an error result describing the rejection
+     */
+    public GameActionResult bind(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        if (duelService.isDueling(source.getUsername())) {
+            return GameActionResult.error("You cannot bind while dueling!");
+        }
+        if (inCombatCheck.test(source)) {
+            return GameActionResult.error("You are in combat! You must FLEE before you can bind.");
+        }
+        if (areaWaypointService == null) {
+            return GameActionResult.error("You cannot anchor your recall point here.");
+        }
+        RoomId currentRoom = roomService.findPlayerLocation(source.getUsername()).orElse(null);
+        if (currentRoom == null) {
+            return GameActionResult.error("You are nowhere; there is nothing to bind to.");
+        }
+        Area area = areaWaypointService.findAreaByWaypoint(currentRoom).orElse(null);
+        if (area == null) {
+            return GameActionResult.error(
+                "You can only BIND at a zone's waypoint — the entrance room of an area. "
+                    + "Travel to one and try again.");
+        }
+        Player bound = source.withBoundRoomId(currentRoom.getValue());
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You anchor your recall point to " + area.name() + ". You will now recall here."));
+        return new GameActionResult(bound, null, messages, Map.of(BIND_METADATA_KEY, true));
+    }
+
+    /**
+     * Describes where the player's RECALL/respawn currently sends them, for the bare {@code BIND}
+     * report with no argument.
+     *
+     * <p>When the player has bound to an area waypoint the message names that area; when the bound
+     * room can no longer be resolved to a known area (e.g. removed in a later data change) it reports
+     * the raw room id; when unbound it reports the default of Greystone Town.
+     *
+     * @param source the player whose bind point to describe
+     * @return a single-line, player-facing status message
+     */
+    public String describeBindPoint(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        RoomId boundRoom = boundRoomIdOf(source);
+        if (boundRoom == null) {
+            return "Your recall point is set to Greystone Town (default).";
+        }
+        String label = boundRoom.getValue();
+        if (areaWaypointService != null) {
+            Area area = areaWaypointService.findAreaByWaypoint(boundRoom).orElse(null);
+            if (area != null) {
+                label = area.name();
+            }
+        }
+        return "Your recall point is bound to " + label + ".";
     }
 
     /**
@@ -909,6 +1254,30 @@ public class GameActionService {
             if (mountBase.isMounted()) {
                 updatedSource = breakMountOnCombat(mountBase, messages);
             }
+            // Parry riposte (issue #639): if the target parried and riposted, the CombatEngine already
+            // reduced the attacker's vitals in result.attacker(). Fold that HP loss into the persisted
+            // source so the counter-strike sticks, and resolve the attacker's own death if the riposte
+            // proved lethal — symmetric to the target-death handling above, but only when the target
+            // survived (a parry deals the target zero damage, so this is the common case).
+            int riposteToSource = source.getVitals().hp() - result.attacker().getVitals().hp();
+            if (riposteToSource > 0) {
+                Player riposteBase = updatedSource != null ? updatedSource : source;
+                Player riposted = riposteBase.withVitals(riposteBase.getVitals().damage(riposteToSource));
+                if (riposted.getVitals().hp() <= 0 && updatedTarget.getVitals().hp() > 0) {
+                    if (duelService.areDueling(source.getUsername(), target.getUsername())) {
+                        GameActionResult duelEnd = endPlayerDuel(target, riposted);
+                        updatedSource = duelEnd.updatedTarget();
+                        updatedTarget = duelEnd.updatedSource();
+                        messages.addAll(duelEnd.messages());
+                    } else {
+                        GameActionResult deathResult = resolveDeathIfNeeded(riposted, target);
+                        updatedSource = deathResult.updatedTarget();
+                        messages.addAll(deathResult.messages());
+                    }
+                } else {
+                    updatedSource = riposted;
+                }
+            }
             Map<String, Object> meta = result.rngSeed() != 0L
                 ? Map.of("rngSeed", result.rngSeed())
                 : Map.of();
@@ -1053,28 +1422,102 @@ public class GameActionService {
             return GameActionResult.error("You don't see that here.");
         }
         Player updated = source.addItem(item.get());
-        List<GameMessage> messages = new ArrayList<>();
+        List<GameMessage> messages = buildPickupMessages(source, item.get());
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Builds the messages announcing that {@code source} picked up {@code item}: any custom
+     * {@link MessagePhase#PICKUP} messages the item carries, or a default source line and room
+     * broadcast otherwise. Factored out of {@link #getItem} so the {@link MessageContext}/emitter
+     * wiring lives in a single place (the bulk {@link #getAllItems} path summarizes instead).
+     *
+     * @param source the player who picked the item up
+     * @param item   the item that was picked up
+     * @return the messages to deliver for this pickup
+     */
+    private List<GameMessage> buildPickupMessages(Player source, Item item) {
         MessageContext context = new MessageContext(
             source.getUsername(),
             source.getUsername(),
             source.getUsername().getValue(),
             source.getUsername().getValue(),
-            item.get().getName(),
+            item.getName(),
             null,
             null,
             null
         );
-        List<GameMessage> emitted = messageEmitter.emit(item.get().getMessages(), MessagePhase.PICKUP, context);
-        if (emitted.isEmpty()) {
-            messages.add(GameMessage.toSource("You pick up " + item.get().getName() + "."));
+        List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), MessagePhase.PICKUP, context);
+        if (!emitted.isEmpty()) {
+            return emitted;
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You pick up " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " picks up " + item.getName() + "."
+        ));
+        return messages;
+    }
+
+    /**
+     * Picks up every item currently on the floor of the player's room, in the room-list order the
+     * merged static + transient item list (the one {@code LOOK} renders) reports.
+     *
+     * <p>Each pickup is checked against the player's carry limit first; the moment adding the next
+     * item would leave them {@linkplain EncumbranceService#isOverburdened(Player) overburdened}, the
+     * action stops there, keeps everything already gathered, and reports the item it could not carry —
+     * mirroring the single-item {@link #getItem} overburdened guard without erroring the whole action.
+     * An empty room reports that there is nothing here to get. The response is a single summarized line
+     * rather than one line per item, so a large haul does not spam the terminal; the per-item
+     * delivery-quest and light-reveal side effects are applied by the adapter over the newly-added
+     * inventory items.
+     *
+     * @param source the player picking everything up
+     * @return result with the updated inventory and a summary message, or an error with no state change
+     */
+    public GameActionResult getAllItems(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        RoomService.LookResult look = roomService.look(source.getUsername());
+        Room room = look.room();
+        if (room == null) {
+            return GameActionResult.error("You cannot get items here.");
+        }
+        List<Item> floor = room.getItems();
+        if (floor.isEmpty()) {
+            return GameActionResult.error("There is nothing here to get.");
+        }
+        Player current = source;
+        List<String> picked = new ArrayList<>();
+        String blocked = null;
+        for (Item item : floor) {
+            if (encumbranceService.isOverburdened(current.addItem(item))) {
+                blocked = item.getName();
+                break;
+            }
+            Optional<Item> taken = roomService.takeItem(source.getUsername(), item.getId().getValue());
+            if (taken.isEmpty()) {
+                continue;
+            }
+            current = current.addItem(taken.get());
+            picked.add(taken.get().getName());
+        }
+        List<GameMessage> messages = new ArrayList<>();
+        if (!picked.isEmpty()) {
+            messages.add(GameMessage.toSource("You get " + joinNames(picked) + ". " + countSuffix(picked.size())));
             messages.add(GameMessage.toRoom(
                 source.getUsername(),
                 null,
-                source.getUsername().getValue() + " picks up " + item.get().getName() + "."
+                picked.size() == 1
+                    ? source.getUsername().getValue() + " picks up " + picked.getFirst() + "."
+                    : source.getUsername().getValue() + " picks up several items."
             ));
-        } else {
-            messages.addAll(emitted);
         }
+        if (blocked != null) {
+            messages.add(GameMessage.toSource("You are carrying too much to pick up " + blocked + "."));
+        }
+        Player updated = picked.isEmpty() ? null : current;
         return new GameActionResult(updated, null, messages);
     }
 
@@ -1103,7 +1546,21 @@ public class GameActionService {
             }
         }
         Player updated = source.removeItem(item).withEquipment(equipment);
-        List<GameMessage> messages = new ArrayList<>();
+        List<GameMessage> messages = buildDropMessages(source, item);
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Builds the messages announcing that {@code source} dropped {@code item}: any custom
+     * {@link MessagePhase#DROP} messages the item carries, or a default source line and room broadcast
+     * otherwise. Factored out of {@link #dropItem} so the {@link MessageContext}/emitter wiring lives
+     * in a single place (the bulk {@link #dropAllItems} path summarizes instead).
+     *
+     * @param source the player who dropped the item
+     * @param item   the item that was dropped
+     * @return the messages to deliver for this drop
+     */
+    private List<GameMessage> buildDropMessages(Player source, Item item) {
         MessageContext context = new MessageContext(
             source.getUsername(),
             source.getUsername(),
@@ -1115,17 +1572,90 @@ public class GameActionService {
             null
         );
         List<GameMessage> emitted = messageEmitter.emit(item.getMessages(), MessagePhase.DROP, context);
-        if (emitted.isEmpty()) {
-            messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
-            messages.add(GameMessage.toRoom(
-                source.getUsername(),
-                null,
-                source.getUsername().getValue() + " drops " + item.getName() + "."
-            ));
-        } else {
-            messages.addAll(emitted);
+        if (!emitted.isEmpty()) {
+            return emitted;
         }
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You drop " + item.getName() + "."));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            source.getUsername().getValue() + " drops " + item.getName() + "."
+        ));
+        return messages;
+    }
+
+    /**
+     * Drops every unequipped item in the player's inventory onto the room floor in one action.
+     *
+     * <p>Worn or wielded gear is deliberately left untouched — unlike single-item {@link #dropItem},
+     * which auto-unequips a requested worn item, this bulk form never unequips anything, so a careless
+     * {@code DROP ALL} cannot strip a player's weapon or armour by accident. Reports a single
+     * summarized line rather than one line per item; an empty (or fully-equipped) inventory reports
+     * that there is nothing to drop, with no state change.
+     *
+     * @param source the player dropping everything
+     * @return result with the updated inventory and a summary message, or an error with no state change
+     */
+    public GameActionResult dropAllItems(Player source) {
+        Objects.requireNonNull(source, "Source is required");
+        PlayerEquipment equipment = source.getEquipment();
+        List<Item> keep = new ArrayList<>();
+        List<Item> toDrop = new ArrayList<>();
+        for (Item item : source.getInventory()) {
+            if (equipment.isEquipped(item.getId())) {
+                keep.add(item);
+            } else {
+                toDrop.add(item);
+            }
+        }
+        if (toDrop.isEmpty()) {
+            return GameActionResult.error("You have nothing to drop.");
+        }
+        List<String> dropped = new ArrayList<>();
+        for (Item item : toDrop) {
+            roomService.dropItem(source.getUsername(), item);
+            dropped.add(item.getName());
+        }
+        Player updated = source.withInventory(keep);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource("You drop " + joinNames(dropped) + ". " + countSuffix(dropped.size())));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            dropped.size() == 1
+                ? source.getUsername().getValue() + " drops " + dropped.getFirst() + "."
+                : source.getUsername().getValue() + " drops several items."
+        ));
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Joins item names into a natural-language list: {@code "a"}, {@code "a and b"}, or the
+     * Oxford-comma form {@code "a, b, and c"} for three or more.
+     *
+     * @param names the item names in the order they were gathered
+     * @return the human-readable joined list
+     */
+    private static String joinNames(List<String> names) {
+        int size = names.size();
+        if (size == 1) {
+            return names.getFirst();
+        }
+        if (size == 2) {
+            return names.get(0) + " and " + names.get(1);
+        }
+        return String.join(", ", names.subList(0, size - 1)) + ", and " + names.get(size - 1);
+    }
+
+    /**
+     * Formats the trailing {@code (N item)} / {@code (N items)} count for a bulk get/drop summary.
+     *
+     * @param count the number of items acted on
+     * @return the parenthesised, correctly-pluralised count suffix
+     */
+    private static String countSuffix(int count) {
+        return "(" + count + (count == 1 ? " item)" : " items)");
     }
 
     /**
@@ -1326,6 +1856,76 @@ public class GameActionService {
     }
 
     /**
+     * Retrieves every item from a container the player is carrying into their inventory in one action.
+     *
+     * <p>The named container must be carried, be an actual {@linkplain Item#isContainer() container},
+     * and be unlocked (mirroring the single-item {@link #getFromContainer} guards). Each contained
+     * item is moved to the top-level inventory (regaining its carry weight) and removed from the
+     * container. Reports a single summarized line rather than one line per item; an empty container
+     * reports that there is nothing in it, with no state change.
+     *
+     * @param source         the player emptying the container
+     * @param containerInput the container name or id to empty
+     * @return result with the updated inventory, or an error with no state change
+     */
+    // Identity comparison below (inv == container) is intentional: container is the exact instance
+    // resolved from this inventory, so identity replaces precisely that reference without disturbing
+    // value-equal duplicates elsewhere in the inventory.
+    @SuppressWarnings("ReferenceEquality")
+    public GameActionResult getAllFromContainer(Player source, String containerInput) {
+        Objects.requireNonNull(source, "Source is required");
+        String containerNorm = containerInput == null ? "" : containerInput.trim();
+        if (containerNorm.isEmpty()) {
+            return GameActionResult.error("Usage: get all from <container>");
+        }
+        Item container = findInventoryItem(source, containerNorm);
+        if (container == null) {
+            return GameActionResult.error("You aren't carrying " + containerNorm + ".");
+        }
+        if (!container.isContainer()) {
+            return GameActionResult.error(container.getName() + " is not a container.");
+        }
+        if (container.isLocked()) {
+            return GameActionResult.error(container.getName() + " is locked.");
+        }
+        List<Item> contents = container.getContainedItems();
+        if (contents.isEmpty()) {
+            return GameActionResult.error("There is nothing in " + container.getName() + ".");
+        }
+        Item updatedContainer = container;
+        List<String> takenNames = new ArrayList<>();
+        for (Item contained : contents) {
+            updatedContainer = updatedContainer.withoutContainedItem(contained.getId());
+            takenNames.add(contained.getName());
+        }
+        List<Item> next = new ArrayList<>();
+        boolean containerReplaced = false;
+        for (Item inv : source.getInventory()) {
+            if (!containerReplaced && inv == container) {
+                next.add(updatedContainer);
+                containerReplaced = true;
+                continue;
+            }
+            next.add(inv);
+        }
+        next.addAll(contents);
+        Player updated = source.withInventory(next);
+        List<GameMessage> messages = new ArrayList<>();
+        messages.add(GameMessage.toSource(
+            "You get " + joinNames(takenNames) + " from " + container.getName() + ". "
+                + countSuffix(takenNames.size())));
+        messages.add(GameMessage.toRoom(
+            source.getUsername(),
+            null,
+            takenNames.size() == 1
+                ? source.getUsername().getValue() + " gets " + takenNames.getFirst()
+                    + " from " + container.getName() + "."
+                : source.getUsername().getValue() + " gets several items from " + container.getName() + "."
+        ));
+        return new GameActionResult(updated, null, messages);
+    }
+
+    /**
      * Attempts the rogue PICK skill on a locked container in the player's current room.
      *
      * <p>Only rogues of level 1 or higher may pick locks. The named target must be a container in
@@ -1443,8 +2043,11 @@ public class GameActionService {
      * non-combat actions). Searching breaks stealth like any other deliberate action. When there is
      * nothing left to find — the room has no hidden exits, or all have already been discovered — a
      * neutral "nothing new" line is shown. Otherwise the outcome is decided by a single roll through
-     * the seeded {@link CombatRandom} port at {@link #SEARCH_SUCCESS_CHANCE}; a success reveals the
-     * exit (via {@link RoomService#revealHiddenExits(Username)}) but never unlocks it.
+     * the seeded {@link CombatRandom} port against
+     * {@link #calculateSearchSuccessChance(boolean, int)}; a success reveals the exit (via
+     * {@link RoomService#revealHiddenExits(Username)}) but never unlocks it. Non-rogues use a flat
+     * {@link #SEARCH_BASE_SUCCESS_CHANCE}; rogues gain a per-level bonus (capped at
+     * {@link #SEARCH_ROGUE_MAX_SUCCESS_CHANCE}), mirroring the PICK skill's scaling.
      *
      * <p>Runs on the tick thread (AGENTS.md §5).
      *
@@ -1473,7 +2076,8 @@ public class GameActionService {
             messages.add(GameMessage.toSource("You search but find nothing new."));
             return new GameActionResult(updated, null, messages);
         }
-        if (worldRandom.nextDouble() >= SEARCH_SUCCESS_CHANCE) {
+        double successChance = calculateSearchSuccessChance(isRogue(source), source.getLevel());
+        if (worldRandom.nextDouble() >= successChance) {
             messages.add(GameMessage.toSource("You search but find nothing new."));
             return new GameActionResult(updated, null, messages);
         }
@@ -1490,6 +2094,29 @@ public class GameActionService {
             source.getUsername(), null,
             source.getUsername().getValue() + " uncovers a hidden passage!"));
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Calculates the probability, in {@code [0, 1]}, that a single SEARCH attempt uncovers a hidden
+     * exit. Non-rogues always use the flat {@link #SEARCH_BASE_SUCCESS_CHANCE}. Rogues add
+     * {@link #SEARCH_ROGUE_SUCCESS_CHANCE_PER_LEVEL} per level on top of the base chance, capped at
+     * {@link #SEARCH_ROGUE_MAX_SUCCESS_CHANCE} so a search is never guaranteed — mirroring the shape
+     * of {@link io.taanielo.jmud.core.world.ContainerLockingService#calculatePickSuccessChance(int)}.
+     *
+     * <p>Pure function of {@code (class, level)}, with no RNG or state, so it is unit-testable
+     * independently of the roll.
+     *
+     * @param isRogue whether the searching player is a rogue
+     * @param level   the player's level (only used for rogues)
+     * @return the SEARCH success probability in {@code [0, 1]}
+     */
+    static double calculateSearchSuccessChance(boolean isRogue, int level) {
+        if (!isRogue) {
+            return SEARCH_BASE_SUCCESS_CHANCE;
+        }
+        double bonusLevels = Math.max(0, level);
+        double chance = SEARCH_BASE_SUCCESS_CHANCE + SEARCH_ROGUE_SUCCESS_CHANCE_PER_LEVEL * bonusLevels;
+        return Math.min(SEARCH_ROGUE_MAX_SUCCESS_CHANCE, chance);
     }
 
     /**

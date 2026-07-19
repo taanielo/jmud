@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 16,
   "id": "leather-legs",
   "name": "Leather Leggings",
   "description": "Supple leather leggings that protect the legs without impeding movement.",
@@ -13,5 +13,6 @@
   "equip_slot": "legs",
   "weight": 5,
   "value": 35,
-  "attack_ref": null
+  "attack_ref": null,
+  "set_id": "wayfarers-leathers"
 }

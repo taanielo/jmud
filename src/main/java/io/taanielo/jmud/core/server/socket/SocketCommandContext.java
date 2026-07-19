@@ -2,6 +2,8 @@ package io.taanielo.jmud.core.server.socket;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.server.Client;
@@ -83,6 +85,16 @@ public interface SocketCommandContext extends Client {
      * updated.
      */
     default void updateAutoLoot(String args) {}
+
+    /**
+     * Handles the {@code AUTOASSIST} command: shows the current setting with no arguments or
+     * {@code STATUS}, and toggles it with {@code ON}, {@code OFF}, or {@code TOGGLE}. When enabled,
+     * the player is automatically joined into a party-mate's fight against a fresh mob.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void updateAutoAssist(String args) {}
 
     /**
      * Handles the {@code BRIEF} command: shows the current setting with no arguments or
@@ -184,6 +196,35 @@ public interface SocketCommandContext extends Client {
      * Executes a drop command with the provided arguments.
      */
     void dropItem(String args);
+
+    /**
+     * Picks up every item currently on the room floor in one command (the {@code GET ALL} form).
+     *
+     * <p>Mirrors {@link #getItem(String)}'s per-item side effects — delivery-quest pickup progress and
+     * the dark-room light-reveal check — applying them across every newly gathered item. Stops early
+     * and keeps prior pickups if the player becomes overburdened partway through.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void getAllItems() {}
+
+    /**
+     * Retrieves every item from a carried container into the player's inventory in one command (the
+     * {@code GET ALL FROM <container>} form).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param containerInput the container name or id to empty
+     */
+    default void getAllFromContainer(String containerInput) {}
+
+    /**
+     * Drops every unequipped inventory item to the room floor in one command (the {@code DROP ALL}
+     * form). Worn or wielded gear is left alone and never auto-unequipped.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void dropAllItems() {}
 
     /**
      * Places an item from the player's inventory into a carried container.
@@ -358,6 +399,33 @@ public interface SocketCommandContext extends Client {
     default void sendAbilities() {}
 
     /**
+     * Sends the current player's active status effects, split into beneficial and harmful groups,
+     * with each effect's display name, remaining duration in ticks (or {@code permanent}), and
+     * stack count when stacked. Prints a clear "no active effects" line when the player has none.
+     *
+     * <p>This is a pure read of the player's live effect list (the {@code EFFECTS}/{@code AFFECTS}
+     * command); it never mutates effect durations or stacks.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void sendEffects() {}
+
+    /**
+     * Sends the player's learned abilities as a formatted table with each ability's live
+     * cooldown status.
+     *
+     * <p>Each line shows the ability name, its type (SKILL/SPELL), and its current readiness:
+     * {@code Ready} when off cooldown, or {@code <n> ticks} remaining otherwise. Status is read
+     * from the player's own {@code CooldownSystem}; this is a pure read that never mutates
+     * cooldown state. Prints a clear "no abilities learned" line when the player has none.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be
+     * updated.
+     */
+    default void sendCooldowns() {}
+
+    /**
      * Attempts to flee from active combat by moving to a random available exit.
      */
     void fleeCombat();
@@ -373,6 +441,63 @@ public interface SocketCommandContext extends Client {
      * do not need to be updated.
      */
     default void recall() {}
+
+    /**
+     * Handles the {@code BIND} command: with no argument reports the player's current recall/respawn
+     * anchor; with any argument (e.g. {@code HERE}) anchors it to the waypoint room of the player's
+     * current area, if they are standing in one and out of combat.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code BIND} (blank means "report current bind point")
+     */
+    default void bind(String args) {}
+
+    /**
+     * Handles the {@code WAYFIND} command: with no argument lists the player's current area and its
+     * charted neighbours; with an area name or id it prints the shortest walking route (turn-by-turn
+     * compass directions plus a step count) to that area's waypoint room, or a friendly message when
+     * the area is unknown, ambiguous, or unreachable on foot.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code WAYFIND} (blank means "list nearby areas")
+     */
+    default void wayfind(String args) {}
+
+    /**
+     * Handles the {@code AUTOWALK} command: resolves the destination area exactly like {@code WAYFIND}
+     * and, when the shortest route is pure walking, begins auto-walking one room per tick toward that
+     * area's waypoint. {@code AUTOWALK STOP} cancels an in-progress walk; a route requiring the ferry
+     * is refused with a pointer to {@code WAYFIND}. The walk auto-cancels on any manual command, on
+     * entering combat, on a blocked step, and on arrival.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code AUTOWALK} (an area name/id, or {@code STOP})
+     */
+    default void autoWalk(String args) {}
+
+    /**
+     * Cancels any in-progress {@code AUTOWALK} for the caller, printing a one-line notice. Invoked by
+     * {@link SocketCommandDispatcher} for every command other than {@code AUTOWALK} itself, so any
+     * manual input immediately overrides autopilot (issue #767).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void cancelAutoWalkIfActive() {}
+
+    /**
+     * Handles the {@code CORPSE} command: reports where the player's tracked corpse lies, how much
+     * gold it holds, how long remains before it decays, and turn-by-turn directions back to it — or
+     * that they have no corpse in the world. With the {@code ALL} keyword it lists every outstanding
+     * corpse; with a numeric index it reports that specific corpse in full.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code CORPSE} (blank, {@code ALL}, or a corpse number)
+     */
+    default void corpse(String args) {}
 
     /**
      * Assesses the danger of a mob in the same room and prints a qualitative tier message.
@@ -457,6 +582,19 @@ public interface SocketCommandContext extends Client {
     default void sellToShop(String args) {}
 
     /**
+     * Sells every item in the player's inventory to the shop in the current room in one command
+     * (the {@code SELL ALL} form), optionally narrowed to items whose name contains {@code keyword}.
+     * Each item is paid at the shop's sell ratio and the player receives a single summarized line
+     * with the item count and total gold earned. Equipped gear is never touched.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param keyword optional case-insensitive substring restricting which inventory items are sold;
+     *                {@code null} sells the whole inventory
+     */
+    default void sellAllToShop(@Nullable String keyword) {}
+
+    /**
      * Repairs the named damaged item in the player's possession, provided a blacksmith is present
      * in the current room. Charges gold proportional to the item's value and damage.
      *
@@ -537,6 +675,40 @@ public interface SocketCommandContext extends Client {
     default void enchant(String args) {}
 
     /**
+     * Executes the {@code TAN} command. With blank arguments it lists the leather armor recipes a
+     * leatherworker can make, with live {@code have/need} material counts; with an item name it
+     * attempts to tan it, consuming the required pelts, fangs and gold. Requires a leatherworker in
+     * the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output item name to tan, or blank to list recipes
+     */
+    default void tan(String args) {}
+
+    /**
+     * Executes the {@code CUT} command. With blank arguments it lists the ring and necklace recipes a
+     * jeweler can make, with live {@code have/need} material counts; with an item name it attempts to
+     * cut it, consuming the required raw gems and gold. Requires a jeweler in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output item name to cut, or blank to list recipes
+     */
+    default void cut(String args) {}
+
+    /**
+     * Executes the {@code SEW} command. With blank arguments it lists the cloth armor recipes a tailor
+     * can make, with live {@code have/need} material counts; with an item name it attempts to sew it,
+     * consuming the required cloth and gold. Requires a tailor in the current room.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the recipe or output item name to sew, or blank to list recipes
+     */
+    default void sew(String args) {}
+
+    /**
      * Executes the {@code GATHER} command, harvesting the raw-material yield of an available resource
      * node in the player's current room and adding it to their inventory. If no node is present, or
      * the node has already been harvested and not yet respawned, a clear failure message is sent and
@@ -599,6 +771,61 @@ public interface SocketCommandContext extends Client {
     default void executeTrade(String args) {}
 
     /**
+     * Executes a MARRY sub-command: a player name to propose, {@code ACCEPT}, {@code DECLINE},
+     * {@code DIVORCE}, {@code TELL <message>}, or empty/{@code STATUS} to report current state.
+     *
+     * <p>Manages the purely-opt-in, mechanically-inert marriage bond between two players. Proposals
+     * are held in the transient marriage registry; the accepted bond is persisted on both
+     * {@link Player} records. All validation and state changes run here on the tick thread.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ACCEPT"} or {@code "Alice"})
+     */
+    default void executeMarry(String args) {}
+
+    /**
+     * Sends a private {@code SPOUSETELL} message to the caller's spouse (see the MARRY command),
+     * wherever they are in the world. Delivery is exempt from {@code IGNORE}. Fails with a clear
+     * message when the caller is unmarried, their spouse is offline, or the message is blank.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param message the message to send to the spouse
+     */
+    default void spouseTell(String message) {}
+
+    /**
+     * Executes a MENTOR sub-command: a player name to propose, {@code ACCEPT}, {@code DECLINE},
+     * {@code END}, or empty/{@code STATUS} to report current state.
+     *
+     * <p>Manages the opt-in mentor bond (see issue #751) in which a veteran player boosts a partied
+     * newcomer's XP. Proposals are held in the transient mentor registry; the accepted bond is
+     * persisted on both {@link Player} records. All validation and state changes run here on the tick
+     * thread.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "ACCEPT"} or {@code "Alice"})
+     */
+    default void executeMentor(String args) {}
+
+    /**
+     * Returns the {@code WHO}/roster marital-status suffix for the given online player, e.g.
+     * {@code " (Married to Alice)"}, or an empty string when they are unmarried. Used by {@code WHO}
+     * to annotate each name.
+     *
+     * <p>The default implementation returns an empty string so existing test stubs do not need to be
+     * updated.
+     *
+     * @param username the player whose marital-status tag to resolve
+     * @return the marriage suffix with a leading space, or {@code ""}
+     */
+    default String marriedTag(Username username) {
+        return "";
+    }
+
+    /**
      * Executes a PARTY sub-command (FORM, INVITE, ACCEPT, DECLINE, LEAVE, DISBAND, or empty).
      *
      * <p>Manages in-memory party groups that share XP on mob kills and display
@@ -610,6 +837,15 @@ public interface SocketCommandContext extends Client {
      * @param args the sub-command and optional arguments (e.g. {@code "INVITE Alice"})
      */
     default void executeParty(String args) {}
+
+    /**
+     * Sends a party-chat message to every currently-online member of the caller's party (the
+     * {@code PTELL} verb, or free text after {@code PARTY}). The default implementation is a no-op so
+     * existing test stubs do not need to be updated.
+     *
+     * @param message the message to broadcast to the party
+     */
+    default void partyChat(String message) {}
 
     /**
      * Executes a FOLLOW sub-command: reports the current leader when {@code args} is blank, stops
@@ -841,11 +1077,25 @@ public interface SocketCommandContext extends Client {
     default void claimItemFromBank(String args) {}
 
     /**
-     * Sends the current player's bank-vault listing (stored items).
+     * Sends the current player's bank-vault listing (stored items), showing slots used versus their
+     * effective capacity and, when not yet at the top tier, the cost and slot gain of the next
+     * {@code VAULT UPGRADE}.
      *
      * <p>The default implementation is a no-op so that existing test stubs do not need updating.
      */
     default void sendVault() {}
+
+    /**
+     * Buys the next vault-capacity upgrade tier for the current player, permanently raising their
+     * personal vault size in exchange for carried gold.
+     *
+     * <p>Requires the player to be in the same room as a bank NPC. Fails with a clear message if no
+     * bank is present, the player cannot afford the next tier, or the vault is already at the top
+     * tier.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need updating.
+     */
+    default void upgradeVault() {}
 
     /**
      * Executes an ALIAS sub-command: lists the player's aliases when {@code args} is
@@ -966,6 +1216,19 @@ public interface SocketCommandContext extends Client {
     default void manageAuction(String args) {}
 
     /**
+     * Executes a {@code BOUNTY} sub-command: {@code POST <mob> <gold>}, {@code LIST}, or
+     * {@code CANCEL <mob>}. Escrows gold against a mob type, lists open bounties, or refunds the
+     * player's own unclaimed stake respectively; a bountied mob type's pooled reward is paid to
+     * whoever next kills it (announced server-wide) via the mob-death reward path.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the sub-command and optional arguments (e.g. {@code "POST goblin 100"} or
+     *             {@code "CANCEL goblin"})
+     */
+    default void manageBounty(String args) {}
+
+    /**
      * Displays the bulletin board of the player's current room via the {@code BOARD} command:
      * every note pinned there, numbered oldest-first, with each note's author, timestamp, and text.
      *
@@ -1036,6 +1299,21 @@ public interface SocketCommandContext extends Client {
     default void initiateDuel(String targetName) {}
 
     /**
+     * Challenges a player in the same room to a consensual duel staked with a gold wager via the
+     * {@code DUEL WAGER <player> <gold>} command (issue #661).
+     *
+     * <p>{@code args} is the text following {@code WAGER}, expected to be a player name followed by a
+     * positive whole-number gold amount. Fails with a clear message when the amount is missing or not
+     * a positive integer, and otherwise defers to the ordinary duel validation (including a check that
+     * the challenger currently holds the staked gold). No gold is escrowed at challenge time.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the {@code <player> <gold>} text following {@code WAGER}
+     */
+    default void initiateWagerDuel(String args) {}
+
+    /**
      * Accepts a pending duel challenge via the {@code ACCEPT} command, engaging both participants.
      *
      * <p>Fails with a clear message when the player has no pending challenge or is already dueling.
@@ -1064,6 +1342,16 @@ public interface SocketCommandContext extends Client {
      * @param message the message to broadcast to the guild
      */
     default void guildChat(String message) {}
+
+    /**
+     * Shows the caller's guild its active cooperative guild quest: the objective, shared progress
+     * ({@code Slayed 7 / 20 dire wolves}) and the gold reward paid into the treasury on completion.
+     * Reports "You are not in a guild." when the caller is guildless. The default implementation is a
+     * no-op so existing test stubs do not need to be updated.
+     *
+     * @param args unused sub-arguments (the command takes none)
+     */
+    default void executeGuildQuest(String args) {}
 
     /**
      * Returns the guild tag suffix (e.g. {@code " [Ironclad]"}) for the given online player, or an

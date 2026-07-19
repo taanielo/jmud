@@ -18,6 +18,7 @@ import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemEffect;
 import io.taanielo.jmud.core.world.ItemEffectOperation;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.ItemSetId;
 import io.taanielo.jmud.core.world.LightSource;
 import io.taanielo.jmud.core.world.Rarity;
 import io.taanielo.jmud.core.world.RarityProfile;
@@ -41,8 +42,11 @@ public class ItemMapper {
         boolean twoHanded = item.isTwoHanded();
         boolean mount = item.isMount();
         boolean map = item.isMap();
+        boolean set = item.getSetId() != null;
         int version;
-        if (map) {
+        if (set) {
+            version = SchemaVersions.V16;
+        } else if (map) {
             version = SchemaVersions.V14;
         } else if (mount) {
             version = SchemaVersions.V12;
@@ -88,7 +92,8 @@ public class ItemMapper {
             locked ? Boolean.TRUE : null,
             twoHanded ? Boolean.TRUE : null,
             mount ? item.getMountMoveDiscount() : null,
-            map ? item.getMapAreaId().getValue() : null
+            map ? item.getMapAreaId().getValue() : null,
+            set ? item.getSetId().getValue() : null
         );
     }
 
@@ -122,9 +127,11 @@ public class ItemMapper {
         boolean identified = dto.identified() == null || dto.identified();
         boolean twoHanded = dto.twoHanded() != null && dto.twoHanded();
         AreaId mapAreaId = dto.mapAreaId() != null ? AreaId.of(dto.mapAreaId()) : null;
+        ItemSetId setId = dto.setId() != null ? ItemSetId.of(dto.setId()) : null;
         return Item.builder(ItemId.of(dto.id()), dto.name(), dto.description(), attributes)
             .mountMoveDiscount(dto.mountMoveDiscount())
             .mapAreaId(mapAreaId)
+            .setId(setId)
             .effects(effects)
             .messages(messages)
             .equipSlot(slot)

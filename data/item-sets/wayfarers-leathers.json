@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "wayfarers-leathers",
+  "name": "Wayfarer's Leathers",
+  "pieces": [
+    "leather-cap",
+    "leather-chest",
+    "leather-legs"
+  ],
+  "thresholds": [
+    {
+      "pieces_required": 2,
+      "stats": {
+        "ac": 2
+      }
+    },
+    {
+      "pieces_required": 3,
+      "stats": {
+        "ac": 3
+      }
+    }
+  ]
+}

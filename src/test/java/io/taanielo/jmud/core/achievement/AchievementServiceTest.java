@@ -30,6 +30,9 @@ class AchievementServiceTest {
     private static final Achievement LEVEL_10 =
         new Achievement(AchievementId.of("level_10"), "Seasoned", "Reach level 10.",
             AchievementCondition.LEVEL, 10);
+    private static final Achievement FIRST_KILL_WITH_TITLE =
+        new Achievement(AchievementId.of("first_kill"), "First Blood", "Slay your first enemy.",
+            AchievementCondition.TOTAL_KILLS, 1, "the Blooded");
 
     private static AchievementService serviceOf(Achievement... achievements) throws Exception {
         AchievementRepository repository = new AchievementRepository() {
@@ -134,6 +137,31 @@ class AchievementServiceTest {
         assertEquals(NOW, firstKill.unlockedAt());
         assertFalse(centurion.unlocked());
         assertEquals(5, centurion.progress(), "Progress should reflect current kills");
+    }
+
+    @Test
+    void grantsTitleWhenUnlockingAchievementWithTitleReward() throws Exception {
+        AchievementService service = serviceOf(FIRST_KILL_WITH_TITLE);
+        Player player = playerWithKills(1);
+
+        AchievementService.UnlockResult result = service.checkAndUnlock(player);
+
+        assertEquals(List.of(FIRST_KILL_WITH_TITLE), result.newlyUnlocked());
+        assertTrue(result.player().titles().has("the Blooded"),
+            "Unlocking a titled achievement must grant the title");
+        assertEquals("the Blooded", result.player().withActiveTitle("the Blooded").titles().active(),
+            "The granted title must be activatable via the existing title mechanism");
+    }
+
+    @Test
+    void doesNotGrantTitleWhenAchievementHasNoTitleReward() throws Exception {
+        AchievementService service = serviceOf(KILLS_100);
+        Player player = playerWithKills(100);
+
+        AchievementService.UnlockResult result = service.checkAndUnlock(player);
+
+        assertTrue(result.player().titles().earned().isEmpty(),
+            "A title-less achievement must not grant any title");
     }
 
     @Test

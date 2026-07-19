@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "id": "hunters-mark",
+  "name": "Hunter's Mark",
+  "duration_ticks": 10,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A glowing hunter's mark sears onto you, and every eye in the room finds your weak points."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A glowing hunter's mark sears onto {name}, laying their weak points bare."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The hunter's mark upon you dims and fades."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The hunter's mark upon {name} dims and fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} bears a glowing hunter's mark that lays their defences bare."
+    }
+  ]
+}

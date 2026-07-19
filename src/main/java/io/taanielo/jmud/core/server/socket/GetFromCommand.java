@@ -37,7 +37,9 @@ public class GetFromCommand extends RegistrableCommand {
         return """
                Usage: GET <item> FROM <container>
                  Removes the named item from the named container (a bag, chest, or
-                 strongbox) you are carrying and adds it to your inventory.\
+                 strongbox) you are carrying and adds it to your inventory.
+               Usage: GET ALL FROM <container>
+                 Removes every item from the named container in one command.\
                """;
     }
 
@@ -58,6 +60,10 @@ public class GetFromCommand extends RegistrableCommand {
         if (itemInput.isEmpty() || containerInput.isEmpty()) {
             return Optional.of(new SocketCommandMatch(
                 this, context -> context.writeLineWithPrompt("Usage: GET <item> FROM <container>")));
+        }
+        if (itemInput.equalsIgnoreCase("all")) {
+            return Optional.of(new SocketCommandMatch(
+                this, context -> context.getAllFromContainer(containerInput)));
         }
         return Optional.of(new SocketCommandMatch(
             this, context -> context.getFromContainer(itemInput, containerInput)));

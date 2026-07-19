@@ -4,5 +4,6 @@
   "name": "Centurion",
   "description": "Slay 100 enemies.",
   "condition": "total_kills",
-  "threshold": 100
+  "threshold": 100,
+  "title_reward": "the Centurion"
 }

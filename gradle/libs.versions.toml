@@ -3,10 +3,10 @@ lombok = "1.18.46"
 log4j = "2.26.1"
 commonsLang3 = "3.20.0"
 jackson = "2.22.1"
-sshdCore = "2.18.0"
+sshdCore = "2.19.0"
 bcprovJdk18on = "1.85"
 junitJupiter = "6.1.1"
-junitPlatformLauncher = "6.1.1"
+junitPlatformLauncher = "6.1.2"
 # Pinned below the latest Error Prone release (2.50.0): NullAway 0.12.7 (the latest NullAway
 # release as of writing) reflectively depends on an internal Error Prone API class
 # (com.google.errorprone.predicates.type.DescendantOf) that was removed in error_prone_core

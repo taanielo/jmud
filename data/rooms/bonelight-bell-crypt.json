@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "bonelight-bell-crypt",
+  "name": "The Bell Crypt",
+  "description": "The processional descends a last flight of vertebrae stairs into a crypt hung with bells, and every bell is a skull. They depend from the vault on cords of braided sinew in their hundreds, from small child-things no bigger than a fist to great fused clusters of a dozen crania knitted into one booming vessel, and all of them hang mouth-down over a floor of packed ash. There are no clappers; the bells are rung by breath alone, by the slow escaping sigh of the spore-choked air moving through their empty eyes and jaws, so that the crypt tolls without ceasing in a soft, deep, overlapping peal beneath the single held note. This is the last threshold. Beyond the far arch the held note gathers into something vast and unified and waiting, and the bells nearest that arch swing toward it of their own accord, as though drawn, as though eager to announce you.",
+  "item_ids": [],
+  "exits": {
+    "up": "bonelight-ossuary-processional",
+    "down": "bonelight-choir-nave"
+  },
+  "min_level": 52,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A cluster of fused skulls tolls low and long as a sigh of spore-breath moves through it, and the ash on the floor lifts and settles.",
+    "The bells nearest the far arch swing toward the gathering note without a breath to move them.",
+    "A small skull-bell chimes thin and clear overhead, and a hundred larger ones answer it in a rolling, mournful peal."
+  ]
+}

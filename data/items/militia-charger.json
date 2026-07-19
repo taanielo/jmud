@@ -1,0 +1,14 @@
+{
+  "schema_version": 12,
+  "id": "militia-charger",
+  "name": "a militia war-charger",
+  "description": "A towering war-charger bred and battle-trained in the Kingsreach Militia's own stables, its muscled frame armored in blackened barding stamped with the militia crest. Only proven allies of the militia are permitted to ride one. Powerful and tireless, it eats the leagues beneath its iron-shod hooves, carrying its rider across the wilds with strength to spare.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 0,
+  "value": 2500,
+  "mount_move_discount": 3
+}

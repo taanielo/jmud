@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "interval-cull",
+  "name": "Keep the Empty Measure",
+  "description": "You did not climb down into the Interval; you fell through the lingering shape the First Hum left behind when it broke, and came out the far side into the gap the whole doctrine of sound never named — the hair's-breadth pause between one pulse of the Hum and the next, the rest that let the note be a note at all. Past the threshold the gap opens into the Hollow Measure, a wide bar of stone scored with the ruled lines that once held the beats of the Hum apart, counting still out of a habit older than the thing it counted. It has no music left to divide, so it divides you: your heartbeat is picked up and pinned against the empty bars like a specimen, and along those bars the metronome-wraiths tick their perfect, pointless time, keeping the beat for a rhythm that no longer exists. Let them go on counting and the measure will finish assembling the thing it has been building in the gap since the world drew breath. Break six of the metronome-wraiths along the ruled lines of the Hollow Measure before the count settles onto your own pulse, and the passages down toward the last beat may open to one who can still keep a rhythm the gap does not own.",
+  "target_mob_id": "interval-metronome-wraith",
+  "required_kills": 6,
+  "gold_reward": 360,
+  "xp_reward": 900,
+  "recommended_level": 73
+}

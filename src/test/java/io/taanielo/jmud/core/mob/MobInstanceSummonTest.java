@@ -21,6 +21,7 @@ class MobInstanceSummonTest {
     private static final RoomId SPAWN_ROOM = RoomId.of("spawn");
     private static final RoomId SUMMON_ROOM = RoomId.of("crypt");
     private static final Username SUMMONER = Username.of("necro");
+    private static final int OWNER_LEVEL = 1;
 
     private MobTemplate petTemplate() {
         return new MobTemplate(
@@ -52,7 +53,7 @@ class MobInstanceSummonTest {
 
     @Test
     void summonedPetTracksSummonerRoomAndLifetime() {
-        MobInstance pet = MobInstance.summoned(petTemplate(), SUMMON_ROOM, SUMMONER, 3);
+        MobInstance pet = MobInstance.summoned(petTemplate(), SUMMON_ROOM, SUMMONER, OWNER_LEVEL, 3);
 
         assertTrue(pet.isSummoned(), "The factory produces a summoned pet");
         assertEquals(SUMMONER, pet.summoner(), "The pet remembers its summoner");
@@ -62,7 +63,7 @@ class MobInstanceSummonTest {
 
     @Test
     void tickSummonLifetimeDecaysAndReportsExpiry() {
-        MobInstance pet = MobInstance.summoned(petTemplate(), SUMMON_ROOM, SUMMONER, 2);
+        MobInstance pet = MobInstance.summoned(petTemplate(), SUMMON_ROOM, SUMMONER, OWNER_LEVEL, 2);
 
         assertFalse(pet.tickSummonLifetime(), "First tick decays to 1, not yet expired");
         assertEquals(1, pet.summonTicksRemaining());
@@ -72,6 +73,6 @@ class MobInstanceSummonTest {
     @Test
     void summonedRejectsNonPositiveDuration() {
         assertThrows(IllegalArgumentException.class,
-            () -> MobInstance.summoned(petTemplate(), SUMMON_ROOM, SUMMONER, 0));
+            () -> MobInstance.summoned(petTemplate(), SUMMON_ROOM, SUMMONER, OWNER_LEVEL, 0));
     }
 }

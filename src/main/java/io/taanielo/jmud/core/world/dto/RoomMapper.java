@@ -6,10 +6,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemId;
 import io.taanielo.jmud.core.world.Room;
+import io.taanielo.jmud.core.world.RoomHazard;
 import io.taanielo.jmud.core.world.RoomId;
 
 /**
@@ -36,8 +38,11 @@ public class RoomMapper {
         Integer lightLevel = room.getLightLevel();
         boolean outdoor = room.isOutdoor();
         List<String> ambientMessages = room.getAmbientMessages();
+        RoomHazardDto hazard = toHazardDto(room.getHazard());
         int version;
-        if (!hiddenExits.isEmpty()) {
+        if (hazard != null) {
+            version = SchemaVersions.V10;
+        } else if (!hiddenExits.isEmpty()) {
             version = SchemaVersions.V9;
         } else if (!ambientMessages.isEmpty()) {
             version = SchemaVersions.V8;
@@ -55,7 +60,31 @@ public class RoomMapper {
         return new RoomDto(version, room.getId().getValue(), room.getName(), room.getDescription(), itemIds, exits,
             lockedExits.isEmpty() ? null : lockedExits, minLevel, nightDescription, lightLevel,
             outdoor ? Boolean.TRUE : null, ambientMessages.isEmpty() ? null : ambientMessages,
-            hiddenExits.isEmpty() ? null : hiddenExits);
+            hiddenExits.isEmpty() ? null : hiddenExits, hazard);
+    }
+
+    private RoomHazardDto toHazardDto(RoomHazard hazard) {
+        if (hazard == null) {
+            return null;
+        }
+        return new RoomHazardDto(
+            hazard.damageType().name(),
+            hazard.damageMin(),
+            hazard.damageMax(),
+            hazard.damageMessage());
+    }
+
+    private RoomHazard toHazardDomain(RoomHazardDto dto) {
+        if (dto == null) {
+            return null;
+        }
+        if (dto.damageType() == null || dto.damageMin() == null || dto.damageMax() == null
+            || dto.damageMessage() == null) {
+            throw new IllegalArgumentException(
+                "Room hazard requires damage_type, damage_min, damage_max, and damage_message");
+        }
+        DamageType damageType = DamageType.fromString(dto.damageType());
+        return new RoomHazard(damageType, dto.damageMin(), dto.damageMax(), dto.damageMessage());
     }
 
     /**
@@ -89,6 +118,7 @@ public class RoomMapper {
             }
         }
         List<String> ambientMessages = dto.ambientMessages() == null ? List.of() : dto.ambientMessages();
+        RoomHazard hazard = toHazardDomain(dto.hazard());
         return new Room(
             RoomId.of(dto.id()),
             dto.name(),
@@ -102,7 +132,8 @@ public class RoomMapper {
             dto.lightLevel(),
             Boolean.TRUE.equals(dto.isOutdoor()),
             ambientMessages,
-            hiddenExits
+            hiddenExits,
+            hazard
         );
     }
 }

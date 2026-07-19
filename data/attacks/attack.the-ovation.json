@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.the-ovation",
+  "name": "a rolling ovation",
+  "min_damage": 108,
+  "max_damage": 140,
+  "hit_bonus": 15,
+  "crit_bonus": 11,
+  "damage_bonus": 27,
+  "weapon_type": "BLUNT",
+  "damage_type": "PHYSICAL",
+  "applies_effect": {
+    "effect_id": "dazed",
+    "chance_percent": 78
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Ovation lets a fraction of its endless applause roll off itself and onto you, no more than a sliver of the roar it is gathering, and even that scrap of clapped demand crashes through flesh and bone and drives one more measure out of your reeling pulse. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Ovation tips a wave of its rolling applause toward you and the whole demand for more comes with it — and you break your rhythm and step off the beat, and the roar sweeps past you unanswered, calling for an encore you did not give."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Ovation narrows the whole roar of the hall down to the width of your heart and claps it shut, and the concussion of that one demand drives so deep that every bone in you rings once with the single word it is calling — again! The blow {verb} you!"
+    }
+  ]
+}

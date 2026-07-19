@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "voidglass-focus",
+  "name": "Voidglass Focus",
+  "output_item": "voidglass-focus",
+  "gold_cost": 120,
+  "min_skill": 4,
+  "materials": [
+    { "item": "voidglass-shard", "quantity": 1 },
+    { "item": "iron-ore", "quantity": 2 }
+  ]
+}

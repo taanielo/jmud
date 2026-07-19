@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.encore-standing-call-wraith",
+  "name": "an implacable demand",
+  "min_damage": 94,
+  "max_damage": 124,
+  "hit_bonus": 14,
+  "crit_bonus": 10,
+  "damage_bonus": 24,
+  "weapon_type": "BLUNT",
+  "damage_type": "PHYSICAL",
+  "applies_effect": {
+    "effect_id": "dazed",
+    "chance_percent": 68
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The standing-call wraith drives the whole flat weight of a hall's refusal into you, a wall of insistence with no words in it, the demand for one more piece landing as pure pressure that will not let you be finished. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The standing-call wraith presses its implacable demand toward you and the roaring weight of the refusal comes down with it, and you give way before it and let the insistence drive past you into empty air."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The standing-call wraith brings the entire standing tier's refusal down onto you alone, the whole will of a hall that will not accept an ending crashing onto your single pulse, and for one crushing instant it feels as though it means to wring the encore out of you by force! The blow {verb} you!"
+    }
+  ]
+}

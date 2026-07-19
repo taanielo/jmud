@@ -1,12 +1,16 @@
 package io.taanielo.jmud.core.mob.dto;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.mob.GoldDrop;
+import io.taanielo.jmud.core.mob.HealerProfile;
 import io.taanielo.jmud.core.mob.LootEntry;
 import io.taanielo.jmud.core.mob.MobId;
 import io.taanielo.jmud.core.mob.MobTemplate;
@@ -39,6 +43,14 @@ public class MobTemplateDtoMapper {
         FactionId factionId = dto.factionId() != null ? FactionId.of(dto.factionId()) : null;
         boolean worldBoss = dto.worldBoss() != null && dto.worldBoss();
         boolean worldEvent = dto.worldEvent() != null && dto.worldEvent();
+        int parryChancePercent = dto.parryChance() == null ? 0 : dto.parryChance();
+        Map<DamageType, Integer> resistances = toElementalMap(dto.resistances(), dto.id(), "resistances");
+        Map<DamageType, Integer> vulnerabilities =
+            toElementalMap(dto.vulnerabilities(), dto.id(), "vulnerabilities");
+        HealerProfile healerProfile = toHealerProfile(dto);
+        Integer enrageTicks = dto.enrageTicks();
+        double enrageDamageMultiplier =
+            dto.enrageDamageMultiplier() == null ? 1.0 : dto.enrageDamageMultiplier();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -60,7 +72,62 @@ public class MobTemplateDtoMapper {
             dialogueId,
             factionId,
             worldBoss,
-            worldEvent
+            worldEvent,
+            parryChancePercent,
+            resistances,
+            vulnerabilities,
+            healerProfile,
+            enrageTicks,
+            enrageDamageMultiplier
         );
+    }
+
+    /**
+     * Builds the optional {@link HealerProfile} from the raw DTO (issue #733). Returns {@code null}
+     * unless the mob is explicitly flagged {@code "healer": true}, keeping every existing mob file a
+     * non-healer. A healer mob must author positive {@code heal_min}/{@code heal_max} amounts; the
+     * wounded {@code heal_threshold} defaults to {@link HealerProfile#DEFAULT_THRESHOLD_PERCENT} when
+     * omitted. Authoring errors surface here as an {@link IllegalArgumentException} at load rather than
+     * silently disabling the mechanic.
+     */
+    private HealerProfile toHealerProfile(MobTemplateDto dto) {
+        if (dto.healer() == null || !dto.healer()) {
+            return null;
+        }
+        if (dto.healMin() == null || dto.healMax() == null) {
+            throw new IllegalArgumentException("Mob '" + dto.id()
+                + "' is flagged healer but is missing heal_min/heal_max");
+        }
+        int threshold = dto.healThreshold() == null
+            ? HealerProfile.DEFAULT_THRESHOLD_PERCENT
+            : dto.healThreshold();
+        return new HealerProfile(dto.healMin(), dto.healMax(), threshold);
+    }
+
+    /**
+     * Converts a raw {@code {"fire": 50}} JSON object into a {@link DamageType}-keyed map, resolving
+     * each key case-insensitively via {@link DamageType#fromString(String)}. An absent object yields an
+     * empty map (today's behaviour). An unrecognised or {@code physical} key is rejected so authoring
+     * typos surface at load rather than silently doing nothing.
+     */
+    private Map<DamageType, Integer> toElementalMap(
+        Map<String, Integer> raw, String mobId, String field) {
+        if (raw == null || raw.isEmpty()) {
+            return Map.of();
+        }
+        Map<DamageType, Integer> result = new EnumMap<>(DamageType.class);
+        for (Map.Entry<String, Integer> entry : raw.entrySet()) {
+            DamageType type = DamageType.fromString(entry.getKey());
+            if (type == DamageType.PHYSICAL) {
+                throw new IllegalArgumentException("Mob '" + mobId + "' has an invalid " + field
+                    + " damage type '" + entry.getKey() + "' (expected fire/cold/poison)");
+            }
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException("Mob '" + mobId + "' has a null " + field
+                    + " percent for '" + entry.getKey() + "'");
+            }
+            result.put(type, entry.getValue());
+        }
+        return result;
     }
 }

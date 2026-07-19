@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "soft-leather-boots",
+  "name": "Soft Leather Boots",
+  "description": "Silent boots of layered pelt reinforced at the toe with a filed dire-wolf fang. Made for creeping, not stomping.",
+  "attributes": {
+    "stats": {
+      "ac": 4
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "feet",
+  "weight": 3,
+  "value": 70,
+  "attack_ref": null
+}

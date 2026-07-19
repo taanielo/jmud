@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "war-song",
+  "name": "War Song",
+  "duration_ticks": 60,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 4
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": 3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A driving war song sets your blood pounding; your strikes come harder and truer."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A driving war song sets {name}'s blood pounding for battle."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The war song fades from your ears and the martial fervour drains away."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The war song driving {name} fades to silence."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is spurred on by a driving, martial war song."
+    }
+  ]
+}

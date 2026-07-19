@@ -25,7 +25,9 @@ public class LookCommand extends RegistrableCommand {
         return """
                Usage: LOOK  |  LOOK <target>
                  LOOK        \u2014 describe the current room, its exits, and visible occupants.
-                 LOOK <name> \u2014 examine a specific player or object in the room.\
+                 LOOK <name> \u2014 examine a specific player or object in the room.
+               A room may be hazardous terrain that damages you each tick; if so, LOOK always
+               states it plainly on a (Hazard) line. See HELP hazards.\
                """;
     }
 

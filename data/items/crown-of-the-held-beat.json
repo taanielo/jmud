@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "crown-of-the-held-beat",
+  "name": "the Crown of the Held Beat",
+  "description": "A circlet the Fermata wore across the brow of its stillness, worked from frost-clear splinters of held breath set edge to edge so that they ring the head in a band of arrested cold. Worn, it lays the same pause across the mind that the Fermata keeps across the world: the wearer's thoughts settle to a held stillness, unhurried and unshaken, and the cold of the crown turns the bite of frost and stolen breath from the head and throat alike. It never warms and it never quite settles, always poised a hair short of some motion it will not complete, and there is a strange steadiness in it, the steadiness of a thing that has chosen, once and for an age, not to let its breath go.",
+  "attributes": {
+    "stats": {
+      "ac": 7,
+      "cold_resist": 30,
+      "hp": 18
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "head",
+  "weight": 2,
+  "value": 720,
+  "rarity": "epic",
+  "attack_ref": null
+}

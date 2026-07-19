@@ -17,7 +17,8 @@
       "kind": "VITALS",
       "stat": "HP",
       "operation": "DECREASE",
-      "amount": 10
+      "amount": 10,
+      "damage_type": "COLD"
     },
     {
       "kind": "EFFECT",

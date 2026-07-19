@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "spider-silk",
+  "name": "Spider Silk",
+  "description": "A skein of pale, impossibly strong silk drawn from a giant spider's web. It gleams faintly and clings to the fingers, prized by tailors for the weightless cloth it weaves into.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 8
+}

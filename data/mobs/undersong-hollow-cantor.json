@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "undersong-hollow-cantor",
+  "name": "a hollow cantor",
+  "max_hp": 720,
+  "attack_id": "attack.undersong-hollow-cantor",
+  "aggressive": true,
+  "tags": ["undead", "resonant", "the-undersong"],
+  "spawn_room_id": "undersong-humming-vault",
+  "max_count": 2,
+  "respawn_ticks": 80,
+  "xp_reward": 900,
+  "loot": [
+    {
+      "item_id": "underhum-resonance-mote",
+      "drop_chance": 0.25
+    }
+  ],
+  "gold_drop": {
+    "min": 190,
+    "max": 290
+  }
+}

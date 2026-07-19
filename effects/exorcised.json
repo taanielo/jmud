@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "exorcised",
+  "name": "Exorcised",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": -3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A searing wave of holy light routs you; the radiance sears your senses and scatters your defence."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} reels, routed and blinded by a searing wave of holy light."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The holy radiance fades and your senses and guard return."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} recovers from the searing holy light and steadies themselves."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is reeling and routed, seared by holy light."
+    }
+  ]
+}

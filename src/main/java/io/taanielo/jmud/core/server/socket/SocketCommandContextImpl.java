@@ -1,8 +1,10 @@
 package io.taanielo.jmud.core.server.socket;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,6 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,6 +29,7 @@ import io.taanielo.jmud.core.ability.AbilityMatch;
 import io.taanielo.jmud.core.ability.AbilityRegistry;
 import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.ability.training.AbilityTrainingService;
 import io.taanielo.jmud.core.ability.training.TrainableAbilityStatus;
 import io.taanielo.jmud.core.ability.training.TrainingAttempt;
@@ -47,7 +51,14 @@ import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSubject;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bank.BankTransactionResult;
+import io.taanielo.jmud.core.bank.VaultUpgradeTier;
+import io.taanielo.jmud.core.bounty.BountyListing;
+import io.taanielo.jmud.core.bounty.BountyResult;
+import io.taanielo.jmud.core.bounty.BountyService;
+import io.taanielo.jmud.core.bounty.BountySettings;
 import io.taanielo.jmud.core.character.ClassDefinition;
+import io.taanielo.jmud.core.combat.DamageType;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.craft.CraftOutcome;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
@@ -56,15 +67,25 @@ import io.taanielo.jmud.core.dialogue.DialogueNode;
 import io.taanielo.jmud.core.dialogue.DialogueResponse;
 import io.taanielo.jmud.core.dialogue.DialogueService;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
+import io.taanielo.jmud.core.effects.ControlType;
+import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
+import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.enchant.EnchantOutcome;
 import io.taanielo.jmud.core.gathering.GatherOutcome;
 import io.taanielo.jmud.core.guild.Guild;
+import io.taanielo.jmud.core.guild.GuildLevel;
 import io.taanielo.jmud.core.guild.GuildMember;
+import io.taanielo.jmud.core.guild.GuildQuest;
+import io.taanielo.jmud.core.guild.GuildQuestService;
 import io.taanielo.jmud.core.guild.GuildResult;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.GuildVaultResult;
+import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.guild.VaultedItem;
+import io.taanielo.jmud.core.mentor.MentorRank;
+import io.taanielo.jmud.core.mentor.MentorRankLadder;
+import io.taanielo.jmud.core.mentor.MentorService;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.PlainTextMessage;
 import io.taanielo.jmud.core.notes.NoteDeletionResult;
@@ -83,6 +104,7 @@ import io.taanielo.jmud.core.player.MailResult;
 import io.taanielo.jmud.core.player.MovementCostService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerAliasService;
+import io.taanielo.jmud.core.player.PlayerAuctionWatchList;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.player.PlayerFriendList;
 import io.taanielo.jmud.core.player.PlayerGuildMembership;
@@ -113,6 +135,8 @@ import io.taanielo.jmud.core.server.Client;
 import io.taanielo.jmud.core.server.ClientPool;
 import io.taanielo.jmud.core.server.connection.ClientConnection;
 import io.taanielo.jmud.core.shop.ShopTransactionResult;
+import io.taanielo.jmud.core.social.MarriageService;
+import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.trade.TradeExecutionService;
 import io.taanielo.jmud.core.trade.TradeService;
 import io.taanielo.jmud.core.trade.TradeSession;
@@ -127,6 +151,7 @@ import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
@@ -152,6 +177,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
     /** Format used to render bulletin-board note timestamps in the local time zone. */
     private static final DateTimeFormatter NOTE_TIME_FORMAT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
+    /**
+     * Ticks a channeled spell is locked out for after its cast is interrupted (issue #693). Short
+     * enough to keep the spell usable, long enough that interruption is not free to spam past.
+     */
+    private static final int INTERRUPTED_CAST_COOLDOWN_TICKS = 3;
 
     private final SocketClient client;
     private final ClientConnection connection;
@@ -243,6 +274,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (context.duelService() != null) {
             this.gameActionService.setDuelService(context.duelService());
         }
+        if (context.guildWarService() != null) {
+            this.gameActionService.setGuildWarService(context.guildWarService());
+        }
         if (context.weatherEngine() != null) {
             this.gameActionService.setWeatherEngine(context.weatherEngine());
         }
@@ -254,6 +288,15 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         if (context.areaMapService() != null) {
             this.gameActionService.setAreaMapService(context.areaMapService());
+        }
+        if (context.areaWaypointService() != null) {
+            this.gameActionService.setAreaWaypointService(context.areaWaypointService());
+        }
+        if (context.wayfindService() != null) {
+            this.gameActionService.setWayfindService(context.wayfindService());
+        }
+        if (context.corpseLocatorService() != null) {
+            this.gameActionService.setCorpseLocatorService(context.corpseLocatorService());
         }
         this.gameActionService.setOnlinePlayerLookup(
             username -> java.util.Optional.ofNullable(findOnlinePlayer(username)));
@@ -475,6 +518,35 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         session.replacePlayer(player.withAutoLootEnabled(enabled));
         writeLineWithPrompt("AUTOLOOT is now " + (enabled ? "ON" : "OFF"));
+    }
+
+    private void handleAutoAssistCommand(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to change autoassist settings.");
+            return;
+        }
+        String normalized = args == null ? "" : args.trim().toUpperCase(Locale.ROOT);
+        if (normalized.isEmpty() || normalized.equals("STATUS")) {
+            writeLineWithPrompt("AUTOASSIST is " + (player.isAutoAssistEnabled() ? "ON" : "OFF"));
+            return;
+        }
+        switch (normalized) {
+            case "ON" -> setAutoAssistEnabled(true);
+            case "OFF" -> setAutoAssistEnabled(false);
+            case "TOGGLE" -> setAutoAssistEnabled(!player.isAutoAssistEnabled());
+            default -> writeLineWithPrompt("Usage: AUTOASSIST [on|off|toggle|status]");
+        }
+    }
+
+    private void setAutoAssistEnabled(boolean enabled) {
+        Player player = session.getPlayer();
+        if (player.isAutoAssistEnabled() == enabled) {
+            writeLineWithPrompt("AUTOASSIST is already " + (enabled ? "ON" : "OFF"));
+            return;
+        }
+        session.replacePlayer(player.withAutoAssistEnabled(enabled));
+        writeLineWithPrompt("AUTOASSIST is now " + (enabled ? "ON" : "OFF"));
     }
 
     private void handleBriefCommand(String args) {
@@ -1017,11 +1089,95 @@ class SocketCommandContextImpl implements SocketCommandContext {
         String race = target.getRace().getValue();
         String classId = target.getClassId().getValue();
         String generated = name + " the " + race + " " + classId + " (level " + target.getLevel() + ").";
+        List<String> lines = new ArrayList<>();
         String custom = target.description();
-        if (custom.isEmpty()) {
-            return List.of(generated);
+        if (!custom.isEmpty()) {
+            lines.add(custom);
         }
-        return List.of(custom, generated);
+        lines.add(generated);
+        lines.addAll(effectExamineLines(target));
+        return lines;
+    }
+
+    /**
+     * Returns the {@code examine}-phase flavour line for each of the target's currently active
+     * effects that authors one, for {@code LOOK <player>}. Effects with no such message contribute
+     * no line; a repository lookup failure degrades to no effect lines rather than aborting the look.
+     */
+    private List<String> effectExamineLines(Player target) {
+        try {
+            return context.effectEngine().examineLines(target);
+        } catch (EffectRepositoryException e) {
+            return List.of();
+        }
+    }
+
+    /**
+     * A player action that a hard crowd-control effect can forbid, paired with the verb used in
+     * the refusal message and the set of {@link ControlType}s that block it. Movement and flee are
+     * blocked by {@link ControlType#ROOT} and {@link ControlType#STUN}; casting by
+     * {@link ControlType#SILENCE} and {@link ControlType#STUN}; skill use only by
+     * {@link ControlType#STUN} (silence never stops a skill).
+     */
+    private enum ControlledAction {
+        MOVE("move", Set.of(ControlType.ROOT, ControlType.STUN)),
+        FLEE("flee", Set.of(ControlType.ROOT, ControlType.STUN)),
+        CAST("voice a spell", Set.of(ControlType.SILENCE, ControlType.STUN)),
+        USE("use abilities", Set.of(ControlType.STUN));
+
+        private final String verb;
+
+        // Set.of(...) yields a genuinely immutable set at runtime; the declared java.util.Set type
+        // trips ErrorProne's ImmutableEnumChecker (a false positive here). Guava's ImmutableSet is
+        // not a dependency of this module, so we suppress rather than add one for a single field.
+        @SuppressWarnings("ImmutableEnumChecker")
+        private final Set<ControlType> blockingTypes;
+
+        ControlledAction(String verb, Set<ControlType> blockingTypes) {
+            this.verb = verb;
+            this.blockingTypes = blockingTypes;
+        }
+    }
+
+    /**
+     * Refuses the given action when the player currently carries a crowd-control effect that forbids
+     * it, printing a player-facing message that names the offending effect. The check is a pure read
+     * of the player's transient effect state and charges no resources, so a refused command is a
+     * complete no-op. A repository lookup failure degrades to "not controlled" (fail-open) rather than
+     * trapping the player. Tick-thread only (AGENTS.md §5).
+     *
+     * @param player the acting player
+     * @param action the action being attempted
+     * @return {@code true} when the action is blocked (and a refusal message was sent)
+     */
+    private boolean refuseIfControlled(Player player, ControlledAction action) {
+        Optional<EffectDefinition> control = activeControl(player, action);
+        if (control.isEmpty()) {
+            return false;
+        }
+        EffectDefinition definition = control.get();
+        String descriptor = definition.control().map(ControlType::descriptor).orElse("held fast");
+        writeLineWithPrompt(
+            "You are " + descriptor + " (" + definition.name() + ") and cannot " + action.verb + "!");
+        return true;
+    }
+
+    /**
+     * Returns the crowd-control effect currently forbidding the given action for the player, or empty
+     * when the action is not blocked. A repository lookup failure degrades to empty (fail-open). This
+     * is the messageless core used both by {@link #refuseIfControlled} and by callers that want to
+     * emit their own refusal (e.g. auto-follow cancellation). Tick-thread only (AGENTS.md §5).
+     *
+     * @param player the acting player
+     * @param action the action being attempted
+     * @return the blocking effect's definition, or empty when the action is permitted
+     */
+    private Optional<EffectDefinition> activeControl(Player player, ControlledAction action) {
+        try {
+            return context.effectEngine().activeControl(player, action.blockingTypes);
+        } catch (EffectRepositoryException e) {
+            return Optional.empty();
+        }
     }
 
     /**
@@ -1088,6 +1244,20 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player source = session.getPlayer();
         Optional<Player> resolved = abilityTargetResolver.resolve(source, targetInput);
         if (resolved.isEmpty()) {
+            // Not a player: fall back to looking at a creature in the room (e.g. a tamed companion),
+            // which renders its custom description (see DESCRIBE) when one is set.
+            if (context.mobRegistry() != null) {
+                Optional<RoomId> roomIdOpt = roomService.findPlayerLocation(source.getUsername());
+                if (roomIdOpt.isPresent()) {
+                    Optional<List<String>> mobLook =
+                        context.mobRegistry().describeMobOnLook(roomIdOpt.get(), targetInput);
+                    if (mobLook.isPresent()) {
+                        connection.writeLines(mobLook.get());
+                        sendPrompt();
+                        return;
+                    }
+                }
+            }
             writeLineWithPrompt("You don't see that here.");
             return;
         }
@@ -1108,12 +1278,33 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to move.");
             return;
         }
+        performMove(direction);
+    }
+
+    /**
+     * Executes a single room transition in {@code direction} through the one canonical movement path:
+     * control-effect gating, move-point exhaustion, the {@link RoomService#move} transition, move-point
+     * spend, auto-dismount, arrival rendering, and auto-follow. All player-facing output (refusal or
+     * arrival) is emitted exactly as a manually-typed move, so the {@code AUTOWALK} auto-walker can drive
+     * this same chokepoint one direction at a time instead of duplicating movement logic (AGENTS.md §3.3).
+     *
+     * <p>Callers must have already verified the player is authenticated. Runs on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param direction the direction to move
+     * @return {@link MoveStepOutcome#MOVED} when the transition succeeded, otherwise
+     *     {@link MoveStepOutcome#BLOCKED} (a refusal/blocked message was already sent)
+     */
+    private MoveStepOutcome performMove(Direction direction) {
+        if (refuseIfControlled(session.getPlayer(), ControlledAction.MOVE)) {
+            return MoveStepOutcome.BLOCKED;
+        }
         cancelRestIfActive();
         session.clearDialogue();
         Player player = session.getPlayer();
         if (movementCostService.isExhausted(player)) {
             writeLineWithPrompt(MovementCostService.EXHAUSTED_MESSAGE);
-            return;
+            return MoveStepOutcome.BLOCKED;
         }
         RoomService.LookResult currentLook = roomService.look(player.getUsername(), session.getTextStyler());
         Room oldRoom = currentLook.room();
@@ -1128,7 +1319,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
         renderMoveOutcome(player, direction, oldRoom, result, null);
         if (result.moved()) {
             triggerAutoFollow(player.getUsername(), fromRoom, direction);
+            return MoveStepOutcome.MOVED;
         }
+        return MoveStepOutcome.BLOCKED;
+    }
+
+    /** The result of a single {@link #performMove} step, used to drive the {@code AUTOWALK} auto-walker. */
+    private enum MoveStepOutcome {
+        /** The player successfully changed rooms. */
+        MOVED,
+        /** The step was refused or blocked (control effect, exhaustion, locked door, no exit, ...). */
+        BLOCKED
     }
 
     /**
@@ -1310,6 +1511,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 "You are locked in combat and stop following " + leaderName.getValue() + ".");
             return;
         }
+        // A root/stun keeps the follower from moving; drop the follow rather than teleport them along.
+        Optional<EffectDefinition> moveControl = activeControl(player, ControlledAction.MOVE);
+        if (moveControl.isPresent()) {
+            String descriptor = moveControl.get().control().map(ControlType::descriptor).orElse("held fast");
+            cancelFollow(partyService, player.getUsername(),
+                "You are " + descriptor + " and stop following " + leaderName.getValue() + ".");
+            return;
+        }
         if (movementCostService.isExhausted(player)) {
             cancelFollow(partyService, player.getUsername(),
                 "You are too exhausted to keep following " + leaderName.getValue() + ". REST to recover.");
@@ -1415,15 +1624,39 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     @Override
     public void useAbility(String args) {
+        useAbilityInternal(args, true);
+    }
+
+    /**
+     * Resolves a {@code USE} activation, optionally deferring a channeled ("cast time") ability
+     * instead of applying it inline (issue #693).
+     *
+     * @param args         the raw command arguments (ability name and optional target)
+     * @param allowChannel {@code true} for a fresh player command (may begin a channel);
+     *                     {@code false} when re-invoked by the tick loop to resolve a completed channel
+     */
+    private void useAbilityInternal(String args, boolean allowChannel) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to use abilities.");
+            return;
+        }
+        if (allowChannel && refuseIfControlled(session.getPlayer(), ControlledAction.USE)) {
+            return;
+        }
+        if (allowChannel && rejectIfCasting()) {
             return;
         }
         cancelRestIfActive();
         Player player = session.getPlayer();
         AbilityMatch match = abilityRegistry
             .findBestMatch(args, player.getLearnedAbilities()).orElse(null);
+        if (allowChannel && beginChannelIfApplicable(match, player, () -> useAbilityInternal(args, false))) {
+            return;
+        }
         if (handleAoeCastIfApplicable(match, args, player)) {
+            return;
+        }
+        if (handleHarmfulMobCastIfApplicable(match, args, player)) {
             return;
         }
         GameActionResult result = gameActionService.useAbility(player, args);
@@ -1480,8 +1713,26 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     @Override
     public void castSpell(String args) {
+        castSpellInternal(args, true);
+    }
+
+    /**
+     * Resolves a {@code CAST} activation, optionally deferring a channeled ("cast time") spell
+     * instead of applying it inline (issue #693).
+     *
+     * @param args         the raw command arguments (spell name and optional target)
+     * @param allowChannel {@code true} for a fresh player command (may begin a channel);
+     *                     {@code false} when re-invoked by the tick loop to resolve a completed channel
+     */
+    private void castSpellInternal(String args, boolean allowChannel) {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to cast spells.");
+            return;
+        }
+        if (allowChannel && refuseIfControlled(session.getPlayer(), ControlledAction.CAST)) {
+            return;
+        }
+        if (allowChannel && rejectIfCasting()) {
             return;
         }
         cancelRestIfActive();
@@ -1492,13 +1743,150 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("That is not a spell.");
             return;
         }
+        if (allowChannel && beginChannelIfApplicable(match, player, () -> castSpellInternal(args, false))) {
+            return;
+        }
         if (handleAoeCastIfApplicable(match, args, player)) {
+            return;
+        }
+        if (handleHarmfulMobCastIfApplicable(match, args, player)) {
             return;
         }
         GameActionResult result = gameActionService.useAbility(player, args);
         auditAbilityUse(match, result, args);
         deliverResult(result);
         sendPrompt();
+    }
+
+    /**
+     * Rejects a fresh ability activation while a channeled cast is already in progress, so a caster
+     * cannot stack or queue abilities mid-channel (issue #693).
+     *
+     * @return {@code true} when the player is currently casting (and a refusal message was sent)
+     */
+    private boolean rejectIfCasting() {
+        SpellCastState castState = session.getSpellCastState();
+        if (castState.isCasting()) {
+            writeLineWithPrompt("You are already casting " + castState.castingAbilityName() + ".");
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Begins a channeled ("cast time") spell instead of resolving it immediately, when the matched
+     * ability declares a positive {@link Ability#castTimeTicks()} (issue #693). The cast is validated
+     * (cooldown, affordability) up front, but the cost is spent only when it resolves — an interrupted
+     * cast never charges the caster. The countdown is advanced on the tick thread by
+     * {@link PlayerTicker}; on completion {@code resolution} re-runs the normal resolution path.
+     *
+     * @param match      the resolved ability match, or {@code null} when the input matched nothing
+     * @param player     the casting player
+     * @param resolution action that resolves the spell once the channel completes
+     * @return {@code true} when a channel was started (or refused) and the caller must stop
+     */
+    private boolean beginChannelIfApplicable(AbilityMatch match, Player player, Runnable resolution) {
+        if (match == null || match.ability().castTimeTicks() <= 0) {
+            return false;
+        }
+        Ability ability = match.ability();
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(ability.id())) {
+            writeLineWithPrompt("Ability is on cooldown ("
+                + cooldowns.remainingTicks(ability.id()) + " ticks remaining).");
+            return true;
+        }
+        if (!context.abilityCostResolver().canAfford(player, ability.cost())) {
+            writeLineWithPrompt("You lack the resources to cast that spell.");
+            return true;
+        }
+        session.getSpellCastState().begin(
+            ability.id(),
+            ability.name(),
+            ability.castTimeTicks(),
+            resolution,
+            () -> onCastInterrupted(ability));
+        connection.writeLine("You begin casting " + ability.name() + "...");
+        sendToRoom(player, player.getUsername().getValue() + " begins casting something arcane.");
+        sendPrompt();
+        return true;
+    }
+
+    /**
+     * Handles interruption of an in-progress channeled cast (issue #693): warns the caster and the
+     * room and puts the spell on a short cooldown so interruption cannot be spammed past. The spell's
+     * effect never applies and no cost was spent (the cost is deferred until resolution), so this is a
+     * clean fizzle. Runs on the tick thread from the shared damage hook in {@link PlayerSession}.
+     *
+     * @param ability the spell whose cast was interrupted
+     */
+    private void onCastInterrupted(Ability ability) {
+        session.getCooldownTracker().startCooldown(ability.id(), INTERRUPTED_CAST_COOLDOWN_TICKS);
+        connection.writeLine("Your casting is interrupted!");
+        Player current = session.getPlayer();
+        if (current != null) {
+            sendToRoom(current, current.getUsername().getValue() + "'s casting is interrupted!");
+        }
+        sendPrompt();
+    }
+
+    /**
+     * Routes a harmful single-target spell or skill (targeting {@link AbilityTargeting#HARMFUL},
+     * {@link AbilityTargeting#HARMFUL_OPENER}, or {@link AbilityTargeting#HARMFUL_UNDEAD}) to the mob
+     * layer when the named target is a mob in the caster's room, so {@code CAST <spell> <mob>} /
+     * {@code USE <skill> <mob>} strike a monster exactly as {@code KILL}/{@code ATTACK} do (issue
+     * #651). The same abilities aimed at another <em>player</em> (duels/PvP) do not match a mob and are
+     * left to {@link GameActionService#useAbility(Player, String)} unchanged, so this returns
+     * {@code false} for them and the caller proceeds normally.
+     *
+     * <p>Enforces the ability's cooldown through the same per-session tracker the ability engine uses,
+     * checked only once a mob target is confirmed (so an on-cooldown ability aimed at a player still
+     * falls through to the generic path) and started only when the cast actually resolved (a non-null
+     * updated source signals the cost was spent, distinguishing it from a validation rejection).
+     *
+     * @param match  the resolved ability match, or {@code null} when the input matched no ability
+     * @param args   the raw command arguments, forwarded to the audit log
+     * @param player the casting player
+     * @return {@code true} when the input named a mob target and has been fully handled here
+     */
+    private boolean handleHarmfulMobCastIfApplicable(AbilityMatch match, String args, Player player) {
+        if (match == null) {
+            return false;
+        }
+        AbilityTargeting targeting = match.ability().targeting();
+        if (targeting != AbilityTargeting.HARMFUL
+            && targeting != AbilityTargeting.HARMFUL_OPENER
+            && targeting != AbilityTargeting.HARMFUL_UNDEAD) {
+            return false;
+        }
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            return false;
+        }
+        Ability ability = match.ability();
+        String targetInput = match.remainingTarget();
+        if (!context.mobRegistry().hasAttackableMob(roomIdOpt.get(), targetInput)) {
+            // No matching mob — leave player targets (duels/PvP) to the generic ability path.
+            return false;
+        }
+        var cooldowns = session.getCooldownTracker();
+        if (cooldowns.isOnCooldown(ability.id())) {
+            writeLineWithPrompt("Ability is on cooldown ("
+                + cooldowns.remainingTicks(ability.id()) + " ticks remaining).");
+            return true;
+        }
+        GameActionResult result = context.mobRegistry()
+            .processPlayerSingleTargetAbility(player, ability, targetInput, roomIdOpt.get());
+        if (result.updatedSource() != null && ability.cooldown().ticks() > 0) {
+            cooldowns.startCooldown(ability.id(), ability.cooldown().ticks());
+        }
+        auditAbilityUse(match, result, args);
+        deliverResult(result);
+        sendPrompt();
+        return true;
     }
 
     @Override
@@ -1509,6 +1897,11 @@ class SocketCommandContextImpl implements SocketCommandContext {
     @Override
     public void updateAutoLoot(String args) {
         handleAutoLootCommand(args);
+    }
+
+    @Override
+    public void updateAutoAssist(String args) {
+        handleAutoAssistCommand(args);
     }
 
     @Override
@@ -1633,6 +2026,35 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void initiateWagerDuel(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to duel.");
+            return;
+        }
+        cancelRestIfActive();
+        String trimmed = args == null ? "" : args.trim();
+        String[] parts = trimmed.isEmpty() ? new String[0] : trimmed.split("\\s+");
+        if (parts.length < 2) {
+            writeLineWithPrompt("Usage: DUEL WAGER <player> <gold>");
+            return;
+        }
+        long wager;
+        try {
+            wager = Long.parseLong(parts[1]);
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("The wager must be a positive whole number of gold.");
+            return;
+        }
+        if (wager <= 0) {
+            writeLineWithPrompt("The wager must be a positive whole number of gold.");
+            return;
+        }
+        GameActionResult result = gameActionService.initiatePlayerDuel(session.getPlayer(), parts[0], wager);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
     public void acceptDuel() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to accept a duel.");
@@ -1642,6 +2064,491 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GameActionResult result = gameActionService.acceptPlayerDuel(session.getPlayer());
         deliverResult(result);
         sendPrompt();
+    }
+
+    // ── Marriage (issue #649) ───────────────────────────────────────────
+
+    @Override
+    public void executeMarry(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to marry.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("STATUS")) {
+            showMarriageStatus(player);
+            return;
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        String rest = parts.length < 2 ? "" : parts[1];
+        switch (sub) {
+            case "ACCEPT" -> acceptMarriageProposal(player);
+            case "DECLINE" -> declineMarriageProposal(player);
+            case "DIVORCE" -> divorce(player);
+            case "TELL" -> spouseTell(rest);
+            default -> proposeMarriage(player, trimmed);
+        }
+    }
+
+    private MarriageService marriageService() {
+        return context.marriageService();
+    }
+
+    private void showMarriageStatus(Player player) {
+        MarriageService marriageService = marriageService();
+        if (player.isMarried()) {
+            // Self-heal a dangling bond: a spouse who was purged (or whose file no longer exists) and
+            // is not online effectively divorces this player (issue #649). Reflect single status.
+            String spouse = player.spouse();
+            if (spouse != null && findOnlinePlayer(Username.of(spouse)) == null
+                && context.playerRepository().loadPlayer(Username.of(spouse)).isEmpty()) {
+                session.replacePlayer(player.withSpouse(null));
+                writeLineWithPrompt("Your former spouse " + spouse
+                    + " is no longer among us; you are single once more.");
+                return;
+            }
+            writeLineWithPrompt("You are married to " + spouse + ".");
+            return;
+        }
+        Optional<Username> proposer = marriageService.pendingProposer(player.getUsername());
+        if (proposer.isPresent()) {
+            writeLineWithPrompt(proposer.get().getValue()
+                + " has proposed to you. Type MARRY ACCEPT or MARRY DECLINE.");
+            return;
+        }
+        writeLineWithPrompt("You are not married and have no pending proposals.");
+    }
+
+    private void proposeMarriage(Player player, String targetName) {
+        if (player.isMarried()) {
+            writeLineWithPrompt("You are already married to " + player.spouse()
+                + ". You must DIVORCE before proposing to another.");
+            return;
+        }
+        Optional<Player> match = abilityTargetResolver.resolve(player, targetName);
+        if (match.isEmpty()) {
+            writeLineWithPrompt("There is no one here by that name to marry.");
+            return;
+        }
+        Player target = match.get();
+        if (target.getUsername().equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot marry yourself.");
+            return;
+        }
+        if (target.isMarried()) {
+            writeLineWithPrompt(target.getUsername().getValue() + " is already married.");
+            return;
+        }
+        if (marriageService().hasPendingProposal(target.getUsername())) {
+            writeLineWithPrompt(target.getUsername().getValue()
+                + " already has a pending proposal. Let them answer it first.");
+            return;
+        }
+        marriageService().propose(player.getUsername(), target.getUsername());
+        sendToUsername(target.getUsername(), player.getUsername().getValue()
+            + " proposes marriage to you! Type MARRY ACCEPT to say yes, or MARRY DECLINE."
+            + " The proposal lapses in 60 seconds.");
+        writeLineWithPrompt("You propose marriage to " + target.getUsername().getValue()
+            + ". They have 60 seconds to answer.");
+    }
+
+    private void acceptMarriageProposal(Player player) {
+        Optional<Username> proposerMatch = marriageService().pendingProposer(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending marriage proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        if (player.isMarried()) {
+            marriageService().resolve(player.getUsername());
+            writeLineWithPrompt("You are already married to " + player.spouse() + ".");
+            return;
+        }
+        Player proposer = findOnlinePlayer(proposerName);
+        if (proposer == null) {
+            marriageService().resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue() + " is no longer online; the proposal is void.");
+            return;
+        }
+        if (proposer.isMarried()) {
+            marriageService().resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue() + " has married someone else in the meantime.");
+            return;
+        }
+        marriageService().resolve(player.getUsername());
+        Player updatedAccepter = player.withSpouse(proposerName.getValue());
+        Player updatedProposer = proposer.withSpouse(player.getUsername().getValue());
+        session.replacePlayer(updatedAccepter);
+        updateTarget(updatedProposer);
+        sendToUsername(proposerName, player.getUsername().getValue()
+            + " accepts your proposal. You are now married!");
+        // Server-wide wedding announcement (flavor only, no mechanical reward), excluding the couple
+        // who already receive their own confirmations (AGENTS.md §3.3 — via MessageBroadcaster).
+        context.messageBroadcaster().broadcastGlobal(
+            new PlainTextMessage("Wedding bells ring out! " + proposerName.getValue() + " and "
+                + player.getUsername().getValue() + " are now married. Congratulations!"),
+            Set.of(proposerName, player.getUsername()));
+        writeLineWithPrompt("You accept " + proposerName.getValue() + "'s proposal. You are now married!");
+    }
+
+    private void declineMarriageProposal(Player player) {
+        Optional<Username> proposerMatch = marriageService().resolve(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending marriage proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        sendToUsername(proposerName, player.getUsername().getValue() + " declined your marriage proposal.");
+        writeLineWithPrompt("You decline " + proposerName.getValue() + "'s marriage proposal.");
+    }
+
+    private void divorce(Player player) {
+        if (!player.isMarried()) {
+            writeLineWithPrompt("You are not married.");
+            return;
+        }
+        String spouseName = player.spouse();
+        Username spouseUsername = Username.of(spouseName);
+        Username self = player.getUsername();
+        session.replacePlayer(player.withSpouse(null));
+        Player onlineSpouse = findOnlinePlayer(spouseUsername);
+        if (onlineSpouse != null) {
+            if (bondPointsAt(onlineSpouse, self)) {
+                updateTarget(onlineSpouse.withSpouse(null));
+            }
+            sendToUsername(spouseUsername, self.getValue()
+                + " has divorced you. You are single once more.");
+        } else {
+            notifyOfflineSpouseOfDivorce(spouseUsername, self);
+        }
+        writeLineWithPrompt("You divorce " + spouseName + ". You are single once more.");
+    }
+
+    /** Returns whether {@code spouse}'s recorded bond points back at {@code partner}. */
+    private static boolean bondPointsAt(Player spouse, Username partner) {
+        String bonded = spouse.spouse();
+        return bonded != null && Username.of(bonded).equals(partner);
+    }
+
+    /**
+     * Clears an offline spouse's persisted bond and leaves them a mail so they learn of the divorce on
+     * next login (issue #649). Best-effort: if their record no longer exists, or no longer points back
+     * at the divorcing player, there is nothing to clear.
+     */
+    private void notifyOfflineSpouseOfDivorce(Username spouseUsername, Username initiator) {
+        Player offlineSpouse = context.playerRepository().loadPlayer(spouseUsername).orElse(null);
+        if (offlineSpouse == null || !bondPointsAt(offlineSpouse, initiator)) {
+            return;
+        }
+        String initiatorName = initiator.getValue();
+        Player cleared = offlineSpouse.withSpouse(null);
+        long currentTick = context.tickClock().currentTick();
+        MailResult mail = playerMailService.send(cleared, initiatorName, currentTick,
+            initiatorName + " has divorced you. You are single once more.");
+        saveOrWarn(mail.success() && mail.updatedPlayer() != null ? mail.updatedPlayer() : cleared);
+    }
+
+    @Override
+    public void spouseTell(String message) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to use SPOUSETELL.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        if (!player.isMarried()) {
+            writeLineWithPrompt("You are not married. SPOUSETELL needs a spouse (see HELP MARRY).");
+            return;
+        }
+        String trimmed = message == null ? "" : message.trim();
+        if (trimmed.isEmpty()) {
+            writeLineWithPrompt("Usage: SPOUSETELL <message>");
+            return;
+        }
+        String spouseName = player.spouse();
+        Username spouseUsername = Username.of(spouseName);
+        Player onlineSpouse = findOnlinePlayer(spouseUsername);
+        if (onlineSpouse == null) {
+            writeLineWithPrompt("Your spouse " + spouseName + " is not online right now.");
+            return;
+        }
+        // Spouse messages bypass IGNORE by design (issue #649): the escape hatch is DIVORCE.
+        sendToUsername(spouseUsername, player.getUsername().getValue() + " tells you (spouse): " + trimmed);
+        writeLineSafe("You tell " + spouseUsername.getValue() + " (spouse): " + trimmed);
+        awayNotice(spouseUsername).ifPresent(this::writeLineSafe);
+        sendPrompt();
+    }
+
+    @Override
+    public String marriedTag(Username username) {
+        Player online = findOnlinePlayer(username);
+        if (online != null && online.isMarried()) {
+            return " (Married to " + online.spouse() + ")";
+        }
+        return "";
+    }
+
+    // ── Mentor bond (issue #751) ────────────────────────────────────────
+
+    @Override
+    public void executeMentor(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to use MENTOR.");
+            return;
+        }
+        cancelRestIfActive();
+        Player player = session.getPlayer();
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("STATUS")) {
+            showMentorStatus(player);
+            return;
+        }
+        String[] parts = trimmed.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        switch (sub) {
+            case "ACCEPT" -> acceptMentorProposal(player);
+            case "DECLINE" -> declineMentorProposal(player);
+            case "END" -> endMentorBond(player);
+            default -> proposeMentor(player, trimmed);
+        }
+    }
+
+    private MentorService mentorService() {
+        return context.mentorService();
+    }
+
+    private void showMentorStatus(Player player) {
+        if (player.hasMentorBond()) {
+            boolean isMentee = player.mentor() != null;
+            String partner = isMentee ? player.mentor() : player.mentee();
+            Username partnerName = Username.of(partner);
+            // Self-heal a dangling bond: a partner who was purged and is not online effectively ends
+            // the bond for this player (mirrors the marriage self-heal, issue #751/#649).
+            if (findOnlinePlayer(partnerName) == null
+                && context.playerRepository().loadPlayer(partnerName).isEmpty()) {
+                session.replacePlayer(player.withoutMentorBond());
+                writeLineWithPrompt("Your former " + (isMentee ? "mentor " : "mentee ") + partner
+                    + " is no longer among us; your mentor bond has ended.");
+                return;
+            }
+            String role = isMentee ? "mentee" : "mentor";
+            String bondLine = "You are the " + role + " in a mentor bond with " + partner + ". The mentee"
+                + " earns +" + MentorService.MENTEE_XP_BONUS_PERCENT
+                + "% bonus XP while grouped together. Bonded since "
+                + formatBondSince(player.mentorBondSince()) + ".";
+            // Show the guild standing to mentors (their perk applies) and to anyone with standing.
+            emitWithGuildLine(player, bondLine, !isMentee || player.menteesGraduated() > 0);
+            return;
+        }
+        Optional<Username> proposer = mentorService().pendingProposer(player.getUsername());
+        if (proposer.isPresent()) {
+            writeLineWithPrompt(proposer.get().getValue()
+                + " has offered to mentor you. Type MENTOR ACCEPT or MENTOR DECLINE.");
+            return;
+        }
+        emitWithGuildLine(player, "You have no active mentor bond.", player.menteesGraduated() > 0);
+    }
+
+    /**
+     * Writes the primary status line, optionally followed by the Mentors' Guild standing line, ending
+     * with exactly one prompt.
+     */
+    private void emitWithGuildLine(Player player, String primaryLine, boolean showGuild) {
+        if (showGuild) {
+            connection.writeLine(primaryLine);
+            writeLineWithPrompt(mentorGuildLine(player));
+        } else {
+            writeLineWithPrompt(primaryLine);
+        }
+    }
+
+    /**
+     * Renders the player's Mentors' Guild standing line (issue #752): their current rank title, the
+     * shared XP perk it grants while mentoring, and progress toward the next rung. Falls back to an
+     * invitation to graduate a first mentee when they have no standing yet.
+     */
+    private String mentorGuildLine(Player player) {
+        MentorRankLadder ladder = mentorService().ranks();
+        int graduated = player.menteesGraduated();
+        Optional<MentorRank> current = ladder.currentRank(graduated);
+        Optional<MentorRank> next = ladder.nextRank(graduated);
+        StringBuilder line = new StringBuilder("Mentors' Guild: ");
+        if (current.isPresent()) {
+            MentorRank rank = current.get();
+            line.append("you are '").append(rank.title()).append("' (")
+                .append(graduated).append(graduated == 1 ? " mentee graduated" : " mentees graduated")
+                .append("), earning +").append(rank.mentorXpBonusPercent())
+                .append("% XP while grouped with your mentee.");
+        } else {
+            line.append("graduate your first mentee to earn a title and a mentoring XP perk.");
+        }
+        next.ifPresent(rank -> line.append(" Graduate ")
+            .append(rank.menteesRequired() - graduated)
+            .append(rank.menteesRequired() - graduated == 1 ? " more mentee to reach '" : " more mentees to reach '")
+            .append(rank.title()).append("'."));
+        return line.toString();
+    }
+
+    private void proposeMentor(Player player, String targetName) {
+        if (player.hasMentorBond()) {
+            writeLineWithPrompt("You already have a mentor bond. Use MENTOR END before starting another.");
+            return;
+        }
+        Optional<Player> match = abilityTargetResolver.resolve(player, targetName);
+        if (match.isEmpty()) {
+            writeLineWithPrompt("There is no one here by that name to mentor.");
+            return;
+        }
+        Player target = match.get();
+        if (target.getUsername().equals(player.getUsername())) {
+            writeLineWithPrompt("You cannot mentor yourself.");
+            return;
+        }
+        if (target.hasMentorBond()) {
+            writeLineWithPrompt(target.getUsername().getValue() + " already has a mentor bond.");
+            return;
+        }
+        MentorService svc = mentorService();
+        if (!svc.meetsLevelGap(player.getLevel(), target.getLevel())) {
+            writeLineWithPrompt("You must be at least " + MentorService.MIN_LEVEL_GAP
+                + " levels above " + target.getUsername().getValue() + " to mentor them.");
+            return;
+        }
+        if (!svc.withinMenteeCeiling(target.getLevel())) {
+            writeLineWithPrompt(target.getUsername().getValue()
+                + " is no longer a newcomer (must be below level "
+                + MentorService.MENTEE_LEVEL_CEILING + " to be mentored).");
+            return;
+        }
+        if (svc.hasPendingProposal(target.getUsername())) {
+            writeLineWithPrompt(target.getUsername().getValue()
+                + " already has a pending proposal. Let them answer it first.");
+            return;
+        }
+        svc.propose(player.getUsername(), target.getUsername());
+        sendToUsername(target.getUsername(), player.getUsername().getValue()
+            + " offers to become your mentor! Type MENTOR ACCEPT to say yes, or MENTOR DECLINE."
+            + " The offer lapses in 60 seconds.");
+        writeLineWithPrompt("You offer to mentor " + target.getUsername().getValue()
+            + ". They have 60 seconds to answer.");
+    }
+
+    private void acceptMentorProposal(Player player) {
+        Optional<Username> proposerMatch = mentorService().pendingProposer(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending mentor proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        MentorService svc = mentorService();
+        if (player.hasMentorBond()) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt("You already have a mentor bond.");
+            return;
+        }
+        Player proposer = findOnlinePlayer(proposerName);
+        if (proposer == null) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue() + " is no longer online; the offer is void.");
+            return;
+        }
+        if (proposer.hasMentorBond()) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt(proposerName.getValue()
+                + " has taken on another mentee in the meantime.");
+            return;
+        }
+        // Re-validate the eligibility gates in case levels changed since the offer was made.
+        if (!svc.meetsLevelGap(proposer.getLevel(), player.getLevel())
+            || !svc.withinMenteeCeiling(player.getLevel())) {
+            svc.resolve(player.getUsername());
+            writeLineWithPrompt("You are no longer eligible to be " + proposerName.getValue()
+                + "'s mentee.");
+            return;
+        }
+        svc.resolve(player.getUsername());
+        long now = System.currentTimeMillis();
+        Player updatedMentee = player.withMentor(proposerName.getValue(), now);
+        Player updatedMentor = proposer.withMentee(player.getUsername().getValue(), now);
+        session.replacePlayer(updatedMentee);
+        updateTarget(updatedMentor);
+        sendToUsername(proposerName, player.getUsername().getValue()
+            + " accepts your mentorship. You are now their mentor!");
+        writeLineWithPrompt("You accept " + proposerName.getValue()
+            + "'s mentorship. They are now your mentor — you earn +"
+            + MentorService.MENTEE_XP_BONUS_PERCENT + "% bonus XP while grouped together.");
+    }
+
+    private void declineMentorProposal(Player player) {
+        Optional<Username> proposerMatch = mentorService().resolve(player.getUsername());
+        if (proposerMatch.isEmpty()) {
+            writeLineWithPrompt("You have no pending mentor proposal.");
+            return;
+        }
+        Username proposerName = proposerMatch.get();
+        sendToUsername(proposerName, player.getUsername().getValue()
+            + " declined your offer of mentorship.");
+        writeLineWithPrompt("You decline " + proposerName.getValue() + "'s offer of mentorship.");
+    }
+
+    private void endMentorBond(Player player) {
+        if (!player.hasMentorBond()) {
+            writeLineWithPrompt("You have no active mentor bond.");
+            return;
+        }
+        boolean wasMentee = player.mentor() != null;
+        String partnerName = wasMentee ? player.mentor() : player.mentee();
+        Username partnerUsername = Username.of(partnerName);
+        Username self = player.getUsername();
+        session.replacePlayer(player.withoutMentorBond());
+        Player onlinePartner = findOnlinePlayer(partnerUsername);
+        if (onlinePartner != null) {
+            if (mentorBondPointsAt(onlinePartner, self)) {
+                updateTarget(onlinePartner.withoutMentorBond());
+            }
+            sendToUsername(partnerUsername, self.getValue() + " has ended your mentor bond.");
+        } else {
+            notifyOfflinePartnerOfBondEnd(partnerUsername, self);
+        }
+        writeLineWithPrompt("You end your mentor bond with " + partnerName + ".");
+    }
+
+    /** Returns whether {@code partner}'s recorded mentor bond points back at {@code self}. */
+    private static boolean mentorBondPointsAt(Player partner, Username self) {
+        String asMentor = partner.mentor();
+        String asMentee = partner.mentee();
+        return (asMentor != null && Username.of(asMentor).equals(self))
+            || (asMentee != null && Username.of(asMentee).equals(self));
+    }
+
+    /**
+     * Clears an offline partner's persisted mentor bond and mails them so they learn of the end on
+     * next login. Best-effort: if their record no longer exists, or no longer points back at the
+     * initiator, there is nothing to clear.
+     */
+    private void notifyOfflinePartnerOfBondEnd(Username partnerUsername, Username initiator) {
+        Player offlinePartner = context.playerRepository().loadPlayer(partnerUsername).orElse(null);
+        if (offlinePartner == null || !mentorBondPointsAt(offlinePartner, initiator)) {
+            return;
+        }
+        Player cleared = offlinePartner.withoutMentorBond();
+        long currentTick = context.tickClock().currentTick();
+        MailResult mail = playerMailService.send(cleared, initiator.getValue(), currentTick,
+            initiator.getValue() + " has ended your mentor bond.");
+        saveOrWarn(mail.success() && mail.updatedPlayer() != null ? mail.updatedPlayer() : cleared);
+    }
+
+    /** Formats a mentor-bond timestamp (epoch millis) for MENTOR STATUS, or "unknown" when unset. */
+    private static String formatBondSince(long epochMillis) {
+        if (epochMillis <= 0L) {
+            return "unknown";
+        }
+        return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm 'UTC'")
+            .withZone(ZoneId.of("UTC"))
+            .format(Instant.ofEpochMilli(epochMillis));
     }
 
     @Override
@@ -1654,26 +2561,84 @@ class SocketCommandContextImpl implements SocketCommandContext {
         Player playerBeforeGet = session.getPlayer();
         GameActionResult result = gameActionService.getItem(playerBeforeGet, args);
         deliverResult(result);
-        // After a successful pickup, check if this triggers delivery quest progress
-        if (result.updatedSource() != null && context.questRepository() != null) {
-            Player updatedPlayer = session.getPlayer();
-            // Find the newly added item by comparing item-id counts before and after
-            Map<ItemId, Long> oldCounts =
-                playerBeforeGet.getInventory().stream()
-                    .collect(Collectors.groupingBy(Item::getId, Collectors.counting()));
-            QuestDeliveryService deliverySvc = new QuestDeliveryService(context.questRepository());
-            for (Item item : updatedPlayer.getInventory()) {
-                long before = oldCounts.getOrDefault(item.getId(), 0L);
-                long after = updatedPlayer.getInventory().stream()
-                    .filter(i -> i.getId().equals(item.getId())).count();
-                if (after > before) {
-                    deliverySvc.checkPickupProgress(updatedPlayer, item.getId())
-                        .ifPresent(connection::writeLine);
-                    break;
-                }
-            }
+        if (result.updatedSource() != null) {
+            checkDeliveryPickupProgress(playerBeforeGet);
         }
         revealRoomIfNewlyLit(playerBeforeGet);
+        sendPrompt();
+    }
+
+    /**
+     * After one or more pickups, fires delivery-quest pickup-progress notifications for every item id
+     * whose carried count increased between {@code playerBeforeGet} and the current session player.
+     *
+     * <p>Shared by single {@code GET} and bulk {@code GET ALL}/{@code GET ALL FROM} so a bulk pickup
+     * still advances a delivery quest once per newly-gathered item, matching the single-item path.
+     *
+     * @param playerBeforeGet the player's state before the pickup(s) mutated their inventory
+     */
+    private void checkDeliveryPickupProgress(Player playerBeforeGet) {
+        if (context.questRepository() == null) {
+            return;
+        }
+        Player updatedPlayer = session.getPlayer();
+        if (updatedPlayer == null) {
+            return;
+        }
+        Map<ItemId, Long> oldCounts =
+            playerBeforeGet.getInventory().stream()
+                .collect(Collectors.groupingBy(Item::getId, Collectors.counting()));
+        Map<ItemId, Long> newCounts =
+            updatedPlayer.getInventory().stream()
+                .collect(Collectors.groupingBy(Item::getId, Collectors.counting()));
+        QuestDeliveryService deliverySvc = new QuestDeliveryService(context.questRepository());
+        for (Map.Entry<ItemId, Long> entry : newCounts.entrySet()) {
+            long before = oldCounts.getOrDefault(entry.getKey(), 0L);
+            if (entry.getValue() > before) {
+                deliverySvc.checkPickupProgress(updatedPlayer, entry.getKey())
+                    .ifPresent(connection::writeLine);
+            }
+        }
+    }
+
+    @Override
+    public void getAllItems() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to get items.");
+            return;
+        }
+        cancelRestIfActive();
+        Player playerBeforeGet = session.getPlayer();
+        GameActionResult result = gameActionService.getAllItems(playerBeforeGet);
+        deliverResult(result);
+        if (result.updatedSource() != null) {
+            checkDeliveryPickupProgress(playerBeforeGet);
+        }
+        revealRoomIfNewlyLit(playerBeforeGet);
+        sendPrompt();
+    }
+
+    @Override
+    public void getAllFromContainer(String containerInput) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to get items from containers.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.getAllFromContainer(session.getPlayer(), containerInput);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void dropAllItems() {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to drop items.");
+            return;
+        }
+        cancelRestIfActive();
+        GameActionResult result = gameActionService.dropAllItems(session.getPlayer());
+        deliverResult(result);
         sendPrompt();
     }
 
@@ -2359,6 +3324,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You must be logged in to flee.");
             return;
         }
+        if (refuseIfControlled(session.getPlayer(), ControlledAction.FLEE)) {
+            return;
+        }
+        if (session.getSpellCastState().isCasting()) {
+            writeLineWithPrompt("You cannot flee while casting a spell.");
+            return;
+        }
         Player player = session.getPlayer();
         RoomService.LookResult lookResult = roomService.look(player.getUsername(), session.getTextStyler());
         FleeResult result = gameActionService.flee(player, lookResult.room());
@@ -2393,6 +3365,210 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void bind(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to bind.");
+            return;
+        }
+        Player player = session.getPlayer();
+        String trimmed = args == null ? "" : args.trim();
+        if (trimmed.isEmpty()) {
+            writeLineWithPrompt(gameActionService.describeBindPoint(player));
+            return;
+        }
+        GameActionResult result = gameActionService.bind(player);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void wayfind(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to get directions.");
+            return;
+        }
+        GameActionResult result = gameActionService.wayfind(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void corpse(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sense your corpse.");
+            return;
+        }
+        GameActionResult result = gameActionService.corpse(session.getPlayer(), args);
+        deliverResult(result);
+        sendPrompt();
+    }
+
+    @Override
+    public void autoWalk(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to travel.");
+            return;
+        }
+        String trimmed = args == null ? "" : args.trim();
+        AutoWalkState walk = session.getAutoWalkState();
+        if ("stop".equalsIgnoreCase(trimmed)) {
+            if (walk.isWalking()) {
+                String destination = walk.destinationName();
+                walk.cancel();
+                writeLineWithPrompt("You stop travelling toward " + destination + ".");
+            } else {
+                writeLineWithPrompt("You are not auto-walking anywhere.");
+            }
+            return;
+        }
+        WayfindService wayfindService = context.wayfindService();
+        if (wayfindService == null) {
+            writeLineWithPrompt("You cannot get your bearings right now.");
+            return;
+        }
+        // Cannot begin a walk while already locked in combat (mirrors RECALL/AUTOASSIST).
+        if (context.mobRegistry() != null && context.mobRegistry().isInCombat(player.getUsername())) {
+            writeLineWithPrompt("You cannot auto-walk while in combat.");
+            return;
+        }
+        Optional<RoomId> currentRoom = roomService.findPlayerLocation(player.getUsername());
+        if (currentRoom.isEmpty()) {
+            writeLineWithPrompt("You cannot get your bearings here.");
+            return;
+        }
+        WayfindService.AutoWalkPlan plan = wayfindService.planAutoWalk(currentRoom.get(), trimmed);
+        switch (plan) {
+            case WayfindService.AutoWalkPlan.Blocked blocked -> writeLineWithPrompt(blocked.message());
+            case WayfindService.AutoWalkPlan.Route route -> {
+                // begin() replaces any walk already in progress, recomputed fresh from the current room.
+                walk.begin(route.destinationName(), route.steps(), this::advanceAutoWalk);
+                writeLineWithPrompt("You set off toward " + route.destinationName() + " ("
+                    + route.steps().size() + " step(s)). Type any command to stop.");
+            }
+        }
+    }
+
+    @Override
+    public void cancelAutoWalkIfActive() {
+        AutoWalkState walk = session.getAutoWalkState();
+        if (!walk.isWalking()) {
+            return;
+        }
+        String destination = walk.destinationName();
+        walk.cancel();
+        writeLineWithPrompt("You stop travelling toward " + destination + ".");
+    }
+
+    /**
+     * Advances the caller's in-progress {@code AUTOWALK} by one action. Invoked once per tick by the
+     * {@link PlayerTicker} auto-walk stage (after the command drain, so a manual command this tick has
+     * already cancelled the walk). Cancels the walk — with a one-line reason — when the player has left
+     * the world, has been pulled into combat, or a step is blocked; and reports arrival when the final
+     * queued step lands. Reuses {@link #performMove} so every movement check (control effects,
+     * move-point cost, locked doors) is shared with a manual move, never bypassed (issue #767).
+     *
+     * <p>Walked steps advance one room per tick. A ferry step spans several ticks: the walker steps
+     * onto the ferry's deck, waits (doing nothing) while the tick-driven ferry sails, and completes the
+     * leg only once carried to the arrival dock — respecting the ferry schedule rather than teleporting
+     * (issue #768). All cancellation semantics apply throughout the ferry leg.
+     *
+     * <p>Runs on the tick thread (AGENTS.md §5).
+     */
+    private void advanceAutoWalk() {
+        AutoWalkState walk = session.getAutoWalkState();
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            walk.cancel();
+            return;
+        }
+        String destination = walk.destinationName();
+        if (context.mobRegistry() != null && context.mobRegistry().isInCombat(player.getUsername())) {
+            walk.cancel();
+            writeLineWithPrompt("You are pulled into combat and stop travelling toward " + destination + ".");
+            return;
+        }
+        if (!walk.hasNextStep()) {
+            // Defensive: nothing left to walk — treat as arrival.
+            walk.cancel();
+            return;
+        }
+        switch (walk.peekNextStep()) {
+            case WayfindService.AutoWalkStep.Walk step -> advanceWalkStep(walk, step.direction(), destination);
+            case WayfindService.AutoWalkStep.Ferry step -> advanceFerryStep(walk, player, step, destination);
+        }
+    }
+
+    /**
+     * Executes one walked {@code AUTOWALK} step: moves one room in {@code direction} through the shared
+     * movement chokepoint, then pops the step. Cancels on a blocked step and announces arrival when it
+     * was the final step. Runs on the tick thread (AGENTS.md §5).
+     */
+    private void advanceWalkStep(AutoWalkState walk, Direction direction, String destination) {
+        MoveStepOutcome outcome = performMove(direction);
+        if (outcome != MoveStepOutcome.MOVED) {
+            // performMove already printed the refusal a manual move would show; add the travel notice.
+            walk.cancel();
+            writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
+            return;
+        }
+        walk.advanceStep();
+        if (!walk.hasNextStep()) {
+            walk.cancel();
+            writeLineWithPrompt("You arrive at " + destination + ".");
+        }
+    }
+
+    /**
+     * Executes one tick's worth of a ferry {@code AUTOWALK} step. Depending on where the player is
+     * standing this tick it: completes the leg (once carried to the arrival dock, pops the step and
+     * either continues or announces arrival); waits idle (while aboard the deck, letting the tick-driven
+     * ferry sail); or boards (from a dock, steps onto the deck through the shared movement chokepoint,
+     * re-boarding if a previous departure set the player down at the wrong dock). Cancels on a blocked
+     * boarding move or a lost location. Runs on the tick thread (AGENTS.md §5).
+     */
+    private void advanceFerryStep(
+            AutoWalkState walk, Player player, WayfindService.AutoWalkStep.Ferry step, String destination) {
+        Optional<RoomId> location = roomService.findPlayerLocation(player.getUsername());
+        if (location.isEmpty()) {
+            walk.cancel();
+            writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
+            return;
+        }
+        RoomId current = location.get();
+        if (current.equals(step.arrivalDock())) {
+            // The ferry has set us down at the destination dock — the leg is done.
+            walk.advanceStep();
+            if (!walk.hasNextStep()) {
+                walk.cancel();
+                writeLineWithPrompt("You arrive at " + destination + ".");
+            }
+            return;
+        }
+        if (current.equals(step.deckRoomId())) {
+            // Aboard and waiting for the scheduled departure to carry us on — do nothing this tick.
+            return;
+        }
+        // Standing at a dock: step onto the deck to board (or re-board after a wrong-dock drop-off).
+        Optional<Direction> onto = directionTo(current, step.deckRoomId());
+        if (onto.isEmpty() || performMove(onto.get()) != MoveStepOutcome.MOVED) {
+            walk.cancel();
+            writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
+        }
+    }
+
+    /**
+     * Returns the exit {@link Direction} leading from {@code from} to {@code to}, or empty when no exit
+     * of that room reaches it. Used to find the move that steps a player from a dock onto a ferry deck.
+     */
+    private Optional<Direction> directionTo(RoomId from, RoomId to) {
+        return roomService.getExits(from).entrySet().stream()
+            .filter(entry -> entry.getValue().equals(to))
+            .map(Map.Entry::getKey)
+            .findFirst();
+    }
+
+    @Override
     public void sendInventory() {
         Player player = session.getPlayer();
         if (!session.isAuthenticated() || player == null) {
@@ -2419,6 +3595,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         for (String line : EquipmentListing.format(
                 player.getEquipment().slots(), inventoryIndex::get, session.getTextStyler())) {
             connection.writeLine(line);
+        }
+        for (SetBonusResolver.SetProgress progress : context.setBonusResolver().activeSets(player)) {
+            connection.writeLine("  Set      : " + progress.describe());
         }
         sendPrompt();
     }
@@ -2474,6 +3653,60 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void sendCooldowns() {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to view your cooldowns.");
+            return;
+        }
+        List<AbilityId> learned = player.getLearnedAbilities();
+        if (learned.isEmpty()) {
+            writeLineWithPrompt("You have not learned any abilities yet.");
+            return;
+        }
+        CooldownSystem cooldowns = session.getAbilityCooldowns();
+        connection.writeLine(String.format("%-20s %-6s %s", "Ability", "Type", "Status"));
+        connection.writeLine("-".repeat(40));
+        for (AbilityId abilityId : learned) {
+            Ability ability = abilityRegistry.findById(abilityId).orElse(null);
+            if (ability == null) {
+                continue;
+            }
+            String status = CooldownStatusFormatter.format(cooldowns, abilityId);
+            connection.writeLine(String.format("%-20s %-6s %s",
+                ability.name(), ability.type().name(), status));
+        }
+        SpellCastState castState = session.getSpellCastState();
+        if (castState.isCasting()) {
+            connection.writeLine("Currently casting: " + castState.castingAbilityName()
+                + " (" + castState.ticksRemaining() + " ticks left)");
+        }
+        sendPrompt();
+    }
+
+    @Override
+    public void sendEffects() {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to view your effects.");
+            return;
+        }
+        List<String> lines = new ArrayList<>(
+            EffectListingFormatter.format(player.effects(), context.effectRepository()));
+        SpellCastState castState = session.getSpellCastState();
+        if (castState.isCasting()) {
+            lines.add("Currently casting: " + castState.castingAbilityName()
+                + " (" + castState.ticksRemaining() + " ticks left)");
+        }
+        if (lines.isEmpty()) {
+            writeLineWithPrompt("You have no active effects.");
+            return;
+        }
+        connection.writeLines(lines);
+        sendPrompt();
+    }
+
+    @Override
     public void examineItem(String args) {
         Player player = session.getPlayer();
         if (!session.isAuthenticated() || player == null) {
@@ -2524,6 +3757,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         String damageRange = weaponDamageRange(found);
         if (damageRange != null) {
             connection.writeLine("Damage: " + damageRange);
+        }
+        for (String line : context.setBonusResolver().describeSetMembership(found)) {
+            connection.writeLine(line);
         }
         writeAffixLines(found);
         sendPrompt();
@@ -2709,7 +3945,145 @@ class SocketCommandContextImpl implements SocketCommandContext {
         } else {
             tier = "could kill you without effort";
         }
-        writeLineWithPrompt("The " + found.template().name() + " " + tier + ".");
+        String affinity = elementalAffinityLine(
+            found.template().resistances(), found.template().vulnerabilities());
+        String tierLine = "The " + found.template().name() + " " + tier + ".";
+        List<String> hints = new ArrayList<>();
+        if (!affinity.isEmpty()) {
+            hints.add(affinity);
+        }
+        // Discoverability hint for support-caster healer mobs (issue #733): surfaces the "kill the
+        // healer first" decision before the pull, mirroring the elemental-affinity hint above (#717).
+        String healerHint = healerHintLine(found.template().isHealer());
+        if (!healerHint.isEmpty()) {
+            hints.add(healerHint);
+        }
+        // Discoverability hint for enrage-capable capstone bosses (issue #745): warns a player that a
+        // drawn-out fight turns dangerous, so they bring burst rather than pure sustain, mirroring the
+        // elemental-affinity (#717) and healer (#733) hints above.
+        String enrageHint = enrageHintLine(found.template().enrageCapable());
+        if (!enrageHint.isEmpty()) {
+            hints.add(enrageHint);
+        }
+        // Discoverability hint for a live crowd-control lockout (issue #763): unlike the static hints
+        // above this reflects the mob's current state, so a party can see that a player-cast root,
+        // silence, or stun has landed and coordinate around the window while it lasts.
+        String controlHint = controlledStateLine(found.activeControl());
+        if (!controlHint.isEmpty()) {
+            hints.add(controlHint);
+        }
+        if (hints.isEmpty()) {
+            writeLineWithPrompt(tierLine);
+        } else {
+            writeLineSafe(tierLine);
+            for (int i = 0; i < hints.size() - 1; i++) {
+                writeLineSafe(hints.get(i));
+            }
+            writeLineWithPrompt(hints.get(hints.size() - 1));
+        }
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability hint for a support-caster healer mob
+     * (issue #733), or an empty string when the mob is not a healer. Mirrors
+     * {@link #elementalAffinityLine} so a player can spot a "kill the healer first" pull before
+     * committing to it rather than learning mid-fight.
+     *
+     * @param isHealer whether the considered mob carries a {@code HealerProfile}
+     * @return the healer hint sentence, or an empty string when the mob is not a healer
+     */
+    static String healerHintLine(boolean isHealer) {
+        return isHealer ? "It looks like it could heal its allies." : "";
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability hint for an enrage-capable boss (issue
+     * #745), or an empty string when the mob never enrages. Mirrors {@link #healerHintLine} so a player
+     * can spot that dragging the fight out will make it dangerous — and bring burst cooldowns — before
+     * committing to it rather than learning mid-fight.
+     *
+     * @param canEnrage whether the considered mob carries an authored enrage threshold
+     * @return the enrage warning sentence, or an empty string when the mob never enrages
+     */
+    static String enrageHintLine(boolean canEnrage) {
+        return canEnrage
+            ? "It looks like it will wear down slowly, then grow dangerous."
+            : "";
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability line for a mob currently held by a
+     * player-cast crowd-control lockout (issue #763), or an empty string when the mob is uncontrolled.
+     * Unlike the static template hints this reflects live encounter state, so a party can confirm a
+     * root/silence/stun landed and coordinate around the lockout window while it is active.
+     *
+     * @param control the mob's active control classification, or {@code null} when uncontrolled
+     * @return the controlled-state sentence, or an empty string when the mob is uncontrolled
+     */
+    static String controlledStateLine(@Nullable ControlType control) {
+        if (control == null) {
+            return "";
+        }
+        return switch (control) {
+            case ROOT -> "It is rooted in place and cannot flee.";
+            case SILENCE -> "It is silenced and cannot voice its signature spell.";
+            case STUN -> "It is stunned and cannot act.";
+        };
+    }
+
+    /**
+     * Formats the optional second {@code CONSIDER} line describing a mob's elemental affinity, or an
+     * empty string when the mob authors no {@code resistances}/{@code vulnerabilities}. Damage types
+     * are rendered with {@link DamageType#displayName()} so the wording matches combat narration, and
+     * are listed in {@link DamageType} declaration order so the output is deterministic regardless of
+     * the backing map's iteration order.
+     *
+     * @param resistances    the mob's per-{@link DamageType} resistance percentages; may be empty
+     * @param vulnerabilities the mob's per-{@link DamageType} vulnerability percentages; may be empty
+     * @return a full "It looks resistant to …" sentence, or an empty string when neither map applies
+     */
+    static String elementalAffinityLine(
+            Map<DamageType, Integer> resistances, Map<DamageType, Integer> vulnerabilities) {
+        String resisted = joinDamageTypes(resistances);
+        String vulnerable = joinDamageTypes(vulnerabilities);
+        if (resisted.isEmpty() && vulnerable.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("It looks ");
+        if (!resisted.isEmpty()) {
+            sb.append("resistant to ").append(resisted);
+        }
+        if (!vulnerable.isEmpty()) {
+            if (!resisted.isEmpty()) {
+                sb.append(" and ");
+            }
+            sb.append("vulnerable to ").append(vulnerable);
+        }
+        return sb.append('.').toString();
+    }
+
+    /**
+     * Joins the player-facing names of the damage types present in the given elemental map, in
+     * {@link DamageType} declaration order, using {@code " and "} to separate the final pair.
+     *
+     * @param elemental a resistance or vulnerability map keyed by {@link DamageType}
+     * @return a phrase such as {@code "cold"} or {@code "fire and poison"}, or an empty string
+     */
+    private static String joinDamageTypes(Map<DamageType, Integer> elemental) {
+        List<String> names = new ArrayList<>();
+        for (DamageType type : DamageType.values()) {
+            if (elemental.containsKey(type)) {
+                names.add(type.displayName());
+            }
+        }
+        if (names.isEmpty()) {
+            return "";
+        }
+        if (names.size() == 1) {
+            return names.get(0);
+        }
+        return String.join(", ", names.subList(0, names.size() - 1))
+            + " and " + names.get(names.size() - 1);
     }
 
     @Override
@@ -2850,6 +4224,34 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         ShopTransactionResult result = context.shopService().sell(player, shopOpt.get(), args);
+        if (result.success()) {
+            session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    @Override
+    public void sellAllToShop(@Nullable String keyword) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sell items.");
+            return;
+        }
+        if (context.shopService() == null) {
+            writeLineWithPrompt("There is no shop here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        var shopOpt = context.shopService().findShopInRoom(roomIdOpt.get());
+        if (shopOpt.isEmpty()) {
+            writeLineWithPrompt("There is no shop here.");
+            return;
+        }
+        ShopTransactionResult result = context.shopService().sellAll(player, shopOpt.get(), keyword);
         if (result.success()) {
             session.replacePlayer(result.updatedPlayer());
         }
@@ -3088,6 +4490,111 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     @Override
+    public void tan(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to tan leather.");
+            return;
+        }
+        if (context.leatherworkingService() == null) {
+            writeLineWithPrompt("There is no leatherworker here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isLeatherworkerPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no leatherworker here to tan with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.leatherworkingService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.leatherworkingService().craft(player, args);
+        Player tanned = outcome.updatedPlayer();
+        if (outcome.success() && tanned != null) {
+            session.replacePlayer(tanned);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
+    public void cut(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to cut gems.");
+            return;
+        }
+        if (context.jewelerService() == null) {
+            writeLineWithPrompt("There is no jeweler here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isJewelerPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no jeweler here to cut with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.jewelerService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.jewelerService().craft(player, args);
+        Player cut = outcome.updatedPlayer();
+        if (outcome.success() && cut != null) {
+            session.replacePlayer(cut);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
+    public void sew(String args) {
+        if (!session.isAuthenticated() || session.getPlayer() == null) {
+            writeLineWithPrompt("You must be logged in to sew cloth.");
+            return;
+        }
+        if (context.tailorService() == null) {
+            writeLineWithPrompt("There is no tailor here.");
+            return;
+        }
+        Player player = session.getPlayer();
+        var roomIdOpt = roomService.findPlayerLocation(player.getUsername());
+        if (roomIdOpt.isEmpty()) {
+            writeLineWithPrompt("You are nowhere.");
+            return;
+        }
+        if (!isTailorPresent(roomIdOpt.get())) {
+            writeLineWithPrompt("There is no tailor here to sew with.");
+            return;
+        }
+        if (args == null || args.isBlank()) {
+            for (String line : context.tailorService().formatRecipes(player)) {
+                connection.writeLine(line);
+            }
+            sendPrompt();
+            return;
+        }
+        CraftOutcome outcome = context.tailorService().craft(player, args);
+        Player sewn = outcome.updatedPlayer();
+        if (outcome.success() && sewn != null) {
+            session.replacePlayer(sewn);
+        }
+        writeLineWithPrompt(outcome.message());
+    }
+
+    @Override
     public void gather() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
             writeLineWithPrompt("You must be logged in to gather resources.");
@@ -3147,6 +4654,33 @@ class SocketCommandContextImpl implements SocketCommandContext {
             .anyMatch(mob -> mob.template().hasTag("enchanter"));
     }
 
+    /** Returns whether a leatherworker NPC (tagged {@code leatherworker}) is alive in the given room. */
+    private boolean isLeatherworkerPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("leatherworker"));
+    }
+
+    /** Returns whether a jeweler NPC (tagged {@code jeweler}) is alive in the given room. */
+    private boolean isJewelerPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("jeweler"));
+    }
+
+    /** Returns whether a tailor NPC (tagged {@code tailor}) is alive in the given room. */
+    private boolean isTailorPresent(RoomId roomId) {
+        if (context.mobRegistry() == null) {
+            return false;
+        }
+        return context.mobRegistry().getMobsInRoom(roomId).stream()
+            .anyMatch(mob -> mob.template().hasTag("tailor"));
+    }
+
     @Override
     public void showAchievements() {
         if (!session.isAuthenticated() || session.getPlayer() == null) {
@@ -3163,12 +4697,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
         long unlockedCount = statuses.stream().filter(AchievementStatus::unlocked).count();
         connection.writeLine("Achievements (" + unlockedCount + "/" + statuses.size() + " unlocked):");
         for (AchievementStatus status : statuses) {
-            connection.writeLine(formatAchievementLine(status));
+            connection.writeLine(formatAchievementLine(status, player));
         }
         sendPrompt();
     }
 
-    private String formatAchievementLine(AchievementStatus status) {
+    private String formatAchievementLine(AchievementStatus status, Player player) {
         Achievement achievement = status.achievement();
         String marker = status.unlocked() ? "[X]" : "[ ]";
         String detail;
@@ -3179,8 +4713,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
             detail = status.progress() + "/" + achievement.threshold() + " "
                 + achievement.condition().progressUnit();
         }
-        return String.format("  %s %-22s %s (%s)",
+        String line = String.format("  %s %-22s %s (%s)",
             marker, achievement.name(), achievement.description(), detail);
+        String titleReward = achievement.titleReward();
+        if (titleReward != null) {
+            String titleState = player.titles().has(titleReward) ? "earned" : "locked";
+            line += " [Title: " + titleReward + " - " + titleState + "]";
+        }
+        return line;
     }
 
     @Override
@@ -3663,12 +5203,46 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "ACCEPT" -> handlePartyAccept(player, partyService);
             case "DECLINE" -> handlePartyDecline(player, partyService);
             case "LEAVE" -> handlePartyLeave(player, partyService);
+            case "KICK" -> handlePartyKick(player, partyService, subArgs);
             case "DISBAND" -> handlePartyDisband(player, partyService);
             case "LOOT" -> handlePartyLoot(player, partyService, subArgs);
             case "" -> handlePartyStatus(player, partyService);
-            default -> writeLineWithPrompt(
-                "Usage: PARTY [FORM|INVITE <player>|ACCEPT|DECLINE|LEAVE|DISBAND|LOOT <free|round-robin|roll>]");
+            default -> partyChat(args);
         }
+    }
+
+    @Override
+    public void partyChat(String message) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use party chat.");
+            return;
+        }
+        PartyService partyService = context.partyService();
+        if (partyService == null) {
+            writeLineWithPrompt("The party system is not available.");
+            return;
+        }
+        Party party = partyService.findParty(player.getUsername()).orElse(null);
+        if (party == null) {
+            writeLineWithPrompt("You are not in a party.");
+            return;
+        }
+        if (message == null || message.isBlank()) {
+            writeLineWithPrompt("Say what to your party?");
+            return;
+        }
+        String trimmed = message.trim();
+        Username sender = player.getUsername();
+        List<Username> online = onlinePlayerNames();
+        String line = "[Party] " + sender.getValue() + ": " + trimmed;
+        for (Username member : party.memberIds()) {
+            if (!member.equals(sender) && online.contains(member)) {
+                sendToUsername(member, line);
+            }
+        }
+        connection.writeLine("[Party] You: " + trimmed);
+        sendPrompt();
     }
 
     @Override
@@ -3747,6 +5321,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "VAULT" -> handleGuildVault(guildService);
             case "STORE" -> handleGuildStore(guildService, subArgs);
             case "CLAIM" -> handleGuildClaim(guildService, subArgs);
+            case "QUEST" -> executeGuildQuest(subArgs);
+            case "WAR" -> handleGuildWar(subArgs);
             case "" -> handleGuildStatus(guildService);
             default -> guildChat(args);
         }
@@ -3784,6 +5360,77 @@ class SocketCommandContextImpl implements SocketCommandContext {
             }
         }
         connection.writeLine("[Guild] You: " + trimmed);
+        sendPrompt();
+    }
+
+    @Override
+    public void executeGuildQuest(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use guild commands.");
+            return;
+        }
+        GuildService guildService = context.guildService();
+        GuildQuestService guildQuestService = context.guildQuestService();
+        if (guildService == null || guildQuestService == null) {
+            writeLineWithPrompt("The guild system is not available.");
+            return;
+        }
+        reconcileGuildMembership(player, guildService);
+        Guild guild = guildService.guildOf(player.getUsername()).orElse(null);
+        if (guild == null) {
+            writeLineWithPrompt("You are not in a guild.");
+            return;
+        }
+        GuildQuest quest = guildQuestService.activeQuestFor(player.getUsername()).orElse(null);
+        if (quest == null) {
+            writeLineWithPrompt("Your guild has no active guild quest right now.");
+            return;
+        }
+        connection.writeLine("=== " + guild.name() + " Guild Quest ===");
+        connection.writeLine(quest.name());
+        connection.writeLine("  Objective: slay " + quest.requiredKills() + " " + quest.targetName() + ".");
+        connection.writeLine("  Progress:  " + quest.progressLine() + ".");
+        connection.writeLine(
+            "  Reward:    " + quest.goldReward() + " gold into the guild treasury on completion.");
+        if (quest.isComplete()) {
+            connection.writeLine("  This objective is complete — a new one will be posted shortly.");
+        } else {
+            connection.writeLine("  Any online member's kills of this mob type credit the whole guild.");
+        }
+        sendPrompt();
+    }
+
+    /**
+     * Handles the {@code GUILD WAR} sub-command family (issue #731): declare/accept/decline/concede a
+     * consensual guild-vs-guild war, or show its live status. Leader-only mutations are enforced by
+     * {@link GuildWarService}; this method only routes the sub-command and renders the result.
+     *
+     * @param args the text after {@code GUILD WAR} (a nested sub-command, a target guild name, or blank)
+     */
+    private void handleGuildWar(String args) {
+        Player player = session.getPlayer();
+        GuildWarService guildWarService = context.guildWarService();
+        if (guildWarService == null || player == null) {
+            writeLineWithPrompt("The guild war system is not available.");
+            return;
+        }
+        Username leader = player.getUsername();
+        String[] parts = args == null ? new String[]{"", ""} : SocketCommandParsing.splitInput(args);
+        String sub = parts[0];
+        switch (sub) {
+            case "ACCEPT" -> writeLineWithPrompt(guildWarService.accept(leader).message());
+            case "DECLINE" -> writeLineWithPrompt(guildWarService.decline(leader).message());
+            case "CONCEDE" -> writeLineWithPrompt(guildWarService.concede(leader).message());
+            case "STATUS", "" -> renderGuildWarStatus(guildWarService, leader);
+            default -> writeLineWithPrompt(guildWarService.propose(leader, args).message());
+        }
+    }
+
+    private void renderGuildWarStatus(GuildWarService guildWarService, Username player) {
+        for (String line : guildWarService.statusLines(player)) {
+            connection.writeLine(line);
+        }
         sendPrompt();
     }
 
@@ -3998,7 +5645,31 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 connection.writeLine("  " + member.username().getValue() + rankTag + " - " + status);
             });
         connection.writeLine("Treasury: " + guild.treasuryGold() + " gold.");
+        writeGuildLevelLines(guild);
         sendPrompt();
+    }
+
+    /**
+     * Writes the guild's level and lifetime-deposit progress lines (used by the roster and vault views).
+     * Announces the guild's current level, its level-scaled vault capacity, its lifetime deposited total
+     * and either the gold needed for the next level or that it has reached the max level.
+     */
+    private void writeGuildLevelLines(Guild guild) {
+        GuildLevel level = guild.level();
+        connection.writeLine("Guild level: " + level.rank() + "/" + GuildLevel.FIVE.rank()
+            + " (vault capacity " + GuildService.vaultCapacity(guild) + " slots).");
+        connection.writeLine("Treasury interest: " + level.interestRatePercent()
+            + "% of the balance per day, paid at dawn (never affects leveling).");
+        OptionalInt nextThreshold = guild.nextLevelThreshold();
+        if (nextThreshold.isPresent()) {
+            int remaining = nextThreshold.getAsInt() - guild.lifetimeDepositedGold();
+            connection.writeLine("Lifetime deposited: " + guild.lifetimeDepositedGold()
+                + " gold. Next level at " + nextThreshold.getAsInt() + " gold ("
+                + remaining + " more to go).");
+        } else {
+            connection.writeLine("Lifetime deposited: " + guild.lifetimeDepositedGold()
+                + " gold. Max level reached.");
+        }
     }
 
     private void handleGuildBank(GuildService guildService) {
@@ -4026,6 +5697,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("You only have " + player.getGold() + " gold to deposit.");
             return;
         }
+        GuildLevel levelBefore = guild.level();
         GuildResult result = guildService.deposit(player.getUsername(), amount);
         if (result.success() && result.guild() != null) {
             Player updated = player.addGold(-amount);
@@ -4033,6 +5705,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
             saveOrWarn(updated);
             broadcastToGuild(result.guild(), player.getUsername(),
                 player.getUsername().getValue() + " deposited " + amount + " gold to the guild bank.");
+            GuildLevel levelAfter = result.guild().level();
+            if (levelAfter.rank() > levelBefore.rank()) {
+                connection.writeLine(result.message());
+                writeLineWithPrompt("Your deposit raises " + result.guild().name() + " to guild level "
+                    + levelAfter.rank() + "! Shared vault capacity is now "
+                    + GuildService.vaultCapacity(result.guild()) + " slots.");
+                broadcastToGuild(result.guild(), player.getUsername(),
+                    result.guild().name() + " has reached guild level " + levelAfter.rank()
+                        + "! The shared vault now holds up to "
+                        + GuildService.vaultCapacity(result.guild()) + " items.");
+                return;
+            }
         }
         writeLineWithPrompt(result.message());
     }
@@ -4063,15 +5747,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         List<VaultedItem> items = guild.vaultedItems();
         if (items.isEmpty()) {
-            writeLineWithPrompt("The " + guild.name() + " vault is empty.");
+            connection.writeLine("The " + guild.name() + " vault is empty.");
+            writeGuildLevelLines(guild);
+            sendPrompt();
             return;
         }
         connection.writeLine(guild.name() + " vault (" + items.size() + "/"
-            + GuildService.VAULT_CAPACITY + "):");
+            + GuildService.vaultCapacity(guild) + "):");
         for (VaultedItem vaulted : items) {
             connection.writeLine("  " + vaulted.item().getName()
                 + " (deposited by " + vaulted.depositor().getValue() + ")");
         }
+        writeGuildLevelLines(guild);
         sendPrompt();
     }
 
@@ -4414,11 +6101,40 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         Player player = session.getPlayer();
-        int capacity = context.bankService().vaultCapacity();
-        for (String line : VaultListing.format(player.getBankedItems(), capacity, session.getTextStyler())) {
+        int capacity = context.bankService().effectiveVaultCapacity(player);
+        String upgradeHint = vaultUpgradeHint(player);
+        for (String line : VaultListing.format(
+                player.getBankedItems(), capacity, session.getTextStyler(), upgradeHint)) {
             connection.writeLine(line);
         }
         sendPrompt();
+    }
+
+    @Override
+    public void upgradeVault() {
+        if (!bankReady()) {
+            return;
+        }
+        Player player = session.getPlayer();
+        BankTransactionResult result = context.bankService().upgradeVault(player);
+        if (result.success()) {
+            session.replacePlayer(result.updatedPlayer());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    /**
+     * Builds the "next vault upgrade" hint line for the {@code VAULT} listing, or {@code null} when
+     * the player is already at the top tier.
+     */
+    private String vaultUpgradeHint(Player player) {
+        VaultUpgradeTier current = VaultUpgradeTier.forRank(player.vault().capacityTier());
+        return current.next()
+            .map(next -> String.format(
+                "Next upgrade: %d slots for %d gold (VAULT UPGRADE).",
+                context.bankService().vaultCapacity() + next.slotBonus(),
+                next.upgradeCost()))
+            .orElse(null);
     }
 
     /**
@@ -4559,6 +6275,24 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 sendPrompt();
             }
             return;
+        }
+        // A leading token naming one of the player's own tamed companions targets that companion's
+        // roleplay description (DESCRIBE <pet> [text|CLEAR|NONE]); otherwise DESCRIBE manages the
+        // player's own description. Companion resolution runs on the tick thread (AGENTS.md §5).
+        if (context.mobRegistry() != null) {
+            String[] petParts = normalized.split("\\s+", 2);
+            String companionToken = petParts[0];
+            if (context.mobRegistry().ownsCompanionMatching(player, companionToken)) {
+                String descriptionArg = petParts.length > 1 ? petParts[1] : "";
+                if (!descriptionArg.isBlank()) {
+                    cancelRestIfActive();
+                }
+                GameActionResult result = context.mobRegistry()
+                    .describeCompanion(session.getPlayer(), companionToken, descriptionArg);
+                deliverResult(result);
+                sendPrompt();
+                return;
+            }
         }
         if (normalized.equalsIgnoreCase("CLEAR") || normalized.equalsIgnoreCase("NONE")) {
             if (player.description().isEmpty()) {
@@ -5026,10 +6760,98 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case "SELL" -> auctionSell(auctionService, player, roomId, rest, currentTick);
             case "BUY" -> auctionBuy(auctionService, player, rest, currentTick);
             case "CANCEL" -> auctionCancel(auctionService, player, rest, currentTick);
+            case "WATCH" -> auctionWatch(player, rest);
+            case "UNWATCH" -> auctionUnwatch(player, rest);
+            case "WATCHLIST" -> auctionWatchList(player);
             default -> writeLineWithPrompt(
                 "Usage: AUCTION LIST [keyword|MINE] | AUCTION SELL <item> <price> "
-                    + "| AUCTION BUY <#> | AUCTION CANCEL <#>");
+                    + "| AUCTION BUY <#> | AUCTION CANCEL <#> | AUCTION WATCH <keyword> "
+                    + "| AUCTION UNWATCH <keyword> | AUCTION WATCHLIST");
         }
+    }
+
+    @Override
+    public void manageBounty(String args) {
+        Player player = session.getPlayer();
+        if (!session.isAuthenticated() || player == null) {
+            writeLineWithPrompt("You must be logged in to use bounties.");
+            return;
+        }
+        BountyService bountyService = context.bountyService();
+        if (bountyService == null) {
+            writeLineWithPrompt("The bounty system is not available.");
+            return;
+        }
+        long currentTick = context.tickClock().currentTick();
+        String normalized = args == null ? "" : args.trim();
+        if (normalized.isEmpty()) {
+            bountyUsage();
+            return;
+        }
+        String[] parts = normalized.split("\\s+", 2);
+        String sub = parts[0].toUpperCase(Locale.ROOT);
+        String rest = parts.length > 1 ? parts[1].trim() : "";
+        switch (sub) {
+            case "POST" -> bountyPost(bountyService, player, rest, currentTick);
+            case "LIST" -> bountyList(bountyService, currentTick);
+            case "CANCEL" -> bountyCancel(bountyService, player, rest);
+            default -> bountyUsage();
+        }
+    }
+
+    private void bountyUsage() {
+        writeLineWithPrompt("Usage: BOUNTY POST <mob> <gold> | BOUNTY LIST | BOUNTY CANCEL <mob>");
+    }
+
+    private void bountyPost(BountyService bountyService, Player player, String rest, long currentTick) {
+        int lastSpace = rest.lastIndexOf(' ');
+        if (rest.isBlank() || lastSpace < 0) {
+            writeLineWithPrompt("Usage: BOUNTY POST <mob> <gold>");
+            return;
+        }
+        String mobInput = rest.substring(0, lastSpace).trim();
+        String goldInput = rest.substring(lastSpace + 1).trim();
+        int gold;
+        try {
+            gold = Integer.parseInt(goldInput);
+        } catch (NumberFormatException e) {
+            writeLineWithPrompt("'" + goldInput + "' is not a valid amount of gold.");
+            return;
+        }
+        BountyResult result = bountyService.post(player, mobInput, gold, currentTick);
+        if (result.success() && result.updatedActor() != null) {
+            session.replacePlayer(result.updatedActor());
+        }
+        writeLineWithPrompt(result.message());
+    }
+
+    private void bountyList(BountyService bountyService, long currentTick) {
+        List<BountyListing> listings = bountyService.listings(currentTick, BountySettings.expiryTicks());
+        if (listings.isEmpty()) {
+            writeLineWithPrompt("There are no open bounties.");
+            return;
+        }
+        connection.writeLine("Open bounties:");
+        connection.writeLine(String.format("%-24s %-10s %-9s %-12s %s",
+            "Mob", "Reward", "Backers", "Age (ticks)", "Expires in"));
+        for (BountyListing listing : listings) {
+            connection.writeLine(String.format("%-24s %-10d %-9d %-12d %d",
+                listing.mobName(), listing.totalReward(), listing.backerCount(),
+                listing.ageTicks(), listing.remainingTicks()));
+        }
+        sendPrompt();
+    }
+
+    private void bountyCancel(BountyService bountyService, Player player, String rest) {
+        if (rest.isBlank()) {
+            writeLineWithPrompt("Usage: BOUNTY CANCEL <mob>");
+            return;
+        }
+        BountyResult result = bountyService.cancel(player, rest);
+        if (result.success() && result.updatedActor() != null) {
+            session.replacePlayer(result.updatedActor());
+        }
+        writeLineWithPrompt(result.message());
     }
 
     private void listAuctions(AuctionService auctionService, Player player, String filterArg, long currentTick) {
@@ -5083,10 +6905,94 @@ class SocketCommandContextImpl implements SocketCommandContext {
         long expiryTick = currentTick + AuctionSettings.listingTicks();
         AuctionTransactionResult result =
             auctionService.sell(player, itemInput, price, roomId, currentTick, expiryTick);
-        if (result.success() && result.updatedActor() != null) {
+        if (result.success() && result.updatedActor() != null && result.listing() != null) {
             session.replacePlayer(result.updatedActor());
+            notifyAuctionWatchers(result.updatedActor(), result.listing());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    /**
+     * Scans every online player (other than the seller) and delivers a real-time notification to
+     * those whose Auction House watch list matches the freshly listed item's name. Matching reuses
+     * {@link AuctionFilter}'s keyword semantics so a watch match can never disagree with an
+     * {@code AUCTION LIST <keyword>} match. Offline players are never touched — only already-loaded
+     * online {@link Player} objects are inspected, so no blocking repository read reaches the tick
+     * thread.
+     */
+    private void notifyAuctionWatchers(Player seller, AuctionListing listing) {
+        Username sellerName = seller.getUsername();
+        for (Username username : onlinePlayerNames()) {
+            if (username.equals(sellerName)) {
+                continue;
+            }
+            Player watcher = getOnlinePlayer(username);
+            if (watcher == null) {
+                continue;
+            }
+            for (String keyword : watcher.auctionWatchList().keywords()) {
+                if (AuctionFilter.keyword(keyword).matches(listing)) {
+                    sendToUsername(username, String.format(
+                        "[Auction] A new listing matches your watch \"%s\": %s for %d gold (seller: %s).",
+                        keyword, listing.item().getName(), listing.price(), sellerName.getValue()));
+                    break;
+                }
+            }
+        }
+    }
+
+    private void auctionWatch(Player player, String rest) {
+        String keyword = rest.trim();
+        if (keyword.isBlank()) {
+            writeLineWithPrompt("Usage: AUCTION WATCH <keyword>");
+            return;
+        }
+        PlayerAuctionWatchList watches = player.auctionWatchList();
+        if (watches.has(keyword)) {
+            writeLineWithPrompt("You are already watching \"" + keyword.toLowerCase(Locale.ROOT) + "\".");
+            return;
+        }
+        if (watches.isFull()) {
+            writeLineWithPrompt("You are already watching the maximum of " + PlayerAuctionWatchList.MAX_WATCHES
+                + " keywords. UNWATCH one first.");
+            return;
+        }
+        Player updated = player.withAuctionWatchList(watches.with(keyword));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are now watching the Auction House for \""
+            + keyword.toLowerCase(Locale.ROOT) + "\".");
+    }
+
+    private void auctionUnwatch(Player player, String rest) {
+        String keyword = rest.trim();
+        if (keyword.isBlank()) {
+            writeLineWithPrompt("Usage: AUCTION UNWATCH <keyword>");
+            return;
+        }
+        PlayerAuctionWatchList watches = player.auctionWatchList();
+        if (!watches.has(keyword)) {
+            writeLineWithPrompt("You are not watching \"" + keyword.toLowerCase(Locale.ROOT) + "\".");
+            return;
+        }
+        Player updated = player.withAuctionWatchList(watches.without(keyword));
+        session.replacePlayer(updated);
+        saveOrWarn(updated);
+        writeLineWithPrompt("You are no longer watching \"" + keyword.toLowerCase(Locale.ROOT) + "\".");
+    }
+
+    private void auctionWatchList(Player player) {
+        Collection<String> watches = player.auctionWatchList().keywords();
+        if (watches.isEmpty()) {
+            writeLineWithPrompt("You are not watching anything.");
+            return;
+        }
+        connection.writeLine("You are watching the Auction House for:");
+        int index = 1;
+        for (String keyword : watches) {
+            connection.writeLine("  " + index++ + ". " + keyword);
+        }
+        sendPrompt();
     }
 
     private void auctionBuy(AuctionService auctionService, Player player, String rest, long currentTick) {
@@ -5294,6 +7200,29 @@ class SocketCommandContextImpl implements SocketCommandContext {
             for (Username other : others) {
                 sendToUsername(other,
                     player.getUsername().getValue() + " has left the party.");
+            }
+        }
+    }
+
+    private void handlePartyKick(Player player, PartyService partyService, String targetName) {
+        if (targetName == null || targetName.isBlank()) {
+            writeLineWithPrompt("Kick whom? Usage: PARTY KICK <player>");
+            return;
+        }
+        Username target = Username.of(targetName.trim());
+        // Capture the party roster before the kick so we can notify the remaining members.
+        List<Username> othersBefore = partyService.getOtherMembers(player.getUsername());
+        PartyService.PartyResult result = partyService.kick(player.getUsername(), target);
+        writeLineWithPrompt(result.message());
+        if (result.success()) {
+            // Notify the removed player in their own session.
+            sendToUsername(target,
+                "You have been removed from the party by " + player.getUsername().getValue() + ".");
+            // Notify the members who stayed behind.
+            for (Username other : othersBefore) {
+                if (!other.equals(target)) {
+                    sendToUsername(other, target.getValue() + " has been removed from the party.");
+                }
             }
         }
     }
@@ -6030,6 +7959,10 @@ class SocketCommandContextImpl implements SocketCommandContext {
         });
         // Register healing tick callback
         session.registerHealing(this::applyHealingUpdate);
+        // Route environmental-hazard damage through the same death-aware update path as healing/damage
+        // ticks (issue #759), so hazard death reuses the standard death → corpse → respawn flow and
+        // interrupts an in-progress channeled cast with no special-case.
+        session.registerHazardDamageSink(this::applyHealingUpdate);
         // Register hunger/thirst decay tick callback
         session.registerSustenance(this::applySustenanceUpdate, this::deliverSustenanceWarning);
         // Enqueue death-state check
@@ -6050,6 +7983,32 @@ class SocketCommandContextImpl implements SocketCommandContext {
         // online player who has this player friended that they have entered the game.
         if (!isReattach && session.getPlayer() != null) {
             notifyFriendsOfLogin(session.getPlayer());
+        }
+        if (!isReattach && session.getPlayer() != null) {
+            reconcileMarriageOnLogin(session.getPlayer());
+        }
+    }
+
+    /**
+     * Reconciles a possibly-stale marriage bond at login: if the player's spouse no longer exists (for
+     * example the spouse was purged while this player was offline) and is not online, the bond is
+     * cleared so no dangling reference remains, and the player is told they are single (issue #649).
+     */
+    private void reconcileMarriageOnLogin(Player player) {
+        if (!player.isMarried()) {
+            return;
+        }
+        String spouse = player.spouse();
+        if (spouse == null) {
+            return;
+        }
+        Username spouseUsername = Username.of(spouse);
+        boolean spouseExists = findOnlinePlayer(spouseUsername) != null
+            || context.playerRepository().loadPlayer(spouseUsername).isPresent();
+        if (!spouseExists) {
+            session.replacePlayer(player.withSpouse(null));
+            connection.writeLine("Your former spouse " + spouse
+                + " is no longer among us; you are single once more.");
         }
     }
 

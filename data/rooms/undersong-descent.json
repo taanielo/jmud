@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "undersong-descent",
+  "name": "The Descent Beneath the Refusal",
+  "description": "You thought the Last Stand was the bottom, and it was not. Where the Throatless Marshal fell, the sound-drinking cloth of the floor has split along a seam no eye found until now, and beneath it the stair goes down again — not into deeper silence but into something the Unsung's whole refusal was raised against without ever naming it. With each step down the perfect quiet the Marshal kept begins, impossibly, to fill. Not with the Choir's held note; that chord died a floor above. This is lower, older, wordless: a hum with no throat behind it, rising out of the stone itself, felt in the teeth and the breastbone before it is ever heard. The walls here do not drink sound the way the Unsung's did, nor throw it back the way the Choir's nave did — they resonate, humming faintly in sympathy with the deep tone below, so that to descend is to feel the whole living rock take up the note around you. The cold that comes with it is not the held-breath cold of the refusal. It is the cold of a thing that was singing to itself in the dark long before any voice came down to answer or refuse it.",
+  "item_ids": [],
+  "exits": {
+    "up": "unsung-last-stand",
+    "down": "undersong-humming-vault"
+  },
+  "min_level": 65,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The stone of the stairwell hums a fraction louder, a note too low to hear, and the vibration climbs your spine like a hand laid flat against your back.",
+    "A skin of frost blooms across the resonating wall and shivers loose again as the hum swells beneath it.",
+    "Far below, the tone deepens by some imperceptible degree, and every loose grain of dust on the steps leaps at once and settles."
+  ]
+}

@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import io.taanielo.jmud.core.tick.Tickable;
+import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
 
 public class PlayerRespawnTicker implements Tickable {
@@ -74,7 +75,9 @@ public class PlayerRespawnTicker implements Tickable {
 
     private void respawn(Player player) {
         Player respawned = player.respawn();
-        roomService.respawnPlayer(respawned.getUsername());
+        String bound = respawned.boundRoomId();
+        RoomId preferred = bound == null || bound.isBlank() ? null : RoomId.of(bound);
+        roomService.respawnPlayer(respawned.getUsername(), preferred);
         playerUpdater.accept(respawned);
     }
 }

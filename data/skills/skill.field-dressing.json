@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "skill.field-dressing",
+  "name": "field dressing",
+  "type": "SKILL",
+  "level": 60,
+  "cost": {
+    "move": 12
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["fielddressing", "firstaid", "bandage"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "field-dressing"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You kneel and work a swift field dressing over {target}'s wounds, binding and packing them to mend over the coming moments."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} kneels and works a swift field dressing over your wounds, binding them to mend over the coming moments."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} kneels and works a swift field dressing over {target}'s wounds."
+    }
+  ]
+}

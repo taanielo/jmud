@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "id": "garrote",
+  "name": "Garroted",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "control": "silence",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A garrote bites into your throat, choking off your breath and your voice; you can barely fight through the strangling grip."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A garrote bites into {name}'s throat, and they claw and gasp against the strangling wire."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The garrote slackens and you gulp down air, your voice and your fight returning."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The garrote around {name}'s throat slackens and they gasp in a ragged breath."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is choking against a garrote wire, unable to cry out or fight cleanly."
+    }
+  ]
+}

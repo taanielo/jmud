@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "id": "spell.mass-exorcism",
+  "name": "mass exorcism",
+  "type": "SPELL",
+  "level": 75,
+  "cost": {
+    "mana": 14,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "cast_time_ticks": 2,
+  "targeting": "AoE",
+  "aliases": ["exorcism", "massexorcism", "exorcise"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 11
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "exorcised"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a searing wave of holy light that routs every foe around you, the unhallowed among them seared hardest, as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A searing wave of holy light rolls out from {source}, routing and scattering every foe in the room as they cast {ability}!"
+    }
+  ]
+}

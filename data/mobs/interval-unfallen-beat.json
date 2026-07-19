@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "interval-unfallen-beat",
+  "name": "an unfallen beat",
+  "max_hp": 960,
+  "attack_id": "attack.interval-unfallen-beat",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-interval"],
+  "spawn_room_id": "interval-last-beat",
+  "max_count": 1,
+  "respawn_ticks": 95,
+  "xp_reward": 1340,
+  "loot": [
+    {
+      "item_id": "held-breath-splinter",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 280,
+    "max": 420
+  }
+}

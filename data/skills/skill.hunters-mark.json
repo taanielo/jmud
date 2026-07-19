@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.hunters-mark",
+  "name": "hunter's mark",
+  "type": "SKILL",
+  "level": 45,
+  "cost": {
+    "move": 10
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["mark", "huntersmark"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 8
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "hunters-mark"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loose a sighting arrow that brands {target} with a glowing hunter's mark, baring their weak points."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} looses a sighting arrow that brands you with a glowing hunter's mark!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} brands {target} with a glowing hunter's mark."
+    }
+  ]
+}

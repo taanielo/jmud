@@ -201,6 +201,57 @@ public class PartyService {
         return new PartyResult(true, "Party disbanded.");
     }
 
+    /**
+     * Removes {@code target} from the party at the request of the party leader.
+     *
+     * <p>Only the party leader may kick, and only members of the leader's own party may be
+     * kicked. A leader cannot kick themselves (they should use {@link #disband(Username)} or
+     * {@link #leave(Username)} instead). Any auto-follow relationship involving the kicked
+     * member is cleared. If only the leader remains after the kick, the party is automatically
+     * disbanded, mirroring {@link #leave(Username)}'s "last member" behaviour.
+     *
+     * @param leader the player requesting the kick (must be the party leader)
+     * @param target the member to remove
+     * @return result describing success or failure
+     */
+    public synchronized PartyResult kick(Username leader, Username target) {
+        Objects.requireNonNull(leader, "leader is required");
+        Objects.requireNonNull(target, "target is required");
+        UUID partyId = memberToParty.get(leader);
+        if (partyId == null) {
+            return new PartyResult(false, "You are not in a party.");
+        }
+        Party party = parties.get(partyId);
+        if (party == null || !party.isLeader(leader)) {
+            return new PartyResult(false, "Only the party leader can kick members.");
+        }
+        if (target.equals(leader)) {
+            return new PartyResult(false,
+                "You cannot kick yourself. Use PARTY LEAVE or PARTY DISBAND instead.");
+        }
+        UUID targetParty = memberToParty.get(target);
+        if (targetParty == null || !targetParty.equals(partyId)) {
+            return new PartyResult(false, target.getValue() + " is not a member of your party.");
+        }
+        memberToParty.remove(target);
+        clearFollowsInvolving(target);
+        List<Username> remaining = party.memberIds().stream()
+            .filter(m -> !m.equals(target))
+            .toList();
+        if (remaining.size() <= 1) {
+            // Disband: remove party and remaining member mapping
+            parties.remove(partyId);
+            for (Username m : remaining) {
+                memberToParty.remove(m);
+            }
+            return new PartyResult(true,
+                "You remove " + target.getValue()
+                    + " from the party. The party has been disbanded.");
+        }
+        parties.put(partyId, party.withMembers(party.leaderId(), remaining));
+        return new PartyResult(true, "You remove " + target.getValue() + " from the party.");
+    }
+
     // ── Loot mode ─────────────────────────────────────────────────────
 
     /**

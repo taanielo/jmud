@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "skill.serpent-sting",
+  "name": "serpent sting",
+  "type": "SKILL",
+  "level": 85,
+  "cost": {
+    "move": 12
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["serpentsting", "sting", "serpent"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 7
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "serpent-stung"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loose a venom-tipped serpent sting into {target}, and the poison begins to course through their veins."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} buries a venom-tipped arrow in you, and a serpent's poison starts to burn through your veins!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} buries a venom-tipped serpent sting in {target}."
+    }
+  ]
+}

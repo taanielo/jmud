@@ -1,0 +1,33 @@
+{
+  "schema_version": 5,
+  "id": "attack.bonelight-chorister",
+  "name": "a swallowing note",
+  "min_damage": 40,
+  "max_damage": 58,
+  "hit_bonus": 6,
+  "crit_bonus": 4,
+  "damage_bonus": 11,
+  "weapon_type": "BLUNT",
+  "damage_type": "POISON",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 55
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The chorister throws back its cowl of fused bone and aims its open, singing throat at you, and the held note sharpens to a lance of spore-thick sound that drives into you. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The chorister bends its note toward you and you clap your hands over your ears and duck aside as the sound shatters a pillar of skulls behind you."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The chorister's note finds the pitch of your own bones and holds it, and for a moment your teeth sing along with the choir before the rot floods in! The blow {verb} you!"
+    }
+  ]
+}

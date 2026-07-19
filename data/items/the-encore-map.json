@@ -1,0 +1,14 @@
+{
+  "schema_version": 15,
+  "id": "the-encore-map",
+  "name": "Map of the Encore",
+  "description": "Not a chart of a place but a rendering of a refusal — the closing double bar of a finished score, ruled the way a composer rules the end of a work, and then, scrawled past it in a hand that should not have kept writing, one more measure that was never meant to be there. The route through is read the way a musician reads a piece called back after its ending: not as somewhere to go but as a demand to answer, threshold to a hall that would not empty, each measure a step further past the point the song was allowed to stop. It is not colder than the map of the Coda and it does not resolve the way that one resolves; it insists, faintly and continuously, a leaf of vellum forever in the act of being called back for one more piece, so that to hold it is to feel your own pulse pressed onward past the double line into music the world was never written to play, toward the roaring stage where the map, unlike the song, simply refuses to end.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 80,
+  "map_area_id": "the-encore"
+}
