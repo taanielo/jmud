@@ -23,6 +23,7 @@ import io.taanielo.jmud.core.creation.CharacterCreationService;
 import io.taanielo.jmud.core.creation.CharacterCreationState;
 import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingClass;
 import io.taanielo.jmud.core.creation.CharacterCreationState.ChoosingRace;
+import io.taanielo.jmud.core.creation.NewPlayerHints;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.NewPlayerHintMessage;
 import io.taanielo.jmud.core.messaging.UserSayMessage;
@@ -452,9 +453,12 @@ public class SocketClient implements Client {
         commandContext.completeWorldEntry();
         connection.writeLine("You are now a " + player.getRace().getValue()
             + " " + player.getClassId().getValue() + ". Welcome to the realm!");
-        // One-time onboarding hint (issue #517): point the brand-new player at the tools that keep
-        // them alive early (iron sword + WIELD, CONSIDER, TRAIN) before the first LOOK output.
-        sendMessage(NewPlayerHintMessage.of(session.getTextStyler()));
+        // One-time onboarding hint (issues #517, #782): point the brand-new player at the survival
+        // tools they cannot otherwise discover at level 1 (CONSIDER, EQUIP/WIELD, FLEE, TRAIN) before
+        // the first LOOK output. The wording is data-driven (data/new-player-hints.json), resolved by
+        // the composition root, so content agents can iterate without code changes.
+        NewPlayerHints hints = context.newPlayerHints();
+        sendMessage(NewPlayerHintMessage.of(session.getTextStyler(), hints.title(), hints.lines()));
         String cid = auditService.newCorrelationId();
         session.enqueueCommand(() -> commandDispatcher.dispatch(commandContext, "look", cid));
     }

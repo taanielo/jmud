@@ -205,7 +205,13 @@ expect "$T1" "prompt rendered after login"        '\[[0-9]+/[0-9]+hp .*\]'
 # (issue #521) so players can make an informed pick instead of choosing blind.
 expect "$T1" "race prompt shows a description"     'Versatile and adaptable'
 expect "$T1" "class prompt lists starting abilities" 'Starting abilities:'
-expect "$T1" "onboarding hint shown at creation"  'WIELD IRON SWORD'
+# Survival-command onboarding (issue #782): a freshly created character is shown the tools that
+# would have prevented the playtest death — CONSIDER to gauge a mob, EQUIP/WIELD to arm up, and
+# FLEE to escape a losing fight — before their first fight. Wording is data-driven in
+# data/new-player-hints.json.
+expect "$T1" "onboarding teaches CONSIDER"        'CONSIDER .* size up an enemy'
+expect "$T1" "onboarding teaches EQUIP/WIELD"     'wield your weapon \(WIELD works too\)'
+expect "$T1" "onboarding teaches FLEE"            'FLEE .* escape a fight that is going badly'
 expect "$T1" "onboarding points at the Guild Clerk" 'QUEST LIST at the Guild Clerk'
 expect "$T1" "SCORE header present"               '--- Score ---'
 expect "$T1" "SCORE shows Level"                  'Level : [0-9]+'

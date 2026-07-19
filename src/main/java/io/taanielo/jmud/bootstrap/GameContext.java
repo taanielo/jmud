@@ -83,9 +83,12 @@ import io.taanielo.jmud.core.craft.RecipeRepository;
 import io.taanielo.jmud.core.craft.RecipeRepositoryException;
 import io.taanielo.jmud.core.craft.repository.json.JsonRecipeRepository;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
+import io.taanielo.jmud.core.creation.NewPlayerHints;
+import io.taanielo.jmud.core.creation.NewPlayerHintsException;
 import io.taanielo.jmud.core.creation.NewbieKit;
 import io.taanielo.jmud.core.creation.NewbieKitException;
 import io.taanielo.jmud.core.creation.NewbieKitService;
+import io.taanielo.jmud.core.creation.json.JsonNewPlayerHintsRepository;
 import io.taanielo.jmud.core.creation.json.JsonNewbieKitRepository;
 import io.taanielo.jmud.core.dialogue.DialogueRepositoryException;
 import io.taanielo.jmud.core.dialogue.DialogueService;
@@ -261,6 +264,7 @@ public record GameContext(
     CharacterAttributesResolver characterAttributesResolver,
     CharacterCreationService characterCreationService,
     NewbieKitService newbieKitService,
+    NewPlayerHints newPlayerHints,
     ShopService shopService,
     QuestRepository questRepository,
     DailyQuestService dailyQuestService,
@@ -587,6 +591,7 @@ public record GameContext(
         CharacterCreationService characterCreationService =
             new CharacterCreationService(raceRepository, classRepository, abilityRegistry);
         NewbieKitService newbieKitService = new NewbieKitService(createNewbieKit(), itemRepository);
+        NewPlayerHints newPlayerHints = createNewPlayerHints();
         ShopService shopService = createShopService(itemRepository, reputationService);
         BankService bankService = createBankService();
         QuestRepository baseQuestRepository = createQuestRepository();
@@ -753,6 +758,7 @@ public record GameContext(
             characterAttributesResolver,
             characterCreationService,
             newbieKitService,
+            newPlayerHints,
             shopService,
             questRepository,
             dailyQuestService,
@@ -1028,6 +1034,14 @@ public record GameContext(
             return new JsonNewbieKitRepository().load();
         } catch (NewbieKitException e) {
             throw new IllegalStateException("Failed to initialize newbie kit: " + e.getMessage(), e);
+        }
+    }
+
+    private static NewPlayerHints createNewPlayerHints() {
+        try {
+            return new JsonNewPlayerHintsRepository().load();
+        } catch (NewPlayerHintsException e) {
+            throw new IllegalStateException("Failed to initialize new-player hints: " + e.getMessage(), e);
         }
     }
 

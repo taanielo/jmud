@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "title": "Getting Started",
+  "lines": [
+    "Welcome to the realm! A few commands that will keep you alive:",
+    "  CONSIDER <mob>  - size up an enemy before you attack it.",
+    "  EQUIP <item>    - wield your weapon (WIELD works too); try EQUIP TRAINING SWORD.",
+    "  FLEE            - escape a fight that is going badly.",
+    "  TRAIN LIST      - learn abilities at the Master Trainer.",
+    "  HELP            - the full list of commands.",
+    "You are in the Training Yard, a safe place to learn the ropes.",
+    "Your first job: go EAST to the Courtyard, then QUEST LIST at the Guild Clerk."
+  ]
+}
