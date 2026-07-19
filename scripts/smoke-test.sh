@@ -193,6 +193,7 @@ T1="$OUT_DIR/phase1-new-user.txt"
 run_session "$T1" "$TEST_USER" "$TEST_PASS" "$TEST_PASS" "human" "warrior" \
     "score" "inventory" "quest list" "quest accept rat-catcher" "quest status" "quest abandon" \
     "drop all" "get all" \
+    "wield iron sword" "remove weapon" \
     "drop iron sword" "drop health potion" "drop poisonous potion" "drop a treasure chest" \
     "quit"
 
@@ -225,6 +226,10 @@ expect "$T1" "INVENTORY holds starter waterskin"  'Waterskin'
 # floor for every later phase (2c chest checks, 2d2 combat) and every future test/player run.
 expect "$T1" "DROP ALL drops the whole pack"      'You drop .+\. \([0-9]+ items?\)'
 expect "$T1" "GET ALL recovers the whole pack"    'You get .+\. \([0-9]+ items?\)'
+# Equip verb aliases (issue #777): WIELD/WEAR/HOLD all arm an item via the same equip path,
+# and REMOVE unequips it, so common MUD verbs work out of the box for a first-time player.
+expect "$T1" "WIELD alias equips the iron sword"  'You equip Iron Sword'
+expect "$T1" "REMOVE alias unequips the weapon"   'You unequip your weapon'
 expect "$T1" "QUEST LIST shows the contract board" 'Available Contracts'
 expect "$T1" "QUEST LIST shows a recommended level column" 'Lvl'
 expect "$T1" "QUEST LIST offers the starter quest"  'rat-catcher'
