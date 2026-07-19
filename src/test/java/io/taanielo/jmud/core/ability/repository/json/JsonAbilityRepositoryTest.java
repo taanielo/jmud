@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.taanielo.jmud.core.ability.Ability;
+import io.taanielo.jmud.core.ability.AbilityEffect;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
 import io.taanielo.jmud.core.ability.AbilityId;
 import io.taanielo.jmud.core.ability.AbilityOperation;
@@ -18,6 +19,7 @@ import io.taanielo.jmud.core.ability.AbilityStat;
 import io.taanielo.jmud.core.ability.AbilityTargeting;
 import io.taanielo.jmud.core.ability.AbilityType;
 import io.taanielo.jmud.core.ability.repository.AbilityRepositoryException;
+import io.taanielo.jmud.core.effects.ControlType;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageSpec;
@@ -102,6 +104,44 @@ class JsonAbilityRepositoryTest {
         assertEquals(4, ability.cost().mana());
         assertEquals(2, ability.cost().manaPerTarget());
         assertEquals(10, ability.cost().totalMana(3), "base 4 + 2 per target * 3 targets = 10");
+    }
+
+    @Test
+    void loadsCureEffectTargetingControlClassification() throws Exception {
+        Path skillsDir = tempDir.resolve("skills");
+        Files.createDirectories(skillsDir);
+        Path abilityFile = skillsDir.resolve("spell.cleanse.json");
+        Files.writeString(abilityFile, """
+            {
+              \"schema_version\": 2,
+              \"id\": \"spell.cleanse\",
+              \"name\": \"cleanse\",
+              \"type\": \"SPELL\",
+              \"level\": 45,
+              \"cost\": {\"mana\": 12},
+              \"cooldown\": {\"ticks\": 12},
+              \"targeting\": \"BENEFICIAL_GROUP\",
+              \"effects\": [
+                {\"kind\": \"EFFECT\", \"effect_id\": \"purified\"},
+                {\"kind\": \"CURE\", \"control\": \"ROOT\"},
+                {\"kind\": \"CURE\", \"control\": \"SILENCE\"},
+                {\"kind\": \"CURE\", \"control\": \"STUN\"}
+              ]
+            }
+            """);
+
+        JsonAbilityRepository repository = new JsonAbilityRepository(tempDir);
+        Ability ability = repository.findById(AbilityId.of("spell.cleanse")).orElseThrow();
+
+        List<AbilityEffect> cures = ability.effects().stream()
+            .filter(effect -> effect.kind() == AbilityEffectKind.CURE)
+            .toList();
+        assertEquals(3, cures.size());
+        assertTrue(cures.stream().allMatch(effect -> effect.effectId() == null));
+        assertEquals(
+            List.of(ControlType.ROOT, ControlType.SILENCE, ControlType.STUN),
+            cures.stream().map(AbilityEffect::control).toList()
+        );
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.effects.ControlType;
 import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
@@ -35,9 +36,26 @@ class DefaultAbilityEffectResolverTest {
         List.of(),
         List.of(new MessageSpec(MessagePhase.EXPIRE, MessageChannel.SELF, "The poison leaves your body."))
     );
-    private final EffectEngine effectEngine = new EffectEngine(id -> id.equals(poisonId)
-        ? Optional.of(poisonDefinition)
-        : Optional.empty());
+    private final EffectId rootedId = EffectId.of("rooted");
+    private final EffectDefinition rootedDefinition = new EffectDefinition(
+        rootedId,
+        "Rooted",
+        6,
+        1,
+        EffectStacking.REFRESH,
+        List.of(),
+        List.of(new MessageSpec(MessagePhase.EXPIRE, MessageChannel.SELF, "Your feet are free once more.")),
+        ControlType.ROOT
+    );
+    private final EffectEngine effectEngine = new EffectEngine(id -> {
+        if (id.equals(poisonId)) {
+            return Optional.of(poisonDefinition);
+        }
+        if (id.equals(rootedId)) {
+            return Optional.of(rootedDefinition);
+        }
+        return Optional.empty();
+    });
     private final RecordingAbilityMessageSink messageSink = new RecordingAbilityMessageSink();
     private final RecordingAbilityEffectListener listener = new RecordingAbilityEffectListener();
     private final DefaultAbilityEffectResolver resolver =
@@ -67,6 +85,48 @@ class DefaultAbilityEffectResolverTest {
         assertTrue(context.target().effects().isEmpty());
         assertTrue(messageSink.targetMessages.isEmpty());
         assertEquals(false, listener.applied);
+    }
+
+    @Test
+    void cureByControlRemovesMatchingControlEffectAndNotifiesListener() {
+        Player rooted = playerWithEffect(new EffectInstance(rootedId, 4, 1));
+        AbilityContext context = new AbilityContext(rooted, rooted);
+        AbilityEffect cure =
+            new AbilityEffect(AbilityEffectKind.CURE, null, null, 0, null, null, ControlType.ROOT);
+
+        resolver.apply(cure, context);
+
+        assertTrue(context.target().effects().isEmpty());
+        assertTrue(listener.applied);
+        assertEquals(List.of("Your feet are free once more."), messageSink.targetMessages);
+    }
+
+    @Test
+    void cureByControlLeavesUnmatchedControlEffectInPlace() {
+        Player rooted = playerWithEffect(new EffectInstance(rootedId, 4, 1));
+        AbilityContext context = new AbilityContext(rooted, rooted);
+        AbilityEffect cure =
+            new AbilityEffect(AbilityEffectKind.CURE, null, null, 0, null, null, ControlType.STUN);
+
+        resolver.apply(cure, context);
+
+        assertEquals(1, context.target().effects().size());
+        assertEquals(false, listener.applied);
+        assertTrue(messageSink.targetMessages.isEmpty());
+    }
+
+    @Test
+    void cureByControlOnCleanAllyDoesNothing() {
+        Player clean = playerWithEffect(null);
+        AbilityContext context = new AbilityContext(clean, clean);
+        AbilityEffect cure =
+            new AbilityEffect(AbilityEffectKind.CURE, null, null, 0, null, null, ControlType.ROOT);
+
+        resolver.apply(cure, context);
+
+        assertTrue(context.target().effects().isEmpty());
+        assertEquals(false, listener.applied);
+        assertTrue(messageSink.targetMessages.isEmpty());
     }
 
     private Player playerWithEffect(EffectInstance instance) {
