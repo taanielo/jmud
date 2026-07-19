@@ -144,11 +144,13 @@ class MobRegistryRoundRobinLootTest {
                 .anyMatch(t -> t.equals("Alice loots a rusty dagger.")),
             "Bob should see Alice loot the first drop");
 
-        // Flush so the second kill's reload of Alice sees her freshly-saved (dagger-carrying) state.
-        queue.flush(Duration.ofSeconds(5));
+        // The kill path now uses the caller-supplied (session-synced) player as its base rather than a
+        // disk reload (issue #798): the first kill exposes Alice-with-dagger as updatedSource, exactly
+        // as the live session adopts it via replacePlayer, so the second kill carries her looted dagger.
+        Player aliceWithDagger = first.updatedSource();
 
         // Second kill: rotation advances to Bob.
-        GameActionResult second = registry.processPlayerAttack(alice, "Goblin", ROOM_ID);
+        GameActionResult second = registry.processPlayerAttack(aliceWithDagger, "Goblin", ROOM_ID);
         assertTrue(second.messages().stream().map(GameMessage::text)
                 .anyMatch(t -> t.equals("Bob loots a rusty dagger.")),
             "Alice should see Bob loot the second drop");

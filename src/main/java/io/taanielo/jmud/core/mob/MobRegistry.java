@@ -1277,7 +1277,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         messages.add(GameMessage.toSource(playerStrikeMessage(mob, damage, remaining, outcome.crit())));
 
         if (!mob.isAlive()) {
-            awardMobKill(mob, attacker, roomId, messages);
+            Player rewarded = awardMobKill(mob, attacker, roomId, messages);
+            return new GameActionResult(rewarded, null, messages);
         }
         return new GameActionResult(null, null, messages);
     }
@@ -1480,18 +1481,30 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * Applies the shared post-kill rewards when a player's attack (melee or ranged) drops a mob:
      * loot drops, respawn scheduling, combat teardown, party-split XP, gold, quest-kill credit, and
      * level-up notifications. Appends the attacker-facing messages to {@code messages} and publishes
-     * per-member messages to other party members in the room. Runs entirely on the tick thread
-     * (AGENTS.md §5).
+     * per-member messages to other party members in the room, persists the rewarded attacker via the
+     * write-behind queue, and returns the rewarded attacker so the caller can propagate it as the
+     * command's {@code updatedSource} (keeping the live session's cached player in sync). Runs
+     * entirely on the tick thread (AGENTS.md §5).
+     *
+     * <p>The rewards are applied on top of the exact {@code attacker} instance passed in — the live,
+     * current player for this command turn — rather than a fresh disk reload. An earlier version
+     * reloaded from the repository here as a defensive "read the freshest copy" guard, but because
+     * persistence is write-behind (a healing/HP tick for the same player may still be pending in the
+     * {@link PersistenceQueue}), that reload could read a stale pre-kill snapshot and, combined with a
+     * {@code null} {@code updatedSource} that left the session cache un-synced, caused quest-kill
+     * decrements to be repeatedly lost (issue #798). Using the passed-in attacker and returning it as
+     * {@code updatedSource} makes the kill path the single source of truth for the player it mutated.
      *
      * @param mob      the slain mob
-     * @param attacker the player who landed the killing blow
+     * @param attacker the player who landed the killing blow (the live, current instance)
      * @param roomId   the room used to resolve the attacker's party members for XP sharing
      * @param messages the mutable attacker-facing message list to append reward messages to
+     * @return the attacker with all kill rewards applied and already enqueued for persistence
      */
-    private void awardMobKill(MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
-        Player reloaded = playerRepository.loadPlayer(attacker.getUsername()).orElse(attacker);
-        Player rewarded = applyMobKillRewards(mob, reloaded, roomId, messages);
+    private Player awardMobKill(MobInstance mob, Player attacker, RoomId roomId, List<GameMessage> messages) {
+        Player rewarded = applyMobKillRewards(mob, attacker, roomId, messages);
         saveOrLog(rewarded);
+        return rewarded;
     }
 
     /**
@@ -2261,8 +2274,8 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         }
 
         if (!mob.isAlive()) {
-            awardMobKill(mob, attacker, roomId, messages);
-            return new GameActionResult(null, null, messages);
+            Player rewarded = awardMobKill(mob, attacker, roomId, messages);
+            return new GameActionResult(rewarded, null, messages);
         }
 
         // Retaliation: a surviving ranged-attacked mob closes the distance into the shooter's room
@@ -4372,8 +4385,13 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             if (!mob.isAlive()) {
                 // Shared post-kill rewards (loot distribution, party XP, gold, quest credit, etc.)
                 // live in applyMobKillRewards so this tick-driven auto-attack path and the direct
-                // ATTACK/SHOOT/AoE paths behave identically.
-                awardMobKill(mob, player, playerRoom, messages);
+                // ATTACK/SHOOT/AoE paths behave identically. The rewarded player is published as the
+                // event's updatedSource so the session's cached player is synced with the kill (e.g.
+                // the decremented quest-kill count), rather than left stale to be re-saved over the
+                // fresh decrement by the next healing/HP tick (issue #798).
+                Player rewarded = awardMobKill(mob, player, playerRoom, messages);
+                playerEventBus.publish(username, new GameActionResult(rewarded, null, messages));
+                continue;
             }
             playerEventBus.publish(username, new GameActionResult(null, null, messages));
         }
