@@ -19,6 +19,7 @@ import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.LevelGains;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.character.repository.ClassRepositoryException;
+import io.taanielo.jmud.core.player.DeathSettings;
 
 /**
  * Handles the {@code HELP} / {@code H} command, giving players a way to
@@ -207,6 +208,30 @@ public class HelpCommand extends RegistrableCommand {
         "  GUILD WAR STATUS  — (or plain GUILD WAR while at war) shows the opponent, each side's",
         "  current score, and the target to win.");
 
+    private static final List<String> DEATH_TOPIC = List.of(
+        "Death & Recovery",
+        "  When your HP hits 0 you die. You collapse where you fell, and after a short delay you",
+        "  awaken back at your recall point — the Training Yard by default, or wherever you have",
+        "  BIND-anchored your recall (see HELP recall). Death is never the end of your character;",
+        "  it is a setback you recover from.",
+        "",
+        "  Newbie grace. Below level " + DeathSettings.graceLevel() + " you are protected: dying keeps"
+            + " all your gold and items,",
+        "  so an early death costs you nothing but the walk back. This grace is temporary — from",
+        "  level " + DeathSettings.graceLevel() + " onward the full corpse mechanic applies, so learn"
+            + " the recovery tools now,",
+        "  while mistakes are cheap.",
+        "",
+        "  Corpses. At or above the grace level, dying drops your carried gold and items into a",
+        "  corpse in the room where you fell. Your corpse decays after "
+            + DeathSettings.corpseDecaySeconds() + " seconds and is then",
+        "  gone for good, so recover it promptly. Type CORPSE and you are walked back to it",
+        "  step by step; once there, LOOT it to reclaim everything.",
+        "",
+        "  Resurrection. A Cleric who knows the RESURRECT spell can raise a fallen party member,",
+        "  restoring them to life without the full walk-back. Grouping with a healer is the surest",
+        "  insurance against a costly corpse run.");
+
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
      * name and its aliases. Looked up after commands but before classes, so {@code HELP resistances}
@@ -242,7 +267,10 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("guild war", GUILD_WAR_TOPIC),
         Map.entry("guild wars", GUILD_WAR_TOPIC),
         Map.entry("guildwar", GUILD_WAR_TOPIC),
-        Map.entry("guildwars", GUILD_WAR_TOPIC)
+        Map.entry("guildwars", GUILD_WAR_TOPIC),
+        Map.entry("death", DEATH_TOPIC),
+        Map.entry("dying", DEATH_TOPIC),
+        Map.entry("respawn", DEATH_TOPIC)
     );
 
     private final SocketCommandRegistry registry;
@@ -335,7 +363,8 @@ public class HelpCommand extends RegistrableCommand {
                 context.writeLineSafe(String.format("  %-12s %s", handler.name(), short_));
             }
         }
-        context.writeLineSafe("Topics: HELP combat, HELP resistances, HELP hazards, HELP world events");
+        context.writeLineSafe(
+            "Topics: HELP combat, HELP resistances, HELP hazards, HELP world events, HELP death");
         context.sendPrompt();
     }
 

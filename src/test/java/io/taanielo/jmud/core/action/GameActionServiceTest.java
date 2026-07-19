@@ -62,6 +62,7 @@ import io.taanielo.jmud.core.effects.EffectStacking;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageSpec;
+import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerMount;
@@ -1231,8 +1232,10 @@ class GameActionServiceTest {
         assertEquals(1, dead.getInventory().size(), "newbie keeps items on death");
         assertTrue(roomService.findCorpseByOwner("target").isEmpty(), "no corpse spawned for a newbie");
         assertTrue(
-            result.messages().stream().anyMatch(m -> m.text().equals("You keep your belongings - for now.")),
-            "newbie sees the grace message");
+            result.messages().stream().anyMatch(m ->
+                m.text().equals("You keep your belongings this time - newbie grace ends at level "
+                    + DeathSettings.graceLevel() + ".")),
+            "newbie sees the grace message naming the grace level");
     }
 
     @Test
@@ -1251,19 +1254,91 @@ class GameActionServiceTest {
         assertTrue(corpse.isPresent(), "corpse spawned for a veteran");
         assertEquals(50, corpse.get().gold(), "corpse holds the dropped gold");
         assertTrue(
-            result.messages().stream().anyMatch(m -> m.text().contains("Your corpse lies in")),
-            "veteran sees the corpse explanation message");
+            result.messages().stream().anyMatch(m ->
+                m.text().contains("Your corpse lies in") && m.text().contains("CORPSE")),
+            "veteran sees the corpse explanation message naming the CORPSE command");
+    }
+
+    @Test
+    void deathMessageNamesTrainingYardRealNameWhenUnbound() {
+        // Give the RoomService a real training-yard room so the death message can resolve its name.
+        RoomId trainingYard = RoomId.of(DeathSettings.RESPAWN_ROOM_ID);
+        Room yard = new Room(
+            trainingYard, "The Training Yard", "A sandy practice ground.",
+            Map.of(), List.of(), List.of());
+        Room here = new Room(ROOM_A, "Room A", "A quiet room.", Map.of(), List.of(), List.of());
+        RoomService rooms = new RoomService(
+            new TestRoomRepository(Map.of(ROOM_A, here, trainingYard, yard)), ROOM_A);
+        rooms.ensurePlayerLocation(Username.of("target"));
+        GameActionService svc = deathService(rooms);
+
+        Player newbie = deadPlayerWithLoot("target", 1, 0, null);
+        GameActionResult result = svc.resolveDeathIfNeeded(newbie, attacker);
+
+        assertTrue(
+            result.messages().stream().anyMatch(m ->
+                m.text().equals("You will awaken in The Training Yard.")),
+            "unbound death names the training yard by its real display name");
+        assertTrue(
+            result.messages().stream().noneMatch(m -> m.text().contains(DeathSettings.RESPAWN_ROOM_ID)),
+            "death message never leaks the raw room id");
+    }
+
+    @Test
+    void deathMessageNamesBoundRoomWhenBound() {
+        RoomId trainingYard = RoomId.of(DeathSettings.RESPAWN_ROOM_ID);
+        RoomId sanctum = RoomId.of("silver-sanctum");
+        Room yard = new Room(
+            trainingYard, "The Training Yard", "A sandy practice ground.",
+            Map.of(), List.of(), List.of());
+        Room sanctumRoom = new Room(
+            sanctum, "The Silver Sanctum", "A hushed shrine.", Map.of(), List.of(), List.of());
+        Room here = new Room(ROOM_A, "Room A", "A quiet room.", Map.of(), List.of(), List.of());
+        RoomService rooms = new RoomService(
+            new TestRoomRepository(Map.of(ROOM_A, here, trainingYard, yard, sanctum, sanctumRoom)), ROOM_A);
+        rooms.ensurePlayerLocation(Username.of("target"));
+        GameActionService svc = deathService(rooms);
+
+        Player bound = deadPlayerWithLoot("target", 1, 0, null).withBoundRoomId(sanctum.getValue());
+        GameActionResult result = svc.resolveDeathIfNeeded(bound, attacker);
+
+        assertTrue(
+            result.messages().stream().anyMatch(m ->
+                m.text().equals("You will awaken in The Silver Sanctum.")),
+            "a bound player is told they awaken at the bound room, not the training yard");
+        assertTrue(
+            result.messages().stream().noneMatch(m -> m.text().contains("Training Yard")),
+            "a bound player's death message never mentions the training yard");
     }
 
     private Player deadPlayerWithLoot(String username, int level, int gold, Item item) {
         PlayerVitals zeroHp = new PlayerVitals(0, 20, 20, 20, 20, 20);
+        List<Item> inventory = item == null ? List.of() : List.of(item);
         return new Player(
             User.of(Username.of(username), Password.hash("pw", 1000)),
             level, 0L, zeroHp, List.of(), "prompt", false,
             List.of(), null, null,
-            null, List.of(item), null, gold, null, null, null, null,
+            null, inventory, null, gold, null, null, null, null,
             null, null, null, null, null
         );
+    }
+
+    /**
+     * Builds a {@link GameActionService} bound to the given room service, reusing the top-level test
+     * stubs. Used by the death-message tests that need a room service seeded with a real respawn room.
+     */
+    private GameActionService deathService(RoomService rooms) {
+        return new GameActionService(
+            testAbilityRegistry(), new BasicAbilityCostResolver(),
+            new EffectEngine(new StubEffectRepository(Map.of())),
+            new CombatEngine(
+                new StubAttackRepository(Map.of()),
+                new CombatModifierResolver(new StubEffectRepository(Map.of())),
+                new FixedCombatRandom(10, 3, 100)),
+            rooms,
+            (source, input) -> Optional.empty(),
+            new TestCooldowns(),
+            testEncumbranceService());
     }
 
     // ── containers ───────────────────────────────────────────────────────
