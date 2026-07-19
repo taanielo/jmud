@@ -141,6 +141,50 @@ class HelpCommandTest {
     }
 
     @Test
+    void deathTopicCoversGraceCorpseAndResurrect() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = new HelpCommand(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP death").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("Death & Recovery"), "Should show the death topic heading");
+        assertTrue(combined.contains("grace"), "Should explain newbie grace");
+        assertTrue(combined.contains("CORPSE"), "Should name the CORPSE command");
+        assertTrue(combined.contains("decay"), "Should explain corpse decay");
+        assertTrue(combined.contains("RESURRECT"), "Should mention RESURRECT");
+        assertTrue(context.promptMessage.isBlank(),
+                "A known topic must not produce the not-found message");
+    }
+
+    @Test
+    void deathTopicAliasesResolve() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = new HelpCommand(registry);
+
+        for (String alias : new String[] {"dying", "respawn"}) {
+            CapturingContext context = new CapturingContext();
+            help.match("HELP " + alias).get().execute(context);
+            String combined = String.join("\n", context.lines);
+            assertTrue(combined.contains("Death & Recovery"),
+                    "Alias '" + alias + "' should resolve the death topic");
+        }
+    }
+
+    @Test
+    void baseListingAdvertisesTheDeathTopic() {
+        SocketCommandRegistry registry = new SocketCommandRegistry();
+        HelpCommand help = new HelpCommand(registry);
+
+        CapturingContext context = new CapturingContext();
+        help.match("HELP").get().execute(context);
+
+        String combined = String.join("\n", context.lines);
+        assertTrue(combined.contains("HELP death"), "Base listing should advertise the death topic");
+    }
+
+    @Test
     void detailShowsLongDescriptionForKnownCommand() {
         SocketCommandRegistry registry = new SocketCommandRegistry();
         registry.register(stubCommand("foo", "Short foo", "Long foo description\nSecond line"));

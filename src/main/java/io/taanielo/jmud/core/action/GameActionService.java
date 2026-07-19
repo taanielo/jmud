@@ -3133,17 +3133,18 @@ public class GameActionService {
         messages.add(GameMessage.toPlayer(deadTarget.getUsername(), "You have died."));
         messages.add(GameMessage.toPlayer(
             deadTarget.getUsername(),
-            "You will awaken in the " + io.taanielo.jmud.core.player.DeathSettings.RESPAWN_ROOM_ID + "."));
+            "You will awaken in " + resolveRespawnRoomName(deadTarget) + "."));
         if (graceProtected) {
             messages.add(GameMessage.toPlayer(
                 deadTarget.getUsername(),
-                "You keep your belongings - for now."));
+                "You keep your belongings this time - newbie grace ends at level "
+                    + DeathSettings.graceLevel() + "."));
         } else if (corpseSpawned) {
             String where = room != null ? room.getName() : "where you fell";
             messages.add(GameMessage.toPlayer(
                 deadTarget.getUsername(),
                 "Your corpse lies in " + where + ", holding your gold and items. "
-                    + "Return to loot it before it decays."));
+                    + "Type CORPSE to be walked back to it before it decays."));
         }
 
         if (attacker == null) {
@@ -3167,6 +3168,29 @@ public class GameActionService {
             roomMessage));
 
         return messages;
+    }
+
+    /**
+     * Resolves the display name of the room the dying player will actually respawn in, so the death
+     * message and the respawn mechanic ({@link io.taanielo.jmud.core.player.PlayerRespawnTicker}) agree
+     * on the destination. A player with a {@code BIND}-anchored respawn point ({@link Player#boundRoomId()},
+     * issue #659) is told the bound room's real name; an unbound player falls back to the default
+     * Training Yard's real display name. Never leaks a raw room id.
+     *
+     * @param deadTarget the player who just died
+     * @return the human-readable name of the room they will awaken in
+     */
+    private String resolveRespawnRoomName(Player deadTarget) {
+        RoomId boundRoom = boundRoomIdOf(deadTarget);
+        if (boundRoom != null) {
+            Optional<Room> resolved = roomService.findRoom(boundRoom);
+            if (resolved.isPresent()) {
+                return resolved.get().getName();
+            }
+        }
+        return roomService.findRoom(RoomId.of(DeathSettings.RESPAWN_ROOM_ID))
+            .map(Room::getName)
+            .orElse(DeathSettings.RESPAWN_ROOM_ID);
     }
 
     private AttackId resolveAttackId(Player attacker) {
