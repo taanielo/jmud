@@ -19,6 +19,7 @@
     {"item_id": "copper-ring"},
     {"item_id": "health-potion"},
     {"item_id": "mana-potion"},
+    {"item_id": "cure-potion"},
     {"item_id": "bread"},
     {"item_id": "meat"},
     {"item_id": "fruit"},
