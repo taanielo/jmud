@@ -242,6 +242,40 @@ public record Guild(
     }
 
     /**
+     * Returns the passive daily treasury interest this guild currently earns: the floor of its current
+     * {@link #treasuryGold()} multiplied by its level's {@link GuildLevel#interestRatePercent()}. A guild
+     * with an empty treasury earns nothing; the floor means odd balances round down to whole gold. The
+     * multiplication is done in {@code long} arithmetic so a very large treasury never overflows.
+     *
+     * @return the interest amount, in whole gold, to credit this in-game day (never negative)
+     */
+    public int dailyTreasuryInterest() {
+        return (int) ((long) treasuryGold * level().interestRatePercent() / 100);
+    }
+
+    /**
+     * Returns a copy of this guild whose treasury has been increased by {@code interest} passive interest.
+     *
+     * <p>Unlike {@link #depositTreasury(int)}, this intentionally does <em>not</em> touch
+     * {@link #lifetimeDepositedGold()}: interest is a reward for stewardship of banked gold, not a player
+     * deposit, so it must never advance the guild's {@link #level() level}. Crediting it toward the
+     * leveling counter would create a compounding interest→level→more-interest loop with no deposit
+     * involved.
+     *
+     * @param interest the non-negative interest to add to the treasury
+     * @return the updated guild
+     * @throws IllegalArgumentException when {@code interest} is negative
+     */
+    public Guild creditTreasuryInterest(int interest) {
+        if (interest < 0) {
+            throw new IllegalArgumentException("Interest must not be negative");
+        }
+        return new Guild(
+            id, name, leaderId, members, treasuryGold + interest, vaultedItems, lifetimeDepositedGold,
+            activeGuildQuest, activeWar, warWins);
+    }
+
+    /**
      * Returns a copy of this guild whose treasury has been decreased by {@code amount}. Withdrawals
      * never affect {@link #lifetimeDepositedGold()}, so a guild's level can never drop.
      *

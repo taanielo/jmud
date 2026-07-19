@@ -617,6 +617,21 @@ public class GuildService {
         repository.save(updated);
     }
 
+    /**
+     * Persists an updated guild snapshot whose only change is a passive daily treasury-interest credit
+     * ({@link Guild#creditTreasuryInterest(int)}, issue #773). Only {@link Guild#treasuryGold()} changes —
+     * membership, name, and the {@link Guild#lifetimeDepositedGold()} that drives {@link GuildLevel} are
+     * untouched — so this replaces the cached snapshot and hands the write to the repository without
+     * re-indexing. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the guild whose treasury received interest; must not be null
+     */
+    public synchronized void saveInterestState(Guild updated) {
+        Objects.requireNonNull(updated, "updated is required");
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+    }
+
     // ── Indexing helpers ──────────────────────────────────────────────
 
     /** Adds or replaces the given guild in every in-memory index. */
