@@ -27,6 +27,7 @@ import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.RangeType;
 import io.taanielo.jmud.core.combat.WeaponType;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.effects.ControlType;
 import io.taanielo.jmud.core.messaging.MessageChannel;
 import io.taanielo.jmud.core.messaging.MessagePhase;
 import io.taanielo.jmud.core.messaging.MessageSpec;
@@ -56,6 +57,7 @@ class MobRegistryTelegraphTest {
     private static final AttackId SPECIAL_ATTACK_ID = AttackId.of("attack.special");
     private static final int TELEGRAPH_TICKS = 2;
     private static final String TELEGRAPH_LINE = "The Forest Troll begins winding up troll smash!";
+    private static final String INTERRUPT_LINE = "The Forest Troll's troll smash is interrupted!";
 
     private static final AttackDefinition NORMAL_ATTACK =
         new AttackDefinition(NORMAL_ATTACK_ID, "club", 2, 2, 0, 0, 0, List.of());
@@ -204,6 +206,90 @@ class MobRegistryTelegraphTest {
         tickAndAwaitPersist(registry, persistenceQueue);
         assertEquals(20 - 9, received.get().updatedSource().getVitals().hp(),
             "A special with no telegraph must fire instantly on the first swing, exactly as before");
+    }
+
+    @Test
+    void stunAtTelegraphStartInterruptsTheWindUpWithNoDamage() {
+        Player target = player("hero5");
+        PlayerEventBus bus = new PlayerEventBus();
+        PlayerRepository playerRepo = new StubPlayerRepository(target);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+        MobRegistry registry = buildRegistry(TELEGRAPH_SPECIAL, target, bus, playerRepo, persistenceQueue);
+        Username username = target.getUsername();
+
+        AtomicReference<GameActionResult> received = new AtomicReference<>();
+        bus.register(username, received::set);
+
+        registry.tick(); // announce; telegraph now pending with TELEGRAPH_TICKS wind-up
+        MobInstance mob = registry.getMobsInRoom(ROOM_ID).get(0);
+        assertTrue(mob.hasPendingTelegraph(), "Expected a pending telegraph after the announce tick");
+
+        // A hard STUN lands while the boss is mid-wind-up and stays in force through the resolve tick.
+        mob.applyControl(ControlType.STUN, TELEGRAPH_TICKS + 1);
+
+        // Tick through the whole wind-up window; the deferred blow never lands.
+        received.set(null);
+        registry.tick();
+        registry.tick();
+
+        assertEquals(20, currentHp(playerRepo, username),
+            "A stun in force when the wind-up resolves must cancel the special with no damage");
+        assertFalse(mob.hasPendingTelegraph(), "The interrupted telegraph must be cleared");
+        GameActionResult interrupt = received.get();
+        assertNotNull(interrupt, "Expected an interruption announcement when the stun cancels the special");
+        assertTrue(interrupt.messages().stream()
+                .map(GameMessage::text).anyMatch(INTERRUPT_LINE::equals),
+            "Expected the interruption line to be announced to the room");
+    }
+
+    @Test
+    void stunExpiringBeforeWindUpCompletesLetsTheSpecialLand() {
+        Player target = player("hero6");
+        PlayerEventBus bus = new PlayerEventBus();
+        PlayerRepository playerRepo = new StubPlayerRepository(target);
+        PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+        MobRegistry registry = buildRegistry(TELEGRAPH_SPECIAL, target, bus, playerRepo, persistenceQueue);
+        Username username = target.getUsername();
+
+        registry.tick(); // announce
+        MobInstance mob = registry.getMobsInRoom(ROOM_ID).get(0);
+        assertTrue(mob.hasPendingTelegraph());
+
+        // A short stun (one AI decision) lands mid-wind-up but wears off before the wind-up completes,
+        // so the boss recovers and the deferred blow still lands with full damage.
+        mob.applyControl(ControlType.STUN, 1);
+
+        registry.tick(); // wind-up: stun ticks down and expires
+        tickAndAwaitPersist(registry, persistenceQueue); // resolve: no longer stunned, special lands
+
+        assertEquals(20 - 9, currentHp(playerRepo, username),
+            "A stun that expires before the wind-up completes must let the special still land");
+    }
+
+    @Test
+    void rootAndSilenceDoNotInterruptTheWindUp() {
+        for (ControlType type : List.of(ControlType.ROOT, ControlType.SILENCE)) {
+            Player target = player("hero7" + type.name());
+            PlayerEventBus bus = new PlayerEventBus();
+            PlayerRepository playerRepo = new StubPlayerRepository(target);
+            PersistenceQueue persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
+            MobRegistry registry =
+                buildRegistry(TELEGRAPH_SPECIAL, target, bus, playerRepo, persistenceQueue);
+            Username username = target.getUsername();
+
+            registry.tick(); // announce
+            MobInstance mob = registry.getMobsInRoom(ROOM_ID).get(0);
+            assertTrue(mob.hasPendingTelegraph());
+
+            // ROOT/SILENCE never suppress a wind-up: they only bar flee/re-cast respectively.
+            mob.applyControl(type, TELEGRAPH_TICKS + 1);
+
+            registry.tick(); // wind-up
+            tickAndAwaitPersist(registry, persistenceQueue); // resolve
+
+            assertEquals(20 - 9, currentHp(playerRepo, username),
+                type + " must not interrupt a telegraphed special's wind-up");
+        }
     }
 
     private void tickAndAwaitPersist(MobRegistry registry, PersistenceQueue persistenceQueue) {
