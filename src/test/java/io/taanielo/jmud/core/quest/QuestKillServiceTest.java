@@ -224,6 +224,37 @@ class QuestKillServiceTest {
         assertFalse(result.messages().stream().anyMatch(m -> m.startsWith("Achievement unlocked")));
     }
 
+    // ── Forward-hint to the next chained quest ─────────────────────────────
+
+    @Test
+    void grantCompletionRewardHintsAtNextChainedQuestByName() {
+        QuestTemplate goblinGated = new QuestTemplate(
+            GOBLIN_THRASHER_ID, "Goblin Thrasher", "Kill 5 goblins.", "goblin", 5, 60, 150,
+            null, 0, "Goblin Crusher", null, null, null, null, List.of(), null, null, 0,
+            null, 0, false, "rat-catcher", 2);
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(RAT_CATCHER, goblinGated)));
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(RAT_CATCHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, RAT_CATCHER);
+
+        assertTrue(result.messages().stream()
+            .anyMatch(m -> m.equals("Ask the Guild Clerk about the Goblin Thrasher contract next.")),
+            "Expected forward hint naming the next quest in: " + result.messages());
+    }
+
+    @Test
+    void grantCompletionRewardDoesNotHintWhenNothingIsGatedBehindTheQuest() {
+        QuestKillService svc = new QuestKillService(
+            new StubQuestRepository(List.of(RAT_CATCHER, GOBLIN_THRASHER)));
+        Player withQuest = basePlayer.withActiveQuest(new ActiveQuest(GOBLIN_THRASHER_ID, 0));
+
+        QuestKillService.CompletionResult result = svc.grantCompletionReward(withQuest, GOBLIN_THRASHER);
+
+        assertFalse(result.messages().stream().anyMatch(m -> m.contains("contract next.")),
+            "Final rung must not append a dangling forward hint: " + result.messages());
+    }
+
     private static QuestTemplate nonRepeatableQuest() {
         return new QuestTemplate(
             QuestId.of("bandit-captain-fall"), "The Captain's Fall", "Finish the captain.",
