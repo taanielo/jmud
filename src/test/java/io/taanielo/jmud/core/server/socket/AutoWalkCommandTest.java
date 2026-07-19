@@ -66,7 +66,7 @@ class AutoWalkCommandTest {
         assertEquals("autowalk", cmd.name());
         assertTrue(cmd.longDescription().contains("AUTOWALK"));
         assertTrue(cmd.longDescription().contains("WAYFIND"));
-        assertTrue(cmd.longDescription().toLowerCase().contains("ferry"));
+        assertTrue(cmd.longDescription().toLowerCase(java.util.Locale.ROOT).contains("ferry"));
         assertTrue(cmd.longDescription().contains("STOP"));
     }
 
