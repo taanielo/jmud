@@ -9,7 +9,7 @@
   "damage_bonus": 0,
   "applies_effect": {
     "effect_id": "poison",
-    "chance_percent": 40
+    "chance_percent": 20
   },
   "messages": [
     {
