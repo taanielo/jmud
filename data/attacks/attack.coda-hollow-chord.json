@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.coda-hollow-chord",
+  "name": "a hungry absence",
+  "min_damage": 82,
+  "max_damage": 110,
+  "hit_bonus": 12,
+  "crit_bonus": 10,
+  "damage_bonus": 21,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 68
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The hollow chord closes the exact shape of a missing note around you, an absence with edges, and where the sound should be there is only a cold so complete it pulls the warmth out of you to fill itself. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The hollow chord opens its hungry absence toward you and the cold rushes in to be filled, and you press back out of the shape of the missing note until it closes on empty air and finds nothing to swallow."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The hollow chord collapses the whole shape of its absence onto your heart at once, and the emptiness pulls so hard and so cold that for a moment it feels as though the beat itself were being drawn out of you to fill the silence where a note should be! The blow {verb} you!"
+    }
+  ]
+}

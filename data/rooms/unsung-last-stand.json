@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "unsung-last-stand",
+  "name": "The Last Stand",
+  "description": "The seal gives, and you step into the silence at the bottom of the Unsung. It is a round chamber, domed, and every surface of it — floor, wall, the curve of the vault overhead — is hung and packed and layered with the sound-drinking cloth until the room is a throat lined against all sound, a place built to hold one refusal so completely that nothing, not the Choir's whole held chord, could ever reach in and break it. In the center of that perfect quiet stands the Throatless Marshal. It is the oldest of them and the first, the one who cut its own voice out before any other and led the rest into the dark, and it has never in all the long refusal made a single sound — not a war-cry, not an order, not a scream. It gives none now. It simply turns its wrapped and eyeless head toward you, and the silence in the chamber tightens like a fist around your chest, dragging the breath and the warmth and the very sound out of you, because to the Marshal you are the Choir's voice come down the stair at last, the compulsion made flesh, and the whole long silence of the Unsung has been sharpened to a single point to answer you. This is the last stand. There is no song here. There is only the refusal, and it means to have you.",
+  "item_ids": [],
+  "exits": {
+    "up": "unsung-catacomb-of-dissent",
+    "down": "undersong-descent"
+  },
+  "min_level": 62,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The Marshal shifts its weight in the perfect quiet, and the silence tightens a notch, pressing the breath flatter in your chest.",
+    "The layered cloth of the walls drinks the last small sound of your own heartbeat, and for a moment you cannot hear it at all.",
+    "The Throatless Marshal lifts one wrapped hand a fraction, giving an order no voice will ever carry, and the cold in the chamber answers it instead."
+  ]
+}

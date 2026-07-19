@@ -4,5 +4,6 @@
   "name": "Errand Runner",
   "description": "Complete 5 one-time contracts.",
   "condition": "quests_completed",
-  "threshold": 5
+  "threshold": 5,
+  "title_reward": "the Errand-Runner"
 }

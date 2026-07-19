@@ -229,4 +229,32 @@ class RoomRendererTest {
         assertTrue(lines.get(1).equals("A busy square."),
             "Full mode should render the prose description line");
     }
+
+    @Test
+    void surfacesHazardWarningLineInFullMode() {
+        Room room = hazardRoom();
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of());
+
+        assertTrue(lines.stream().anyMatch(l -> l.contains("(Hazard)") && l.contains("fire")),
+            "A hazardous room must plainly state its hazard in the rendered description");
+    }
+
+    @Test
+    void surfacesHazardWarningLineEvenInBriefMode() {
+        Room room = hazardRoom();
+        List<String> lines = RENDERER.describeRoom(room, Username.of("alice"), Set.of(),
+            TimeOfDay.DAY, new PlainTextStyler(), RoomRenderer.DescriptionMode.BRIEF);
+
+        assertFalse(lines.stream().anyMatch(l -> l.equals("A dangerous place.")),
+            "Brief mode still omits the prose description line");
+        assertTrue(lines.stream().anyMatch(l -> l.contains("(Hazard)")),
+            "The hazard warning is a safety notice and must show even in brief movement output");
+    }
+
+    private static Room hazardRoom() {
+        RoomHazard hazard = new RoomHazard(
+            io.taanielo.jmud.core.combat.DamageType.FIRE, 5, 10, "The heat sears you!");
+        return new Room(ROOM_ID, "Lava Ledge", "A dangerous place.", Map.of(), List.of(), List.of(),
+            Map.of(), null, null, null, false, List.of(), Map.of(), hazard);
+    }
 }

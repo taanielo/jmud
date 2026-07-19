@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.undersong-drowned-chorister",
+  "name": "a drowned refrain",
+  "min_damage": 60,
+  "max_damage": 88,
+  "hit_bonus": 9,
+  "crit_bonus": 7,
+  "damage_bonus": 16,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 65
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The drowned chorister lifts its bowed head from the black water and hums the deep, slowed refrain straight into you, and the note comes freighted with the killing cold of the flooded dark it was sung from. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The drowned chorister raises the drowned tone toward you and the standing water heaves cold at your legs, and you wade back from it before the refrain can pull you under with it."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The drowned chorister sinks and rises and pours the whole flooded chamber's held refrain up through you at once, and the cold of a note drowned too long floods your chest until you cannot tell your breath from the black water! The blow {verb} you!"
+    }
+  ]
+}

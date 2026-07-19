@@ -1,0 +1,19 @@
+{
+  "schema_version": 14,
+  "id": "cantors-knell",
+  "name": "the Cantor's Knell",
+  "description": "A great two-handed mace fashioned from a single fused knot of the Choir's own bone, its head a cluster of half-melted skulls cast around a hollow core so that every blow tolls like a struck bell in a stone nave. The note it sounds is the same low, unending chord the cathedral holds, and each impact drives that held breath into the wound as a shudder of pressure rather than any edge. It is heavy and slow to bring around, and it asks for a strong arm rather than a quick one, but where it lands it lands with the weight of an entire silenced choir behind it.",
+  "attributes": {
+    "stats": {
+      "strength": 8,
+      "hp": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 6,
+  "value": 620,
+  "rarity": "epic",
+  "attack_ref": "attack.cantors-knell"
+}

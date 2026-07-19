@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.first-hum",
+  "name": "a standing tone",
+  "min_damage": 70,
+  "max_damage": 96,
+  "hit_bonus": 10,
+  "crit_bonus": 8,
+  "damage_bonus": 18,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 70
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The First Hum turns its standing tone onto you like a struck bell aimed at your ribs, and the note passes through flesh and bone as pure vibrating cold, ringing the marrow of you against itself. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The First Hum bends its tone toward you and the sphere's cold rushes in with it, and you fall back to the wall until the note slides past and the ringing in your bones subsides."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The First Hum narrows its whole standing note down to the width of your heart, and the cold of it drives so deep that for one long moment every bone in you rings a single killing tone in answer! The blow {verb} you!"
+    }
+  ]
+}

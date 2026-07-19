@@ -25,5 +25,13 @@
   "gold_drop": {
     "min": 200,
     "max": 400
-  }
+  },
+  "resistances": {
+    "cold": 50
+  },
+  "vulnerabilities": {
+    "fire": 50
+  },
+  "enrage_ticks": 15,
+  "enrage_damage_multiplier": 1.25
 }

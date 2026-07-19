@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "field-dressing",
+  "name": "Field Dressing",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "heal_per_tick",
+      "op": "add",
+      "amount": 4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A packed field dressing binds your wounds, and they begin to knit closed as you fight on."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A packed field dressing binds {name}'s wounds."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The field dressing draws your wound a little further closed."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The field dressing has done its work and the last of its warmth fades."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The field dressing binding {name}'s wounds has done its work."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} wears a packed field dressing that is slowly mending their wounds."
+    }
+  ]
+}

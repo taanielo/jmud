@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.unsung-mute-sentry",
+  "name": "a smothering hold",
+  "min_damage": 44,
+  "max_damage": 64,
+  "hit_bonus": 7,
+  "crit_bonus": 4,
+  "damage_bonus": 11,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 45
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The mute sentry folds its wrapped arms around you and presses, and the sound-drinking cloth pulls the warmth and the breath out of you at once in a numbing, smothering cold. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The mute sentry lunges to take you in its wrappings and you twist free of the cold, dead cloth before it can close."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The mute sentry closes its whole wrapped bulk over you and holds, and for a long airless moment there is no sound and no warmth and no breath anywhere in the world! The blow {verb} you!"
+    }
+  ]
+}

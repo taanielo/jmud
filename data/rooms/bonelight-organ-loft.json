@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "bonelight-organ-loft",
+  "name": "The Organ Loft",
+  "description": "The side-chapel is filled, wall to wall and floor to lost ceiling, with a single vast instrument: rank upon rank of hollowed ribs and femurs stood on end like the pipes of a monstrous organ, each bone drilled and voiced so that the breath still escaping from everything the Bloom swallowed moans up through them in a slow, aching chord. Some pipes are the length of a spear; others rise until they vanish into the dark, and the deepest of them sound below hearing, felt only as a pressure behind the eyes. Threads of spore-smoke drift up from the rib-pipes' mouths, and where they catch the ivory light they show the shapes of the escaping breath, thin and reaching. Whatever tends this organ moves among the ranks, pressing a stop here, unsealing a pipe there, coaxing the moan of the dead toward the single held note that rules the cathedral below.",
+  "item_ids": [],
+  "exits": {
+    "west": "bonelight-ossuary-processional"
+  },
+  "min_level": 51,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A deep pipe unseals with a sigh, and a moaning chord climbs up through the rib-ranks and shivers in your chest.",
+    "Spore-smoke curls from the mouth of a hollowed femur, briefly taking the shape of an open, straining throat.",
+    "The pressure behind your eyes deepens as one of the sub-audible pipes finds its note and holds it."
+  ]
+}

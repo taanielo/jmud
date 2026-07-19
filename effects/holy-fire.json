@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "holy-fire",
+  "name": "Holy Fire",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A pillar of holy fire clings to you and keeps burning, searing away at your flesh."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is wreathed in a clinging pillar of holy fire."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The clinging holy fire sears deeper into your flesh."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The holy fire gutters out and the searing eases."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The holy fire wreathing {name} gutters out."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is branded with a clinging pillar of holy fire that will not go out."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "alchemy-greater-vigor-elixir",
+  "name": "Greater Vigor Elixir",
+  "output_item": "greater-vigor-elixir",
+  "gold_cost": 30,
+  "min_skill": 3,
+  "materials": [
+    { "item": "wild-herbs", "quantity": 3 },
+    { "item": "glowcap-mushroom", "quantity": 3 }
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:item:v16",
+  "title": "Item (v16)",
+  "$comment": "v16 adds the optional additive 'set_id' field. Absent means the item belongs to no item set, so every pre-v16 item file loads unchanged with no data migration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "description",
+    "attributes",
+    "effects",
+    "messages",
+    "weight",
+    "value"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 16
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stats"
+      ],
+      "properties": {
+        "stats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effect_id",
+          "duration_ticks"
+        ],
+        "properties": {
+          "effect_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "duration_ticks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "op": {
+            "type": "string",
+            "enum": ["APPLY", "REMOVE"],
+            "description": "Whether the item applies the effect (default) or removes it (a cure)."
+          }
+        }
+      }
+    },
+    "messages": {
+      "type": "array"
+    },
+    "equip_slot": {
+      "type": "string",
+      "enum": [
+        "weapon",
+        "offhand",
+        "head",
+        "chest",
+        "legs",
+        "hands",
+        "feet",
+        "neck",
+        "finger",
+        "back"
+      ]
+    },
+    "weight": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "value": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "attack_ref": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+$",
+      "description": "Id of the attack used when this item is equipped as a weapon."
+    },
+    "teaches_ability_ref": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+$",
+      "description": "Id of the ability learned by the player when this item (a scroll) is read."
+    },
+    "container_capacity": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of items this container can hold. Present only on container items (bags, chests, strongboxes); absent for normal items."
+    },
+    "contents": {
+      "type": "array",
+      "description": "Items currently stored inside this container. Absent or empty for empty containers and non-container items; contained items are never themselves containers.",
+      "items": {
+        "$ref": "#"
+      }
+    },
+    "light_radius": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Radius of light this item emits while carried. Present only on light-source items (torch = 1, lantern = 2); absent for non-light-emitting items. A carried light source lets its bearer see in dark rooms whose required light radius it meets or exceeds."
+    },
+    "max_durability": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum durability of this equippable item. Present only on breakable gear; absent for items that never wear out. When present, the item loses durability as its wearer takes damage in combat and can be restored by a blacksmith's REPAIR."
+    },
+    "durability": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Current durability, from 0 (broken, unusable in combat) up to max_durability. Absent means the item starts at full durability. Only meaningful when max_durability is present."
+    },
+    "rarity": {
+      "type": "string",
+      "enum": ["common", "uncommon", "rare", "epic"],
+      "description": "Rarity tier of this item, governing its colored display name and which stat affixes it may carry. Absent means 'common' (no visual highlight and no affixes), keeping legacy item data fully backward compatible. 'epic' is the apex tier reserved for hand-authored, boss-exclusive signature loot; it ranks above 'rare' and renders in bold magenta."
+    },
+    "affixes": {
+      "type": "array",
+      "description": "Ids of the stat affixes attached to this item (see data/item-affixes.json). Each affix contributes additive stat bonuses combined with attributes.stats when computing effective stats. Absent or empty for plain items.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "identified": {
+      "type": "boolean",
+      "description": "Whether this item's true nature (its rarity tier and affixes) is known to its holder. Absent means true (identified), keeping legacy item data backward compatible. An unidentified item (false) displays generically as 'an unidentified <noun>' and hides its rarity coloring and affixes until revealed by the IDENTIFY command or by reading it. To author an item that starts unidentified, set this to false; an 'identify scroll' is simply an unidentified item with a read/teaches action, since reading an unidentified item reveals it."
+    },
+    "locked": {
+      "type": "boolean",
+      "description": "Whether this container is locked, blocking access to its contents until opened (e.g. by a rogue's PICK skill). Present only on container items; absent means false (unlocked), keeping legacy item data backward compatible. A locked container displays with a '(locked)' suffix and hides its contents count."
+    },
+    "two_handed": {
+      "type": "boolean",
+      "description": "Whether this weapon requires both hands to wield. Present only on weapons; absent means false (one-handed), keeping legacy item data fully backward compatible. A two-handed weapon in the 'weapon' slot occupies the 'offhand' slot as well: equipping it auto-unequips any off-hand item (shield or second weapon) back into the pack, and while it is worn EQUIP into 'offhand' is refused. Two-handed weapons display with a '(two-handed)' suffix in EQUIPMENT and are flagged in EXAMINE, so no off-hand dual-wield bonus attack or shield block applies while one is wielded."
+    },
+    "mount_move_discount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Per-step move-point discount this item grants while ridden as a mount. Present only on rideable mount items (a pony, a warhorse); absent for non-mount items. A player MOUNTs a carried mount item to reduce each outdoor step's move-point cost by this amount (floored at zero), letting them travel farther before needing to REST. The ridden state is transient (never persisted), only allowed outdoors, and is broken automatically on entering combat or moving indoors."
+    },
+    "map_area_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the world area (or 'atlas' for the World Atlas) whose hand-drawn ASCII map this item renders when READ. Present only on map items; absent for non-map items. Reading a map shows fixed, authored cartography (an area's paths, or the world overview) and never the reader's position (issue #529). Maps are reusable and are not consumed on READ."
+    },
+    "set_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Id of the item set (see data/item-sets/) this equippable piece belongs to. Additive and optional: absent means the item belongs to no set, so every pre-v16 item file loads unchanged with no migration. Wearing enough pieces of the same set grants stacking threshold bonuses (see docs/schemas/item-set.v1.json); the piece's own attributes.stats are unaffected."
+    }
+  }
+}

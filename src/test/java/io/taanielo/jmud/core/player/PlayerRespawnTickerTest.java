@@ -80,6 +80,56 @@ class PlayerRespawnTickerTest {
         assertEquals(Optional.of(startId), roomService.findPlayerLocation(respawned.getUsername()));
     }
 
+    @Test
+    void respawnsAtBoundRoomWhenSet() {
+        RoomId startId = RoomId.of("start");
+        RoomId havenId = RoomId.of("haven-gate");
+        Room start = new Room(startId, "Start", "A quiet place.", Map.of(), List.of(), List.of());
+        Room haven = new Room(havenId, "Haven Gate", "A distant refuge.", Map.of(), List.of(), List.of());
+        RoomService roomService =
+            new RoomService(new TestRoomRepository(Map.of(startId, start, havenId, haven)), startId);
+
+        Player player = basePlayer("bound-one").withBoundRoomId(havenId.getValue()).die();
+        AtomicReference<Player> ref = new AtomicReference<>(player);
+        PlayerRespawnTicker ticker = new PlayerRespawnTicker(ref::get, ref::set, roomService, 0);
+
+        ticker.schedule();
+
+        assertFalse(ref.get().isDead());
+        assertEquals(Optional.of(havenId), roomService.findPlayerLocation(ref.get().getUsername()));
+    }
+
+    @Test
+    void respawnFallsBackToStartWhenBoundRoomMissing() {
+        RoomId startId = RoomId.of("start");
+        Room start = new Room(startId, "Start", "A quiet place.", Map.of(), List.of(), List.of());
+        RoomService roomService = new RoomService(new TestRoomRepository(Map.of(startId, start)), startId);
+
+        Player player = basePlayer("stray").withBoundRoomId("long-gone-room").die();
+        AtomicReference<Player> ref = new AtomicReference<>(player);
+        PlayerRespawnTicker ticker = new PlayerRespawnTicker(ref::get, ref::set, roomService, 0);
+
+        ticker.schedule();
+
+        assertFalse(ref.get().isDead());
+        assertEquals(Optional.of(startId), roomService.findPlayerLocation(ref.get().getUsername()));
+    }
+
+    private static Player basePlayer(String name) {
+        return new Player(
+            User.of(Username.of(name), Password.hash("pw", 1000)),
+            1,
+            0,
+            new PlayerVitals(10, 20, 10, 20, 10, 20),
+            List.of(),
+            "prompt",
+            false,
+            List.of(),
+            null,
+            null
+        );
+    }
+
     private record TestRoomRepository(Map<RoomId, Room> rooms) implements RoomRepository {
         private TestRoomRepository(Map<RoomId, Room> rooms) {
             this.rooms = new ConcurrentHashMap<>(rooms);

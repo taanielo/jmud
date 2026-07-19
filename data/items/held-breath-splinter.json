@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "held-breath-splinter",
+  "name": "a splinter of held breath",
+  "description": "A sliver of the world's first indrawn breath, drawn out of the Fermata's arrested stillness and somehow made solid — a splinter of the pause itself, cold and clear and edged like frozen air, that presses very faintly against the palm the way an unreleased breath presses on the chest, as though it were still waiting to be let go. It is not silence made matter and it is not sound; it is the held instant between the two, the gap that let the Hum be a pulse, splintered off and kept. It never warms and it never quite settles, always poised a hair short of some motion it will not complete. Bonewrights and rune-singers who have handled the Undersong's resonance-motes speak of this rarer thing with a kind of dread: a mote rings a note that outlasts silence, but a splinter of held breath holds a stillness that outlasts sound, and they whisper it could be worked into a ward that answers nothing at all, or an edge that lands only when its wielder's own heart gives it leave — but only by a hand willing to stop breathing long enough to shape it.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 200,
+  "rarity": "rare"
+}

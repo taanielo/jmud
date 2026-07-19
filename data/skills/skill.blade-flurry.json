@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "skill.blade-flurry",
+  "name": "blade flurry",
+  "type": "SKILL",
+  "level": 75,
+  "cost": {
+    "mana": 10,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "AoE",
+  "aliases": ["flurry", "bladeflurry", "blades"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 12
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You explode into a whirling flurry of blades, your daggers flashing across every foe around you as you unleash {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} explodes into a whirling flurry of blades, daggers flashing across every foe in the room as they unleash {ability}!"
+    }
+  ]
+}

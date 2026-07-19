@@ -20,13 +20,30 @@ import io.taanielo.jmud.core.world.Item;
 public class EncumbranceService {
     private final RaceRepository raceRepository;
     private final ClassRepository classRepository;
+    private final EquipmentCarryResolver carryResolver;
 
     /**
-     * Creates an encumbrance service with the given repositories.
+     * Creates an encumbrance service with the given repositories and a no-op carry resolver.
+     *
+     * <p>Equipped gear contributes no carry bonus with this constructor; prefer the
+     * three-argument constructor in production so worn packs raise the carry ceiling.
      */
     public EncumbranceService(RaceRepository raceRepository, ClassRepository classRepository) {
+        this(raceRepository, classRepository, EquipmentCarryResolver.noOp());
+    }
+
+    /**
+     * Creates an encumbrance service with the given repositories and equipment carry resolver.
+     *
+     * @param raceRepository  source of race carry bases
+     * @param classRepository source of class carry bonuses
+     * @param carryResolver   resolver that sums the {@code "carry"} stat of equipped gear (e.g. worn packs)
+     */
+    public EncumbranceService(
+            RaceRepository raceRepository, ClassRepository classRepository, EquipmentCarryResolver carryResolver) {
         this.raceRepository = Objects.requireNonNull(raceRepository, "Race repository is required");
         this.classRepository = Objects.requireNonNull(classRepository, "Class repository is required");
+        this.carryResolver = Objects.requireNonNull(carryResolver, "Carry resolver is required");
     }
 
     /**
@@ -61,7 +78,8 @@ public class EncumbranceService {
                 log.warn("Failed to resolve class {} for carry weight; using bonus 0", player.getClassId(), e);
             }
         }
-        return Math.max(0, base + bonus);
+        int equipmentCarry = carryResolver.totalCarry(player);
+        return Math.max(0, base + bonus + equipmentCarry);
     }
 
     /**

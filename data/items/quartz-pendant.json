@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "quartz-pendant",
+  "name": "Quartz Pendant",
+  "description": "A polished teardrop of quartz strung on a fine chain. It rests cool against the breastbone, clearing the mind for the working of spells.",
+  "attributes": {
+    "stats": {
+      "ac": 1,
+      "mana": 8
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "neck",
+  "weight": 1,
+  "value": 55,
+  "attack_ref": null
+}

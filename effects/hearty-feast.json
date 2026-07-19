@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "hearty-feast",
+  "name": "Hearty Feast",
+  "duration_ticks": 90,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": 3
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 3
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "The hearty feast settles heavy and warm, steadying your hands and your nerve."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} looks well-fed and steady after a hearty feast."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The strength of your feast fades."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} no longer looks so well-fed."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} looks hearty and well-fed."
+    }
+  ]
+}

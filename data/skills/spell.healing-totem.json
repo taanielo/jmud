@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.healing-totem",
+  "name": "healing totem",
+  "type": "SPELL",
+  "level": 45,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 12
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["healingtotem", "mendtotem"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "healing-totem"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You plant a healing totem whose steady pulse guards and mends everyone fighting beside you."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} plants a healing totem whose steady pulse washes over the whole room."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "interval-the-fermata",
+  "name": "The Fermata",
+  "description": "The last beat lets you through into a great arrested chamber where the pause the whole Interval was made of finally has a body, and it is called the Fermata — the held sign that hangs over a note and commands it to sustain beyond all counting, drawn out for as long as the one who holds it wills. It fills the chamber the way the First Hum filled the source: neither resting nor floating, simply sustained, a vast slow-turning shape of frost and arrested motion caught in the exact instant before a gesture completes, one enormous stroke lifted and held and never allowed to fall. It is not silence and it is not sound. It is the pause itself given just enough shape to defend the beat it refuses to release, the presence that has been living in the gap between every pulse of the Hum since the world drew its first breath, patient and unheard, waiting for something with a rhythm to finish what it has held open for an eternity. As you cross into the chamber the Fermata turns the whole weight of its arrested attention onto you, and you feel your own heartbeat seized and held against the enormous poised stroke like a fly against a drawn bow — and you understand, too late, that it has not been waiting to release the beat. It has been waiting for a living pulse near enough to fall on. There is nothing beside this, as there was nothing beneath the source. There is only the held stroke, and it means to complete itself through you.",
+  "item_ids": [],
+  "exits": {
+    "up": "interval-last-beat",
+    "down": "coda-threshold"
+  },
+  "min_level": 78,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The Fermata turns a fraction on its unseen axis, and the enormous held stroke of it draws back another hair, gathering, never falling.",
+    "A ring of frost blooms out from the arrested shape and races across the floor to break, silent and cold, against your feet.",
+    "For one endless moment the whole chamber seems about to resolve at last, the held note swelling to the very edge of the downbeat — and then it holds, and the cold of the unfallen stroke rolls out to meet you."
+  ]
+}

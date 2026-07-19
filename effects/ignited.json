@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "ignited",
+  "name": "Ignited",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Clinging arcane flame catches on you and keeps burning, gnawing at your flesh."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} is set alight with clinging arcane flame."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The clinging arcane flame gnaws deeper into your burning flesh."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The arcane flame gutters out and the burning eases."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The arcane flame clinging to {name} gutters out."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is alight with clinging arcane flame that will not go out."
+    }
+  ]
+}

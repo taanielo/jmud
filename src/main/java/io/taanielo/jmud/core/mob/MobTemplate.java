@@ -1,10 +1,12 @@
 package io.taanielo.jmud.core.mob;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.dialogue.DialogueId;
 import io.taanielo.jmud.core.faction.FactionId;
 import io.taanielo.jmud.core.world.RoomId;
@@ -54,6 +56,44 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                  window a scheduled world event is open. Combine with {@link #worldBoss()} to reuse
  *                  the world-boss kill path (server-wide death announcement and guaranteed
  *                  rare-or-higher drop). Defaults to {@code false} for ordinary mobs.
+ * @param parryChancePercent percentage chance, in {@code [0, 100]}, that this mob parries an
+ *                  otherwise-landing player <em>melee</em> attack — fully negating that swing's
+ *                  damage and riposting the attacker with its own attack. Only a subset of
+ *                  deliberately authored, defensively trained melee mobs (armoured guards, trained
+ *                  humanoid combatants, boss-tier elites) carry a non-zero value; it defaults to
+ *                  {@code 0} so ordinary mobs never parry and existing data is unaffected. Ranged,
+ *                  AoE-spell, and summoned-pet damage against the mob never rolls this check. The
+ *                  effective chance is clamped to
+ *                  {@code [CombatSettings.MIN_PARRY_CHANCE, CombatSettings.MAX_PARRY_CHANCE]} at
+ *                  resolution time, mirroring the player-side parry bound.
+ * @param resistances per-{@link DamageType} damage reduction, as a percent in {@code [0, 100]}, this
+ *                  mob applies to an incoming <em>typed</em> (non-{@link DamageType#PHYSICAL}) ability
+ *                  hit — e.g. {@code {COLD: 50}} on an ice mob halves an incoming cold spell. Always
+ *                  non-null, defaulting to an empty map (no resistance) so existing mob data is
+ *                  unaffected. Physical/untyped damage is never reduced. The effective reduction is
+ *                  clamped to {@code CombatSettings.maxResistancePercent()} at resolution time so a
+ *                  resisted hit is never fully negated.
+ * @param vulnerabilities per-{@link DamageType} damage amplification, as a percent in
+ *                  {@code [0, MAX_VULNERABILITY_PERCENT]}, this mob suffers from an incoming typed
+ *                  ability hit — e.g. {@code {FIRE: 50}} on an ice mob makes an incoming fire spell
+ *                  deal 50% more damage. Always non-null, defaulting to an empty map (no
+ *                  vulnerability). Physical/untyped damage is never amplified.
+ * @param healerProfile optional support-caster AI profile (issue #733); when non-null this mob is a
+ *                  <em>healer</em> that mends a wounded ally in its room instead of attacking on an AI
+ *                  decision (see {@link HealerProfile}). {@code null} for ordinary mobs, which never
+ *                  heal — additive and save-compatible, so existing mob data is unaffected.
+ * @param enrageTicks optional per-encounter enrage threshold (issue #745): the number of committed
+ *                  AI attack decisions a fight against this mob may run before the mob
+ *                  <em>enrages</em> — announcing it to the room and boosting its outgoing damage by
+ *                  {@link #enrageDamageMultiplier()} for the rest of that encounter. {@code null} (the
+ *                  default) means the mob never enrages, so existing mob data is unaffected. When
+ *                  present it must be positive. Only a handful of capstone/world bosses author it.
+ *                  Enrage is transient, per-{@link MobInstance} encounter state that resets on
+ *                  disengage/respawn; telegraph wind-up ticks do not advance the clock.
+ * @param enrageDamageMultiplier the multiplier applied to this mob's landed melee/special damage once
+ *                  it has {@link #enrageCapable() enraged}; only meaningful when {@code enrageTicks} is
+ *                  present, in which case it must be strictly greater than {@code 1.0}. Defaults to
+ *                  {@code 1.0} (no boost) for mobs that never enrage.
  */
 public record MobTemplate(
     MobId id,
@@ -76,8 +116,22 @@ public record MobTemplate(
     @Nullable DialogueId dialogueId,
     @Nullable FactionId factionId,
     boolean worldBoss,
-    boolean worldEvent
+    boolean worldEvent,
+    int parryChancePercent,
+    Map<DamageType, Integer> resistances,
+    Map<DamageType, Integer> vulnerabilities,
+    @Nullable HealerProfile healerProfile,
+    @Nullable Integer enrageTicks,
+    double enrageDamageMultiplier
 ) {
+
+    /**
+     * Upper bound (as a percent) on how much a mob's vulnerability may amplify an incoming typed
+     * ability hit. Unlike resistance — which is floored so a resisted hit always lands — vulnerability
+     * rewards correct play, so it is only generously capped to keep authored data sane.
+     */
+    public static final int MAX_VULNERABILITY_PERCENT = 200;
+
     public MobTemplate {
         if (maxHp <= 0) {
             throw new IllegalArgumentException("Mob maxHp must be positive");
@@ -97,8 +151,40 @@ public record MobTemplate(
         if (summonDurationTicks != null && summonDurationTicks <= 0) {
             throw new IllegalArgumentException("Mob summonDurationTicks must be positive");
         }
+        if (parryChancePercent < 0 || parryChancePercent > 100) {
+            throw new IllegalArgumentException("Mob parryChancePercent must be in [0, 100]");
+        }
+        if (enrageTicks != null) {
+            if (enrageTicks <= 0) {
+                throw new IllegalArgumentException("Mob enrageTicks must be positive when present");
+            }
+            if (enrageDamageMultiplier <= 1.0) {
+                throw new IllegalArgumentException(
+                    "Mob enrageDamageMultiplier must be greater than 1.0 when enrageTicks is present");
+            }
+        }
         lootTable = List.copyOf(lootTable);
         tags = tags == null ? List.of() : List.copyOf(tags);
+        resistances = normalizeElementalMap(resistances, 100, "resistance");
+        vulnerabilities = normalizeElementalMap(vulnerabilities, MAX_VULNERABILITY_PERCENT, "vulnerability");
+    }
+
+    private static Map<DamageType, Integer> normalizeElementalMap(
+        @Nullable Map<DamageType, Integer> source, int max, String label) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        for (Map.Entry<DamageType, Integer> entry : source.entrySet()) {
+            if (entry.getKey() == DamageType.PHYSICAL) {
+                throw new IllegalArgumentException("Mob " + label + " cannot target PHYSICAL damage");
+            }
+            int value = entry.getValue();
+            if (value < 0 || value > max) {
+                throw new IllegalArgumentException(
+                    "Mob " + label + " percent must be in [0, " + max + "]");
+            }
+        }
+        return Map.copyOf(source);
     }
 
     /**
@@ -268,7 +354,211 @@ public record MobTemplate(
     ) {
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
-            charmable, dialogueId, factionId, worldBoss, false);
+            charmable, dialogueId, factionId, worldBoss, false, 0);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a world-event flag but do not fight
+     * defensively; defaults {@link #parryChancePercent()} to {@code 0} (a mob that never parries a
+     * player's melee attack). This preserves the pre-parry constructor arity so existing callers and
+     * the JSON mapper remain source-compatible.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, 0, Map.of(), Map.of(), null);
+    }
+
+    /**
+     * Convenience constructor for callers that specify a parry chance but no elemental
+     * resistances/vulnerabilities; defaults {@link #resistances()} and {@link #vulnerabilities()} to
+     * empty maps (a mob that resists and is weak to nothing). Preserves the pre-elemental constructor
+     * arity so existing callers and the JSON mapper remain source-compatible.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of(),
+            null);
+    }
+
+    /**
+     * Convenience constructor for authoring a healer mob (issue #733) that specifies a
+     * {@link #healerProfile()} but no elemental resistances/vulnerabilities; defaults those to empty
+     * maps. Preserves the pre-elemental constructor arity plus the trailing healer profile so healer
+     * mobs can be constructed without spelling out the empty elemental maps.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent,
+        @Nullable HealerProfile healerProfile
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, Map.of(), Map.of(),
+            healerProfile);
+    }
+
+    /**
+     * Convenience constructor preserving the pre-enrage canonical arity (issue #745): defaults
+     * {@link #enrageTicks()} to {@code null} and {@link #enrageDamageMultiplier()} to {@code 1.0} (a
+     * mob that never enrages). Keeps every existing caller and the JSON mapper source-compatible with
+     * the constructor that previously ended at {@code healerProfile}.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent,
+        Map<DamageType, Integer> resistances,
+        Map<DamageType, Integer> vulnerabilities,
+        @Nullable HealerProfile healerProfile
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, resistances,
+            vulnerabilities, healerProfile, null, 1.0);
+    }
+
+    /**
+     * Returns whether this mob is authored to <em>enrage</em> after a drawn-out fight (issue #745) —
+     * i.e. carries a positive {@link #enrageTicks()} threshold and therefore steps up its damage by
+     * {@link #enrageDamageMultiplier()} once an encounter runs past that many committed AI attack
+     * decisions.
+     *
+     * @return {@code true} when this mob has an authored enrage threshold
+     */
+    public boolean enrageCapable() {
+        return enrageTicks != null;
+    }
+
+    /**
+     * Returns the resistance percent this mob applies to an incoming ability hit of the given
+     * {@link DamageType}, or {@code 0} when it has no resistance to that type (or the type is
+     * {@link DamageType#PHYSICAL}). The value is <em>not</em> pre-clamped to the combat cap; callers
+     * apply {@code CombatSettings.maxResistancePercent()} at resolution time.
+     *
+     * @param type the incoming damage type
+     * @return the authored resistance percent for {@code type}, or {@code 0}
+     */
+    public int resistancePercent(DamageType type) {
+        return resistances.getOrDefault(type, 0);
+    }
+
+    /**
+     * Returns the vulnerability percent by which this mob amplifies an incoming ability hit of the
+     * given {@link DamageType}, or {@code 0} when it has no vulnerability to that type (or the type is
+     * {@link DamageType#PHYSICAL}).
+     *
+     * @param type the incoming damage type
+     * @return the authored vulnerability percent for {@code type}, or {@code 0}
+     */
+    public int vulnerabilityPercent(DamageType type) {
+        return vulnerabilities.getOrDefault(type, 0);
+    }
+
+    /**
+     * Returns whether this mob is authored to fight defensively — i.e. carries a non-zero
+     * {@link #parryChancePercent()} and can therefore parry a player's melee attack.
+     *
+     * @return {@code true} when {@link #parryChancePercent()} is positive
+     */
+    public boolean canParry() {
+        return parryChancePercent > 0;
+    }
+
+    /**
+     * Returns whether this mob is a support-caster <em>healer</em> — i.e. carries a non-null
+     * {@link #healerProfile()} and therefore mends wounded allies instead of always attacking
+     * (issue #733).
+     *
+     * @return {@code true} when this mob has a {@link HealerProfile}
+     */
+    public boolean isHealer() {
+        return healerProfile != null;
     }
 
     /** Returns {@code true} when this mob carries the given tag (case-sensitive). */

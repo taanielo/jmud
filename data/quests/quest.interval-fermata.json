@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "interval-fermata",
+  "name": "Let the Held Stroke Fall",
+  "description": "The wraiths only kept the count; the measure only framed it. Down past the last beat before the rest, where the whole Interval has been quietly assembling itself in the gap, the pause the place is made of finally has a body, and it is called the Fermata — the held sign that hangs over a note and commands it to sustain beyond all counting, the one enormous stroke lifted and drawn back and never once allowed to fall. It fills the chamber the way the First Hum filled the source, neither resting nor floating but simply sustained, a vast slow-turning shape of frost and arrested motion caught in the instant before a gesture completes. It is not silence and it is not sound; it is the pause itself given just enough shape to defend the beat it refuses to release, and it has been waiting in the gap between every pulse of the Hum since the world's first breath — not to release the beat, but for a living pulse near enough to fall on. Cross the last beat into the Fermata, break the held stroke where it lifts the full weight of its arrested attention onto you, and let the pause under the world resolve at last — or be the downbeat it has waited an eternity to complete.",
+  "target_mob_id": "the-fermata",
+  "required_kills": 1,
+  "gold_reward": 900,
+  "xp_reward": 2300,
+  "title_reward": "Downbeat",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 45,
+  "recommended_level": 79,
+  "repeatable": false,
+  "prerequisite_quest_id": "interval-cull"
+}

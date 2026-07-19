@@ -62,6 +62,47 @@ class JsonAchievementRepositoryTest {
     }
 
     @Test
+    void parsesOptionalTitleReward(@TempDir Path dataRoot) throws IOException, AchievementRepositoryException {
+        Path dir = Files.createDirectories(dataRoot.resolve("achievements"));
+        Files.writeString(dir.resolve("first_kill.json"), """
+            {
+              "schema_version": 1,
+              "id": "first_kill",
+              "name": "First Blood",
+              "description": "Slay your first enemy.",
+              "condition": "total_kills",
+              "threshold": 1,
+              "title_reward": "the Blooded"
+            }
+            """);
+
+        JsonAchievementRepository repository = new JsonAchievementRepository(dataRoot);
+        Achievement achievement = repository.findById(AchievementId.of("first_kill")).orElseThrow();
+
+        assertEquals("the Blooded", achievement.titleReward());
+    }
+
+    @Test
+    void titleRewardIsNullWhenAbsent(@TempDir Path dataRoot) throws IOException, AchievementRepositoryException {
+        Path dir = Files.createDirectories(dataRoot.resolve("achievements"));
+        Files.writeString(dir.resolve("level_10.json"), """
+            {
+              "schema_version": 1,
+              "id": "level_10",
+              "name": "Seasoned Adventurer",
+              "description": "Reach character level 10.",
+              "condition": "level",
+              "threshold": 10
+            }
+            """);
+
+        JsonAchievementRepository repository = new JsonAchievementRepository(dataRoot);
+        Achievement achievement = repository.findById(AchievementId.of("level_10")).orElseThrow();
+
+        assertTrue(achievement.titleReward() == null);
+    }
+
+    @Test
     void rejectsUnsupportedSchemaVersion(@TempDir Path dataRoot) throws IOException {
         Path dir = Files.createDirectories(dataRoot.resolve("achievements"));
         Files.writeString(dir.resolve("bad.json"), """

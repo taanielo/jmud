@@ -12,7 +12,9 @@ import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.faction.ReputationService;
+import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.TellService;
 import io.taanielo.jmud.core.mob.MobRegistry;
@@ -40,9 +42,11 @@ public class SocketCommandRegistry {
      * @param equipmentArmorResolver  resolver for AC contributed by equipped armour
      * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
      * @param classArmorBonusResolver resolver for AC contributed by the player's class
+     * @param setBonusResolver        resolver for item-set threshold bonuses shown by {@code SCORE}
      * @param classRepository         repository used by {@code HELP <class>} to render a class reference sheet
      * @param abilityRegistry         registry used by {@code HELP <class>} to resolve ability ids to display names
      * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
+     * @param guildRepository         repository used to enumerate all persisted guilds for {@code RANK GUILDS}
      * @param roomService             service used to resolve room exits/occupancy for {@code SHOUT}/{@code WHISPER}
      * @param tellService             in-memory tracker of the last private-message sender per player,
      *                                backing the {@code REPLY} command
@@ -67,9 +71,11 @@ public class SocketCommandRegistry {
         RaceArmorBonusResolver raceArmorBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
         CharacterAttributesResolver characterAttributesResolver,
+        SetBonusResolver setBonusResolver,
         ClassRepository classRepository,
         AbilityRegistry abilityRegistry,
         PlayerRepository playerRepository,
+        GuildRepository guildRepository,
         RoomService roomService,
         TellService tellService,
         MessageBroadcaster messageBroadcaster,
@@ -84,12 +90,14 @@ public class SocketCommandRegistry {
         TickThreadDispatcher tickThreadDispatcher
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
+        Objects.requireNonNull(setBonusResolver, "Set bonus resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
         Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         Objects.requireNonNull(characterAttributesResolver, "Character attributes resolver is required");
         Objects.requireNonNull(classRepository, "Class repository is required");
         Objects.requireNonNull(abilityRegistry, "Ability registry is required");
         Objects.requireNonNull(playerRepository, "Player repository is required");
+        Objects.requireNonNull(guildRepository, "Guild repository is required");
         Objects.requireNonNull(roomService, "Room service is required");
         Objects.requireNonNull(tellService, "Tell service is required");
         Objects.requireNonNull(messageBroadcaster, "Message broadcaster is required");
@@ -128,14 +136,16 @@ public class SocketCommandRegistry {
         new ShoutCommand(registry, roomService, messageBroadcaster);
         new GossipCommand(registry);
         new WhoCommand(registry, roomService, weatherEngine);
-        new RankCommand(registry, playerRepository);
+        new RankCommand(registry, playerRepository, guildRepository);
         new ReputationCommand(registry, reputationService);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            characterAttributesResolver, roomService, weatherEngine);
+            characterAttributesResolver, setBonusResolver, roomService, weatherEngine);
         new AchievementsCommand(registry);
         new AbilityCommand(registry);
         new CastCommand(registry);
         new AbilitiesCommand(registry);
+        new CooldownsCommand(registry);
+        new EffectsCommand(registry);
         new AttackCommand(registry);
         new KillCommand(registry);
         new AssistCommand(registry);
@@ -144,13 +154,21 @@ public class SocketCommandRegistry {
         new ConsiderCommand(registry);
         new DuelCommand(registry);
         new TradeCommand(registry);
+        new MarryCommand(registry);
+        new MentorCommand(registry);
+        new SpouseTellCommand(registry);
         new AcceptCommand(registry);
         new FleeCommand(registry);
         new RecallCommand(registry);
+        new BindCommand(registry);
+        new WayfindCommand(registry);
+        new AutoWalkCommand(registry);
+        new CorpseCommand(registry);
         new RestCommand(registry);
         new WakeCommand(registry);
         new AnsiCommand(registry);
         new AutoLootCommand(registry);
+        new AutoAssistCommand(registry);
         new BriefCommand(registry);
         new PromptCommand(registry);
         new GoldCommand(registry);
@@ -163,6 +181,9 @@ public class SocketCommandRegistry {
         new BrewCommand(registry);
         new CookCommand(registry);
         new EnchantCommand(registry);
+        new TanCommand(registry);
+        new CutCommand(registry);
+        new SewCommand(registry);
         new GatherCommand(registry);
         new QuestCommand(registry);
         new DailyQuestCommand(registry);
@@ -170,6 +191,7 @@ public class SocketCommandRegistry {
         new PartyCommand(registry);
         new FollowCommand(registry);
         new GuildCommand(registry);
+        new GuildQuestCommand(registry);
         new TitleCommand(registry);
         new DescribeCommand(registry);
         new DepositCommand(registry);
@@ -178,6 +200,7 @@ public class SocketCommandRegistry {
         new ClaimCommand(registry);
         new VaultCommand(registry);
         new AuctionCommand(registry);
+        new BountyCommand(registry);
         new LockCommand(registry);
         new UnlockCommand(registry);
         new PickCommand(registry);

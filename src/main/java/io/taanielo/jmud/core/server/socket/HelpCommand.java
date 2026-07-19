@@ -67,6 +67,27 @@ public class HelpCommand extends RegistrableCommand {
         "  EQUIPMENT to review the resistances your worn gear currently provides."
     );
 
+    private static final List<String> HAZARDS_TOPIC = List.of(
+        "Environmental Hazards",
+        "  Not every danger has teeth. Some rooms are lethal terrain in their own right: the",
+        "  Emberdeep's cooled-lava passages, the Frozen Peaks' wind-scoured ridges, the Undercity",
+        "  Sewers' gas-choked tunnels. Stand in one and the room itself hurts you, tick after tick,",
+        "  for as long as you remain.",
+        "",
+        "  A hazard is never a surprise. A hazardous room always names its danger plainly in its",
+        "  description with a line like:",
+        "",
+        "    (Hazard) A lethal fire hazard fills this room; matching resistance gear reduces the damage.",
+        "",
+        "  so you can always retreat, gear up, or press on with full information.",
+        "",
+        "  Hazard damage is typed — FIRE, COLD, or POISON — and is mitigated by the very same",
+        "  elemental-resistance gear that protects you from a mob's matching attack (see HELP",
+        "  resistances). A fire-resist cloak that shrugs off a fire wyrm's breath also shrugs off a",
+        "  lava passage's searing fumes, capped so resistance never grants full immunity. It plugs",
+        "  into the same HP path as combat: it can knock you out and kill you, and it interrupts a",
+        "  spell you are channeling. Gear for the zone before you enter it, not just before the boss.");
+
     private static final List<String> WORLD_EVENTS_TOPIC = List.of(
         "World Events",
         "  Every so often the world tears. On a randomized timer a WORLD EVENT opens: a rare,",
@@ -103,7 +124,88 @@ public class HelpCommand extends RegistrableCommand {
         "  remaining typed damage on top of that.",
         "",
         "  So gear up for the fight you are actually in: better armour, a shield, and agility make",
-        "  you harder to hit and harder to hurt against mobs, not merely in the arena.");
+        "  you harder to hit and harder to hurt against mobs, not merely in the arena.",
+        "",
+        "  PARRY is the shieldless defender's answer. If you are wielding a melee weapon in your main",
+        "  hand — a two-hander, a dual-wield main weapon, or any blade a caster carries — you have a",
+        "  chance, scaled by your agility, to PARRY an incoming melee hit outright. A parried blow",
+        "  deals you zero damage (it is checked before, and instead of, a shield block on that swing)",
+        "  and you immediately RIPOSTE: a free counter-strike with your own weapon, mitigated by your",
+        "  foe's armour just like a normal hit. This is why some hits land for nothing and answer",
+        "  with a sudden blow of your own. Parry never triggers on a ranged shot, and unarmed",
+        "  defenders cannot parry.",
+        "",
+        "  And it cuts both ways: a few monsters fight defensively and can PARRY your own melee",
+        "  attacks. Armoured guards, trained humanoid soldiers, and boss-tier elites may turn your",
+        "  blade aside for no damage and riposte you in return. Only your melee swings are eligible —",
+        "  a ranged shot, an area spell, or a summoned pet's attack is never parried — so size a",
+        "  foe up before you wade in: the one that fights back smarter is the one to respect.",
+        "",
+        "  Watch the company a monster keeps. Some creatures run in PACKS: a solo-looking pull can",
+        "  wake its neighbours. Strike one wolf in a den and the rest snarl and lunge to its",
+        "  defence, piling onto you as extra attackers. Thin the pack before you commit — a stealth",
+        "  pull, a crowd-control spell, or an area attack that hits several at once turns a deadly",
+        "  swarm into a fair fight. A packmate only joins a fight already begun; it never ambushes",
+        "  you first, so hidden rogues still choose their moment.",
+        "",
+        "  A few boss-tier foes TELEGRAPH a devastating signature attack. Instead of landing it",
+        "  instantly, the boss spends a turn winding up and announces what is coming (\"...begins",
+        "  gathering the Final Chord...\"), giving you a few ticks of warning before the blow falls.",
+        "  Use them: FLEE the room to dodge it outright, top yourself off with a heal, or pop a",
+        "  defensive cooldown so the hit lands on a braced target. Best of all, a well-timed hard STUN",
+        "  (HAMMER OF JUSTICE, KIDNEY SHOT, or any stunning ability) landed on the boss mid-wind-up",
+        "  interrupts the channel outright — the signature attack is cancelled and never lands, so save",
+        "  a stun for the telegraph window instead of burning it early. If the boss dies or you leave the",
+        "  fight before the wind-up finishes, the attack simply never lands. Watch for the warning —",
+        "  the scariest hit in the fight is the one you can see coming.",
+        "",
+        "  The greatest bosses also ENRAGE if you let a fight drag on. Grind one of them down purely",
+        "  by turtling — heavy healing, kiting, hiding behind block and parry — and eventually its",
+        "  patience breaks: it announces the turn (\"...its eyes blaze with fury — it grows enraged!\")",
+        "  and hits markedly harder for the rest of that fight. This is why sustain alone is not enough",
+        "  against a capstone boss: bring your burst cooldowns and end the fight before the clock runs",
+        "  out. CONSIDER a foe first — if it \"will wear down slowly, then grow dangerous,\" it enrages,",
+        "  so plan to spike it down rather than out-heal it. Enrage is per-fight: break off cleanly (or",
+        "  kill it) and a fresh pull starts calm again, its patience reset.");
+
+    private static final List<String> COOLDOWNS_TOPIC = List.of(
+        "Cooldowns",
+        "  Usage: COOLDOWNS (alias CD)",
+        "",
+        "  Lists every ability you have learned in a table with three columns:",
+        "    Ability — the ability's display name.",
+        "    Type    — SKILL or SPELL.",
+        "    Status  — its live readiness: 'Ready' when it can be used right now, or",
+        "              '<n> ticks' remaining until it comes off cooldown.",
+        "",
+        "  Unlike ABILITIES, which shows each ability's base cooldown length, COOLDOWNS",
+        "  reads your own live cooldown timers so you can plan an opener or rotation",
+        "  instead of guessing. It is read-only and never changes game state.");
+
+    private static final List<String> GUILD_WAR_TOPIC = List.of(
+        "Guild Wars",
+        "  A guild war is a declared, consensual rivalry between two guilds, scored by DUEL wins",
+        "  between their members. It is prestige only — no gold or items ever change hands.",
+        "",
+        "  Declaring: GUILD WAR <guild> — a guild leader challenges a rival guild. That guild's",
+        "  leader has 60 seconds to answer with GUILD WAR ACCEPT (the war begins) or GUILD WAR",
+        "  DECLINE (it is refused). Both propose and accept are leader-only, and a guild may be in",
+        "  only one war at a time — on either side. If the target never answers, the declaration",
+        "  quietly expires.",
+        "",
+        "  Scoring: while the war runs, any consensual DUEL that resolves between a member of one",
+        "  warring guild and a member of the other awards one war point to the winner's guild — on",
+        "  top of the duel's usual outcome (rankings, any DUEL WAGER gold). Membership is checked",
+        "  live at the moment the duel resolves, so someone who has left either guild no longer",
+        "  scores, and duels within the same guild or against outsiders never count.",
+        "",
+        "  Winning: the first guild to 5 war points wins automatically. A server-wide announcement",
+        "  fires and the winning guild's lifetime war-win count rises (shown in RANK GUILDS).",
+        "",
+        "  GUILD WAR CONCEDE — either leader may forfeit an active war early; the rival guild is",
+        "  credited the win with no threshold needed.",
+        "  GUILD WAR STATUS  — (or plain GUILD WAR while at war) shows the opponent, each side's",
+        "  current score, and the target to win.");
 
     /**
      * Static concept help topics (not backed by a command or class), keyed by the lower-cased topic
@@ -114,6 +216,9 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("resistances", RESISTANCE_TOPIC),
         Map.entry("resistance", RESISTANCE_TOPIC),
         Map.entry("resist", RESISTANCE_TOPIC),
+        Map.entry("hazard", HAZARDS_TOPIC),
+        Map.entry("hazards", HAZARDS_TOPIC),
+        Map.entry("environmental hazards", HAZARDS_TOPIC),
         Map.entry("world events", WORLD_EVENTS_TOPIC),
         Map.entry("world event", WORLD_EVENTS_TOPIC),
         Map.entry("worldevents", WORLD_EVENTS_TOPIC),
@@ -125,7 +230,19 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("armor", COMBAT_TOPIC),
         Map.entry("shield", COMBAT_TOPIC),
         Map.entry("shields", COMBAT_TOPIC),
-        Map.entry("block", COMBAT_TOPIC)
+        Map.entry("block", COMBAT_TOPIC),
+        Map.entry("parry", COMBAT_TOPIC),
+        Map.entry("riposte", COMBAT_TOPIC),
+        Map.entry("enrage", COMBAT_TOPIC),
+        Map.entry("enrages", COMBAT_TOPIC),
+        Map.entry("telegraph", COMBAT_TOPIC),
+        Map.entry("cooldowns", COOLDOWNS_TOPIC),
+        Map.entry("cooldown", COOLDOWNS_TOPIC),
+        Map.entry("cd", COOLDOWNS_TOPIC),
+        Map.entry("guild war", GUILD_WAR_TOPIC),
+        Map.entry("guild wars", GUILD_WAR_TOPIC),
+        Map.entry("guildwar", GUILD_WAR_TOPIC),
+        Map.entry("guildwars", GUILD_WAR_TOPIC)
     );
 
     private final SocketCommandRegistry registry;
@@ -218,7 +335,7 @@ public class HelpCommand extends RegistrableCommand {
                 context.writeLineSafe(String.format("  %-12s %s", handler.name(), short_));
             }
         }
-        context.writeLineSafe("Topics: HELP combat, HELP resistances, HELP world events");
+        context.writeLineSafe("Topics: HELP combat, HELP resistances, HELP hazards, HELP world events");
         context.sendPrompt();
     }
 

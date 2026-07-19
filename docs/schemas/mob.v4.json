@@ -113,6 +113,69 @@
     "faction_id": {
       "type": ["string", "null"],
       "description": "Optional id of a faction (data/factions/) this mob belongs to. Slaying the mob shifts the killer's reputation with the faction, and the faction's hostility rules govern whether it engages a given player. Omit for faction-neutral mobs."
+    },
+    "parry_chance": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0,
+      "description": "Percentage chance (0-100) that this mob parries an otherwise-landing player MELEE attack: it fully negates that swing's damage and ripostes the attacker with its own attack (attack_id). Only author a non-zero value on defensively trained melee mobs (guards, elite humanoid combatants, boss-tier fighters). The effective chance is clamped to combat's parry bound (MAX_PARRY_CHANCE) at resolution time. Ranged (SHOOT), AoE-spell, and summoned-pet damage never roll this. Omit or set 0 for ordinary mobs, which never parry."
+    },
+    "resistances": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "propertyNames": {
+        "enum": ["fire", "cold", "poison", "FIRE", "COLD", "POISON"]
+      },
+      "description": "Optional per-DamageType damage reduction (percent 0-100) applied to an incoming typed ability hit, e.g. {\"cold\": 50} on an ice mob halves an incoming cold spell. Keys match DamageType names case-insensitively (fire/cold/poison). PHYSICAL/untyped damage is never reduced. The effective reduction is clamped to combat's max_resistance_percent at resolution time so a resisted hit is never fully negated. Omit for a mob that resists nothing (today's behaviour)."
+    },
+    "vulnerabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 200
+      },
+      "propertyNames": {
+        "enum": ["fire", "cold", "poison", "FIRE", "COLD", "POISON"]
+      },
+      "description": "Optional per-DamageType damage amplification (percent 0-200) an incoming typed ability hit deals to this mob, e.g. {\"fire\": 50} on an ice mob makes an incoming fire spell deal 50% more. Keys match DamageType names case-insensitively. PHYSICAL/untyped damage is never amplified. Omit for a mob with no elemental weakness. Author resistances and vulnerabilities as a believable pair (an ice mob resists cold and is weak to fire), never as a strict upgrade."
+    },
+    "healer": {
+      "type": "boolean",
+      "default": false,
+      "description": "Optional flag (default false) marking a support-caster HEALER mob. When true, on its own AI decision the mob heals the most-wounded different, alive, non-pet mob in its room (at or below heal_threshold percent of that ally's max HP, and not already full) instead of attacking, restoring a random heal_min..heal_max HP clamped to the ally's max, and announcing it to the room. When no ally needs healing it attacks normally via attack_id. Requires heal_min/heal_max when true. Omit for ordinary mobs, which never heal."
+    },
+    "heal_min": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Minimum HP a healer mob restores to an ally per heal. Required (and must be positive) when healer is true; ignored otherwise."
+    },
+    "heal_max": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum HP a healer mob restores to an ally per heal; must be >= heal_min. Required when healer is true; ignored otherwise."
+    },
+    "heal_threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 50,
+      "description": "Wounded HP threshold, as a percent (1-100) of an ally's max HP, at or below which a healer mob will heal it. Defaults to 50 when omitted. Ignored unless healer is true."
+    },
+    "enrage_ticks": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "Optional per-encounter enrage threshold (issue #745): the number of committed AI attack decisions a fight against this mob may run before it enrages — announcing it to the room and multiplying its outgoing melee/special damage by enrage_damage_multiplier for the rest of that encounter. Enrage is transient, per-encounter state that resets on disengage/respawn; telegraph wind-up ticks do not advance the clock. Requires enrage_damage_multiplier > 1.0 when present. Omit for mobs that never enrage (today's behaviour); only a handful of capstone/world bosses author it."
+    },
+    "enrage_damage_multiplier": {
+      "type": "number",
+      "exclusiveMinimum": 1.0,
+      "description": "Multiplier applied to this mob's landed melee/special damage once it has enraged (see enrage_ticks). Must be strictly greater than 1.0 and is only meaningful alongside enrage_ticks. Omit for mobs that never enrage."
     }
   }
 }

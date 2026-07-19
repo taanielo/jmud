@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "leatherworking-boiled-leather-vest",
+  "name": "Boiled Leather Vest",
+  "output_item": "boiled-leather-vest",
+  "gold_cost": 35,
+  "materials": [
+    { "item": "wolf-pelt", "quantity": 3 }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "coda-cull",
+  "name": "Loose the Ringing Hall",
+  "description": "You did not descend into the Coda so much as fall through the place the Fermata finally let go — the held stroke it refused for an eternity, dropped at last, and this is where it landed. Past the threshold the way opens into the Hall of Loosed Overtones, a vast resonant space where every higher voice the music kept locked inside its sustained notes is coming free at once, lifting loose and climbing thin and letting go in slow bright overlapping rings. Most of them thin away into the cold as a released note should. Some do not. Some gather instead of scattering, folding back on themselves into loosed overtones that hold their ring long past the note that struck them and turn, unhurried, toward the one warm pulse in the ending hall — yours. Left alone they will keep gathering along the ringing walls until the hall cannot end cleanly, until the close snags on them and the resolving chord below is denied its clean fall. Break five of the loosed overtones where they ring loudest in the hall, before the ending catches on their held voices, and the way down toward the last measure may open to one who can still keep a heartbeat the close does not own.",
+  "target_mob_id": "coda-loosed-overtone",
+  "required_kills": 5,
+  "gold_reward": 420,
+  "xp_reward": 1180,
+  "recommended_level": 81
+}

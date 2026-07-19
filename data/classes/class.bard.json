@@ -10,6 +10,6 @@
   "attribute_bonuses": { "agi": 1, "int": 1, "wis": 1 },
   "attribute_gains": { "agi": "every_2_levels", "int": "every_3_levels" },
   "ability_ids": ["spell.battle-hymn", "spell.discord"],
-  "trainable_ability_ids": ["spell.haste", "spell.bless", "spell.dissonant-chord", "spell.anthem-of-renewal"],
-  "description": "A support caster who turns the tide with song. Bards buff allies with battle hymn and weaken foes with discord, later learning haste and, at level 15, a dissonant chord that batters a foe and breaks their nerve, then at level 30 an anthem of renewal that steadily mends and guards the whole party; they shine in a group but are fragile on their own."
+  "trainable_ability_ids": ["spell.haste", "spell.bless", "spell.dissonant-chord", "spell.anthem-of-renewal", "spell.war-song", "spell.siren-song", "spell.virtuoso", "spell.lullaby"],
+  "description": "A support caster who turns the tide with song. Bards buff allies with battle hymn and weaken foes with discord, later learning haste and, at level 15, a dissonant chord that batters a foe and breaks their nerve, then at level 30 an anthem of renewal that steadily mends and guards the whole party, and at level 45 a driving war song that sharpens the whole party's attacks and accuracy, then at level 60 a beguiling siren song, the bard's first area attack, whose piercing refrain assails the mind of every foe in the room, and at level 75 virtuoso, the bard's first personal power buff: a soaring solo that spikes the bard's own attack and spellcraft for its duration, then at level 85 a lullaby, the bard's first single-target crowd control: a droning refrain that drags a single foe into a helpless, enchanted sleep; they shine in a group but are fragile on their own."
 }

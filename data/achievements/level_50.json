@@ -4,5 +4,6 @@
   "name": "Champion",
   "description": "Reach character level 50.",
   "condition": "level",
-  "threshold": 50
+  "threshold": 50,
+  "title_reward": "the Champion"
 }

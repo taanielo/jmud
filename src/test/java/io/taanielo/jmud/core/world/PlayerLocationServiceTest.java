@@ -97,6 +97,35 @@ class PlayerLocationServiceTest {
     }
 
     @Test
+    void respawnPlayerHonoursResolvablePreferredRoom() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, basicRoom(ROOM_A, Map.of(Direction.NORTH, ROOM_B)),
+            ROOM_B, basicRoom(ROOM_B, Map.of(Direction.SOUTH, ROOM_A))));
+        Username alice = Username.of("Alice");
+        service.ensurePlayerLocation(alice);
+
+        RoomId landed = service.respawnPlayer(alice, ROOM_B);
+
+        assertEquals(ROOM_B, landed);
+        assertEquals(Optional.of(ROOM_B), service.findPlayerLocation(alice));
+    }
+
+    @Test
+    void respawnPlayerFallsBackToStartWhenPreferredRoomMissing() {
+        PlayerLocationService service = buildService(Map.of(
+            ROOM_A, basicRoom(ROOM_A, Map.of(Direction.NORTH, ROOM_B)),
+            ROOM_B, basicRoom(ROOM_B, Map.of(Direction.SOUTH, ROOM_A))));
+        Username alice = Username.of("Alice");
+        service.ensurePlayerLocation(alice);
+        service.attemptMove(alice, Direction.NORTH);
+
+        RoomId landed = service.respawnPlayer(alice, RoomId.of("does-not-exist"));
+
+        assertEquals(ROOM_A, landed);
+        assertEquals(Optional.of(ROOM_A), service.findPlayerLocation(alice));
+    }
+
+    @Test
     void movePlayerToRelocatesDirectlyBypassingExitChecks() {
         PlayerLocationService service = buildService(Map.of(
             ROOM_A, basicRoom(ROOM_A, Map.of()),

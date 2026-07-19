@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "grand-isle-feast",
+  "name": "Grand Isle Feast",
+  "description": "A lavish spread of roasted fogfin cod, spiced meat and wild herbs, laid out as if for a captain's table on the Shrouded Isle. A feast like this leaves a body fed for hours and spoiling for a fight.",
+  "attributes": {
+    "stats": {
+      "hunger": 100
+    }
+  },
+  "effects": [
+    {
+      "effect_id": "grand-feast",
+      "duration_ticks": 120
+    }
+  ],
+  "messages": [
+    {
+      "phase": "eat",
+      "channel": "self",
+      "text": "You feast on {item} until you can eat no more, strength coursing through your limbs."
+    },
+    {
+      "phase": "eat",
+      "channel": "room",
+      "text": "{source} sits down to a grand feast of {item}."
+    }
+  ],
+  "weight": 3,
+  "value": 75
+}

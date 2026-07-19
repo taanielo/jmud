@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "enchant-of-resonance",
+  "affix": "of-resonance",
+  "gold_cost": 120,
+  "min_skill": 3,
+  "materials": [
+    { "item": "resonant-bonelight-shard", "quantity": 1 },
+    { "item": "arcane-dust", "quantity": 3 }
+  ]
+}

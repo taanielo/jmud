@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "braced",
+  "name": "Braced",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 6
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "You set your feet and raise your guard, bracing to turn aside the next blow."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} sets their feet and braces behind a raised guard."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "You ease out of your braced guard and back onto the offensive."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "{name} eases out of their braced guard."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} stands braced behind a raised, defensive guard."
+    }
+  ]
+}

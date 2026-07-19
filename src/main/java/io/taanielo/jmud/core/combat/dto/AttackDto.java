@@ -20,6 +20,10 @@ import io.taanielo.jmud.core.messaging.dto.MessageSpecDto;
  * <p>Schema version 6 adds the optional {@code damage_type} field ({@code PHYSICAL},
  * {@code FIRE}, {@code COLD}, {@code POISON}, …); files that omit it default to
  * {@code PHYSICAL}, so every existing attack file remains valid unchanged.
+ *
+ * <p>Schema version 7 adds the optional {@code telegraph_ticks} field (a non-negative integer);
+ * files that omit it default to {@code 0}, meaning the attack resolves instantly with no telegraph,
+ * so every pre-v7 attack file remains valid unchanged.
  */
 public record AttackDto(
     int schemaVersion,
@@ -34,7 +38,8 @@ public record AttackDto(
     String weaponType,
     AppliesEffectDto appliesEffect,
     String rangeType,
-    String damageType
+    String damageType,
+    Integer telegraphTicks
 ) {
 
     /**

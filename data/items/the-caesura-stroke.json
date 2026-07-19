@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "the-caesura-stroke",
+  "name": "the Caesura Stroke",
+  "description": "The maul the Fermata held drawn back across an age, and never once let fall — a long two-handed weapon of pause made solid, its head a splinter of the world's first held breath grown to killing size and bound in cold that presses very faintly against the hand the way an unreleased breath presses on the chest. It carries no note and no silence, only the arrested instant between them, the gap that let the Hum be a pulse, kept and sharpened. Swung, it hangs an instant too long at the height of the stroke, as though reluctant to complete the motion, and when it lands it stops the beat of what it strikes for the length of a held breath before the cold drives through. It is heavier and stiller than any weapon of the Undersong below it, and lands hardest for the wielder patient enough to let it choose its moment.",
+  "attributes": {
+    "stats": {
+      "strength": 11,
+      "dexterity": 8,
+      "cold_resist": 18
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 6,
+  "value": 1040,
+  "rarity": "epic",
+  "attack_ref": "attack.caesura-stroke"
+}

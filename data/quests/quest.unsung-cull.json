@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "unsung-cull",
+  "name": "Break the Held Quiet",
+  "description": "The stair down from the Bonelight Choir does not open into more song but into its opposite: a muffling dark that drinks every sound, held so tight it has weight. At the foot of the stair the Hall of Refusal is kept by mute sentries, wrapped throat to crown in sound-drinking cloth, and they turn toward you not at any noise you make but at the mere fact of you — a living intrusion in a silence the Unsung cut their own voices out to keep. Break eight of the sentries where they stand the hall, before the held quiet closes over your own breath, and the deeper catacombs may open before the refusal decides you are the Choir's voice come down the stair at last.",
+  "target_mob_id": "unsung-mute-sentry",
+  "required_kills": 8,
+  "gold_reward": 260,
+  "xp_reward": 650,
+  "recommended_level": 57
+}

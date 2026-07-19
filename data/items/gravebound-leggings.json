@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "gravebound-leggings",
+  "name": "Gravebound Leggings",
+  "description": "Leggings sewn from bleached grave linen and reinforced with silk thread, carrying a faint chill of the crypt that never quite fades. They anchor the wearer's will and deepen their command of the arcane.",
+  "attributes": {
+    "stats": {
+      "ac": 2,
+      "wisdom": 2,
+      "mana": 8
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "legs",
+  "weight": 2,
+  "value": 105,
+  "attack_ref": null
+}

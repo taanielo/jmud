@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "coda-loosed-overtone",
+  "name": "a loosed overtone",
+  "max_hp": 1060,
+  "attack_id": "attack.coda-loosed-overtone",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-coda"],
+  "spawn_room_id": "coda-overtone-hall",
+  "max_count": 3,
+  "respawn_ticks": 84,
+  "xp_reward": 1520,
+  "loot": [
+    {
+      "item_id": "resolved-overtone",
+      "drop_chance": 0.3
+    }
+  ],
+  "gold_drop": {
+    "min": 300,
+    "max": 440
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "encore-standing-call-wraith",
+  "name": "a standing-call wraith",
+  "max_hp": 1360,
+  "attack_id": "attack.encore-standing-call-wraith",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-encore"],
+  "spawn_room_id": "encore-standing-call",
+  "max_count": 2,
+  "respawn_ticks": 88,
+  "xp_reward": 1980,
+  "loot": [
+    {
+      "item_id": "unspent-encore",
+      "drop_chance": 0.36
+    }
+  ],
+  "gold_drop": {
+    "min": 400,
+    "max": 560
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.throatless-marshal",
+  "name": "a noiseless cut",
+  "min_damage": 62,
+  "max_damage": 88,
+  "hit_bonus": 8,
+  "crit_bonus": 6,
+  "damage_bonus": 16,
+  "weapon_type": "SLASHING",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 60
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Throatless Marshal moves without warning and without sound, its blade of silence-honed bone opening you before you register that it has closed the distance at all, and the cold of the wound arrives ahead of the pain. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Throatless Marshal cuts for you in perfect quiet and you save yourself only by the frost of the passing edge, for there is no other warning it will ever give."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Throatless Marshal steps inside your guard in total silence and draws its edge across you slow, deliberate, and mute, and the whole chamber's held quiet drives the cold of it to the bone! The blow {verb} you!"
+    }
+  ]
+}

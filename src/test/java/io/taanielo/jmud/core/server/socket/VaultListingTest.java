@@ -27,6 +27,27 @@ class VaultListingTest {
     }
 
     @Test
+    void emptyVaultWithHintShowsCapacityFooterAndHint() {
+        io.taanielo.jmud.core.output.TextStyler plain = new io.taanielo.jmud.core.output.PlainTextStyler();
+        List<String> lines = VaultListing.format(
+            List.of(), 30, plain, "Next upgrade: 40 slots for 5000 gold (VAULT UPGRADE).");
+
+        assertEquals("Your vault is empty.", lines.get(0));
+        assertTrue(lines.get(1).contains("0 / 30"), "Footer should show capacity even when empty: " + lines.get(1));
+        assertTrue(lines.get(2).contains("Next upgrade"), "Hint should be appended: " + lines.get(2));
+    }
+
+    @Test
+    void maxedVaultOmitsUpgradeHint() {
+        io.taanielo.jmud.core.output.TextStyler plain = new io.taanielo.jmud.core.output.PlainTextStyler();
+        List<String> lines = VaultListing.format(
+            List.of(item("sword", "a sword", 5)), 60, plain, null);
+
+        assertTrue(lines.get(lines.size() - 1).contains("1 / 60"),
+            "Last line should be the capacity footer with no hint: " + lines.get(lines.size() - 1));
+    }
+
+    @Test
     void listsItemsWithWeightAndSlotFooter() {
         List<String> lines = VaultListing.format(
             List.of(item("sword", "a sword", 5), item("shield", "a shield", 8)), 30);

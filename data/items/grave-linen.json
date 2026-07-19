@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "id": "grave-linen",
+  "name": "Grave Linen",
+  "description": "A length of yellowed burial linen lifted from the catacomb dead, brittle at the edges yet still supple where it lay folded. Tailors bleach and reweave it into cloth that hums with a faint, grave-cold stillness.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 10
+}

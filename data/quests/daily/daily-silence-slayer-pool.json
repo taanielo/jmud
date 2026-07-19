@@ -1,0 +1,44 @@
+{
+  "schema_version": 5,
+  "type": "daily",
+  "pool_id": "silence-slayer",
+  "name": "Daily Silence Slayer",
+  "quests": [
+    {
+      "id": "daily-silence-bonelight-choristers",
+      "name": "Daily Silence Slayer: Bonelight Choristers",
+      "description": "Bonelight choristers process through the ossuary. Silence their hymn.",
+      "target_mob_id": "bonelight-chorister",
+      "required_kills": 6,
+      "gold_reward": 2520,
+      "xp_reward": 5040
+    },
+    {
+      "id": "daily-silence-mute-sentries",
+      "name": "Daily Silence Slayer: Mute Sentries",
+      "description": "Mute sentries guard the Hall of Refusal. Break their vigil.",
+      "target_mob_id": "unsung-mute-sentry",
+      "required_kills": 6,
+      "gold_reward": 2880,
+      "xp_reward": 5760
+    },
+    {
+      "id": "daily-silence-drowned-choristers",
+      "name": "Daily Silence Slayer: Drowned Choristers",
+      "description": "Drowned choristers echo through the refrain. End their song.",
+      "target_mob_id": "undersong-drowned-chorister",
+      "required_kills": 5,
+      "gold_reward": 3560,
+      "xp_reward": 7130
+    },
+    {
+      "id": "daily-silence-held-notes",
+      "name": "Daily Silence Slayer: Held Notes",
+      "description": "Held notes hang in the interval, refusing to fade. Cut them short.",
+      "target_mob_id": "interval-held-note",
+      "required_kills": 5,
+      "gold_reward": 4720,
+      "xp_reward": 9450
+    }
+  ]
+}

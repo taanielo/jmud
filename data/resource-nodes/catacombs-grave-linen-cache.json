@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "catacombs-grave-linen-cache",
+  "room_id": "crypt-corridor",
+  "yield_item": "grave-linen",
+  "respawn_ticks": 40,
+  "name": "grave-linen wrappings",
+  "look_description": "A collapsed wall niche spills the linen wrappings of some long-forgotten burial across the corridor floor, yellowed but still whole enough to reweave (GATHER)."
+}

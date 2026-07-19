@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "id": "spell.lullaby",
+  "name": "lullaby",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 14
+  },
+  "cooldown": {
+    "ticks": 16
+  },
+  "targeting": "HARMFUL",
+  "aliases": ["sleep", "sing", "lull"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 5
+    },
+    {
+      "kind": "EFFECT",
+      "effect_id": "slumbering"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You breathe a droning lullaby over {target}, and their eyes glaze as an unnatural sleep drags them helplessly under."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} breathes a droning lullaby over you, and a heavy, helpless sleep drags you under before you can fight it off!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} breathes a droning lullaby over {target}, whose eyes glaze as they slump into an enchanted sleep."
+    }
+  ]
+}

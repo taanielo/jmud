@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.throatless-marshal-hush",
+  "name": "The Great Refusal",
+  "min_damage": 74,
+  "max_damage": 100,
+  "hit_bonus": 7,
+  "crit_bonus": 7,
+  "damage_bonus": 18,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 90
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The Throatless Marshal spreads its wrapped arms and gives, at last, its whole long silence at once — not a sound but the absence of one made into a weapon, the Great Refusal, and it falls over you like the pressure at the bottom of the sea, dragging every scrap of breath and warmth and voice out of you toward the perfect quiet it has kept since before the Choir was ever answered. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The Throatless Marshal looses the Great Refusal and the whole chamber's silence closes like a fist, and you fill your lungs and hold your own breath against it until the crushing quiet rolls past."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The Throatless Marshal bends the entire refusal of the Unsung down onto you alone, and for one drowning, airless moment your own throat clamps shut and refuses you your breath, refuses you your voice, refuses you even the mercy of a scream! The blow {verb} you!"
+    }
+  ]
+}

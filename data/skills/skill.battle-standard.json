@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "skill.battle-standard",
+  "name": "battle standard",
+  "type": "SKILL",
+  "level": 85,
+  "cost": {
+    "move": 16
+  },
+  "cooldown": {
+    "ticks": 14
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["standard", "banner", "battlestandard"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "battle-standard"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You plant a battle standard and rally the whole party around it; everyone stands taller, striking harder and guarding surer."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} plants a battle standard, and the whole room rallies around its snapping colours."
+    }
+  ]
+}

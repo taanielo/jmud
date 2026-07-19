@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "interval-held-breath",
+  "name": "The Held Breath",
+  "description": "West of the empty measure the gap narrows to a single sustained held breath, made into a room. The Unsung buried themselves to refuse the Choir's note and called their silence a victory, but this is not their silence; their silence was an absence, a throat cut so it could not sound. This is the opposite — a breath drawn all the way in and never let go, the exact instant before a voice, held so long it has become a place you can stand inside. The air is dense with it, thick and cold and utterly still, pressing on your own lungs until you find yourself holding your breath in sympathy without deciding to, matching the room's arrested inhalation beat for beat. Something has been holding this breath since before the Hum first sounded, because a Hum needs an in-breath before it can ever be a note, and that first breath was drawn and then the world began and it was never, ever released. It is still waiting to be let go. It has been waiting for a living pair of lungs to give it the rhythm to finish the breath at last — and yours will do. The measure lies back east; there is no other way, because a held breath, by its nature, has not yet gone anywhere.",
+  "item_ids": [],
+  "exits": {
+    "east": "interval-hollow-measure"
+  },
+  "min_level": 74,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The held breath of the room presses in a fraction tighter, and your own chest locks in answer, unwilling to exhale into so total a stillness.",
+    "A skin of frost forms across the still air at the height of a mouth, shaped like the beginning of a word, and does not complete it.",
+    "For one long moment the room seems on the very edge of exhaling, the cold gathering to a point — and then it draws the breath back in and holds, and holds, and holds."
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "doomed",
+  "name": "Doomed",
+  "duration_ticks": 8,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -4
+    },
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A curse of dread settles over you like a shroud; every strike feels leaden and your aim wanders as doom presses in."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A shroud of dread settles over {name}, and their movements turn leaden and fearful."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The curse of dread lifts and the weight drains from your limbs."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The shroud of dread around {name} lifts and fades."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is shrouded in a curse of dread, their strikes leaden and their aim fouled."
+    }
+  ]
+}

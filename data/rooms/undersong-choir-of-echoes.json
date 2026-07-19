@@ -1,0 +1,17 @@
+{
+  "schema_version": 8,
+  "id": "undersong-choir-of-echoes",
+  "name": "The Choir of Echoes",
+  "description": "The eastern passage opens into a long gallery where the hum does not merely resonate but returns, folding back on itself off ranked walls of glassy black stone until a single tone becomes a hundred overlapping copies of itself, each a heartbeat behind the last. This is not the Bonelight Choir's held chord — that was many voices forced into one. This is one voice pretending to be many, the underhum thrown back at itself so faithfully that it seems a whole choir stands here singing, when in truth there is no singer at all, only the tone and its own reflections learning to answer. Things move in the echoes: echo-wardens, shapes of frost and standing sound that formed where the reflections crossed and thickened, keeping this gallery for a song that never asked to be kept. To stand here is to be surrounded by voices that are all the same voice, and to understand at last that the Choir upstairs was only ever chasing this — the terrible completeness of a note that needs no other throat to sound like the whole world at once.",
+  "item_ids": [],
+  "exits": {
+    "west": "undersong-humming-vault"
+  },
+  "min_level": 67,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "A fresh copy of the hum peels off the black stone a beat late, and for a moment two identical tones ring slightly out of true, grinding cold against your ears.",
+    "An echo-warden turns in place among the reflections, and the sound folding around it thickens into the suggestion of a face before smoothing away.",
+    "The overlapping tones drift into brief, accidental harmony, and the frost on the walls flares white in answer before they part again."
+  ]
+}

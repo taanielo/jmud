@@ -15,7 +15,11 @@ import org.junit.jupiter.api.io.TempDir;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.guild.Guild;
 import io.taanielo.jmud.core.guild.GuildId;
+import io.taanielo.jmud.core.guild.GuildLevel;
+import io.taanielo.jmud.core.guild.GuildQuest;
+import io.taanielo.jmud.core.guild.GuildQuestObjective;
 import io.taanielo.jmud.core.guild.GuildRank;
+import io.taanielo.jmud.core.guild.GuildWar;
 import io.taanielo.jmud.core.guild.VaultedItem;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
@@ -100,6 +104,151 @@ class JsonGuildRepositoryTest {
             assertEquals(BOB, vaulted.depositor());
         } finally {
             reopened.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsLifetimeDepositedGold(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-4.json");
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild guild = Guild.found(GuildId.of("g-4"), "Ironclad", ALICE)
+                .depositTreasury(700)
+                .withdrawTreasury(200);
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = reopened.loadAll().get(0);
+            assertEquals(500, g.treasuryGold());
+            assertEquals(700, g.lifetimeDepositedGold());
+            assertEquals(GuildLevel.TWO, g.level());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsActiveGuildQuest(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-gq.json");
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            GuildQuest quest = GuildQuest.fromObjective(
+                new GuildQuestObjective("guild-rat-purge", "Rat Purge", "rat", "rats", 20, 250, 1))
+                .recordKill()
+                .recordKill();
+            Guild guild = Guild.found(GuildId.of("g-gq"), "Ironclad", ALICE)
+                .withActiveGuildQuest(quest);
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = reopened.loadAll().get(0);
+            GuildQuest quest = g.activeGuildQuest();
+            assertEquals("guild-rat-purge", quest.questId());
+            assertEquals("rat", quest.targetMobId());
+            assertEquals("rats", quest.targetName());
+            assertEquals(20, quest.requiredKills());
+            assertEquals(2, quest.currentKills());
+            assertEquals(250, quest.goldReward());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void savesAndReloadsActiveWarAndWarWins(@TempDir Path dataRoot) throws Exception {
+        Path file = dataRoot.resolve("guilds").resolve("g-war.json");
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild guild = Guild.found(GuildId.of("g-war"), "Ironclad", ALICE)
+                .withActiveWar(new GuildWar(GuildId.of("rival-1"), 3, 1))
+                .withWarWin()
+                .withWarWin();
+            repository.save(guild);
+            waitForFile(file, true);
+        } finally {
+            repository.close();
+        }
+
+        JsonGuildRepository reopened = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = reopened.loadAll().get(0);
+            assertTrue(g.isAtWar());
+            assertEquals(GuildId.of("rival-1"), g.activeWar().opponent());
+            assertEquals(3, g.activeWar().ownPoints());
+            assertEquals(1, g.activeWar().opponentPoints());
+            assertEquals(2, g.warWins());
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Test
+    void loadsLegacyV4GuildFileWithNoWarAndZeroWarWins(@TempDir Path dataRoot) throws Exception {
+        Path guildsDir = dataRoot.resolve("guilds");
+        Files.createDirectories(guildsDir);
+        String legacy = """
+            {
+              "schema_version": 4,
+              "id": "g-v4",
+              "name": "Silverhand",
+              "leader_id": "Alice",
+              "members": [
+                { "username": "Alice", "rank": "LEADER", "join_order": 0 }
+              ],
+              "treasury_gold": 100,
+              "vaulted_items": [],
+              "lifetime_deposited_gold": 100
+            }
+            """;
+        Files.writeString(guildsDir.resolve("g-v4.json"), legacy);
+
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = repository.loadAll().get(0);
+            assertFalse(g.isAtWar());
+            assertEquals(0, g.warWins());
+        } finally {
+            repository.close();
+        }
+    }
+
+    @Test
+    void loadsLegacyV2GuildFileAtLevelOne(@TempDir Path dataRoot) throws Exception {
+        Path guildsDir = dataRoot.resolve("guilds");
+        Files.createDirectories(guildsDir);
+        String legacy = """
+            {
+              "schema_version": 2,
+              "id": "g-v2",
+              "name": "Silverhand",
+              "leader_id": "Alice",
+              "members": [
+                { "username": "Alice", "rank": "LEADER", "join_order": 0 }
+              ],
+              "treasury_gold": 900,
+              "vaulted_items": []
+            }
+            """;
+        Files.writeString(guildsDir.resolve("g-v2.json"), legacy);
+
+        JsonGuildRepository repository = new JsonGuildRepository(dataRoot);
+        try {
+            Guild g = repository.loadAll().get(0);
+            assertEquals(900, g.treasuryGold());
+            assertEquals(0, g.lifetimeDepositedGold());
+            assertEquals(GuildLevel.ONE, g.level());
+        } finally {
+            repository.close();
         }
     }
 

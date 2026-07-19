@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "leatherworking-soft-leather-boots",
+  "name": "Soft Leather Boots",
+  "output_item": "soft-leather-boots",
+  "gold_cost": 30,
+  "materials": [
+    { "item": "wolf-pelt", "quantity": 2 },
+    { "item": "dire-wolf-fang", "quantity": 1 }
+  ]
+}

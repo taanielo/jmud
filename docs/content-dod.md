@@ -46,6 +46,9 @@ Two enforcement tiers per item:
   **live** in `--validate-data` (#530): a non-null `attack_id` and every loot `item_id` must resolve
 - [V] Assigned spawn room that exists — **live** in `--validate-data` (#530)
 - [M] Sits on the area's difficulty curve (CONSIDER gives sane advice)
+- [M] Elemental identity (if any) is a believable resistance/vulnerability pair, not a strict upgrade
+  (an ice mob resists cold and is weak to fire, never resists everything) — judgment-based, tracked per
+  mob in the matrix rather than `--validate-data`
 
 ## Area / zone
 
@@ -64,6 +67,20 @@ Two enforcement tiers per item:
   newbie kit, or room placement) — no orphan items — **live** in `--validate-data` (#530)
 - [M] Niche vs. existing items (COMPARE shouldn't reveal a strict duplicate)
 
+## Item Set
+
+- [V] Schema-valid definition (`data/item-sets/*.json`, `docs/schemas/item-set.v1.json`): a set id,
+  display name, 2-5 ordered piece item ids across different equip slots, and one or more
+  `{ pieces_required, bonus stats }` thresholds
+- [V] Every referenced piece item id resolves to a schema-valid item and is itself independently
+  obtainable per the **Item** DoD above — **live** in `--validate-data` (#530): item-set pieces are
+  checked for both reference resolution and obtainability
+- [M] Threshold bonuses are modest (a handful of flat stat points per threshold) and additive on top
+  of each piece's own stats — no strictly-dominant threshold bonus that trivializes the non-set
+  alternative at the same level (bonuses are a build enabler, not a mandatory power spike)
+- [M] Progress and current bonus visible in `EQUIPMENT`/`SCORE`; `EXAMINE <item>` names the set and
+  the pieces that complete it; the mechanic is documented in `HELP EQUIPMENT`
+
 ## Quest
 
 - [V] Valid target/room references; rewards defined — **live** in `--validate-data` (#530): target,
@@ -80,3 +97,13 @@ Two enforcement tiers per item:
 - [M] Interactions with existing systems reviewed (combat, economy, death, persistence)
 - [M] Save-game compatibility statement in the PR
 - [M] Row added to `feature-matrix.md` with any known follow-up gaps filed as issues
+
+## Achievement (milestone definition)
+
+- [M] Player-facing HELP entry (`HELP ACHIEVEMENTS`) still accurately describes the command
+- [M] Unit/smoke coverage proving the happy path: new definitions load, sort, and render via `AchievementService`/`AchievementsCommand`
+- [M] Interactions reviewed: the milestone fires from the existing `AchievementService#checkAndUnlock` call sites (level-up, mob-kill, quest-completion) with no new hook
+- [M] Every threshold is reachable given the content backing its condition (a `quests_completed` threshold must not exceed the one-time quest count; a `level` threshold must not exceed the level cap) — guarded by a content test, not honour-system
+- [M] Optional `title_reward` is unique: any granted title must not collide (case-insensitively) with another achievement's or any quest's `title_reward` — guarded by a content test, not honour-system
+- [M] Save-game compatibility statement in the PR (new definitions are additive; the optional `title_reward` defaults absent = no behaviour change; no `Player`/save schema change; titles persist via the existing `PlayerTitles` mechanism; already-unlocked achievement IDs are unaffected)
+- [M] Row updated in `feature-matrix.md`

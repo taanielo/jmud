@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "della-tanner-welcome",
+  "npc_id": "tanner",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Mind the briars, friend. Bring me pelts and fangs and I'll tan you armor lighter than any smith's iron.",
+      "responses": [
+        { "text": "What can you tan?", "target": "tan" },
+        { "text": "Where do I find hides?", "target": "hides" },
+        { "text": "I'll come back later.", "target": "end" }
+      ]
+    },
+    "tan": {
+      "text": "Wolf pelts make sturdy vests and leggings. Bring dire-wolf fangs and a troll tooth and I'll craft you a Direhide Cowl fit for a master's hand. Type TAN here and I'll show you my patterns.",
+      "responses": [
+        { "text": "Where do I find hides?", "target": "hides" },
+        { "text": "Done talking.", "target": "end" }
+      ]
+    },
+    "hides": {
+      "text": "Wolves roam the clearing to the north; their meaner dire cousins den to the east. Trolls lurk deeper still. Skin what you slay and bring it back to me.",
+      "responses": [
+        { "text": "What can you tan?", "target": "tan" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Keep your leathers oiled and they'll keep you whole.",
+      "responses": []
+    }
+  }
+}

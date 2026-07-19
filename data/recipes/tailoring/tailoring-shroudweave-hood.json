@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "tailoring-shroudweave-hood",
+  "name": "Shroudweave Hood",
+  "output_item": "shroudweave-hood",
+  "gold_cost": 90,
+  "min_skill": 4,
+  "materials": [
+    { "item": "grave-linen", "quantity": 3 },
+    { "item": "spider-silk", "quantity": 3 }
+  ]
+}

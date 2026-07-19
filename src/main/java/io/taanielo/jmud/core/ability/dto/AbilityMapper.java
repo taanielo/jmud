@@ -23,7 +23,9 @@ public class AbilityMapper {
                 effect.stat(),
                 effect.operation(),
                 effect.amount(),
-                effect.effectId()
+                effect.effectId(),
+                effect.damageType(),
+                effect.control()
             ))
             .toList();
         return new AbilityDto(
@@ -35,6 +37,7 @@ public class AbilityMapper {
             new AbilityCostDto(
                 ability.cost().mana(), ability.cost().move(), ability.cost().manaPerTarget()),
             new AbilityCooldownDto(ability.cooldown().ticks()),
+            ability.castTimeTicks() == 0 ? null : ability.castTimeTicks(),
             ability.targeting(),
             ability.aliases(),
             effects,
@@ -65,6 +68,7 @@ public class AbilityMapper {
             }
         }
         List<MessageSpec> messages = MessageSpecMapper.fromDtos(dto.messages());
+        int castTimeTicks = dto.castTimeTicks() == null ? 0 : dto.castTimeTicks();
         return new AbilityDefinition(
             AbilityId.of(dto.id()),
             dto.name(),
@@ -72,6 +76,7 @@ public class AbilityMapper {
             dto.level(),
             new AbilityCost(manaCost, moveCost, manaPerTargetCost),
             new AbilityCooldown(cooldownDto.ticks()),
+            castTimeTicks,
             dto.targeting(),
             dto.aliases(),
             effects,
@@ -91,7 +96,8 @@ public class AbilityMapper {
                 Objects.requireNonNull(dto.stat(), "Vitals effect stat is required"),
                 Objects.requireNonNull(dto.operation(), "Vitals effect operation is required"),
                 dto.amount(),
-                null
+                null,
+                dto.damageType()
             );
         }
         return new AbilityEffect(
@@ -99,7 +105,9 @@ public class AbilityMapper {
             null,
             null,
             0,
-            dto.effectId()
+            dto.effectId(),
+            null,
+            dto.control()
         );
     }
 }

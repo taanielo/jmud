@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.undersong-hollow-cantor",
+  "name": "a hollowed note",
+  "min_damage": 58,
+  "max_damage": 84,
+  "hit_bonus": 9,
+  "crit_bonus": 7,
+  "damage_bonus": 15,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 60
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The hollow cantor opens its empty ribs toward you and lets the vault's hum pour through the throat it no longer owns, and the note arrives hollowed and cold, scouring the warmth from you as it passes. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The hollow cantor tips its open ribcage at you and the underhum gusts through it toward your chest, and you turn from the cold of it just before it can settle in your lungs."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The hollow cantor throws its ribs wide and the whole vault's tone funnels through the emptiness where its voice should be, breaking over you as a wall of hollow, marrow-deep cold! The blow {verb} you!"
+    }
+  ]
+}

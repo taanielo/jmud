@@ -1,0 +1,33 @@
+{
+  "schema_version": 5,
+  "id": "attack.pipe-rib-organist",
+  "name": "a moaning chord",
+  "min_damage": 44,
+  "max_damage": 62,
+  "hit_bonus": 5,
+  "crit_bonus": 5,
+  "damage_bonus": 12,
+  "weapon_type": "BLUNT",
+  "damage_type": "POISON",
+  "applies_effect": {
+    "effect_id": "poison",
+    "chance_percent": 60
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The organist unseals a rank of rib-pipes at your chest and looses a moaning chord of trapped, spore-choked breath that rolls over you like a tide. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The organist hauls open a bank of hollowed femurs and the moaning chord booms past you as you throw yourself flat between the pipe-ranks."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The organist finds the sub-audible pipes and the chord drops below hearing, and the pressure crushes in on you from every side at once as the rot pours down your throat! The blow {verb} you!"
+    }
+  ]
+}

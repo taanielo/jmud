@@ -2,6 +2,7 @@ package io.taanielo.jmud.bootstrap;
 
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,10 @@ import io.taanielo.jmud.core.bank.BankRepository;
 import io.taanielo.jmud.core.bank.BankRepositoryException;
 import io.taanielo.jmud.core.bank.BankService;
 import io.taanielo.jmud.core.bank.repository.json.JsonBankRepository;
+import io.taanielo.jmud.core.bounty.BountyExpiryTicker;
+import io.taanielo.jmud.core.bounty.BountyService;
+import io.taanielo.jmud.core.bounty.BountySettings;
+import io.taanielo.jmud.core.bounty.repository.json.JsonBountyRepository;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.character.ClassLevelGainsResolver;
 import io.taanielo.jmud.core.character.repository.ClassRepository;
@@ -56,10 +61,12 @@ import io.taanielo.jmud.core.combat.CombatRandom;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.EquipmentResistanceResolver;
 import io.taanielo.jmud.core.combat.OffhandAttackResolver;
+import io.taanielo.jmud.core.combat.ParryResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.flavor.CombatFlavor;
@@ -98,11 +105,22 @@ import io.taanielo.jmud.core.gathering.ResourceGatheringService;
 import io.taanielo.jmud.core.gathering.ResourceNode;
 import io.taanielo.jmud.core.gathering.ResourceNodeRespawnTicker;
 import io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository;
+import io.taanielo.jmud.core.guild.GuildInterestTicker;
+import io.taanielo.jmud.core.guild.GuildQuestPool;
+import io.taanielo.jmud.core.guild.GuildQuestRotationTicker;
+import io.taanielo.jmud.core.guild.GuildQuestService;
+import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
 import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.GuildWarService;
+import io.taanielo.jmud.core.guild.repository.json.JsonGuildQuestPoolRepository;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
 import io.taanielo.jmud.core.healing.HealingEngine;
+import io.taanielo.jmud.core.mentor.MentorRankException;
+import io.taanielo.jmud.core.mentor.MentorRankLadder;
+import io.taanielo.jmud.core.mentor.MentorService;
+import io.taanielo.jmud.core.mentor.json.JsonMentorRankRepository;
 import io.taanielo.jmud.core.messaging.GossipHistory;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.messaging.MessageBroadcasterImpl;
@@ -122,6 +140,7 @@ import io.taanielo.jmud.core.player.ArenaEventTicker;
 import io.taanielo.jmud.core.player.DeathSettings;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
+import io.taanielo.jmud.core.player.EquipmentCarryResolver;
 import io.taanielo.jmud.core.player.JsonPlayerRepository;
 import io.taanielo.jmud.core.player.LevelUpService;
 import io.taanielo.jmud.core.player.OnlinePlayersSupplier;
@@ -156,6 +175,7 @@ import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.ShopRepositoryException;
 import io.taanielo.jmud.core.shop.ShopService;
 import io.taanielo.jmud.core.shop.repository.json.JsonShopRepository;
+import io.taanielo.jmud.core.social.MarriageService;
 import io.taanielo.jmud.core.tick.FixedRateTickScheduler;
 import io.taanielo.jmud.core.tick.TickClock;
 import io.taanielo.jmud.core.tick.TickMetricsService;
@@ -173,12 +193,16 @@ import io.taanielo.jmud.core.weather.WeatherSettings;
 import io.taanielo.jmud.core.world.AmbientMessageEngine;
 import io.taanielo.jmud.core.world.AmbientMessageSettings;
 import io.taanielo.jmud.core.world.CorpseDecayTicker;
+import io.taanielo.jmud.core.world.DiscoveredExitsRepository;
+import io.taanielo.jmud.core.world.HazardDamageEngine;
 import io.taanielo.jmud.core.world.ItemAffixService;
 import io.taanielo.jmud.core.world.ItemDurabilityService;
 import io.taanielo.jmud.core.world.MapService;
 import io.taanielo.jmud.core.world.PlayerLocationService;
+import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomItemService;
+import io.taanielo.jmud.core.world.RoomPathfinder;
 import io.taanielo.jmud.core.world.RoomRenderer;
 import io.taanielo.jmud.core.world.RoomService;
 import io.taanielo.jmud.core.world.WorldClock;
@@ -186,15 +210,21 @@ import io.taanielo.jmud.core.world.WorldClockSettings;
 import io.taanielo.jmud.core.world.area.AreaConsistencyChecker;
 import io.taanielo.jmud.core.world.area.AreaMapService;
 import io.taanielo.jmud.core.world.area.AreaRepository;
+import io.taanielo.jmud.core.world.area.AreaWaypointService;
+import io.taanielo.jmud.core.world.area.CorpseLocatorService;
+import io.taanielo.jmud.core.world.area.WayfindService;
 import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
 import io.taanielo.jmud.core.world.repository.ItemCatalog;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
+import io.taanielo.jmud.core.world.repository.ItemSetRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomCatalog;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonAffixRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonDiscoveredExitsRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonItemSetRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
 
 /**
@@ -240,7 +270,10 @@ public record GameContext(
     TradeService tradeService,
     BankService bankService,
     AuctionService auctionService,
+    BountyService bountyService,
     GuildService guildService,
+    GuildQuestService guildQuestService,
+    GuildWarService guildWarService,
     MessageBroadcaster messageBroadcaster,
     GossipHistory gossipHistory,
     WorldClock worldClock,
@@ -250,17 +283,26 @@ public record GameContext(
     CraftingService craftingService,
     CraftingService alchemyService,
     CraftingService cookingService,
+    CraftingService leatherworkingService,
+    CraftingService jewelerService,
+    CraftingService tailorService,
     SalvageService salvageService,
     EnchantingService enchantingService,
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
+    SetBonusResolver setBonusResolver,
     AttackRepository attackRepository,
     AchievementService achievementService,
     DuelService duelService,
+    MarriageService marriageService,
+    MentorService mentorService,
     NotesService notesService,
     PlayerSessionRegistry playerSessionRegistry,
     AreaMapService areaMapService,
+    AreaWaypointService areaWaypointService,
+    WayfindService wayfindService,
+    CorpseLocatorService corpseLocatorService,
     AreaConsistencyChecker areaConsistencyChecker,
     ContentCompletenessChecker contentCompletenessChecker,
     ShutdownHandle shutdownHandle
@@ -292,13 +334,15 @@ public record GameContext(
 
         RoomRepository roomRepository = createRoomRepository(itemRepository);
         RoomItemService roomItemService = new RoomItemService();
+        DiscoveredExitsRepository discoveredExitsRepository = new JsonDiscoveredExitsRepository();
         PlayerLocationService playerLocationService =
-            new PlayerLocationService(roomRepository, RoomId.of("training-yard"));
+            new PlayerLocationService(roomRepository, RoomId.of("training-yard"), discoveredExitsRepository);
         RoomService roomService = new RoomService(
             playerLocationService, roomItemService, new RoomRenderer(), roomRepository);
         MapService mapService = new MapService(roomRepository);
         AreaRepository areaRepository = createAreaRepository();
         AreaMapService areaMapService = new AreaMapService(areaRepository);
+        AreaWaypointService areaWaypointService = new AreaWaypointService(areaRepository);
         AreaConsistencyChecker areaConsistencyChecker =
             createAreaConsistencyChecker(areaRepository, roomRepository, itemRepository);
         MessageBroadcaster messageBroadcaster = new MessageBroadcasterImpl(clientPool, roomService);
@@ -327,7 +371,9 @@ public record GameContext(
         EffectRepository effectRepository = createEffectRepository();
         EffectEngine effectEngine = new EffectEngine(effectRepository);
 
-        EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
+        ItemSetRepository itemSetRepository = createItemSetRepository();
+        SetBonusResolver setBonusResolver = new SetBonusResolver(itemRepository, itemSetRepository);
+        EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository, setBonusResolver);
         EquipmentResistanceResolver equipmentResistanceResolver = new EquipmentResistanceResolver(itemRepository);
         ShieldBlockResolver shieldBlockResolver = new ShieldBlockResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
@@ -344,6 +390,10 @@ public record GameContext(
             createCharacterAttributesResolver(raceRepository, classRepository);
         CombatAttributeBonusResolver combatAttributeBonusResolver =
             new CombatAttributeBonusResolver(characterAttributesResolver);
+        // Parry (issue #639): a defender wielding a melee weapon may fully avoid an incoming melee hit
+        // and riposte, scaled by agility. Shares the attack repository (melee gate + riposte damage
+        // roll) and attribute resolver (parry chance) with the rest of the combat pipeline.
+        ParryResolver parryResolver = new ParryResolver(attackRepository, combatAttributeBonusResolver);
         // Decide the RNG mode once so combat and world rolls (mob wander/AI, gold, loot, flee)
         // share the same seed and are reproducible together (AGENTS.md §5). The world seed is
         // logged by SeededCombatRandomProvider; set jmud.world.seed to replay a specific session.
@@ -359,7 +409,7 @@ public record GameContext(
                 effectRepository, raceArmorBonusResolver, raceAttackBonusResolver, classArmorBonusResolver,
                 equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver,
                 combatAttributeBonusResolver, attackRepository,
-                tickClock::currentTick, effectEngine, seededRng, worldSeed, damageVerbTable);
+                tickClock::currentTick, effectEngine, seededRng, worldSeed, damageVerbTable, parryResolver);
 
         // Dynamic weather evolves on the tick thread and shares the world RNG so its transitions are
         // deterministic and replayable alongside combat/mob rolls (AGENTS.md §5). Only outdoor rooms
@@ -386,7 +436,25 @@ public record GameContext(
             worldRandom, playerLocationService, messageBroadcaster, ferryRepository.findAll());
         tickRegistry.register(boatEngine);
 
-        EncumbranceService encumbranceService = new EncumbranceService(raceRepository, classRepository);
+        // WAYFIND: turn-by-turn walking directions over the visible room graph (regular exits plus
+        // globally-discovered hidden exits), with ferries only used to explain ferry-only routes.
+        WayfindService wayfindService = new WayfindService(
+            areaRepository,
+            new RoomPathfinder(),
+            ferryRepository,
+            playerLocationService::getVisibleExits,
+            roomId -> roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue()));
+
+        // CORPSE: routes a fallen player back to their remains, reusing WAYFIND's ferry-aware routing
+        // and reading the transient corpse state RoomItemService already tracks (AGENTS.md §5).
+        CorpseLocatorService corpseLocatorService = new CorpseLocatorService(
+            wayfindService,
+            roomId -> roomService.findRoom(roomId).map(Room::getName).orElse(roomId.getValue()),
+            DeathSettings::corpseDecaySeconds,
+            Instant::now);
+
+        EncumbranceService encumbranceService = new EncumbranceService(
+            raceRepository, classRepository, new EquipmentCarryResolver(itemRepository));
 
         HealingEngine healingEngine = new HealingEngine(effectRepository);
         HealingBaseResolver healingBaseResolver = new HealingBaseResolver(raceRepository, classRepository);
@@ -416,6 +484,9 @@ public record GameContext(
         CraftingService craftingService = createCraftingService(itemRepository);
         CraftingService alchemyService = createAlchemyService(itemRepository);
         CraftingService cookingService = createCookingService(itemRepository);
+        CraftingService leatherworkingService = createLeatherworkingService(itemRepository);
+        CraftingService jewelerService = createJewelerService(itemRepository);
+        CraftingService tailorService = createTailorService(itemRepository);
         SalvageService salvageService = createSalvageService(itemRepository);
         EnchantingService enchantingService =
             createEnchantingService(itemRepository, affixRepository, itemAffixService);
@@ -435,7 +506,16 @@ public record GameContext(
         // announcer can resolve a killer's affiliation, and so the initial world-load spawn
         // announcement fires through a fully-wired registry (AGENTS.md §5 — all on the tick thread).
         PartyService partyService = new PartyService();
-        GuildService guildService = createGuildService();
+        // Mentor bonds (issue #751): the transient proposal registry plus the pure XP-bonus/graduation
+        // rules. Created before the mob registry so the shared kill path can apply the mentee bonus.
+        // The Mentors' Guild rank ladder (issue #752) — milestone titles and the shared mentor XP perk
+        // — is data-driven content loaded once here (AGENTS.md §11).
+        MentorService mentorService = new MentorService(createMentorRankLadder());
+        // The guild repository is shared: GuildService owns the authoritative in-memory copy, while the
+        // read-only RANK GUILDS command re-reads every persisted guild off the reader thread (like RANK
+        // over players), so both are wired from the one repository instance (AGENTS.md §3.3, §5).
+        GuildRepository guildRepository = createGuildRepository();
+        GuildService guildService = createGuildService(guildRepository);
         // Ephemeral tracker of the last private-message sender per player, backing REPLY (issue #462).
         TellService tellService = new TellService();
 
@@ -450,6 +530,7 @@ public record GameContext(
             mobRegistry.setReputationService(reputationService);
             mobRegistry.setAchievementService(achievementService);
             mobRegistry.setPartyService(partyService);
+            mobRegistry.setMentorService(mentorService);
             mobRegistry.setEncumbranceService(encumbranceService);
             mobRegistry.setCombatAttributeBonusResolver(combatAttributeBonusResolver);
             mobRegistry.setEquipmentResistanceResolver(equipmentResistanceResolver);
@@ -460,6 +541,11 @@ public record GameContext(
             mobRegistry.setClassArmorBonusResolver(classArmorBonusResolver);
             mobRegistry.setRaceArmorBonusResolver(raceArmorBonusResolver);
             mobRegistry.setShieldBlockResolver(shieldBlockResolver);
+            // Parry (issue #639): a player may parry a mob's melee swing and riposte the mob, using the
+            // same resolver the PvP CombatEngine uses. The mirror case (issue #645) — a defensively
+            // trained mob parrying the player's own melee swing — is a data-authored trait on the mob
+            // template (parry_chance), resolved inside MobRegistry with no resolver wiring here.
+            mobRegistry.setParryResolver(parryResolver);
             mobRegistry.setDamageVerbTable(damageVerbTable);
             mobRegistry.setTargetConditionTable(combatFlavor.conditions());
             WorldBossAnnouncer worldBossAnnouncer =
@@ -492,8 +578,9 @@ public record GameContext(
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, characterAttributesResolver,
-            classRepository, abilityRegistry,
-            playerRepository, roomService, tellService, messageBroadcaster, reputationService, weatherEngine,
+            setBonusResolver, classRepository, abilityRegistry,
+            playerRepository, guildRepository, roomService, tellService, messageBroadcaster, reputationService,
+            weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
             contentReloadService, tickThreadDispatcher);
 
@@ -515,16 +602,53 @@ public record GameContext(
         // them out of the Guild Clerk's QUEST LIST (AGENTS.md §3.3 — reuse the canonical quest flow).
         QuestRepository questRepository =
             new CompositeQuestRepository(baseQuestRepository, dailyQuestService);
+        // Cooperative guild quests: every guild has one shared "slay N of a mob type" objective,
+        // rotated daily from a level-banded JSON pool. Any online member's kill of the matching mob
+        // type credits the whole guild (a parallel path to QuestKillService, invoked from the same
+        // mob-death hook); completion pays the guild treasury and announces on the [Guild] channel.
+        GuildQuestService guildQuestService =
+            new GuildQuestService(guildService, createGuildQuestPool(), messageBroadcaster);
         if (mobRegistry != null) {
             QuestKillService questKillService = new QuestKillService(questRepository);
             questKillService.setLevelUpService(levelUpService);
             mobRegistry.setQuestKillService(questKillService);
+            mobRegistry.setGuildQuestService(guildQuestService);
+        }
+        // Player-funded mob bounties (issue #749): a persisted, in-memory-cached ledger of gold staked
+        // on mob types, paid to whoever next kills the type (split across their party like a gold drop)
+        // and announced server-wide. The payout hook runs on the tick thread from the same mob-death
+        // path as quest/guild-quest crediting (AGENTS.md §5); GameContext is the only place the
+        // repository and service are constructed (AGENTS.md §3.3).
+        BountyService bountyService = createBountyService(messageBroadcaster);
+        if (mobRegistry != null) {
+            mobRegistry.setBountyService(bountyService);
         }
         tickRegistry.register(
             new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
+        tickRegistry.register(new GuildQuestRotationTicker(worldClock, guildQuestService));
+        // Passive guild-treasury interest (issue #773): once per game day (same NIGHT→DAY boundary), a
+        // level-scaled cut of each guild's current treasury is credited straight to treasuryGold — never
+        // lifetimeDepositedGold, so interest can never drive leveling — and announced on the [Guild]
+        // channel. Registered after WorldClock so the clock has already flipped on the boundary tick.
+        tickRegistry.register(new GuildInterestTicker(worldClock, guildService, messageBroadcaster));
 
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);
+
+        // Guild wars (issue #731): a declared, consensual guild-vs-guild rivalry scored by DUEL wins
+        // between the two guilds' members. Only the propose/accept handshake is transient (aged out
+        // each tick, like MARRY); the accepted war and lifetime warWins persist on the Guild aggregate
+        // via GuildService. All state mutation runs on the tick thread (AGENTS.md §5).
+        GuildWarService guildWarService = new GuildWarService(guildService, messageBroadcaster);
+        tickRegistry.register(guildWarService);
+
+        // Consensual player marriage (issue #649): the transient proposal registry ages out pending
+        // proposals each tick; the accepted bond is persisted on Player. All state mutation runs on
+        // the tick thread (AGENTS.md §5).
+        MarriageService marriageService = new MarriageService();
+        tickRegistry.register(marriageService);
+        // Mentor-bond proposals age out each tick just like marriage proposals (issue #751).
+        tickRegistry.register(mentorService);
 
         // The Arena drafts random online players into announced consensual duels on a fixed tick
         // interval. It reads the live client snapshot only to enumerate online usernames; all state
@@ -556,6 +680,22 @@ public record GameContext(
         PlayerSessionRegistry playerSessionRegistry = new PlayerSessionRegistry();
         tickRegistry.register(new LinkdeadTimeoutTicker(playerSessionRegistry));
 
+        // Environmental hazards (issue #759): each tick, every player standing in a room that declares
+        // a hazard takes typed, resistance-mitigated damage. The HP change is routed back through the
+        // session's standard player-update path (registerHazardDamageSink), so hazard death reuses the
+        // normal death → corpse → respawn flow and interrupts an in-progress cast with no special-case.
+        // All mutation runs on the tick thread (AGENTS.md §5); the engine itself stays decoupled from
+        // the transport layer via the lookup/sink lambdas below.
+        tickRegistry.register(new HazardDamageEngine(
+            roomRepository,
+            playerLocationService,
+            equipmentResistanceResolver,
+            worldRandom,
+            messageBroadcaster,
+            username -> playerSessionRegistry.lookup(username).map(PlayerSession::getPlayer),
+            (username, damaged) -> playerSessionRegistry.lookup(username)
+                .ifPresent(session -> session.applyHazardDamage(damaged))));
+
         // Auction House: returns expired listings to their sellers each tick, crediting/mailing the
         // seller wherever they are (live session or on disk) via the same cross-player update path as
         // MAIL. All state mutation runs on the tick thread (AGENTS.md §5).
@@ -564,6 +704,18 @@ public record GameContext(
             auctionService,
             tickClock::currentTick,
             seller -> resolveAuctionSeller(seller, playerSessionRegistry, playerRepository),
+            updated -> persistAuctionSeller(updated, playerSessionRegistry, persistenceQueue)));
+
+        // Bounty expiry (issue #757): a posted bounty unclaimed past jmud.bounty.expiry_ticks is
+        // automatically refunded in full to its poster — online or offline — via the same cross-player
+        // update path as the Auction House and MAIL. All state mutation runs on the tick thread
+        // (AGENTS.md §5).
+        int bountyExpiryTicks = BountySettings.expiryTicks();
+        tickRegistry.register(new BountyExpiryTicker(
+            bountyService,
+            tickClock::currentTick,
+            () -> bountyExpiryTicks,
+            poster -> resolveAuctionSeller(poster, playerSessionRegistry, playerRepository),
             updated -> persistAuctionSeller(updated, playerSessionRegistry, persistenceQueue)));
 
         gameMetrics.bindGlobalGauges(tickRegistry, clientPool);
@@ -610,7 +762,10 @@ public record GameContext(
             tradeService,
             bankService,
             auctionService,
+            bountyService,
             guildService,
+            guildQuestService,
+            guildWarService,
             messageBroadcaster,
             gossipHistory,
             worldClock,
@@ -620,17 +775,26 @@ public record GameContext(
             craftingService,
             alchemyService,
             cookingService,
+            leatherworkingService,
+            jewelerService,
+            tailorService,
             salvageService,
             enchantingService,
             resourceGatheringService,
             dialogueService,
             itemRepository,
+            setBonusResolver,
             attackRepository,
             achievementService,
             duelService,
+            marriageService,
+            mentorService,
             notesService,
             playerSessionRegistry,
             areaMapService,
+            areaWaypointService,
+            wayfindService,
+            corpseLocatorService,
             areaConsistencyChecker,
             contentCompletenessChecker,
             shutdownHandle
@@ -740,11 +904,15 @@ public record GameContext(
                 List.<RecipeRepository>of(
                     new JsonRecipeRepository(),
                     new JsonRecipeRepository(Path.of("data"), "recipes/alchemy"),
-                    new JsonRecipeRepository(Path.of("data"), "recipes/cooking")),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/cooking"),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/leatherworking"),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/jewelcrafting"),
+                    new JsonRecipeRepository(Path.of("data"), "recipes/tailoring")),
                 new JsonResourceNodeRepository(),
                 new JsonNewbieKitRepository(),
                 new JsonSalvageTierRepository(),
-                new JsonFactionRepository());
+                new JsonFactionRepository(),
+                new JsonItemSetRepository());
         } catch (RepositoryException | ShopRepositoryException | RecipeRepositoryException
             | FactionRepositoryException | AbilityRepositoryException | QuestRepositoryException e) {
             throw new IllegalStateException(
@@ -768,6 +936,17 @@ public record GameContext(
                 persistenceQueue, playerEventBus, worldRandom);
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize mob registry: " + e.getMessage(), e);
+        }
+    }
+
+    private static BountyService createBountyService(MessageBroadcaster messageBroadcaster) {
+        try {
+            return new BountyService(
+                new JsonBountyRepository(), new JsonMobTemplateRepository(), messageBroadcaster,
+                BountySettings.maxOpenPerPlayer());
+        } catch (RepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize bounty service: " + e.getMessage(), e);
         }
     }
 
@@ -801,7 +980,8 @@ public record GameContext(
         EffectEngine effectEngine,
         boolean seeded,
         long worldSeed,
-        DamageVerbTable verbTable
+        DamageVerbTable verbTable,
+        ParryResolver parryResolver
     ) {
         CombatModifierResolver resolver = new CombatModifierResolver(effectRepository);
         OffhandAttackResolver offhandAttackResolver = new OffhandAttackResolver();
@@ -811,7 +991,7 @@ public record GameContext(
                 attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
                 equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver, offhandAttackResolver,
                 attributeBonusResolver,
-                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine, verbTable);
+                (tick, actorId) -> threadLocalRandom, () -> 0L, effectEngine, verbTable, parryResolver);
         }
         // Seeded mode: the provider derives an independent per-encounter stream from the shared
         // world seed and logs the effective seed at INFO so any session can be reconstructed.
@@ -820,7 +1000,7 @@ public record GameContext(
             attackRepository, resolver, armorBonusResolver, attackBonusResolver, classArmorBonusResolver,
             equipmentArmorResolver, equipmentResistanceResolver, shieldBlockResolver, offhandAttackResolver,
             attributeBonusResolver,
-            provider, tickSupplier, effectEngine, verbTable);
+            provider, tickSupplier, effectEngine, verbTable, parryResolver);
     }
 
     private static CombatFlavor createCombatFlavor() {
@@ -839,11 +1019,23 @@ public record GameContext(
         }
     }
 
+    private static ItemSetRepository createItemSetRepository() {
+        return new JsonItemSetRepository();
+    }
+
     private static NewbieKit createNewbieKit() {
         try {
             return new JsonNewbieKitRepository().load();
         } catch (NewbieKitException e) {
             throw new IllegalStateException("Failed to initialize newbie kit: " + e.getMessage(), e);
+        }
+    }
+
+    private static MentorRankLadder createMentorRankLadder() {
+        try {
+            return new JsonMentorRankRepository().load();
+        } catch (MentorRankException e) {
+            throw new IllegalStateException("Failed to initialize mentor rank ladder: " + e.getMessage(), e);
         }
     }
 
@@ -915,6 +1107,39 @@ public record GameContext(
             return new CraftingService(recipes, itemRepository, CrafterProfile.cook());
         } catch (RecipeRepositoryException e) {
             throw new IllegalStateException("Failed to initialize cooking service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createLeatherworkingService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes =
+                new JsonRecipeRepository(Path.of("data"), "recipes/leatherworking").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.leatherworker());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize leatherworking service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createJewelerService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes =
+                new JsonRecipeRepository(Path.of("data"), "recipes/jewelcrafting").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.jeweler());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize jewelcrafting service: " + e.getMessage(), e);
+        }
+    }
+
+    private static CraftingService createTailorService(ItemRepository itemRepository) {
+        try {
+            List<Recipe> recipes =
+                new JsonRecipeRepository(Path.of("data"), "recipes/tailoring").findAll();
+            return new CraftingService(recipes, itemRepository, CrafterProfile.tailor());
+        } catch (RecipeRepositoryException e) {
+            throw new IllegalStateException(
+                "Failed to initialize tailoring service: " + e.getMessage(), e);
         }
     }
 
@@ -1021,11 +1246,27 @@ public record GameContext(
         }
     }
 
-    private static GuildService createGuildService() {
+    private static GuildRepository createGuildRepository() {
         try {
-            return new GuildService(new JsonGuildRepository());
+            return new JsonGuildRepository();
+        } catch (GuildRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize guild repository: " + e.getMessage(), e);
+        }
+    }
+
+    private static GuildService createGuildService(GuildRepository guildRepository) {
+        try {
+            return new GuildService(guildRepository);
         } catch (GuildRepositoryException e) {
             throw new IllegalStateException("Failed to initialize guild service: " + e.getMessage(), e);
+        }
+    }
+
+    private static GuildQuestPool createGuildQuestPool() {
+        try {
+            return new JsonGuildQuestPoolRepository().load();
+        } catch (GuildRepositoryException e) {
+            throw new IllegalStateException("Failed to initialize guild quest pool: " + e.getMessage(), e);
         }
     }
 

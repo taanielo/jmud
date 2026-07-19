@@ -230,6 +230,10 @@ public class QuestNpcDeliveryService {
         AchievementService.UnlockResult result = achievementService.checkAndUnlock(player);
         for (Achievement unlocked : result.newlyUnlocked()) {
             messages.add("Achievement unlocked: " + unlocked.name() + "!");
+            String titleReward = unlocked.titleReward();
+            if (titleReward != null) {
+                messages.add("Title earned: " + titleReward + "!");
+            }
         }
         return result.player();
     }

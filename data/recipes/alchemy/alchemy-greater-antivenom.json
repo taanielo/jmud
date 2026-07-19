@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "alchemy-greater-antivenom",
+  "name": "Greater Antivenom",
+  "output_item": "greater-antivenom",
+  "gold_cost": 90,
+  "min_skill": 4,
+  "materials": [
+    { "item": "blightspore-cluster", "quantity": 1 },
+    { "item": "wild-herbs", "quantity": 2 },
+    { "item": "glowcap-mushroom", "quantity": 2 }
+  ]
+}

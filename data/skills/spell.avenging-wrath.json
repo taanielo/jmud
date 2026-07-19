@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "spell.avenging-wrath",
+  "name": "avenging wrath",
+  "type": "SPELL",
+  "level": 60,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 14
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["avengingwrath", "avenge", "avenging"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "avenging-wrath"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a mantle of avenging wrath; righteous fury spikes your strikes and floods your healing with holy power."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} calls down a mantle of avenging wrath that wreathes you in righteous, blazing fury."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A mantle of avenging wrath blazes into being around {target}."
+    }
+  ]
+}

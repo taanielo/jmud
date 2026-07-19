@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "id": "cleansed",
+  "name": "Cleansed",
+  "duration_ticks": 12,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Cleansing spirit-waters wash over you, freeing your limbs and steadying your guard."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Cleansing spirit-waters wash over {name}, leaving them refreshed and unbound."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The last of the cleansing waters evaporates from your skin."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The cleansing waters wreathing {name} fade away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} glistens with cleansing spirit-waters, freed of what bound them."
+    }
+  ]
+}

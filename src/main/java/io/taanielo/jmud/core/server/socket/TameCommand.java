@@ -34,7 +34,12 @@ public class TameCommand extends RegistrableCommand {
                  Permanently captures a charmable mob in your room as a loyal companion. The
                  companion follows you between rooms, fights hostile mobs at your side, and is saved
                  so it survives logout. Only some creatures can be tamed, and you may keep only a few
-                 companions at once. Use COMPANIONS to list your tamed pets.\
+                 companions at once. Use COMPANIONS to list your tamed pets.
+                 A companion's power (its max HP and the damage it deals) scales with your level at
+                 the moment you tame it — a mob tamed at high level is far tougher and hits harder
+                 than the same creature tamed early. This is fixed when it enters the world: an
+                 existing companion does not grow stronger as you level up, only a freshly tamed one
+                 (or one respawned when you log in) reflects your current level.\
                """;
     }
 

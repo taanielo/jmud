@@ -28,6 +28,7 @@ public record ItemDto(
     Boolean locked,
     Boolean twoHanded,
     Integer mountMoveDiscount,
-    String mapAreaId
+    String mapAreaId,
+    String setId
 ) {
 }

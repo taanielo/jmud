@@ -1,0 +1,33 @@
+{
+  "schema_version": 6,
+  "id": "attack.interval-caesura-shade",
+  "name": "a crushed grace",
+  "min_damage": 64,
+  "max_damage": 90,
+  "hit_bonus": 11,
+  "crit_bonus": 9,
+  "damage_bonus": 16,
+  "weapon_type": "BLUNT",
+  "damage_type": "COLD",
+  "applies_effect": {
+    "effect_id": "freeze",
+    "chance_percent": 68
+  },
+  "messages": [
+    {
+      "phase": "attack_hit",
+      "channel": "self",
+      "text": "The caesura-shade leans a hundred unsounded grace notes through you all at once, each one a sliver of frozen ornament sharp as a splinter of ice, and the crowding graces crush inward cold and quick and out of time. The blow {verb} you!"
+    },
+    {
+      "phase": "attack_miss",
+      "channel": "self",
+      "text": "The caesura-shade flings its crushed graces at your throat and the thin bright chord of them rushes in cold from every side, and you slip through the pause between two ornaments where the sound cancels itself."
+    },
+    {
+      "phase": "attack_crit",
+      "channel": "self",
+      "text": "The caesura-shade collapses every arrested ornament in the gallery onto you in a single crushed chord, and the layered frost drives in so fine and so cold that for a moment your whole skin rings like struck glass! The blow {verb} you!"
+    }
+  ]
+}

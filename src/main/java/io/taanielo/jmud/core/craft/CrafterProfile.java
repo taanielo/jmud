@@ -44,6 +44,24 @@ public record CrafterProfile(
             ProfessionId.COOKING);
     }
 
+    /** Returns the leatherworker profile used by the {@code TAN} command. */
+    public static CrafterProfile leatherworker() {
+        return new CrafterProfile("leatherworker", "TAN", "tan", "tans your hides into",
+            ProfessionId.LEATHERWORKING);
+    }
+
+    /** Returns the jeweler profile used by the {@code CUT} command. */
+    public static CrafterProfile jeweler() {
+        return new CrafterProfile("jeweler", "CUT", "cut", "cuts your gems into",
+            ProfessionId.JEWELCRAFTING);
+    }
+
+    /** Returns the tailor profile used by the {@code SEW} command. */
+    public static CrafterProfile tailor() {
+        return new CrafterProfile("tailor", "SEW", "sew", "sews your cloth into",
+            ProfessionId.TAILORING);
+    }
+
     /** Returns the action verb with its first letter capitalized (e.g. {@code "Craft"}, {@code "Brew"}). */
     public String capitalizedVerb() {
         if (verb.isEmpty()) {

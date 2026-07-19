@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "woven-silence-skein",
+  "name": "a skein of woven silence",
+  "description": "A hank of the sound-drinking cloth the Unsung wrap themselves in, but this length is different — spun and woven not from any thread but from silence itself, from the held breath of every throat that refused the chord, drawn out into a fiber and worked on a loom of pure refusal. It weighs nothing and drinks every sound that comes near it, so that holding it is like holding a small pocket of the world with the volume turned all the way down, and the cold that comes off it is the cold of a breath held too long and never let go. Tanners and enchanters would give a great deal for it: a thing that could be worked into a ward against sound, or a cloak that swallows a footfall, or an edge honed on nothing but quiet — but only by a hand patient enough not to hum, not to breathe too loud, not to give it any note at all to unravel around.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 165,
+  "rarity": "rare"
+}

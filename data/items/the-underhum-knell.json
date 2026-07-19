@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "the-underhum-knell",
+  "name": "the Underhum Knell",
+  "description": "A great two-handed maul the First Hum wore folded into its own resonance, its head a fused clot of frost-bound bone shaped like the clapper of a bell that was never cast. It makes no ring when it moves — the note it carries is beneath hearing, the same standing tone the source hums to itself in the deep, condensed and held in the cold of the head so that it presses against the marrow of anything it nears. Swung, it does not strike so much as toll: the low note reaches the bones an instant before the weight, and lingers in them after, a cold that stands and will not fade. It is heavier and slower than the quiet blades of the Unsung, and asks a strong arm and a patient one, for it rewards the single, certain blow over the quick one.",
+  "attributes": {
+    "stats": {
+      "strength": 9,
+      "dexterity": 7,
+      "cold_resist": 15
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 6,
+  "value": 880,
+  "rarity": "epic",
+  "attack_ref": "attack.underhum-knell"
+}

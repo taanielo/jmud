@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "interval-held-note",
+  "name": "a held note",
+  "max_hp": 900,
+  "attack_id": "attack.interval-held-note",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-interval"],
+  "spawn_room_id": "interval-held-breath",
+  "max_count": 2,
+  "respawn_ticks": 86,
+  "xp_reward": 1260,
+  "loot": [
+    {
+      "item_id": "held-breath-splinter",
+      "drop_chance": 0.32
+    }
+  ],
+  "gold_drop": {
+    "min": 260,
+    "max": 390
+  }
+}

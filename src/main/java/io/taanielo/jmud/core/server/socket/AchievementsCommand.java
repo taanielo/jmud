@@ -28,7 +28,10 @@ public class AchievementsCommand extends RegistrableCommand {
         return """
                Usage: ACHIEVEMENTS
                  Lists every milestone achievement. Unlocked ones show the date and time you
-                 earned them; locked ones show your current progress (e.g. 5/100 kills).\
+                 earned them; locked ones show your current progress (e.g. 5/100 kills).
+                 Some milestones also grant a title, shown as [Title: <name> - earned/locked].
+                 Unlocking such a milestone awards the title automatically; use the TITLE
+                 command to display it on your WHO/SCORE line.\
                """;
     }
 

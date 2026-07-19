@@ -1,11 +1,13 @@
 package io.taanielo.jmud.core.ability;
 
 import java.util.Objects;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.character.CharacterAttributes;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
+import io.taanielo.jmud.core.effects.ControlType;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
@@ -127,10 +129,37 @@ public class DefaultAbilityEffectResolver implements AbilityEffectResolver {
 
     private boolean applyCure(AbilityEffect effect, AbilityContext context) {
         io.taanielo.jmud.core.effects.EffectMessageSink sink = effectMessageSink(context);
+        ControlType control = effect.control();
+        if (control != null) {
+            return cureControl(control, context, sink);
+        }
         try {
             return effectEngine.remove(context.target(), EffectId.of(effect.effectId()), sink);
         } catch (EffectRepositoryException e) {
             throw new IllegalStateException("Failed to remove effect " + effect.effectId() + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Strips at most one active effect of the given crowd-control classification from the target,
+     * used by cleanse-style cures (e.g. {@code spell.purify}) that free an ally from whichever
+     * root/silence/stun effect they happen to carry. Resolves the offending effect via
+     * {@link EffectEngine#activeControl} and removes it by id; a target carrying no matching control
+     * effect is left untouched and yields {@code false} so the cast produces no wasted message.
+     */
+    private boolean cureControl(
+        ControlType control,
+        AbilityContext context,
+        io.taanielo.jmud.core.effects.EffectMessageSink sink
+    ) {
+        try {
+            var active = effectEngine.activeControl(context.target(), Set.of(control));
+            if (active.isEmpty()) {
+                return false;
+            }
+            return effectEngine.remove(context.target(), active.get().id(), sink);
+        } catch (EffectRepositoryException e) {
+            throw new IllegalStateException("Failed to cure control " + control + ": " + e.getMessage(), e);
         }
     }
 

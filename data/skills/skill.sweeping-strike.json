@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "skill.sweeping-strike",
+  "name": "sweeping strike",
+  "type": "SKILL",
+  "level": 75,
+  "cost": {
+    "mana": 10,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "AoE",
+  "aliases": ["sweep", "sweeping", "sstrike"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 12
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You wind up and unleash a wide, sweeping swing that carves across every foe around you as you unleash {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} unleashes a wide, sweeping swing that carves across every foe in the room as they unleash {ability}!"
+    }
+  ]
+}

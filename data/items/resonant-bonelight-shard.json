@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "resonant-bonelight-shard",
+  "name": "a resonant bonelight shard",
+  "description": "A splinter of calcined bone struck from the fused body of the Choir itself, glowing with the same faint ivory light as the cathedral's walls and singing a single, unending note too low to hear but plain to feel against the palm. Every throat the Marrow Bloom ever silenced left a little of its breath in this material, and it has been holding that breath, ordered and unspent, since before the void was answered. Enchanters and bonewrights speak of it in the hushed way of a thing that could be made to carry a ward of sound, or a voice, or a silence — but only by a hand steady enough not to add its own note to the chord by mistake.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 150,
+  "rarity": "rare"
+}

@@ -44,6 +44,11 @@
       "type": "integer",
       "minimum": 1,
       "description": "The value the condition must reach for the achievement to unlock."
+    },
+    "title_reward": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional title granted to the player when this achievement unlocks (same shape as a quest title_reward). Must be unique across achievements and quests, case-insensitively. Omit when the milestone grants no title."
     }
   }
 }

@@ -1,5 +1,6 @@
 package io.taanielo.jmud.core.guild;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,10 +36,24 @@ public class GuildService {
     public static final int CREATION_COST_GOLD = 100;
 
     /**
-     * Maximum number of items a guild's shared vault may hold. Larger than a personal bank vault since
-     * it is pooled across the whole roster.
+     * Base shared-vault capacity for a fresh (level 1) guild, in item slots. Larger than a personal bank
+     * vault since it is pooled across the whole roster. Higher {@link GuildLevel}s scale the effective
+     * cap above this base — see {@link #vaultCapacity(Guild)}.
      */
-    public static final int VAULT_CAPACITY = 40;
+    public static final int VAULT_CAPACITY = GuildLevel.ONE.vaultCapacity();
+
+    /**
+     * Returns the shared item-vault capacity for the given guild, scaled by its current
+     * {@link Guild#level() level}. A fresh level-1 guild keeps the flat {@link #VAULT_CAPACITY} cap;
+     * every level above one unlocks more slots, up to the level-5 cap.
+     *
+     * @param guild the guild whose vault capacity to resolve
+     * @return the maximum number of items the guild's shared vault may hold at its current level
+     */
+    public static int vaultCapacity(Guild guild) {
+        Objects.requireNonNull(guild, "guild is required");
+        return guild.level().vaultCapacity();
+    }
 
     /** Minimum guild name length, in characters. */
     public static final int MIN_NAME_LENGTH = 3;
@@ -407,8 +422,8 @@ public class GuildService {
 
     /**
      * Stores {@code item} from a member into their guild's shared item vault. Validates that the caller
-     * is in a guild and that the vault is not already at {@link #VAULT_CAPACITY} capacity, then persists
-     * the updated guild.
+     * is in a guild and that the vault is not already at its level-scaled {@link #vaultCapacity(Guild)}
+     * capacity, then persists the updated guild.
      *
      * <p>This service only mutates the vault; the caller is responsible for removing the same item from
      * the acting player's inventory (unequipping it first if worn) in the same command so the item is
@@ -425,7 +440,7 @@ public class GuildService {
         if (guild == null) {
             return GuildResult.failure("You are not in a guild.");
         }
-        if (guild.vaultedItems().size() >= VAULT_CAPACITY) {
+        if (guild.vaultedItems().size() >= vaultCapacity(guild)) {
             return GuildResult.failure("The " + guild.name() + " vault is full.");
         }
         Guild updated = guild.withVaultedItem(new VaultedItem(item, member));
@@ -529,6 +544,17 @@ public class GuildService {
     }
 
     /**
+     * Returns the guild with the given id, if any.
+     *
+     * @param guildId the guild id to look up
+     * @return the matching guild, or empty
+     */
+    public Optional<Guild> findById(GuildId guildId) {
+        Objects.requireNonNull(guildId, "guildId is required");
+        return Optional.ofNullable(guildsById.get(guildId));
+    }
+
+    /**
      * Returns the guild with the given name (case-insensitive), if any.
      *
      * @param name the guild name to look up
@@ -551,6 +577,59 @@ public class GuildService {
     public Optional<GuildId> getPendingInviteGuild(Username invitee) {
         Objects.requireNonNull(invitee, "invitee is required");
         return Optional.ofNullable(pendingInvites.get(invitee));
+    }
+
+    /**
+     * Returns a point-in-time snapshot of every guild currently known to the service, used by the
+     * {@link GuildQuestService} to rotate guild quests across all guilds on the tick thread.
+     *
+     * @return an immutable snapshot of all guilds
+     */
+    public Collection<Guild> allGuilds() {
+        return List.copyOf(guildsById.values());
+    }
+
+    /**
+     * Persists an updated guild snapshot whose only change is its {@link Guild#activeGuildQuest() active
+     * guild quest} (assignment, progress, or completion). Membership, name and treasury indices are
+     * unaffected, so this replaces the cached snapshot and hands the write to the repository without
+     * re-indexing. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the guild whose active guild quest changed; must not be null
+     */
+    public synchronized void saveGuildQuestState(Guild updated) {
+        Objects.requireNonNull(updated, "updated is required");
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+    }
+
+    /**
+     * Persists an updated guild snapshot whose only change is its {@link Guild#activeWar() active guild
+     * war} or {@link Guild#warWins() lifetime war-win count} (issue #731). Membership, name and treasury
+     * indices are unaffected, so this replaces the cached snapshot and hands the write to the repository
+     * without re-indexing. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the guild whose guild-war state changed; must not be null
+     */
+    public synchronized void saveWarState(Guild updated) {
+        Objects.requireNonNull(updated, "updated is required");
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
+    }
+
+    /**
+     * Persists an updated guild snapshot whose only change is a passive daily treasury-interest credit
+     * ({@link Guild#creditTreasuryInterest(int)}, issue #773). Only {@link Guild#treasuryGold()} changes —
+     * membership, name, and the {@link Guild#lifetimeDepositedGold()} that drives {@link GuildLevel} are
+     * untouched — so this replaces the cached snapshot and hands the write to the repository without
+     * re-indexing. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the guild whose treasury received interest; must not be null
+     */
+    public synchronized void saveInterestState(Guild updated) {
+        Objects.requireNonNull(updated, "updated is required");
+        guildsById.put(updated.id(), updated);
+        repository.save(updated);
     }
 
     // ── Indexing helpers ──────────────────────────────────────────────

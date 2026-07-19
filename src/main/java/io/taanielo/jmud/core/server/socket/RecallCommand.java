@@ -21,16 +21,18 @@ public class RecallCommand extends RegistrableCommand {
 
     @Override
     public String shortDescription() {
-        return "Teleport back to town. No target, out-of-combat only, has a cooldown.";
+        return "Teleport back to your bind point. No target, out-of-combat only, has a cooldown.";
     }
 
     @Override
     public String longDescription() {
         return """
                Usage: RECALL
-                 Teleports you back to the starting/town room. You cannot recall while in
+                 Teleports you back to your bind point \u2014 the zone waypoint you last anchored to
+                 with BIND, or Greystone Town if you have never bound. You cannot recall while in
                  active combat \u2014 use FLEE first. Recall also has a short cooldown after each
-                 use, so it cannot be used repeatedly as an escape button.\
+                 use, so it cannot be used repeatedly as an escape button. See HELP BIND to move
+                 your recall point.\
                """;
     }
 

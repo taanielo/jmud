@@ -1,0 +1,37 @@
+{
+  "schema_version": 2,
+  "id": "spell.hurricane",
+  "name": "hurricane",
+  "type": "SPELL",
+  "level": 60,
+  "cost": {
+    "mana": 13,
+    "mana_per_target": 3
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "cast_time_ticks": 3,
+  "targeting": "AoE",
+  "aliases": ["storm", "cyclone"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "DECREASE",
+      "amount": 12
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call down a howling hurricane of wind and rain that batters and blinds every foe around you as you cast {ability}!"
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A howling hurricane of wind and rain tears through the room around {source} as they cast {ability}!"
+    }
+  ]
+}

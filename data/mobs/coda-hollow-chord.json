@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "coda-hollow-chord",
+  "name": "a hollow chord",
+  "max_hp": 1120,
+  "attack_id": "attack.coda-hollow-chord",
+  "aggressive": true,
+  "tags": ["construct", "resonant", "the-coda"],
+  "spawn_room_id": "coda-last-silence",
+  "max_count": 2,
+  "respawn_ticks": 86,
+  "xp_reward": 1620,
+  "loot": [
+    {
+      "item_id": "resolved-overtone",
+      "drop_chance": 0.35
+    }
+  ],
+  "gold_drop": {
+    "min": 310,
+    "max": 460
+  }
+}

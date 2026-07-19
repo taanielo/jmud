@@ -1,0 +1,14 @@
+{
+  "schema_version": 14,
+  "id": "the-interval-map",
+  "name": "Map of the Interval",
+  "description": "Not a chart of any place that has extent, but a rendering of a pause — a single ruled bar of empty music scored into a leaf of frost-clouded vellum, its measures marked off by notches that ring no note when struck because there is no note there to ring, only the counted spaces where notes are not. The route through the gap is read the way a musician reads a rest: not as somewhere to go but as a length of held time to pass through, threshold to fermata, each empty measure a held breath long. It is colder than the map of the Undersong and it does not hum at all — it waits, poised and silent in the way an indrawn breath is silent, so that to hold it is to feel your own pulse counted off against its empty bars, marking the beats of a music that stopped before you were born and is still, somehow, refusing to end.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "weight": 1,
+  "value": 75,
+  "map_area_id": "the-interval"
+}

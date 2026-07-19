@@ -1,0 +1,20 @@
+{
+  "schema_version": 8,
+  "id": "interval-hollow-measure",
+  "name": "The Hollow Measure",
+  "description": "The threshold opens into a wide, low measure of stone laid out like a bar of music emptied of every note — the ruled lines of it are there, scored pale into the floor and the curving walls, but nothing rests on them, and the emptiness has a weight the source's drowning tone never had. This is the counting-space, the frame that once held the beats of the Hum apart from one another so that each could be itself; now that the Hum is broken the measure keeps counting anyway, out of habit older than the thing it measured, marking off intervals of a rhythm that has nothing left to divide. You can feel the count in your own chest, your heartbeat picked up and held against the empty bars like a specimen, and wherever your pulse touches the lines something half-finished stirs and reaches for the beat. Two low passages break the ruled walls, east where the measure thins toward grace and ornament, west where it holds instead the shape of a single arrested breath; and at the measure's far end the floor steps down toward the last beat before the rest, where whatever this place has been assembling in the gap waits to be completed.",
+  "item_ids": [],
+  "exits": {
+    "up": "interval-threshold",
+    "east": "interval-grace-notes",
+    "west": "interval-held-breath",
+    "down": "interval-last-beat"
+  },
+  "min_level": 73,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The ruled lines of the measure brighten and dim in slow succession, counting off a beat against your heart that lands on nothing at all.",
+    "A metronome-wraith ticks past along the empty bars, keeping perfect time for a music that no longer exists, and does not so much as glance at you.",
+    "Frost gathers in one of the empty measures, takes the exact shape of a note about to be written, and holds there, unfinished, refusing to fall."
+  ]
+}

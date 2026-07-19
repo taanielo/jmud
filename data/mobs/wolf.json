@@ -6,6 +6,7 @@
   "xp_reward": 30,
   "attack_id": "attack.wolf",
   "aggressive": false,
+  "tags": ["pack"],
   "spawn_room_id": "hunters-clearing",
   "max_count": 3,
   "respawn_ticks": 20,

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "id": "wefa-tailor-welcome",
+  "npc_id": "tailor",
+  "start_node": "greeting",
+  "nodes": {
+    "greeting": {
+      "text": "Mind the webs, love. I've made this hollow my workshop — the burrow above drips with the finest silk in the wood, and no smith's iron will ever sit as light on a caster's shoulders as my cloth. Bring me thread and I'll sew you something worth wearing.",
+      "responses": [
+        { "text": "What can you sew?", "target": "sew" },
+        { "text": "Where do I find cloth?", "target": "cloth" },
+        { "text": "I'll come back later.", "target": "end" }
+      ]
+    },
+    "sew": {
+      "text": "Spider silk makes gloves and slippers light as a held breath — clarity for a wandering mind. Weave it with grave linen and I'll cut you a robe or leggings a mage would kill for. And when your hands are sure enough, I'll sew you a Shroudweave Hood fit for an archmage. Type SEW here and I'll show you my patterns.",
+      "responses": [
+        { "text": "Where do I find cloth?", "target": "cloth" },
+        { "text": "Done talking.", "target": "end" }
+      ]
+    },
+    "cloth": {
+      "text": "The giant spiders in the burrow just north trail silk from every rafter — cut them down and take it. For grave linen you'll go deeper, into the Sunless Catacombs beneath the wood; the burial dead are wrapped in it still. GATHER what the crypts give up and bring it back to me.",
+      "responses": [
+        { "text": "What can you sew?", "target": "sew" },
+        { "text": "Thank you.", "target": "end" }
+      ]
+    },
+    "end": {
+      "text": "Off you go, then. And do try not to bleed on the merchandise.",
+      "responses": []
+    }
+  }
+}

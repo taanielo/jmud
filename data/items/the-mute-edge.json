@@ -1,0 +1,20 @@
+{
+  "schema_version": 14,
+  "id": "the-mute-edge",
+  "name": "the Mute Edge",
+  "description": "The blade the Throatless Marshal carried, and the first weapon the Unsung ever made: a long, thin sword of silence-honed bone, its edge worked to a keenness that has nothing to do with metal and everything to do with refusal. It makes no sound. Drawn, swung, or driven home, it moves in perfect quiet, drinking the noise of its own passage and the cry of whatever it opens, and the cold that lives in the steel-that-is-not-steel is the cold of a held breath a hundred years long. It is light and quick and terribly patient in the hand, a weapon for one strike given without warning, and it asks of its bearer only that they, too, learn to be quiet.",
+  "attributes": {
+    "stats": {
+      "strength": 6,
+      "dexterity": 6,
+      "cold_resist": 10
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 4,
+  "value": 660,
+  "rarity": "epic",
+  "attack_ref": "attack.the-mute-edge"
+}

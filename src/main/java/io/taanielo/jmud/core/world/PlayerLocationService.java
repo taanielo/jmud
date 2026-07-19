@@ -37,21 +37,51 @@ public class PlayerLocationService {
     private final ConcurrentHashMap<RoomId, Set<Direction>> runtimeLockedExits = new ConcurrentHashMap<>();
     /**
      * Runtime discovered-hidden-exit state: maps each room id to the set of secret exit directions
-     * that have been found (via SEARCH) this server session. Discovery is world-scoped: once found,
-     * a hidden exit is visible and walkable for every player. The set starts empty for each room —
-     * all hidden exits begin undiscovered — and is never persisted, so it resets on restart.
+     * that have been found (via SEARCH). Discovery is world-scoped: once found, a hidden exit is
+     * visible and walkable for every player. The set starts empty for each room — all hidden exits
+     * begin undiscovered — is seeded at construction from {@link #discoveredExitsRepository}, and is
+     * persisted back on each new discovery so found exits survive a server restart.
      */
     private final ConcurrentHashMap<RoomId, Set<Direction>> runtimeDiscoveredHiddenExits = new ConcurrentHashMap<>();
+    private final DiscoveredExitsRepository discoveredExitsRepository;
 
     /**
-     * Creates a player location service.
+     * Creates a player location service without durable hidden-exit discovery.
+     *
+     * <p>Discoveries are kept only for the current server session (they reset on restart). Prefer
+     * {@link #PlayerLocationService(RoomRepository, RoomId, DiscoveredExitsRepository)} in production
+     * so found exits are persisted.
      *
      * @param roomRepository the room data store used to validate exits and key requirements
      * @param startingRoomId the room that new or respawning players are placed into
      */
     public PlayerLocationService(RoomRepository roomRepository, RoomId startingRoomId) {
+        this(roomRepository, startingRoomId, DiscoveredExitsRepository.noOp());
+    }
+
+    /**
+     * Creates a player location service backed by a persisted hidden-exit discovery store.
+     *
+     * <p>Previously-discovered hidden exits are loaded eagerly from the repository so they come back
+     * open immediately for every player after a restart, honouring SEARCH's permanence promise.
+     *
+     * @param roomRepository            the room data store used to validate exits and key requirements
+     * @param startingRoomId            the room that new or respawning players are placed into
+     * @param discoveredExitsRepository the store that persists world-scoped hidden-exit discoveries
+     */
+    public PlayerLocationService(
+        RoomRepository roomRepository,
+        RoomId startingRoomId,
+        DiscoveredExitsRepository discoveredExitsRepository) {
         this.roomRepository = Objects.requireNonNull(roomRepository, "Room repository is required");
         this.startingRoomId = Objects.requireNonNull(startingRoomId, "Starting room id is required");
+        this.discoveredExitsRepository =
+            Objects.requireNonNull(discoveredExitsRepository, "Discovered exits repository is required");
+        discoveredExitsRepository.loadAll().forEach((roomId, directions) -> {
+            Set<Direction> set = ConcurrentHashMap.newKeySet();
+            set.addAll(directions);
+            runtimeDiscoveredHiddenExits.put(roomId, set);
+        });
     }
 
     /**
@@ -119,9 +149,30 @@ public class PlayerLocationService {
      * @return the starting room id
      */
     public RoomId respawnPlayer(Username username) {
+        return respawnPlayer(username, null);
+    }
+
+    /**
+     * Moves the player to their preferred respawn room when one is supplied and still resolves,
+     * otherwise to the world's default starting room.
+     *
+     * <p>Used by RECALL and death respawn to honour a player's BIND anchor while degrading gracefully:
+     * a {@code null} preference, or a preferred room that no longer exists (e.g. removed or renamed in
+     * a later data change), both fall back to {@code startingRoomId} so the player is never stranded.
+     * Tick-thread only (AGENTS.md §5).
+     *
+     * @param username        the player to respawn
+     * @param preferredRoomId the player's bound respawn room, or {@code null} to use the default
+     * @return the room id the player was actually placed into
+     */
+    public RoomId respawnPlayer(Username username, @Nullable RoomId preferredRoomId) {
         Objects.requireNonNull(username, "Username is required");
-        playerLocations.put(username, startingRoomId);
-        return startingRoomId;
+        RoomId destination = startingRoomId;
+        if (preferredRoomId != null && findRoom(preferredRoomId).isPresent()) {
+            destination = preferredRoomId;
+        }
+        playerLocations.put(username, destination);
+        return destination;
     }
 
     /**
@@ -260,6 +311,10 @@ public class PlayerLocationService {
             if (discovered.add(direction)) {
                 revealed.add(direction);
             }
+        }
+        if (!revealed.isEmpty()) {
+            // Persist only on the rare discovery event, never on a per-move/per-tick path.
+            discoveredExitsRepository.save(room.getId(), Set.copyOf(discovered));
         }
         return Set.copyOf(revealed);
     }

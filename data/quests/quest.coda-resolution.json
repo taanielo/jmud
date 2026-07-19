@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "coda-resolution",
+  "name": "Let the Last Chord Fall",
+  "description": "The loosed overtones only spread the ending; the hall only gave it room. Down past the final measure, in the vast closing chamber where the whole withheld music of the world at last has a body, the ending has a name, and it is the Coda — the resolving chord itself, the close the Choir began and the Unsung refused and the Undersong sustained and the Interval suspended and the Fermata held one arrested instant short of falling for as long as there has been a world to hold it over. It fills the chamber the way the First Hum filled the source and the Fermata filled the gap: not resting and not floating, simply resolving, an enormous slow-closing shape of overtone and released cold and finished silence gathering toward the single chord that ends everything the music was ever building toward. It is not sound and it is not the absence of sound. It is the close, given just enough shape to defend the resolution it has waited an eternity to sound — and it means to sound it through you, because a coda needs a final beat to fall on and yours is the living pulse that broke the held stroke and carried the released chord down here to complete it. Cross into the chamber, break the Coda where it turns the whole closing weight of the world's last chord onto you, and let the phrase resolve on something other than a heartbeat at last — or be the final beat it has waited an eternity to fall on.",
+  "target_mob_id": "the-coda",
+  "required_kills": 1,
+  "gold_reward": 1150,
+  "xp_reward": 2900,
+  "title_reward": "Last Chord",
+  "reputation_reward_faction_id": "militia",
+  "reputation_reward_delta": 50,
+  "recommended_level": 87,
+  "repeatable": false,
+  "prerequisite_quest_id": "coda-cull"
+}

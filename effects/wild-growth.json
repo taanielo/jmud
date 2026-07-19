@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "wild-growth",
+  "name": "Wild Growth",
+  "duration_ticks": 20,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "heal_per_tick",
+      "op": "add",
+      "amount": 4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "Verdant growth twines over your wounds, drawing on the wild to mend you over time."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "Verdant growth twines over {name}'s wounds, blooming with healing life."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The wild growth blooms anew, knitting a little more of your hurt closed."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The wild growth withers and falls away, its healing spent."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The wild growth twining over {name} withers and falls away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is wrapped in blooming, verdant growth that slowly mends their wounds."
+    }
+  ]
+}

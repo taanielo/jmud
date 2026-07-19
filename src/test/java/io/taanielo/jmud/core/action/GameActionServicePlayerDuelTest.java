@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.action;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -43,6 +45,13 @@ import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectRepository;
+import io.taanielo.jmud.core.guild.Guild;
+import io.taanielo.jmud.core.guild.GuildId;
+import io.taanielo.jmud.core.guild.GuildRepository;
+import io.taanielo.jmud.core.guild.GuildService;
+import io.taanielo.jmud.core.guild.GuildWarService;
+import io.taanielo.jmud.core.messaging.Message;
+import io.taanielo.jmud.core.messaging.MessageBroadcaster;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
@@ -260,6 +269,28 @@ class GameActionServicePlayerDuelTest {
     }
 
     @Test
+    void endPlayerDuelScoresAGuildWarPointForTheWinnersGuild() throws Exception {
+        Player survivor = attacker;
+        Player loser = playerWithHp("target", 0);
+        duelService.activate(survivor.getUsername(), loser.getUsername());
+
+        GuildService guildService = new GuildService(new InMemoryGuildRepository());
+        GuildWarService guildWarService = new GuildWarService(guildService, new NoOpBroadcaster());
+        // attacker leads Ironclad, target leads Redhand, and the two are at war.
+        guildService.create(survivor.getUsername(), "Ironclad");
+        guildService.create(loser.getUsername(), "Redhand");
+        guildWarService.propose(survivor.getUsername(), "Redhand");
+        guildWarService.accept(loser.getUsername());
+
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+        service.setGuildWarService(guildWarService);
+
+        service.endPlayerDuel(survivor, loser);
+
+        assertEquals(1, guildService.guildOf(survivor.getUsername()).orElseThrow().activeWar().ownPoints());
+    }
+
+    @Test
     void forfeitViaClearForDoesNotAffectDuelRecords() {
         duelService.activate(attacker.getUsername(), target.getUsername());
 
@@ -285,6 +316,136 @@ class GameActionServicePlayerDuelTest {
         assertEquals(0, loser.getVitals().hp());
         assertTrue(roomService.findPlayerLocation(lowHpTarget.getUsername()).isEmpty());
         assertTrue(roomHasCorpse());
+    }
+
+    // ── wager (issue #661) ──────────────────────────────────────────────────────
+
+    @Test
+    void wageredChallengeAnnouncesAmountAndRecordsPendingWager() {
+        Player richAttacker = attacker.withGold(500);
+        GameActionService service = service(defaultCombat(), resolver(target), _ -> false);
+
+        GameActionResult result = service.initiatePlayerDuel(richAttacker, "target", 100L);
+
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE
+                && m.text().equals("You challenge target to a duel wagering 100 gold.")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER && m.text().contains("wagering 100 gold")));
+        assertEquals(100L, duelService.wagerOf(target.getUsername()));
+    }
+
+    @Test
+    void plainChallengeMessagingIsUnchangedByTheWagerFeature() {
+        Player richAttacker = attacker.withGold(500);
+        GameActionService service = service(defaultCombat(), resolver(target), _ -> false);
+
+        GameActionResult result = service.initiatePlayerDuel(richAttacker, "target");
+
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().equals("You challenge target to a duel.")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER
+                && m.text().equals(
+                    "attacker challenges you to a duel. Type ACCEPT to engage or wait 30s for timeout.")));
+        assertEquals(0L, duelService.wagerOf(target.getUsername()));
+    }
+
+    @Test
+    void wageredChallengeRejectedWhenChallengerCannotCoverStake() {
+        Player poorAttacker = attacker.withGold(10);
+        GameActionService service = service(defaultCombat(), resolver(target), _ -> false);
+
+        GameActionResult result = service.initiatePlayerDuel(poorAttacker, "target", 100L);
+
+        assertTrue(result.messages().getFirst().text().startsWith("You do not have 100 gold to wager"));
+        assertTrue(duelService.pendingChallenger(target.getUsername()).isEmpty());
+    }
+
+    @Test
+    void acceptRejectedWhenTargetCannotCoverWagerLeavesNoStateAndMovesNoGold() {
+        Player richAttacker = attacker.withGold(500);
+        Player poorTarget = target.withGold(10);
+        GameActionService service = service(defaultCombat(), resolver(poorTarget), _ -> false);
+        service.initiatePlayerDuel(richAttacker, "target", 100L);
+
+        GameActionResult result = service.acceptPlayerDuel(poorTarget);
+
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().contains("do not have 100 gold")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER && m.text().contains("cannot cover the 100 gold wager")));
+        // No duel started and no dangling pending/active state left behind.
+        assertFalse(duelService.isDueling(richAttacker.getUsername()));
+        assertFalse(duelService.isDueling(poorTarget.getUsername()));
+        assertTrue(duelService.pendingChallenger(poorTarget.getUsername()).isEmpty());
+        assertTrue(duelService.stateOf(poorTarget.getUsername()).isEmpty());
+        assertTrue(duelService.stateOf(richAttacker.getUsername()).isEmpty());
+        // Neither result player is populated, so no gold moves.
+        assertNull(result.updatedSource());
+        assertNull(result.updatedTarget());
+    }
+
+    @Test
+    void wageredDuelEndTransfersStakeFromLoserToWinner() {
+        Player winner = attacker.withGold(500);
+        Player loser = playerWithHp("target", 0).withGold(300);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(600, result.updatedSource().getGold(), "winner gains the staked gold");
+        assertEquals(200, result.updatedTarget().getGold(), "loser forfeits the staked gold");
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().equals("You win 100 gold from the wager!")));
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.PLAYER && m.text().equals("You lose 100 gold from the wager.")));
+    }
+
+    @Test
+    void wageredDuelEndClampsTransferToLoserLiveGold() {
+        Player winner = attacker.withGold(0);
+        Player loser = playerWithHp("target", 0).withGold(40);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(40, result.updatedSource().getGold(), "winner gains only what the loser could pay");
+        assertEquals(0, result.updatedTarget().getGold(), "loser is emptied, never driven negative");
+    }
+
+    @Test
+    void unwageredDuelEndMovesNoGold() {
+        Player winner = attacker.withGold(500);
+        Player loser = playerWithHp("target", 0).withGold(300);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(500, result.updatedSource().getGold());
+        assertEquals(300, result.updatedTarget().getGold());
+        assertTrue(result.messages().stream().noneMatch(m -> m.text().contains("wager")));
+    }
+
+    @Test
+    void forfeitViaClearForOnWageredDuelMovesNoGold() {
+        Player winner = attacker.withGold(500);
+        Player loser = target.withGold(300);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+
+        duelService.clearFor(loser.getUsername());
+
+        // Wallets are untouched: clearFor never reaches endPlayerDuel, and no escrow exists.
+        assertEquals(500, winner.getGold());
+        assertEquals(300, loser.getGold());
+        assertFalse(duelService.isDueling(winner.getUsername()));
+        assertFalse(duelService.isDueling(loser.getUsername()));
     }
 
     // ── flee / room move ────────────────────────────────────────────────────────
@@ -478,6 +639,39 @@ class GameActionServicePlayerDuelTest {
         @Override
         public Optional<Room> findById(RoomId id) throws RepositoryException {
             return Optional.ofNullable(rooms.get(id));
+        }
+    }
+
+    private static final class InMemoryGuildRepository implements GuildRepository {
+        private final Map<GuildId, Guild> saved = new ConcurrentHashMap<>();
+
+        @Override
+        public List<Guild> loadAll() {
+            return List.copyOf(saved.values());
+        }
+
+        @Override
+        public void save(Guild guild) {
+            saved.put(guild.id(), guild);
+        }
+
+        @Override
+        public void delete(GuildId guildId) {
+            saved.remove(guildId);
+        }
+    }
+
+    private static final class NoOpBroadcaster implements MessageBroadcaster {
+        @Override
+        public void sendToPlayer(Username target, Message message) {
+        }
+
+        @Override
+        public void broadcastToRoom(RoomId room, Message message, Set<Username> exclude) {
+        }
+
+        @Override
+        public void broadcastGlobal(Message message, Set<Username> exclude) {
         }
     }
 }

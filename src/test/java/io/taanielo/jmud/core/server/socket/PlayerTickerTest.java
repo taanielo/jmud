@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.audit.AuditEntry;
 import io.taanielo.jmud.core.audit.AuditService;
 import io.taanielo.jmud.core.audit.AuditSink;
@@ -42,8 +43,10 @@ import io.taanielo.jmud.core.player.PlayerVitals;
 import io.taanielo.jmud.core.player.RestingTicker;
 import io.taanielo.jmud.core.tick.TickRegistry;
 import io.taanielo.jmud.core.tick.system.CooldownSystem;
+import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.WayfindService.AutoWalkStep;
 import io.taanielo.jmud.core.world.repository.InMemoryRoomRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -160,7 +163,7 @@ class PlayerTickerTest {
         CooldownSystem cooldowns = new CooldownSystem();
         PlayerRespawnTicker respawnTicker = idleRespawnTicker();
 
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, respawnTicker);
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, respawnTicker, new SpellCastState(), new AutoWalkState());
 
         // Stage 6: resting — a fully-rested player triggers onFullyRested immediately.
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
@@ -192,7 +195,7 @@ class PlayerTickerTest {
         queue.enqueue(() -> order.add("tick1-command"));
 
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         ticker.tick();
         assertEquals(List.of("tick1-command"), order);
@@ -203,13 +206,129 @@ class PlayerTickerTest {
             "Command enqueued after first tick should run on second tick only");
     }
 
+    // ── Spell cast countdown (issue #693) ──────────────────────────────────────
+
+    @Test
+    void channeledCastResolvesAfterCastTimeElapses() {
+        PlayerCommandQueue queue = new PlayerCommandQueue();
+        CooldownSystem cooldowns = new CooldownSystem();
+        SpellCastState castState = new SpellCastState();
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), castState, new AutoWalkState());
+
+        java.util.concurrent.atomic.AtomicBoolean resolved =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+        castState.begin(
+            io.taanielo.jmud.core.ability.AbilityId.of("spell.hurricane"),
+            "hurricane", 2,
+            () -> resolved.set(true),
+            () -> { });
+
+        ticker.tick();
+        assertFalse(resolved.get(), "cast must not resolve on the first countdown tick");
+        assertTrue(castState.isCasting());
+
+        ticker.tick();
+        assertTrue(resolved.get(), "cast must resolve once the cast time has elapsed");
+        assertFalse(castState.isCasting());
+    }
+
+    @Test
+    void interruptedChanneledCastNeverResolvesThroughTicker() {
+        PlayerCommandQueue queue = new PlayerCommandQueue();
+        CooldownSystem cooldowns = new CooldownSystem();
+        SpellCastState castState = new SpellCastState();
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), castState, new AutoWalkState());
+
+        java.util.concurrent.atomic.AtomicBoolean resolved =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+        castState.begin(
+            io.taanielo.jmud.core.ability.AbilityId.of("spell.hurricane"),
+            "hurricane", 2,
+            () -> resolved.set(true),
+            () -> { });
+
+        ticker.tick();
+        castState.interrupt();
+
+        ticker.tick();
+        ticker.tick();
+        assertFalse(resolved.get(), "an interrupted cast must never resolve on later ticks");
+        assertFalse(castState.isCasting());
+    }
+
+    // ── Auto-walk stage (issue #767) ───────────────────────────────────────────
+
+    @Test
+    void autoWalkStageAdvancesOneStepPerTickUntilComplete() {
+        PlayerCommandQueue queue = new PlayerCommandQueue();
+        CooldownSystem cooldowns = new CooldownSystem();
+        AutoWalkState walk = new AutoWalkState();
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), walk);
+
+        List<Direction> walked = new ArrayList<>();
+        // Mirrors SocketCommandContextImpl#advanceAutoWalk: peek one step, "move", pop, cancel on arrival.
+        walk.begin("Frozen Peaks", List.of(
+            new AutoWalkStep.Walk(Direction.NORTH),
+            new AutoWalkStep.Walk(Direction.UP),
+            new AutoWalkStep.Walk(Direction.EAST)), () -> {
+                walked.add(((AutoWalkStep.Walk) walk.peekNextStep()).direction());
+                walk.advanceStep();
+                if (!walk.hasNextStep()) {
+                    walk.cancel();
+                }
+            });
+
+        ticker.tick();
+        assertEquals(List.of(Direction.NORTH), walked);
+        assertTrue(walk.isWalking());
+
+        ticker.tick();
+        assertEquals(List.of(Direction.NORTH, Direction.UP), walked);
+        assertTrue(walk.isWalking());
+
+        ticker.tick();
+        assertEquals(List.of(Direction.NORTH, Direction.UP, Direction.EAST), walked);
+        assertFalse(walk.isWalking(), "walk ends once the final step lands");
+
+        ticker.tick();
+        assertEquals(3, walked.size(), "no step runs after the walk has completed");
+    }
+
+    @Test
+    void manualCommandThisTickCancelsAutoWalkBeforeItsStepRuns() {
+        PlayerCommandQueue queue = new PlayerCommandQueue();
+        CooldownSystem cooldowns = new CooldownSystem();
+        AutoWalkState walk = new AutoWalkState();
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), walk);
+
+        List<Direction> walked = new ArrayList<>();
+        walk.begin("Frozen Peaks", List.of(
+            new AutoWalkStep.Walk(Direction.NORTH),
+            new AutoWalkStep.Walk(Direction.UP)), () -> {
+                walked.add(((AutoWalkStep.Walk) walk.peekNextStep()).direction());
+                walk.advanceStep();
+                if (!walk.hasNextStep()) {
+                    walk.cancel();
+                }
+            });
+
+        // A manual command dispatched this tick cancels the walk (the dispatcher hook), and because the
+        // auto-walk stage runs after the command drain, no autopilot step executes after it.
+        queue.enqueue(walk::cancel);
+
+        ticker.tick();
+
+        assertFalse(walk.isWalking());
+        assertTrue(walked.isEmpty(), "no autopilot step runs after manual input cancels the walk");
+    }
+
     // ── REST toggling ──────────────────────────────────────────────────────────
 
     @Test
     void restingStageInitiallyDisabled() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         assertFalse(ticker.isRestingEnabled(), "Resting stage must be disabled on construction");
     }
@@ -218,7 +337,7 @@ class PlayerTickerTest {
     void enableRestingActivatesStage() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
         RestingTicker restingTicker = new RestingTicker(
@@ -233,7 +352,7 @@ class PlayerTickerTest {
     void disableRestingDeactivatesStage() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
         RestingTicker restingTicker = new RestingTicker(
@@ -253,7 +372,7 @@ class PlayerTickerTest {
 
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         AtomicReference<Player> ref = new AtomicReference<>(fullRestingPlayer("hero"));
         RestingTicker restingTicker = new RestingTicker(
@@ -276,7 +395,7 @@ class PlayerTickerTest {
     void effectsStageInitiallyDisabled() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         assertFalse(ticker.isEffectsEnabled(), "Effects stage must be disabled on construction");
     }
@@ -285,7 +404,7 @@ class PlayerTickerTest {
     void healingStageInitiallyDisabled() {
         PlayerCommandQueue queue = new PlayerCommandQueue();
         CooldownSystem cooldowns = new CooldownSystem();
-        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker());
+        PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), new AutoWalkState());
 
         assertFalse(ticker.isHealingEnabled(), "Healing stage must be disabled on construction");
     }

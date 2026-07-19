@@ -1,0 +1,36 @@
+{
+  "schema_version": 2,
+  "id": "spell.chain-heal",
+  "name": "chain heal",
+  "type": "SPELL",
+  "level": 60,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 6
+  },
+  "cast_time_ticks": 2,
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["chainheal", "cheal"],
+  "effects": [
+    {
+      "kind": "VITALS",
+      "stat": "HP",
+      "operation": "INCREASE",
+      "amount": 10
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You loose a surging wave of healing water that leaps from ally to ally, mending each in turn as you cast {ability}."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "A surging wave of healing water leaps from {source} to every ally in turn, mending their wounds."
+    }
+  ]
+}

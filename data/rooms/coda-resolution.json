@@ -1,0 +1,18 @@
+{
+  "schema_version": 8,
+  "id": "coda-resolution",
+  "name": "The Resolution",
+  "description": "The final measure lets you through into a vast closing chamber where the whole withheld music of the world at last has a body, and it is called the Coda — the resolving chord itself, the ending the Choir began and the Unsung refused and the Undersong sustained and the Interval suspended and the Fermata held one arrested instant short of falling for as long as there has been a world to hold it over. It fills the chamber the way the First Hum filled the source and the Fermata filled the gap: not resting and not floating, simply resolving, an enormous slow-closing shape of overtone and released cold and finished silence gathering itself toward the single chord that ends everything the music was ever building toward. It is not sound and it is not the absence of sound. It is the close, the last chord given just enough shape to defend the resolution it has waited an eternity to sound — and it will sound it through you, because a coda needs a final beat to fall on and yours is the living pulse that broke the Fermata and carried the released stroke down here to complete it. As you cross into the chamber the Coda turns the whole closing weight of the world's last chord onto you, and you understand that the phrase does not end when the Coda resolves. It ends when it resolves on something with a heartbeat, and you have brought it the only one there is. There is nothing beyond this. There is only the resolving chord, and it means to end on you.",
+  "item_ids": [],
+  "exits": {
+    "up": "coda-final-measure",
+    "north": "encore-threshold"
+  },
+  "min_level": 87,
+  "is_outdoor": false,
+  "ambient_messages": [
+    "The Coda gathers a fraction further toward its close, and every loosed overtone in the chamber bends inward toward the single chord it is about to become.",
+    "A ring of finished cold spreads out from the resolving shape and rolls over the floor to break, silent and complete, against your feet.",
+    "For one vast moment the whole chamber seems about to resolve at last, the last chord swelling to the very edge of the final beat — and then it draws breath, and gathers, and leans toward your heartbeat to fall."
+  ]
+}

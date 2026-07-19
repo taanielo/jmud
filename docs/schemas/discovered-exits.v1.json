@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:discovered-exits:v1",
+  "title": "World hidden-exit discovery store (v1)",
+  "description": "World-scoped record of which hidden room exits players have revealed via the SEARCH command, persisted as the single file data/world-state/discovered-exits.json. Once any player searches a hidden exit into the open it becomes a normal visible, walkable exit for everyone, permanently — this file makes that promise survive server restarts. The loader is deliberately defensive: a missing, empty, or malformed file reveals nothing, so a corrupt store can never accidentally open an exit no one has found. Absence of this file simply means nothing has been discovered yet.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rooms"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "rooms": {
+      "type": "array",
+      "description": "One entry per room that has at least one discovered hidden exit.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "room_id",
+          "directions"
+        ],
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id of the room whose hidden exit(s) have been discovered."
+          },
+          "directions": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The discovered hidden-exit directions, stored as Direction enum names.",
+            "items": {
+              "type": "string",
+              "enum": ["NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

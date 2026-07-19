@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import io.taanielo.jmud.core.ability.AbilityCooldownTracker;
 import io.taanielo.jmud.core.ability.CooldownTracker;
+import io.taanielo.jmud.core.ability.SpellCastState;
 import io.taanielo.jmud.core.dialogue.DialogueTree;
 import io.taanielo.jmud.core.effects.EffectEngine;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
@@ -88,6 +89,24 @@ public class PlayerSession {
     private final PlayerCommandQueue commandQueue = new PlayerCommandQueue();
     private final PlayerRespawnTicker respawnTicker;
 
+    /**
+     * Per-session channeled-cast state (issue #693). Holds the single in-progress "cast time" spell,
+     * counted down on the tick thread by {@link PlayerTicker}. Like the AFK/LFG flags above this is
+     * transient session state — never written to the persisted {@link Player}, so there is no
+     * save-schema change — and it is cancelled on death, logout, and reconnect. Every access is on the
+     * tick thread (AGENTS.md §5), so no synchronization is required.
+     */
+    private final SpellCastState spellCastState = new SpellCastState();
+
+    /**
+     * Per-session auto-walk state (issue #767). Holds the single in-progress {@code AUTOWALK}, stepped
+     * one room per tick on the tick thread by {@link PlayerTicker}. Like {@link #spellCastState} above
+     * this is transient session state — never written to the persisted {@link Player}, so there is no
+     * save-schema change — and it is cancelled on death, logout, and reconnect. Every access is on the
+     * tick thread (AGENTS.md §5), so no synchronization is required.
+     */
+    private final AutoWalkState autoWalkState = new AutoWalkState();
+
     /** Single composed ticker — one subscription per player session. */
     private final PlayerTicker playerTicker;
     private TickSubscription playerTickerSubscription;
@@ -100,6 +119,15 @@ public class PlayerSession {
 
     /** Optional hook invoked (on the tick thread) whenever a player save fails, after logging. */
     private Consumer<Player> saveFailureHandler;
+
+    /**
+     * Optional hook that applies an externally-computed HP update (e.g. environmental hazard damage)
+     * through the shared player-update path so death, corpse/respawn, cast-interrupt, and audit all
+     * fire for free (AGENTS.md §3.3). Wired by the transport adapter to the same {@code applyHealingUpdate}
+     * path used by the healing ticker; {@code null} until the player is fully in the world. Invoked only
+     * on the tick thread (AGENTS.md §5).
+     */
+    private @Nullable Consumer<Player> hazardDamageSink;
 
     /**
      * Active NPC conversation state (see the {@code TALK}/{@code RESPOND} commands), or {@code null}
@@ -176,7 +204,7 @@ public class PlayerSession {
         this.respawnTicker = new PlayerRespawnTicker(
             this::getPlayer, respawnCallback, roomService, DeathSettings.respawnTicks()
         );
-        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker);
+        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker, spellCastState, autoWalkState);
         this.textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
     }
 
@@ -193,7 +221,46 @@ public class PlayerSession {
     }
 
     public void setPlayer(Player player) {
+        Player previous = this.player;
         this.player = player;
+        interruptCastIfDamaged(previous, player);
+    }
+
+    /**
+     * Returns this session's channeled-cast state, the single home for an in-progress "cast time"
+     * spell (issue #693).
+     *
+     * @return the spell cast state; never null
+     */
+    public SpellCastState getSpellCastState() {
+        return spellCastState;
+    }
+
+    /**
+     * Returns this session's auto-walk state, the single home for an in-progress {@code AUTOWALK}
+     * (issue #767).
+     *
+     * @return the auto-walk state; never null
+     */
+    public AutoWalkState getAutoWalkState() {
+        return autoWalkState;
+    }
+
+    /**
+     * Interrupts any in-progress channeled cast when the player's HP dropped between {@code previous}
+     * and {@code updated}. This is the single shared damage hook (AGENTS.md §3.3): every player-state
+     * update flows through {@link #setPlayer(Player)} or {@link #replacePlayer(Player)} on the tick
+     * thread, so a mob hit, a PvP spell, or a damage-over-time effect all funnel here without the
+     * combat engines needing to know about sessions. Costs are only spent when a cast completes, so an
+     * interrupted cast never charges the caster (AGENTS.md §5).
+     */
+    private void interruptCastIfDamaged(@Nullable Player previous, @Nullable Player updated) {
+        if (previous == null || updated == null || !spellCastState.isCasting()) {
+            return;
+        }
+        if (updated.getVitals().hp() < previous.getVitals().hp()) {
+            spellCastState.interrupt();
+        }
     }
 
     public boolean isAuthenticated() {
@@ -443,7 +510,9 @@ public class PlayerSession {
      * effect ticks if active.
      */
     public void replacePlayer(Player updated) {
+        Player previous = player;
         player = updated;
+        interruptCastIfDamaged(previous, updated);
         enqueueSave(player);
         if (playerTicker.isEffectsEnabled()) {
             playerTicker.disableEffects();
@@ -509,6 +578,33 @@ public class PlayerSession {
     }
 
     /**
+     * Registers the sink that routes an externally-computed HP update (environmental hazard damage)
+     * through the shared player-update path. Typically wired to the same {@code applyHealingUpdate}
+     * callback the healing ticker uses, so hazard death reuses the standard death → corpse → respawn
+     * flow and interrupts an in-progress channeled cast with no special-case (AGENTS.md §3.3).
+     *
+     * @param sink the update sink invoked with the damaged player on the tick thread
+     */
+    public void registerHazardDamageSink(Consumer<Player> sink) {
+        this.hazardDamageSink = Objects.requireNonNull(sink, "Hazard damage sink is required");
+    }
+
+    /**
+     * Applies an environmental-hazard HP update to this session through the registered sink. No-op
+     * when no sink is registered (the player is not yet fully in the world) or the player is absent
+     * or already dead. Must be called on the tick thread (AGENTS.md §5).
+     *
+     * @param updated the player after hazard damage has been subtracted
+     */
+    public void applyHazardDamage(Player updated) {
+        Objects.requireNonNull(updated, "Updated player is required");
+        if (hazardDamageSink == null || player == null || player.isDead()) {
+            return;
+        }
+        hazardDamageSink.accept(updated);
+    }
+
+    /**
      * Enables the resting-tick stage inside the composed {@link PlayerTicker}.
      * Replaces any existing resting ticker. Typically called by the REST command.
      *
@@ -564,6 +660,8 @@ public class PlayerSession {
         if (respawnTicker.isScheduled()) {
             return;
         }
+        spellCastState.cancelSilently();
+        autoWalkState.cancel();
         abilityCooldowns.clear();
         respawnTicker.schedule();
     }
@@ -645,6 +743,8 @@ public class PlayerSession {
         clearDialogue();
         clearAway();
         clearLfg();
+        spellCastState.cancelSilently();
+        autoWalkState.cancel();
     }
 
     /**
@@ -682,6 +782,8 @@ public class PlayerSession {
      */
     public void close() {
         connected = false;
+        spellCastState.cancelSilently();
+        autoWalkState.cancel();
         if (playerTickerSubscription != null) {
             playerTickerSubscription.unsubscribe();
         }

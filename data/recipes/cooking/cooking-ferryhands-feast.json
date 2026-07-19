@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "cooking-ferryhands-feast",
+  "name": "Ferryhand's Feast",
+  "output_item": "ferryhands-feast",
+  "gold_cost": 14,
+  "min_skill": 3,
+  "materials": [
+    { "item": "deckside-mackerel", "quantity": 2 },
+    { "item": "wild-herbs", "quantity": 2 }
+  ]
+}

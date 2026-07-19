@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "silkweave-gloves",
+  "name": "Silkweave Gloves",
+  "description": "Fingerless gloves woven from spider silk, so light the wearer forgets them entirely. They leave the hands free to trace the fine gestures of a spell, and lend a subtle sharpness to the caster's focus.",
+  "attributes": {
+    "stats": {
+      "ac": 1,
+      "intellect": 1
+    }
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "hands",
+  "weight": 1,
+  "value": 45,
+  "attack_ref": null
+}

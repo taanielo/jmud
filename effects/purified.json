@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "id": "purified",
+  "name": "Purified",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "heal_per_tick",
+      "op": "add",
+      "amount": 5
+    },
+    {
+      "stat": "defense",
+      "op": "add",
+      "amount": 2
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A wave of cleansing light washes through you, burning away affliction and knitting your hurts."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "A wave of cleansing light washes over {name}, burning away affliction."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The cleansing light lingers, mending a little more of your hurt."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The cleansing light fades, its work done."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The cleansing light around {name} fades away."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is haloed in a fading wash of cleansing light."
+    }
+  ]
+}

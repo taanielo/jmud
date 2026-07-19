@@ -1,0 +1,23 @@
+{
+  "schema_version": 4,
+  "id": "bell-crypt-tollkeeper",
+  "name": "a bell-crypt tollkeeper",
+  "max_hp": 560,
+  "attack_id": "attack.bell-crypt-tollkeeper",
+  "aggressive": true,
+  "tags": ["bone", "undead", "bonelight-choir"],
+  "spawn_room_id": "bonelight-bell-crypt",
+  "max_count": 2,
+  "respawn_ticks": 70,
+  "xp_reward": 680,
+  "loot": [
+    {
+      "item_id": "resonant-bonelight-shard",
+      "drop_chance": 0.4
+    }
+  ],
+  "gold_drop": {
+    "min": 150,
+    "max": 240
+  }
+}

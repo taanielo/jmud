@@ -2,6 +2,7 @@ package io.taanielo.jmud.core.player;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -96,6 +97,90 @@ class JsonPlayerRepositoryTest {
     }
 
     @Test
+    void savesAndLoadsAuctionWatchList() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("watcher"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withAuctionWatchList(new PlayerAuctionWatchList(List.of("Sword", "Potion")));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("sword", "potion"), loaded.get().getAuctionWatches());
+        assertTrue(loaded.get().auctionWatchList().has("SWORD"));
+    }
+
+    @Test
+    void loadsPlayerWithoutAuctionWatchesFieldAsEmpty() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("nowatch"), Password.hash("pw", 1000));
+        repository.savePlayer(Player.of(user, "%hp> "));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().auctionWatchList().isEmpty());
+    }
+
+    @Test
+    void savesAndLoadsSpouse() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("romeo"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withSpouse("Juliet");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().isMarried());
+        assertEquals("Juliet", loaded.get().spouse());
+        assertEquals("Juliet", loaded.get().getSpouse());
+    }
+
+    @Test
+    void savesAndLoadsBoundRoomId() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("anchored"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withBoundRoomId("undersong-descent");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals("undersong-descent", loaded.get().boundRoomId());
+        assertEquals("undersong-descent", loaded.get().getBoundRoomId());
+    }
+
+    @Test
+    void unboundPlayerLoadsWithNoBoundRoom() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("wanderer"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertNull(loaded.get().getBoundRoomId());
+        assertNull(loaded.get().boundRoomId());
+    }
+
+    @Test
+    void unmarriedPlayerLoadsWithNoSpouse() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("single"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ");
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertFalse(loaded.get().isMarried());
+        assertNull(loaded.get().getSpouse());
+    }
+
+    @Test
     void savesAndLoadsAutoLootPreference() throws Exception {
         JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
         User user = User.of(Username.of("looter"), Password.hash("pw", 1000));
@@ -129,6 +214,79 @@ class JsonPlayerRepositoryTest {
         assertTrue(loaded.isPresent());
         assertFalse(loaded.get().isAutoLootEnabled(),
             "Player with no autoLootEnabled field should default to off");
+    }
+
+    @Test
+    void savesAndLoadsAutoAssistPreference() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("assister"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ").withAutoAssistEnabled(true);
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().isAutoAssistEnabled(), "autoassist preference should round-trip");
+
+        Path file = tempDir.resolve("players").resolve("assister.json");
+        JsonNode root = new ObjectMapper().readTree(Files.readString(file));
+        assertTrue(root.get("autoAssistEnabled").asBoolean(), "autoAssistEnabled should be persisted");
+    }
+
+    @Test
+    void loadsPlayerWithoutAutoAssistFieldAsDisabled() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("legacy"), Password.hash("pw", 1000));
+        // Mirror a legacy save that predates the autoAssistEnabled field.
+        repository.savePlayer(Player.of(user, "%hp> "));
+        Path file = tempDir.resolve("players").resolve("legacy.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("autoAssistEnabled");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertFalse(loaded.get().isAutoAssistEnabled(),
+            "Player with no autoAssistEnabled field should default to off");
+    }
+
+    @Test
+    void savesAndLoadsVaultTier() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("hoarder"), Password.hash("pw", 1000));
+        Player base = Player.of(user, "%hp> ");
+        Player player = base.withVault(base.vault().withCapacityTier(2));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(2, loaded.get().vault().capacityTier(), "vault tier should round-trip");
+
+        Path file = tempDir.resolve("players").resolve("hoarder.json");
+        JsonNode root = new ObjectMapper().readTree(Files.readString(file));
+        assertEquals(2, root.get("vaultTier").asInt(), "vaultTier should be persisted");
+    }
+
+    @Test
+    void loadsPlayerWithoutVaultTierFieldAsTierZero() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("legacy"), Password.hash("pw", 1000));
+        // Mirror a legacy save that predates the vaultTier field.
+        repository.savePlayer(Player.of(user, "%hp> "));
+        Path file = tempDir.resolve("players").resolve("legacy.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("vaultTier");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(0, loaded.get().vault().capacityTier(),
+            "Player with no vaultTier field should default to tier 0");
     }
 
     @Test
@@ -224,6 +382,48 @@ class JsonPlayerRepositoryTest {
             "The companion template id round-trips");
         assertEquals(List.of("Fluffy"), loaded.get().getTamedPetNames(),
             "The companion custom name round-trips");
+    }
+
+    @Test
+    void savesAndLoadsTamedCompanionCustomDescription() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("beastmaster"), Password.hash("pw", 1000));
+        Player player = Player.of(user, "%hp> ")
+            .withTamedPets(PlayerPets.empty()
+                .tame("wolf")
+                .withName("wolf", null, "Fluffy")
+                .withDescription("wolf", "Fluffy", "A shaggy grey wolf with one torn ear."));
+
+        repository.savePlayer(player);
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("Fluffy"), loaded.get().getTamedPetNames(),
+            "The companion custom name round-trips alongside the description");
+        assertEquals(List.of("A shaggy grey wolf with one torn ear."),
+            loaded.get().getTamedPetDescriptions(),
+            "The companion custom description round-trips");
+    }
+
+    @Test
+    void loadsLegacyTamedPetsWithoutDescriptionsAsUndescribed() throws Exception {
+        JsonPlayerRepository repository = new JsonPlayerRepository(tempDir);
+        User user = User.of(Username.of("elder"), Password.hash("pw", 1000));
+        repository.savePlayer(Player.of(user, "%hp> ")
+            .withTamedPets(PlayerPets.empty().tame("wolf").withName("wolf", null, "Fluffy")));
+        Path file = tempDir.resolve("players").resolve("elder.json");
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(Files.readString(file));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) root).remove("tamedPetDescriptions");
+        Files.writeString(file, mapper.writeValueAsString(root));
+
+        Optional<Player> loaded = repository.loadPlayer(user.getUsername());
+
+        assertTrue(loaded.isPresent());
+        assertEquals(List.of("Fluffy"), loaded.get().getTamedPetNames(),
+            "A legacy named companion still loads");
+        assertTrue(loaded.get().pets().entries().get(0).description().isEmpty(),
+            "A legacy companion with no description field loads as undescribed");
     }
 
     @Test

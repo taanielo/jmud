@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "tailoring-silkweave-robe",
+  "name": "Silkweave Robe",
+  "output_item": "silkweave-robe",
+  "gold_cost": 60,
+  "min_skill": 2,
+  "materials": [
+    { "item": "spider-silk", "quantity": 4 },
+    { "item": "grave-linen", "quantity": 1 }
+  ]
+}

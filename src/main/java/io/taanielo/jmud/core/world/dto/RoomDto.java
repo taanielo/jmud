@@ -15,8 +15,9 @@ import org.jspecify.annotations.Nullable;
  * optional {@code isOutdoor} (serialized as {@code is_outdoor}) boolean flag; version 8 adds the
  * optional {@code ambientMessages} (serialized as {@code ambient_messages}) array of flavour lines;
  * version 9 adds the optional {@code hiddenExits} (serialized as {@code hidden_exits}) map of secret
- * exits, hidden from the exit listing until discovered via SEARCH.
- * Version 1, 2, 3, 4, 5, 6, 7, and 8 files are still accepted.
+ * exits, hidden from the exit listing until discovered via SEARCH; version 10 adds the optional
+ * {@code hazard} (serialized as {@code hazard}) standing environmental hazard block.
+ * Version 1, 2, 3, 4, 5, 6, 7, 8, and 9 files are still accepted.
  */
 public record RoomDto(
     int schemaVersion,
@@ -31,6 +32,7 @@ public record RoomDto(
     @Nullable Integer lightLevel,
     @JsonProperty("is_outdoor") @Nullable Boolean isOutdoor,
     @JsonProperty("ambient_messages") @Nullable List<String> ambientMessages,
-    @JsonProperty("hidden_exits") @Nullable Map<String, String> hiddenExits
+    @JsonProperty("hidden_exits") @Nullable Map<String, String> hiddenExits,
+    @Nullable RoomHazardDto hazard
 ) {
 }

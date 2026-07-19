@@ -26,9 +26,14 @@ public class SellCommand extends RegistrableCommand {
     public String longDescription() {
         return """
                Usage: SELL <item name>
+                      SELL ALL [keyword]
                  Sells the named item from your inventory to the shopkeeper for a fraction
                  of its base value (typically 50%). The item is removed from your inventory
-                 and you receive gold in return.\
+                 and you receive gold in return.
+                 SELL ALL sells every item in your inventory in one command, reporting the
+                 number sold and total gold earned. SELL ALL <keyword> only sells inventory
+                 items whose name contains the keyword, so you can dump junk while keeping
+                 quest items and reagents. Equipped gear is never sold.\
                """;
     }
 
@@ -39,6 +44,11 @@ public class SellCommand extends RegistrableCommand {
             return Optional.empty();
         }
         String args = parts[1];
+        String[] argParts = SocketCommandParsing.splitInput(args);
+        if ("ALL".equalsIgnoreCase(argParts[0])) {
+            String keyword = argParts[1].isBlank() ? null : argParts[1].trim();
+            return Optional.of(new SocketCommandMatch(this, context -> context.sellAllToShop(keyword)));
+        }
         return Optional.of(new SocketCommandMatch(this, context -> context.sellToShop(args)));
     }
 }

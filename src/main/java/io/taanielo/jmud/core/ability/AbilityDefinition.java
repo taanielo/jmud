@@ -12,10 +12,30 @@ public class AbilityDefinition implements Ability {
     private final int level;
     private final AbilityCost cost;
     private final AbilityCooldown cooldown;
+    private final int castTimeTicks;
     private final AbilityTargeting targeting;
     private final List<String> aliases;
     private final List<AbilityEffect> effects;
     private final List<MessageSpec> messages;
+
+    /**
+     * Creates an instant (non-channeled) ability. Equivalent to the full constructor with a
+     * {@code castTimeTicks} of {@code 0}; retained so the many existing call sites need no change.
+     */
+    public AbilityDefinition(
+        AbilityId id,
+        String name,
+        AbilityType type,
+        int level,
+        AbilityCost cost,
+        AbilityCooldown cooldown,
+        AbilityTargeting targeting,
+        List<String> aliases,
+        List<AbilityEffect> effects,
+        List<MessageSpec> messages
+    ) {
+        this(id, name, type, level, cost, cooldown, 0, targeting, aliases, effects, messages);
+    }
 
     public AbilityDefinition(
         AbilityId id,
@@ -24,6 +44,7 @@ public class AbilityDefinition implements Ability {
         int level,
         AbilityCost cost,
         AbilityCooldown cooldown,
+        int castTimeTicks,
         AbilityTargeting targeting,
         List<String> aliases,
         List<AbilityEffect> effects,
@@ -38,6 +59,10 @@ public class AbilityDefinition implements Ability {
         this.level = level;
         this.cost = Objects.requireNonNull(cost, "Ability cost is required");
         this.cooldown = Objects.requireNonNull(cooldown, "Ability cooldown is required");
+        if (castTimeTicks < 0) {
+            throw new IllegalArgumentException("Ability cast time must not be negative");
+        }
+        this.castTimeTicks = castTimeTicks;
         this.targeting = Objects.requireNonNull(targeting, "Ability targeting is required");
         this.aliases = List.copyOf(Objects.requireNonNullElse(aliases, List.of()));
         this.effects = List.copyOf(Objects.requireNonNullElse(effects, List.of()));
@@ -78,6 +103,11 @@ public class AbilityDefinition implements Ability {
     @Override
     public AbilityCooldown cooldown() {
         return cooldown;
+    }
+
+    @Override
+    public int castTimeTicks() {
+        return castTimeTicks;
     }
 
     @Override
