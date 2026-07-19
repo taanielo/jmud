@@ -135,6 +135,12 @@ public class GameActionService {
      */
     private final MobLocatorPort mobLocatorPort;
     /**
+     * The single canonical death resolver (issue #805). Death handling (corpse drop, newbie grace,
+     * respawn-room messaging) lives here so every death path shares one implementation; this service
+     * delegates {@link #resolveDeathIfNeeded} to it rather than duplicating the logic.
+     */
+    private final PlayerDeathService playerDeathService;
+    /**
      * Registry of consensual player-vs-player duels. Defaults to a private, unshared instance so
      * tests and non-duel code paths work without extra wiring; the composition root replaces it via
      * {@link #setDuelService(DuelService)} with the single shared instance used across all sessions.
@@ -464,6 +470,7 @@ public class GameActionService {
         this.combatDisengage = Objects.requireNonNull(combatDisengage, "Combat disengage callback is required");
         this.npcStealPort = Objects.requireNonNull(npcStealPort, "NPC steal port is required");
         this.mobLocatorPort = Objects.requireNonNull(mobLocatorPort, "Mob locator port is required");
+        this.playerDeathService = new PlayerDeathService(this.roomService);
     }
 
     /**
@@ -3082,115 +3089,16 @@ public class GameActionService {
     /**
      * Checks whether a player should die and resolves death if so.
      *
-     * <p>If the target's HP is zero or below and not already dead, this method
-     * kills the target, spawns a corpse, clears their location, and produces
-     * death messages.
+     * <p>Delegates to the shared {@link PlayerDeathService} so this path produces exactly the same
+     * corpse-drop, newbie-grace, respawn-room, and player-facing messaging as every other death path,
+     * including a mob's own AI-driven kill (issue #805).
      *
      * @param target the player to check
      * @param attacker the attacker, or null for environmental deaths
      * @return result with the (possibly dead) target and death messages
      */
     public GameActionResult resolveDeathIfNeeded(Player target, Player attacker) {
-        Objects.requireNonNull(target, "Target is required");
-        if (target.getVitals().hp() > 0) {
-            return new GameActionResult(null, target, List.of());
-        }
-        if (target.isDead() && roomService.findPlayerLocation(target.getUsername()).isEmpty()) {
-            return new GameActionResult(null, target, List.of());
-        }
-        RoomService.LookResult look = roomService.look(target.getUsername());
-        Room room = look.room();
-
-        // Newbie death grace: low-level characters keep all gold and items instead of dropping a
-        // corpse, sparing them the corpse-run death spiral (see issue #520). At or above the grace
-        // level the classic corpse-drop behaviour applies.
-        boolean graceProtected = DeathSettings.isGraceProtected(target.getLevel());
-        boolean corpseSpawned = false;
-        Player deadTarget;
-        if (graceProtected) {
-            deadTarget = target.die();
-        } else {
-            int droppedGold = target.getGold();
-            deadTarget = target.withGold(0).die();
-            if (room != null) {
-                roomService.spawnCorpse(deadTarget.getUsername(), room.getId(), droppedGold);
-                corpseSpawned = true;
-            }
-        }
-
-        List<GameMessage> messages = buildDeathMessages(attacker, deadTarget, graceProtected, corpseSpawned, room);
-
-        roomService.clearPlayerLocation(deadTarget.getUsername());
-
-        return new GameActionResult(null, deadTarget, messages);
-    }
-
-    private List<GameMessage> buildDeathMessages(
-            Player attacker, Player deadTarget, boolean graceProtected, boolean corpseSpawned, Room room) {
-        List<GameMessage> messages = new ArrayList<>();
-        String targetName = deadTarget.getUsername().getValue();
-
-        messages.add(GameMessage.toPlayer(deadTarget.getUsername(), "You have died."));
-        messages.add(GameMessage.toPlayer(
-            deadTarget.getUsername(),
-            "You will awaken in " + resolveRespawnRoomName(deadTarget) + "."));
-        if (graceProtected) {
-            messages.add(GameMessage.toPlayer(
-                deadTarget.getUsername(),
-                "You keep your belongings this time - newbie grace ends at level "
-                    + DeathSettings.graceLevel() + "."));
-        } else if (corpseSpawned) {
-            String where = room != null ? room.getName() : "where you fell";
-            messages.add(GameMessage.toPlayer(
-                deadTarget.getUsername(),
-                "Your corpse lies in " + where + ", holding your gold and items. "
-                    + "Type CORPSE to be walked back to it before it decays."));
-        }
-
-        if (attacker == null) {
-            messages.add(GameMessage.toRoom(
-                deadTarget.getUsername(), deadTarget.getUsername(),
-                targetName + " has died."));
-            return messages;
-        }
-
-        if (!attacker.getUsername().equals(deadTarget.getUsername())) {
-            messages.add(GameMessage.toPlayer(
-                attacker.getUsername(),
-                "You have slain " + targetName + "."));
-        }
-
-        String roomMessage = attacker.getUsername().equals(deadTarget.getUsername())
-            ? targetName + " has died."
-            : targetName + " has been slain by " + attacker.getUsername().getValue() + "!";
-        messages.add(GameMessage.toRoom(
-            attacker.getUsername(), deadTarget.getUsername(),
-            roomMessage));
-
-        return messages;
-    }
-
-    /**
-     * Resolves the display name of the room the dying player will actually respawn in, so the death
-     * message and the respawn mechanic ({@link io.taanielo.jmud.core.player.PlayerRespawnTicker}) agree
-     * on the destination. A player with a {@code BIND}-anchored respawn point ({@link Player#boundRoomId()},
-     * issue #659) is told the bound room's real name; an unbound player falls back to the default
-     * Training Yard's real display name. Never leaks a raw room id.
-     *
-     * @param deadTarget the player who just died
-     * @return the human-readable name of the room they will awaken in
-     */
-    private String resolveRespawnRoomName(Player deadTarget) {
-        RoomId boundRoom = boundRoomIdOf(deadTarget);
-        if (boundRoom != null) {
-            Optional<Room> resolved = roomService.findRoom(boundRoom);
-            if (resolved.isPresent()) {
-                return resolved.get().getName();
-            }
-        }
-        return roomService.findRoom(RoomId.of(DeathSettings.RESPAWN_ROOM_ID))
-            .map(Room::getName)
-            .orElse(DeathSettings.RESPAWN_ROOM_ID);
+        return playerDeathService.resolveDeathIfNeeded(target, attacker);
     }
 
     private AttackId resolveAttackId(Player attacker) {
