@@ -262,8 +262,8 @@ unrecognized, killed by aggressive spiders one room from spawn)._
 
 | Journey | No unavoidable death | Commands discoverable | Signposting to next step | Counters obtainable | Scripted playthrough |
 |---|---|---|---|---|---|
-| First session (creation → first kill) | 🔨 ✅ #778 (Dark Burrow giant spiders non-aggressive, spider poison 40→20%) · ✅ #779 (aggressive riftspawn-mauler world boss relocated off the Hunter's Clearing quest hub to the Collapsed Tower deep in the Broken Ruins) | 🔨 #777 #782 | 🔨 #780 | 🔨 #783 | ❌ |
-| Levels 1–5 (starter area) | 🔨 ✅ #778 (Dark Burrow giant spiders non-aggressive, spider poison 40→20%) · ✅ #779 (aggressive riftspawn-mauler world boss relocated off the Hunter's Clearing quest hub to the Collapsed Tower deep in the Broken Ruins) | 🔨 #777 | 🔨 #780 (quest-chain ramp: ❌ no issue) | 🔨 #783 | ❌ |
+| First session (creation → first kill) | 🔨 ✅ #778 (Dark Burrow giant spiders non-aggressive, spider poison 40→20%) · ✅ #779 (aggressive riftspawn-mauler world boss relocated off the Hunter's Clearing quest hub to the Collapsed Tower deep in the Broken Ruins) | 🔨 #777 #782 | 🔨 ✅ #780 (courtyard rewritten to point newcomers west to the Training Yard and paint the east archway ominous; courtyard + muddy-hollow gain ambient spider-mandible cues so the Dark Burrow danger is audible one room early; darkwood-trail/tangled-undergrowth foreshadow the deep forest as veteran ground) | 🔨 #783 | ❌ |
+| Levels 1–5 (starter area) | 🔨 ✅ #778 (Dark Burrow giant spiders non-aggressive, spider poison 40→20%) · ✅ #779 (aggressive riftspawn-mauler world boss relocated off the Hunter's Clearing quest hub to the Collapsed Tower deep in the Broken Ruins) | 🔨 #777 | 🔨 ✅ #780 (courtyard/darkwood-trail/tangled-undergrowth descriptions + courtyard/muddy-hollow ambient cues telegraph starter-area danger before the exits; quest-chain ramp still ❌ no issue) | 🔨 #783 | ❌ |
 | First death & recovery | ✅ #520 (grace) | ❌ (death/respawn/CORPSE never explained in-game) | — | — | ❌ |
 
 ## Systems

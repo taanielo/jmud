@@ -2,7 +2,7 @@
   "schema_version": 8,
   "id": "tangled-undergrowth",
   "name": "Tangled Undergrowth",
-  "description": "Thick briars snag your boots. Something moves in the darkness.",
+  "description": "Thick briars snag your boots and the canopy strangles what little light remains. Something large moves in the darkness ahead, deeper than any newcomer should wander alone. Only the south path, back the way you came, offers a certain return.",
   "item_ids": [],
   "exits": {
     "south": "darkwood-trail",
