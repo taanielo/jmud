@@ -1,0 +1,15 @@
+{
+  "schema_version": 3,
+  "id": "training-sword",
+  "name": "Training Sword",
+  "description": "A blunt-edged practice sword of cheap iron, dinged from the drill yard. It is meant for learning the basics, not for selling.",
+  "attributes": {
+    "stats": {}
+  },
+  "effects": [],
+  "messages": [],
+  "equip_slot": "weapon",
+  "weight": 4,
+  "value": 2,
+  "attack_ref": "attack.training-sword"
+}
