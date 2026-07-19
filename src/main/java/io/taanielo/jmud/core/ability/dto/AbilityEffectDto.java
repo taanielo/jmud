@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.ability.dto;
 import io.taanielo.jmud.core.ability.AbilityEffectKind;
 import io.taanielo.jmud.core.ability.AbilityOperation;
 import io.taanielo.jmud.core.ability.AbilityStat;
+import io.taanielo.jmud.core.effects.ControlType;
 
 public record AbilityEffectDto(
     AbilityEffectKind kind,
@@ -10,6 +11,7 @@ public record AbilityEffectDto(
     AbilityOperation operation,
     Integer amount,
     String effectId,
-    String damageType
+    String damageType,
+    ControlType control
 ) {
 }

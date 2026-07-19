@@ -24,7 +24,8 @@ public class AbilityMapper {
                 effect.operation(),
                 effect.amount(),
                 effect.effectId(),
-                effect.damageType()
+                effect.damageType(),
+                effect.control()
             ))
             .toList();
         return new AbilityDto(
@@ -104,7 +105,9 @@ public class AbilityMapper {
             null,
             null,
             0,
-            dto.effectId()
+            dto.effectId(),
+            null,
+            dto.control()
         );
     }
 }

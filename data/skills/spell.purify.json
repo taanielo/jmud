@@ -16,6 +16,18 @@
     {
       "kind": "EFFECT",
       "effect_id": "purified"
+    },
+    {
+      "kind": "CURE",
+      "control": "ROOT"
+    },
+    {
+      "kind": "CURE",
+      "control": "SILENCE"
+    },
+    {
+      "kind": "CURE",
+      "control": "STUN"
     }
   ],
   "messages": [

@@ -52,7 +52,7 @@ class AbilityCastTimeTest {
             AbilityTargeting.HARMFUL,
             List.of(),
             List.of(new AbilityEffectDto(
-                AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 6, null, "FIRE")),
+                AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 6, null, "FIRE", null)),
             List.of());
         Ability ability = mapper.toDomain(dto);
         assertEquals(0, ability.castTimeTicks(), "absent cast_time_ticks must default to instant");
@@ -72,7 +72,7 @@ class AbilityCastTimeTest {
             AbilityTargeting.AoE,
             List.of(),
             List.of(new AbilityEffectDto(
-                AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 12, null, null)),
+                AbilityEffectKind.VITALS, AbilityStat.HP, AbilityOperation.DECREASE, 12, null, null, null)),
             List.of());
         Ability ability = mapper.toDomain(dto);
         assertEquals(3, ability.castTimeTicks());
