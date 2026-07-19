@@ -262,8 +262,8 @@ unrecognized, killed by aggressive spiders one room from spawn)._
 
 | Journey | No unavoidable death | Commands discoverable | Signposting to next step | Counters obtainable | Scripted playthrough |
 |---|---|---|---|---|---|
-| First session (creation → first kill) | 🔨 #778 #779 | 🔨 #777 #782 | 🔨 #780 | 🔨 #783 | ❌ |
-| Levels 1–5 (starter area) | 🔨 #778 #779 | 🔨 #777 | 🔨 #780 (quest-chain ramp: ❌ no issue) | 🔨 #783 | ❌ |
+| First session (creation → first kill) | 🔨 ✅ #778 (Dark Burrow giant spiders non-aggressive, spider poison 40→20%) · #779 | 🔨 #777 #782 | 🔨 #780 | 🔨 #783 | ❌ |
+| Levels 1–5 (starter area) | 🔨 ✅ #778 (Dark Burrow giant spiders non-aggressive, spider poison 40→20%) · #779 | 🔨 #777 | 🔨 #780 (quest-chain ramp: ❌ no issue) | 🔨 #783 | ❌ |
 | First death & recovery | ✅ #520 (grace) | ❌ (death/respawn/CORPSE never explained in-game) | — | — | ❌ |
 
 ## Systems
