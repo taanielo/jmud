@@ -53,7 +53,10 @@ import io.taanielo.jmud.core.combat.flavor.DamageVerb;
 import io.taanielo.jmud.core.combat.flavor.DamageVerbTable;
 import io.taanielo.jmud.core.combat.flavor.TargetConditionTable;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.effects.ControlType;
+import io.taanielo.jmud.core.effects.EffectDefinition;
 import io.taanielo.jmud.core.effects.EffectEngine;
+import io.taanielo.jmud.core.effects.EffectId;
 import io.taanielo.jmud.core.effects.EffectMessageSink;
 import io.taanielo.jmud.core.effects.EffectRepositoryException;
 import io.taanielo.jmud.core.faction.Faction;
@@ -2388,8 +2391,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
      * Returns the damage a harmful ability deals to a mob target: the sum of its HP-decreasing
      * {@link io.taanielo.jmud.core.ability.AbilityEffectKind#VITALS} effects. Shared by the
      * area-of-effect ({@link #processPlayerAoeSpell}) and single-target
-     * ({@link #processPlayerSingleTargetAbility}) mob paths. Non-damage effects (status effects,
-     * cures) are ignored on the mob path, which has no persistent effect model.
+     * ({@link #processPlayerSingleTargetAbility}) mob paths. Non-damage effects contribute no damage
+     * here; the mob path has no persistent stat-modifier effect model, but a control-classified effect
+     * still lands its mechanical lockout on a mob via {@link #applyAbilityControlToMob} (issue #763).
      *
      * @param ability the harmful ability
      * @return the damage (zero when the ability defines no HP-decrease effect)
@@ -2663,9 +2667,69 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             updated = applyMobKillRewards(mob, updated, roomId, messages);
             return new GameActionResult(updated, null, messages);
         }
+        // Land any crowd-control lockout the ability carries (root/silence/stun) on the surviving mob,
+        // mirroring what the same effect does to a player in PvP (issue #763). Only the mechanical
+        // lockout is applied — the effect's flat stat modifiers are deliberately not carried to mobs.
+        applyAbilityControlToMob(ability, mob, caster.getUsername(), roomId, messages);
         mob.engage(caster.getUsername());
         playerCombatTargets.put(caster.getUsername(), mob.instanceId());
         return new GameActionResult(updated, null, messages);
+    }
+
+    /**
+     * Applies to a live mob any crowd-control lockout named by a harmful ability's {@code EFFECT}
+     * effects (issue #763). For each such effect whose authored {@link EffectDefinition#control()}
+     * classification is present, the mob is locked down for the effect's
+     * {@link EffectDefinition#durationTicks() duration} via {@link MobInstance#applyControl}, and a
+     * short self/room line narrates the lockout landing so a party can see it and coordinate. Reuses
+     * the same authored {@code control} data the player effect path reads (via {@link EffectEngine});
+     * a no-op when no effect engine is wired, the ability carries no control effect, or the named
+     * effect is unclassified. Runs on the tick thread (AGENTS.md §5).
+     *
+     * @param ability  the resolved harmful ability that just landed
+     * @param mob      the surviving target mob to lock down
+     * @param caster   the casting player, excluded from the room broadcast (they get the self line)
+     * @param roomId   the mob's room, whose other players see the lockout land
+     * @param messages the mutable self-facing message list to append the lockout notice to
+     */
+    private void applyAbilityControlToMob(
+        Ability ability, MobInstance mob, Username caster, RoomId roomId, List<GameMessage> messages) {
+        if (effectEngine == null) {
+            return;
+        }
+        for (AbilityEffect effect : ability.effects()) {
+            if (effect.kind() != AbilityEffectKind.EFFECT) {
+                continue;
+            }
+            EffectDefinition definition;
+            try {
+                definition = effectEngine.definition(EffectId.of(effect.effectId())).orElse(null);
+            } catch (EffectRepositoryException e) {
+                log.warn("Failed to resolve control effect {}: {}", effect.effectId(), e.getMessage());
+                continue;
+            }
+            if (definition == null) {
+                continue;
+            }
+            Optional<ControlType> control = definition.control();
+            if (control.isEmpty() || definition.durationTicks() <= 0) {
+                continue;
+            }
+            ControlType type = control.get();
+            mob.applyControl(type, definition.durationTicks());
+            String mobName = mob.template().name();
+            messages.add(GameMessage.toSource(
+                "The " + mobName + " is " + type.descriptor() + "!"));
+            String roomLine = "The " + mobName + " is " + type.descriptor() + "!";
+            for (Username occupant : roomService.getPlayersInRoom(roomId)) {
+                if (occupant.equals(caster)) {
+                    continue;
+                }
+                playerEventBus.publish(occupant,
+                    new GameActionResult(null, null, List.of(GameMessage.toSource(roomLine))));
+            }
+            return;
+        }
     }
 
     /**
@@ -3652,6 +3716,19 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             advancePendingTelegraph(mob);
             return;
         }
+        // Snapshot any player-cast crowd-control lockout (issue #763) before consuming one AI decision
+        // of its duration. STUN removes the mob's action entirely this tick — mirroring the telegraph
+        // early-return above and a stunned player losing their turn — so it short-circuits before any
+        // targeting, flee, heal, or enrage advance and the mob never double-acts. ROOT and SILENCE let
+        // the mob keep acting but are honoured further down (flee suppressed for ROOT, special
+        // suppressed for SILENCE). The tick happens here, once, regardless of which control is active.
+        boolean rooted = mob.isRooted();
+        boolean silenced = mob.isSilenced();
+        boolean stunned = mob.isStunned();
+        mob.tickControl();
+        if (stunned) {
+            return;
+        }
         List<Username> candidates;
         Set<Username> engaged = mob.engagedPlayers();
         boolean packJoin = false;
@@ -3671,8 +3748,9 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             return;
         }
         // Before committing to an attack (and before TAUNT target selection, so an active taunter
-        // cannot pin a cornered mob), give a badly wounded mob a chance to break off and flee.
-        if (tryMobFlee(mob)) {
+        // cannot pin a cornered mob), give a badly wounded mob a chance to break off and flee — unless
+        // it is rooted (issue #763), which suppresses the #567 low-HP flee so it fights on in place.
+        if (!rooted && tryMobFlee(mob)) {
             return;
         }
         // A healer-tagged mob spends this decision mending a wounded ally instead of attacking
@@ -3712,9 +3790,14 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (!firstEngagement && mob.advanceEnrage()) {
             announceEnrage(mob);
         }
+        // A silenced mob (issue #763) is barred from voicing its signature spell: force its basic
+        // attack regardless of specialAttackId/specialAbilityUsed, mirroring how silence blocks a
+        // player's CAST while leaving melee untouched. The special is not consumed, so it becomes
+        // available again once the silence expires.
         boolean useSpecial = mob.template().specialAttackId() != null
             && !mob.specialAbilityUsed()
-            && firstEngagement;
+            && firstEngagement
+            && !silenced;
         AttackDefinition attack = loadAttack(
             useSpecial ? mob.template().specialAttackId() : mob.template().attackId());
         if (attack == null) {

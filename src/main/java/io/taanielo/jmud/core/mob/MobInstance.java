@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackId;
+import io.taanielo.jmud.core.effects.ControlType;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.TimeOfDay;
 
@@ -106,6 +107,25 @@ public class MobInstance {
      * {@link #specialAbilityUsed}.
      */
     private final AtomicBoolean enraged = new AtomicBoolean(false);
+    /**
+     * The crowd-control lockout a player has landed on this mob this encounter (issue #763), or
+     * {@code null} when the mob is uncontrolled. Paired with {@link #controlTicksRemaining}: the
+     * lockout is only in force while the counter is positive. A {@link ControlType#STUN} suppresses
+     * the mob's whole AI decision, {@link ControlType#ROOT} suppresses only its flee, and
+     * {@link ControlType#SILENCE} suppresses only its special attack — mirroring what the same effect
+     * forbids a player in PvP. Only the mechanical lockout is modelled here; an effect's flat stat
+     * modifiers are deliberately not applied to mobs. Written on the tick thread via
+     * {@link #applyControl(ControlType, int)} and decremented once per AI decision via
+     * {@link #tickControl()}; cleared on disengage/respawn like the other transient encounter fields.
+     * Transient, server-only state that never touches player saves.
+     */
+    private final AtomicReference<ControlType> control = new AtomicReference<>();
+    /**
+     * Remaining AI decisions the active {@link #control} lockout holds, or {@code 0} when the mob is
+     * uncontrolled. Decremented on the tick thread via {@link #tickControl()}; when it reaches zero the
+     * lockout expires and the mob resumes normal behaviour.
+     */
+    private final AtomicInteger controlTicksRemaining = new AtomicInteger(0);
     /** Mutable live location; confined to tick thread for writes, safe to read from any thread. */
     private volatile RoomId currentRoomId;
     /**
@@ -359,6 +379,7 @@ public class MobInstance {
             clearTaunt();
             clearTelegraph();
             clearEnrage();
+            clearControl();
         }
     }
 
@@ -556,6 +577,80 @@ public class MobInstance {
     }
 
     /**
+     * Locks this mob down under a player-cast crowd-control effect for {@code durationTicks} AI
+     * decisions (issue #763), mirroring what the same {@link ControlType} already does to a player in
+     * PvP. A fresh control fully replaces any previous one (the newest lockout wins). Only the
+     * mechanical lockout is applied — the effect's flat stat modifiers are deliberately not carried to
+     * mobs. Must only be called from the tick thread via {@link MobRegistry}.
+     *
+     * @param type          the control classification to impose (root, silence, or stun)
+     * @param durationTicks how many AI decisions the lockout holds; must be positive
+     */
+    public void applyControl(ControlType type, int durationTicks) {
+        Objects.requireNonNull(type, "Control type is required");
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException("Control duration must be positive");
+        }
+        this.control.set(type);
+        this.controlTicksRemaining.set(durationTicks);
+    }
+
+    /**
+     * Returns the crowd-control lockout currently in force on this mob, or {@code null} when it is
+     * uncontrolled (never applied, expired, or cleared on disengage/respawn). Safe to read from any
+     * thread.
+     *
+     * @return the active control type, or {@code null}
+     */
+    @Nullable
+    public ControlType activeControl() {
+        return controlTicksRemaining.get() > 0 ? control.get() : null;
+    }
+
+    /**
+     * Returns whether this mob is currently stunned, i.e. fully incapacitated for its AI decision.
+     *
+     * @return {@code true} while a {@link ControlType#STUN} lockout is in force
+     */
+    public boolean isStunned() {
+        return activeControl() == ControlType.STUN;
+    }
+
+    /**
+     * Returns whether this mob is currently rooted, i.e. unable to flee.
+     *
+     * @return {@code true} while a {@link ControlType#ROOT} lockout is in force
+     */
+    public boolean isRooted() {
+        return activeControl() == ControlType.ROOT;
+    }
+
+    /**
+     * Returns whether this mob is currently silenced, i.e. barred from firing its special attack.
+     *
+     * @return {@code true} while a {@link ControlType#SILENCE} lockout is in force
+     */
+    public boolean isSilenced() {
+        return activeControl() == ControlType.SILENCE;
+    }
+
+    /**
+     * Consumes one AI decision from an active control lockout, expiring it (and clearing the control
+     * type) when the remaining count reaches zero. A no-op when no control is active. Must only be
+     * called from the tick thread, once per AI decision.
+     */
+    public void tickControl() {
+        if (controlTicksRemaining.get() > 0 && controlTicksRemaining.decrementAndGet() <= 0) {
+            clearControl();
+        }
+    }
+
+    private void clearControl() {
+        control.set(null);
+        controlTicksRemaining.set(0);
+    }
+
+    /**
      * Returns whether this mob is a temporary summoned pet (as opposed to an ordinary world mob).
      *
      * @return {@code true} when this instance was created via {@link #summoned}
@@ -720,6 +815,7 @@ public class MobInstance {
         clearTaunt();
         clearTelegraph();
         clearEnrage();
+        clearControl();
         currentRoomId = template.spawnRoomId();
     }
 }
