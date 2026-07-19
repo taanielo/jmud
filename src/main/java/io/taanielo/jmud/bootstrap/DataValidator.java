@@ -74,7 +74,7 @@ public final class DataValidator {
      * validated. Directories that do not exist are silently skipped.
      */
     private static final List<String> DATA_DOMAINS = List.of(
-        "rooms", "items", "mobs", "attacks", "skills", "classes",
+        "rooms", "items", "item-sets", "mobs", "attacks", "skills", "classes",
         "races", "shops", "quests", "banks", "users", "characters", "factions", "areas"
     );
 

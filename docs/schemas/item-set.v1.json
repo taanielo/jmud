@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jmud:item-set:v1",
+  "title": "Item Set (v1)",
+  "$comment": "An item set groups matching gear pieces that grant stacking additive stat bonuses once enough of them are worn. One file per set under data/item-sets/. Bonuses are computed live from currently-equipped items every stat read and are never persisted, so no Player schema change is involved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "pieces",
+    "thresholds"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Unique id of the set, matched against the 'set_id' field of member items."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable display name shown in EQUIPMENT, SCORE and EXAMINE (e.g. \"Wayfarer's Leathers\")."
+    },
+    "pieces": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "description": "Ordered ids of the items that make up the set (2-5 pieces across different equip slots). Every id must resolve to a schema-valid, independently obtainable equippable item.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "thresholds": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One or more '{ pieces_required, stats }' thresholds. Every threshold whose pieces_required is met by the number of worn set pieces contributes its stats additively (thresholds stack).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pieces_required",
+          "stats"
+        ],
+        "properties": {
+          "pieces_required": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "Number of worn set pieces at or above which this threshold's stats apply."
+          },
+          "stats": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Additive stat bonuses (e.g. { \"ac\": 2 }) granted while this threshold is met, layered on top of each piece's own attributes.stats."
+          }
+        }
+      }
+    }
+  }
+}

@@ -49,9 +49,13 @@ import io.taanielo.jmud.core.shop.StockEntry;
 import io.taanielo.jmud.core.world.Item;
 import io.taanielo.jmud.core.world.ItemAttributes;
 import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.ItemSet;
+import io.taanielo.jmud.core.world.ItemSetId;
+import io.taanielo.jmud.core.world.ItemSetThreshold;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.repository.ItemCatalog;
+import io.taanielo.jmud.core.world.repository.ItemSetRepository;
 import io.taanielo.jmud.core.world.repository.RoomCatalog;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
@@ -86,7 +90,8 @@ class ContentCompletenessCheckerTest {
             new io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository(DATA_ROOT),
             new io.taanielo.jmud.core.creation.json.JsonNewbieKitRepository(DATA_ROOT),
             new io.taanielo.jmud.core.salvage.repository.json.JsonSalvageTierRepository(DATA_ROOT),
-            new io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository(DATA_ROOT));
+            new io.taanielo.jmud.core.faction.repository.json.JsonFactionRepository(DATA_ROOT),
+            new io.taanielo.jmud.core.world.repository.json.JsonItemSetRepository(DATA_ROOT));
 
         List<String> problems = checker.check();
 
@@ -118,6 +123,34 @@ class ContentCompletenessCheckerTest {
 
         assertTrue(problems.stream().anyMatch(p -> p.contains("gem") && p.contains("not obtainable")),
             "expected an unobtainable-item problem, got: " + problems);
+    }
+
+    @Test
+    void reportsItemSetWithUnknownPiece() {
+        Fixture f = baseline();
+        f.itemSets.add(new ItemSet(ItemSetId.of("test-set"), "Test Set",
+            List.of(ItemId.of("sword"), ItemId.of("ghost-piece")),
+            List.of(new ItemSetThreshold(2, Map.of("ac", 2)))));
+
+        List<String> problems = check(f);
+
+        assertTrue(problems.stream().anyMatch(p -> p.contains("ghost-piece") && p.contains("not a known item")),
+            "expected an unknown-set-piece problem, got: " + problems);
+    }
+
+    @Test
+    void reportsItemSetWithUnobtainablePiece() {
+        Fixture f = baseline();
+        f.items.add(item("cloak")); // exists but sold/looted nowhere
+        f.itemSets.add(new ItemSet(ItemSetId.of("cloak-set"), "Cloak Set",
+            List.of(ItemId.of("sword"), ItemId.of("cloak")),
+            List.of(new ItemSetThreshold(2, Map.of("ac", 2)))));
+
+        List<String> problems = check(f);
+
+        assertTrue(problems.stream().anyMatch(p -> p.contains("Item set") && p.contains("cloak")
+                && p.contains("not obtainable")),
+            "expected an unobtainable-set-piece problem, got: " + problems);
     }
 
     @Test
@@ -170,7 +203,8 @@ class ContentCompletenessCheckerTest {
             new FakeResourceNodeRepository(f.nodes),
             new FakeNewbieKitRepository(f.newbieKit),
             new FakeSalvageTierRepository(f.salvageTiers),
-            new FakeFactionRepository(f.factions)).check();
+            new FakeFactionRepository(f.factions),
+            new FakeItemSetRepository(f.itemSets)).check();
     }
 
     /**
@@ -219,7 +253,20 @@ class ContentCompletenessCheckerTest {
         final List<ResourceNode> nodes = new ArrayList<>();
         final List<SalvageTier> salvageTiers = new ArrayList<>();
         final List<Faction> factions = new ArrayList<>();
+        final List<ItemSet> itemSets = new ArrayList<>();
         NewbieKit newbieKit = new NewbieKit(0, List.of());
+    }
+
+    private record FakeItemSetRepository(List<ItemSet> itemSets) implements ItemSetRepository {
+        @Override
+        public Optional<ItemSet> findById(ItemSetId id) {
+            return itemSets.stream().filter(s -> s.id().equals(id)).findFirst();
+        }
+
+        @Override
+        public List<ItemSet> findAll() {
+            return List.copyOf(itemSets);
+        }
     }
 
     private record FakeMobRepository(List<MobTemplate> mobs) implements MobTemplateRepository {

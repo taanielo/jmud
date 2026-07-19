@@ -67,6 +67,20 @@ Two enforcement tiers per item:
   newbie kit, or room placement) — no orphan items — **live** in `--validate-data` (#530)
 - [M] Niche vs. existing items (COMPARE shouldn't reveal a strict duplicate)
 
+## Item Set
+
+- [V] Schema-valid definition (`data/item-sets/*.json`, `docs/schemas/item-set.v1.json`): a set id,
+  display name, 2-5 ordered piece item ids across different equip slots, and one or more
+  `{ pieces_required, bonus stats }` thresholds
+- [V] Every referenced piece item id resolves to a schema-valid item and is itself independently
+  obtainable per the **Item** DoD above — **live** in `--validate-data` (#530): item-set pieces are
+  checked for both reference resolution and obtainability
+- [M] Threshold bonuses are modest (a handful of flat stat points per threshold) and additive on top
+  of each piece's own stats — no strictly-dominant threshold bonus that trivializes the non-set
+  alternative at the same level (bonuses are a build enabler, not a mandatory power spike)
+- [M] Progress and current bonus visible in `EQUIPMENT`/`SCORE`; `EXAMINE <item>` names the set and
+  the pieces that complete it; the mechanic is documented in `HELP EQUIPMENT`
+
 ## Quest
 
 - [V] Valid target/room references; rewards defined — **live** in `--validate-data` (#530): target,

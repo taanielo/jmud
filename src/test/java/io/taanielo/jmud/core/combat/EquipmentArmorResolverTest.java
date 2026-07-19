@@ -98,6 +98,43 @@ class EquipmentArmorResolverTest {
     }
 
     @Test
+    void foldsItemSetAcBonusIntoTotal() throws Exception {
+        ItemId capId = ItemId.of("leather-cap");
+        ItemId chestId = ItemId.of("leather-chest");
+        io.taanielo.jmud.core.world.ItemSetId setId =
+            io.taanielo.jmud.core.world.ItemSetId.of("leathers");
+        Item cap = Item.builder(capId, "Cap", "d", new ItemAttributes(Map.of("ac", 2)))
+            .equipSlot(EquipmentSlot.HEAD).setId(setId).build();
+        Item chest = Item.builder(chestId, "Chest", "d", new ItemAttributes(Map.of("ac", 5)))
+            .equipSlot(EquipmentSlot.CHEST).setId(setId).build();
+        io.taanielo.jmud.core.world.ItemSet set = new io.taanielo.jmud.core.world.ItemSet(
+            setId, "Leathers", List.of(capId, chestId),
+            List.of(new io.taanielo.jmud.core.world.ItemSetThreshold(2, Map.of("ac", 4))));
+
+        ItemRepository items = stubRepository(Map.of(capId, cap, chestId, chest));
+        SetBonusResolver setBonus = new SetBonusResolver(items, new io.taanielo.jmud.core.world.repository
+            .ItemSetRepository() {
+            @Override
+            public Optional<io.taanielo.jmud.core.world.ItemSet> findById(
+                io.taanielo.jmud.core.world.ItemSetId id) {
+                return id.equals(setId) ? Optional.of(set) : Optional.empty();
+            }
+
+            @Override
+            public List<io.taanielo.jmud.core.world.ItemSet> findAll() {
+                return List.of(set);
+            }
+        });
+        EquipmentArmorResolver resolver = new EquipmentArmorResolver(items, setBonus);
+        Player player = playerWithEquipment(PlayerEquipment.empty()
+            .equip(EquipmentSlot.HEAD, capId)
+            .equip(EquipmentSlot.CHEST, chestId));
+
+        // 2 (cap) + 5 (chest) piece AC + 4 (2-piece set bonus) = 11.
+        assertEquals(11, resolver.totalAc(player));
+    }
+
+    @Test
     void noOpResolverAlwaysReturnsZero() {
         EquipmentArmorResolver resolver = EquipmentArmorResolver.noOp();
         Player player = playerWithEquipment(PlayerEquipment.empty());

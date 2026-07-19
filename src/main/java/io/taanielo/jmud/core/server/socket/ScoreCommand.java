@@ -12,6 +12,7 @@ import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.craft.PlayerProficiencies;
 import io.taanielo.jmud.core.craft.ProfessionId;
 import io.taanielo.jmud.core.player.LevelUpService;
@@ -32,6 +33,7 @@ public class ScoreCommand extends RegistrableCommand {
     private final RaceArmorBonusResolver raceArmorBonusResolver;
     private final ClassArmorBonusResolver classArmorBonusResolver;
     private final CharacterAttributesResolver characterAttributesResolver;
+    private final SetBonusResolver setBonusResolver;
     private final LightingService lightingService = new LightingService();
     private final @Nullable RoomService roomService;
     private final @Nullable WeatherEngine weatherEngine;
@@ -52,7 +54,7 @@ public class ScoreCommand extends RegistrableCommand {
             ClassArmorBonusResolver classArmorBonusResolver,
             CharacterAttributesResolver characterAttributesResolver) {
         this(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            characterAttributesResolver, null, null);
+            characterAttributesResolver, SetBonusResolver.noOp(), null, null);
     }
 
     /**
@@ -63,6 +65,7 @@ public class ScoreCommand extends RegistrableCommand {
      * @param raceArmorBonusResolver      resolver for AC contributed by the player's race
      * @param classArmorBonusResolver     resolver for AC contributed by the player's class
      * @param characterAttributesResolver resolver for the player's derived core attributes
+     * @param setBonusResolver            resolver for item-set threshold progress and bonuses
      * @param roomService                 service used to resolve the player's current room; may be null
      * @param weatherEngine               weather source used for the visibility line; may be null
      */
@@ -72,6 +75,7 @@ public class ScoreCommand extends RegistrableCommand {
             RaceArmorBonusResolver raceArmorBonusResolver,
             ClassArmorBonusResolver classArmorBonusResolver,
             CharacterAttributesResolver characterAttributesResolver,
+            SetBonusResolver setBonusResolver,
             @Nullable RoomService roomService,
             @Nullable WeatherEngine weatherEngine) {
         super(registry);
@@ -80,6 +84,7 @@ public class ScoreCommand extends RegistrableCommand {
         this.classArmorBonusResolver = Objects.requireNonNull(classArmorBonusResolver, "ClassArmorBonusResolver is required");
         this.characterAttributesResolver =
             Objects.requireNonNull(characterAttributesResolver, "CharacterAttributesResolver is required");
+        this.setBonusResolver = Objects.requireNonNull(setBonusResolver, "SetBonusResolver is required");
         this.roomService = roomService;
         this.weatherEngine = weatherEngine;
     }
@@ -174,6 +179,9 @@ public class ScoreCommand extends RegistrableCommand {
         }
         context.writeLineSafe(String.format("Pracs : %d", player.getPracticePoints()));
         context.writeLineSafe(String.format("AC    : %d", ac));
+        for (SetBonusResolver.SetProgress progress : setBonusResolver.activeSets(player)) {
+            context.writeLineSafe("Set   : " + progress.describe());
+        }
         context.writeLineSafe("Profs : " + formatProficiencies(player.proficiencies()));
         lightingService.brightestLightSource(player).ifPresent(light ->
             context.writeLineSafe(String.format("Light : %s (radius %d)", light.getName(),
