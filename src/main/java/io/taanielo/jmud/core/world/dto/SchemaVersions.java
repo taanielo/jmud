@@ -16,6 +16,7 @@ public final class SchemaVersions {
     public static final int V13 = 13;
     public static final int V14 = 14;
     public static final int V15 = 15;
+    public static final int V16 = 16;
 
     private SchemaVersions() {
     }

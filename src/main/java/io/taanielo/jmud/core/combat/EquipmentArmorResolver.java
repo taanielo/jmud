@@ -3,6 +3,8 @@ package io.taanielo.jmud.core.combat;
 import java.util.Map;
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerEquipment;
 import io.taanielo.jmud.core.world.EquipmentSlot;
@@ -27,14 +29,28 @@ public class EquipmentArmorResolver {
     private static final String AC_STAT = "ac";
 
     private final ItemRepository itemRepository;
+    private final @Nullable SetBonusResolver setBonusResolver;
 
     /**
-     * Creates a resolver backed by the provided item repository.
+     * Creates a resolver backed by the provided item repository, contributing no item-set AC.
      *
      * @param itemRepository repository used to load item definitions for equipped slots
      */
     public EquipmentArmorResolver(ItemRepository itemRepository) {
+        this(itemRepository, null);
+    }
+
+    /**
+     * Creates a resolver that also folds any {@code "ac"} bonus from worn item sets into
+     * {@link #totalAc(Player)}, so set armour stacks with per-item and racial/class AC at the single
+     * aggregation point {@link CombatEngine} and SCORE already read (issue #771).
+     *
+     * @param itemRepository    repository used to load item definitions for equipped slots
+     * @param setBonusResolver  resolver for item-set stat bonuses, or {@code null} to ignore sets
+     */
+    public EquipmentArmorResolver(ItemRepository itemRepository, @Nullable SetBonusResolver setBonusResolver) {
         this.itemRepository = Objects.requireNonNull(itemRepository, "Item repository is required");
+        this.setBonusResolver = setBonusResolver;
     }
 
     /**
@@ -68,6 +84,12 @@ public class EquipmentArmorResolver {
                 }
             } catch (RepositoryException e) {
                 // Skip this slot; a missing item should not abort combat
+            }
+        }
+        if (setBonusResolver != null) {
+            Integer setAc = setBonusResolver.bonusStats(player).get(AC_STAT);
+            if (setAc != null && setAc > 0) {
+                total += setAc;
             }
         }
         return total;

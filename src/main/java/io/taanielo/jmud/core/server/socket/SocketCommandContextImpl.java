@@ -58,6 +58,7 @@ import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.bounty.BountySettings;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.combat.DamageType;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.craft.CraftOutcome;
 import io.taanielo.jmud.core.creation.CharacterCreationException;
 import io.taanielo.jmud.core.creation.CharacterCreationService;
@@ -3595,6 +3596,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
                 player.getEquipment().slots(), inventoryIndex::get, session.getTextStyler())) {
             connection.writeLine(line);
         }
+        for (SetBonusResolver.SetProgress progress : context.setBonusResolver().activeSets(player)) {
+            connection.writeLine("  Set      : " + progress.describe());
+        }
         sendPrompt();
     }
 
@@ -3753,6 +3757,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         String damageRange = weaponDamageRange(found);
         if (damageRange != null) {
             connection.writeLine("Damage: " + damageRange);
+        }
+        for (String line : context.setBonusResolver().describeSetMembership(found)) {
+            connection.writeLine(line);
         }
         writeAffixLines(found);
         sendPrompt();

@@ -111,6 +111,14 @@ public class Item {
      * and legacy item data (which has no map area id field) keep working exactly as before.
      */
     @Nullable AreaId mapAreaId;
+    /**
+     * Id of the item set this equippable piece belongs to, or null when the item is part of no set.
+     * Additive and optional: absent means the item grants no set bonus, so every pre-v16 item file
+     * loads unchanged. Set membership is resolved into stacking threshold bonuses by
+     * {@link io.taanielo.jmud.core.combat.SetBonusResolver}; the item's own attributes are never
+     * mutated to fold these in.
+     */
+    @Nullable ItemSetId setId;
 
     /**
      * Constructs an item from its flattened field set. This is the single, private canonical
@@ -179,7 +187,8 @@ public class Item {
         @JsonProperty("locked") @Nullable Boolean locked,
         @JsonProperty("twoHanded") @Nullable Boolean twoHanded,
         @JsonProperty("mountMoveDiscount") @Nullable Integer mountMoveDiscount,
-        @JsonProperty("mapAreaId") @Nullable AreaId mapAreaId
+        @JsonProperty("mapAreaId") @Nullable AreaId mapAreaId,
+        @JsonProperty("setId") @Nullable ItemSetId setId
     ) {
         this.id = Objects.requireNonNull(id, "Item id is required");
         if (name == null || name.isBlank()) {
@@ -256,6 +265,7 @@ public class Item {
         }
         this.mountMoveDiscount = mountMoveDiscount;
         this.mapAreaId = mapAreaId;
+        this.setId = setId;
     }
 
     /**
@@ -306,6 +316,8 @@ public class Item {
         private Integer mountMoveDiscount;
         @Nullable
         private AreaId mapAreaId;
+        @Nullable
+        private ItemSetId setId;
 
         private Builder(ItemId id, String name, String description, ItemAttributes attributes) {
             this.id = id;
@@ -411,6 +423,15 @@ public class Item {
         }
 
         /**
+         * Binds this equippable item to the item set it belongs to, or marks it a non-set item when
+         * {@code null} (defaults to non-set).
+         */
+        public Builder setId(@Nullable ItemSetId setId) {
+            this.setId = setId;
+            return this;
+        }
+
+        /**
          * Assembles the item, validating every facet's invariants through {@link Item}'s canonical
          * constructor.
          *
@@ -440,7 +461,8 @@ public class Item {
                 container.locked(),
                 twoHanded,
                 mountMoveDiscount,
-                mapAreaId
+                mapAreaId,
+                setId
             );
         }
     }
@@ -547,7 +569,7 @@ public class Item {
     public Item withContainedItems(List<Item> nextContents) {
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, nextContents, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId);
+            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId, setId);
     }
 
     /**
@@ -583,7 +605,7 @@ public class Item {
         int clamped = Math.max(0, Math.min(maxDurability, newDurability));
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, clamped,
-            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId);
+            rarity, affixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId, setId);
     }
 
     /**
@@ -601,7 +623,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, newIdentified, locked, twoHanded, mountMoveDiscount, mapAreaId);
+            rarity, affixes, newIdentified, locked, twoHanded, mountMoveDiscount, mapAreaId, setId);
     }
 
     /**
@@ -623,7 +645,7 @@ public class Item {
         }
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, affixes, identified, newLocked, twoHanded, mountMoveDiscount, mapAreaId);
+            rarity, affixes, identified, newLocked, twoHanded, mountMoveDiscount, mapAreaId, setId);
     }
 
     /**
@@ -643,7 +665,7 @@ public class Item {
         nextAffixes.add(affixId);
         return new Item(id, name, description, attributes, effects, messages, equipSlot, weight, value,
             attackRef, teachesAbilityRef, containerCapacity, containedItems, lightRadius, maxDurability, durability,
-            rarity, nextAffixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId);
+            rarity, nextAffixes, identified, locked, twoHanded, mountMoveDiscount, mapAreaId, setId);
     }
 
     /**

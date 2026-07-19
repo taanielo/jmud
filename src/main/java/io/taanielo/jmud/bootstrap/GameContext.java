@@ -66,6 +66,7 @@ import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
 import io.taanielo.jmud.core.combat.RaceAttackBonusResolver;
 import io.taanielo.jmud.core.combat.SeededCombatRandom;
 import io.taanielo.jmud.core.combat.SeededCombatRandomProvider;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.combat.ShieldBlockResolver;
 import io.taanielo.jmud.core.combat.ThreadLocalCombatRandom;
 import io.taanielo.jmud.core.combat.flavor.CombatFlavor;
@@ -215,12 +216,14 @@ import io.taanielo.jmud.core.world.area.repository.json.JsonAreaRepository;
 import io.taanielo.jmud.core.world.repository.AffixRepository;
 import io.taanielo.jmud.core.world.repository.ItemCatalog;
 import io.taanielo.jmud.core.world.repository.ItemRepository;
+import io.taanielo.jmud.core.world.repository.ItemSetRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 import io.taanielo.jmud.core.world.repository.RoomCatalog;
 import io.taanielo.jmud.core.world.repository.RoomRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonAffixRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonDiscoveredExitsRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonItemRepository;
+import io.taanielo.jmud.core.world.repository.json.JsonItemSetRepository;
 import io.taanielo.jmud.core.world.repository.json.JsonRoomRepository;
 
 /**
@@ -287,6 +290,7 @@ public record GameContext(
     ResourceGatheringService resourceGatheringService,
     DialogueService dialogueService,
     ItemRepository itemRepository,
+    SetBonusResolver setBonusResolver,
     AttackRepository attackRepository,
     AchievementService achievementService,
     DuelService duelService,
@@ -366,7 +370,9 @@ public record GameContext(
         EffectRepository effectRepository = createEffectRepository();
         EffectEngine effectEngine = new EffectEngine(effectRepository);
 
-        EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository);
+        ItemSetRepository itemSetRepository = createItemSetRepository();
+        SetBonusResolver setBonusResolver = new SetBonusResolver(itemRepository, itemSetRepository);
+        EquipmentArmorResolver equipmentArmorResolver = new EquipmentArmorResolver(itemRepository, setBonusResolver);
         EquipmentResistanceResolver equipmentResistanceResolver = new EquipmentResistanceResolver(itemRepository);
         ShieldBlockResolver shieldBlockResolver = new ShieldBlockResolver(itemRepository);
         RaceArmorBonusResolver raceArmorBonusResolver = new RaceArmorBonusResolver(raceRepository);
@@ -571,7 +577,7 @@ public record GameContext(
         // Built after mobRegistry so the wizard SPAWN/PURGE commands can be wired to it.
         SocketCommandRegistry commandRegistry = SocketCommandRegistry.createDefault(
             equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver, characterAttributesResolver,
-            classRepository, abilityRegistry,
+            setBonusResolver, classRepository, abilityRegistry,
             playerRepository, guildRepository, roomService, tellService, messageBroadcaster, reputationService,
             weatherEngine,
             tickMetricsService, wizardPolicy, playerLocationService, mobRegistry, shutdownHandle,
@@ -771,6 +777,7 @@ public record GameContext(
             resourceGatheringService,
             dialogueService,
             itemRepository,
+            setBonusResolver,
             attackRepository,
             achievementService,
             duelService,
@@ -898,7 +905,8 @@ public record GameContext(
                 new JsonResourceNodeRepository(),
                 new JsonNewbieKitRepository(),
                 new JsonSalvageTierRepository(),
-                new JsonFactionRepository());
+                new JsonFactionRepository(),
+                new JsonItemSetRepository());
         } catch (RepositoryException | ShopRepositoryException | RecipeRepositoryException
             | FactionRepositoryException | AbilityRepositoryException | QuestRepositoryException e) {
             throw new IllegalStateException(
@@ -1003,6 +1011,10 @@ public record GameContext(
         } catch (RepositoryException e) {
             throw new IllegalStateException("Failed to initialize item repository: " + e.getMessage(), e);
         }
+    }
+
+    private static ItemSetRepository createItemSetRepository() {
+        return new JsonItemSetRepository();
     }
 
     private static NewbieKit createNewbieKit() {

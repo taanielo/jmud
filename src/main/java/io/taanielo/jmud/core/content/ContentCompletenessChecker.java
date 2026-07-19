@@ -35,8 +35,11 @@ import io.taanielo.jmud.core.shop.Shop;
 import io.taanielo.jmud.core.shop.ShopRepository;
 import io.taanielo.jmud.core.shop.StockEntry;
 import io.taanielo.jmud.core.world.Item;
+import io.taanielo.jmud.core.world.ItemId;
+import io.taanielo.jmud.core.world.ItemSet;
 import io.taanielo.jmud.core.world.Room;
 import io.taanielo.jmud.core.world.repository.ItemCatalog;
+import io.taanielo.jmud.core.world.repository.ItemSetRepository;
 import io.taanielo.jmud.core.world.repository.RoomCatalog;
 
 /**
@@ -78,6 +81,7 @@ public class ContentCompletenessChecker {
     private final NewbieKitRepository newbieKitRepository;
     private final SalvageTierRepository salvageTierRepository;
     private final FactionRepository factionRepository;
+    private final ItemSetRepository itemSetRepository;
 
     /**
      * Creates a checker over every data source that a completeness rule needs.
@@ -95,6 +99,7 @@ public class ContentCompletenessChecker {
      * @param newbieKitRepository    source of the starting kit (an item-distribution channel)
      * @param salvageTierRepository  source of salvage yields (an item-distribution channel)
      * @param factionRepository      source of factions (quest reputation-reward resolution)
+     * @param itemSetRepository      source of item sets (piece reference-resolution + obtainability)
      */
     public ContentCompletenessChecker(
         MobTemplateRepository mobTemplateRepository,
@@ -109,7 +114,8 @@ public class ContentCompletenessChecker {
         ResourceNodeRepository resourceNodeRepository,
         NewbieKitRepository newbieKitRepository,
         SalvageTierRepository salvageTierRepository,
-        FactionRepository factionRepository
+        FactionRepository factionRepository,
+        ItemSetRepository itemSetRepository
     ) {
         this.mobTemplateRepository = Objects.requireNonNull(mobTemplateRepository, "Mob repository is required");
         this.roomCatalog = Objects.requireNonNull(roomCatalog, "Room catalog is required");
@@ -127,6 +133,7 @@ public class ContentCompletenessChecker {
         this.salvageTierRepository =
             Objects.requireNonNull(salvageTierRepository, "Salvage tier repository is required");
         this.factionRepository = Objects.requireNonNull(factionRepository, "Faction repository is required");
+        this.itemSetRepository = Objects.requireNonNull(itemSetRepository, "Item set repository is required");
     }
 
     /**
@@ -148,10 +155,12 @@ public class ContentCompletenessChecker {
 
         Set<String> roomIds = loadRoomIds(problems);
         Set<String> itemIds = loadItemIds(problems);
+        Set<String> obtainable = collectObtainableItemIds(mobs, problems);
 
         checkMobs(mobs, roomIds, itemIds, problems);
         checkAbilities(problems);
-        checkItems(mobs, itemIds, problems);
+        checkItems(itemIds, obtainable, problems);
+        checkItemSets(itemIds, obtainable, problems);
         checkQuests(mobs, roomIds, itemIds, problems);
 
         return problems;
@@ -226,8 +235,7 @@ public class ContentCompletenessChecker {
 
     // ── item rules ───────────────────────────────────────────────────────
 
-    private void checkItems(List<MobTemplate> mobs, Set<String> itemIds, List<String> problems) {
-        Set<String> obtainable = collectObtainableItemIds(mobs, problems);
+    private void checkItems(Set<String> itemIds, Set<String> obtainable, List<String> problems) {
         Set<String> orphans = new TreeSet<>();
         for (String itemId : itemIds) {
             if (!obtainable.contains(itemId)) {
@@ -238,6 +246,32 @@ public class ContentCompletenessChecker {
             problems.add("Item '" + orphan
                 + "' is not obtainable anywhere (no shop, loot, quest reward, recipe, gather, salvage, "
                 + "newbie kit or room placement grants it) (" + DOD + " → Item)");
+        }
+    }
+
+    // ── item-set rules ───────────────────────────────────────────────────
+
+    private void checkItemSets(Set<String> itemIds, Set<String> obtainable, List<String> problems) {
+        List<ItemSet> sets;
+        try {
+            sets = itemSetRepository.findAll();
+        } catch (Exception e) {
+            problems.add("Failed to load item-set data (" + DOD + " → Item Set): " + e.getMessage());
+            return;
+        }
+        for (ItemSet set : sets) {
+            String setId = set.id().getValue();
+            for (ItemId pieceId : set.pieceIds()) {
+                String piece = pieceId.getValue();
+                if (!itemIds.contains(piece)) {
+                    problems.add("Item set '" + setId + "' lists piece '" + piece
+                        + "' which is not a known item (" + DOD + " → Item Set)");
+                } else if (!obtainable.contains(piece)) {
+                    problems.add("Item set '" + setId + "' piece '" + piece
+                        + "' is not obtainable anywhere (no shop, loot, quest reward, recipe, gather, "
+                        + "salvage, newbie kit or room placement grants it) (" + DOD + " → Item Set)");
+                }
+            }
         }
     }
 

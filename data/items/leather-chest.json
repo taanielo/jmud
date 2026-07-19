@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 16,
   "id": "leather-chest",
   "name": "Leather Chestpiece",
   "description": "A fitted leather chestpiece stitched with reinforced panels.",
@@ -13,5 +13,6 @@
   "equip_slot": "chest",
   "weight": 8,
   "value": 50,
-  "attack_ref": null
+  "attack_ref": null,
+  "set_id": "wayfarers-leathers"
 }

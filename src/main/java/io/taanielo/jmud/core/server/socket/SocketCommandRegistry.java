@@ -12,6 +12,7 @@ import io.taanielo.jmud.core.character.repository.ClassRepository;
 import io.taanielo.jmud.core.combat.ClassArmorBonusResolver;
 import io.taanielo.jmud.core.combat.EquipmentArmorResolver;
 import io.taanielo.jmud.core.combat.RaceArmorBonusResolver;
+import io.taanielo.jmud.core.combat.SetBonusResolver;
 import io.taanielo.jmud.core.faction.ReputationService;
 import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
@@ -41,6 +42,7 @@ public class SocketCommandRegistry {
      * @param equipmentArmorResolver  resolver for AC contributed by equipped armour
      * @param raceArmorBonusResolver  resolver for AC contributed by the player's race
      * @param classArmorBonusResolver resolver for AC contributed by the player's class
+     * @param setBonusResolver        resolver for item-set threshold bonuses shown by {@code SCORE}
      * @param classRepository         repository used by {@code HELP <class>} to render a class reference sheet
      * @param abilityRegistry         registry used by {@code HELP <class>} to resolve ability ids to display names
      * @param playerRepository        repository used to enumerate all persisted players for {@code RANK}
@@ -69,6 +71,7 @@ public class SocketCommandRegistry {
         RaceArmorBonusResolver raceArmorBonusResolver,
         ClassArmorBonusResolver classArmorBonusResolver,
         CharacterAttributesResolver characterAttributesResolver,
+        SetBonusResolver setBonusResolver,
         ClassRepository classRepository,
         AbilityRegistry abilityRegistry,
         PlayerRepository playerRepository,
@@ -87,6 +90,7 @@ public class SocketCommandRegistry {
         TickThreadDispatcher tickThreadDispatcher
     ) {
         Objects.requireNonNull(equipmentArmorResolver, "Equipment armor resolver is required");
+        Objects.requireNonNull(setBonusResolver, "Set bonus resolver is required");
         Objects.requireNonNull(raceArmorBonusResolver, "Race armor bonus resolver is required");
         Objects.requireNonNull(classArmorBonusResolver, "Class armor bonus resolver is required");
         Objects.requireNonNull(characterAttributesResolver, "Character attributes resolver is required");
@@ -135,7 +139,7 @@ public class SocketCommandRegistry {
         new RankCommand(registry, playerRepository, guildRepository);
         new ReputationCommand(registry, reputationService);
         new ScoreCommand(registry, equipmentArmorResolver, raceArmorBonusResolver, classArmorBonusResolver,
-            characterAttributesResolver, roomService, weatherEngine);
+            characterAttributesResolver, setBonusResolver, roomService, weatherEngine);
         new AchievementsCommand(registry);
         new AbilityCommand(registry);
         new CastCommand(registry);
