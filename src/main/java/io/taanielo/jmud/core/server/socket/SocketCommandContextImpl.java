@@ -3819,7 +3819,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
      * @param control the mob's active control classification, or {@code null} when uncontrolled
      * @return the controlled-state sentence, or an empty string when the mob is uncontrolled
      */
-    static String controlledStateLine(@Nullable io.taanielo.jmud.core.effects.ControlType control) {
+    static String controlledStateLine(@Nullable ControlType control) {
         if (control == null) {
             return "";
         }
