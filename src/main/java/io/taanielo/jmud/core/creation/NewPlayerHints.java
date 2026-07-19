@@ -29,7 +29,7 @@ public record NewPlayerHints(String title, List<String> lines) {
      * @param lines the hint lines rendered in order; must not be null
      */
     public NewPlayerHints {
-        title = Objects.requireNonNull(title, "Title is required");
+        Objects.requireNonNull(title, "Title is required");
         lines = List.copyOf(Objects.requireNonNull(lines, "Lines are required"));
     }
 
