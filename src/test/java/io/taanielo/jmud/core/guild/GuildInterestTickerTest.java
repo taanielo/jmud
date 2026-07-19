@@ -31,6 +31,7 @@ class GuildInterestTickerTest {
     private WorldClock worldClock;
     private GuildService guildService;
     private RecordingBroadcaster broadcaster;
+    private InMemoryInterestStateRepository stateRepository;
     private GuildInterestTicker ticker;
 
     @BeforeEach
@@ -38,7 +39,8 @@ class GuildInterestTickerTest {
         worldClock = new WorldClock(1);
         guildService = new GuildService(new FakeGuildRepository());
         broadcaster = new RecordingBroadcaster();
-        ticker = new GuildInterestTicker(worldClock, guildService, broadcaster);
+        stateRepository = new InMemoryInterestStateRepository();
+        ticker = new GuildInterestTicker(worldClock, guildService, broadcaster, stateRepository);
         guildService.create(ALICE, "Ironclad");
     }
 
@@ -141,6 +143,25 @@ class GuildInterestTickerTest {
         assertTrue(broadcaster.messages.isEmpty());
     }
 
+    @Test
+    void accrualSurvivesRestartMidPeriod() {
+        // Regression for issue #800: the elapsed-in-game-days counter used to live only in memory, so a
+        // restart mid-period reset it to zero and — since a full period is ~24h of uptime — interest was
+        // silently never credited on a restart-prone server. Persisting it lets accrual resume.
+        guildService.deposit(ALICE, 1_000); // level 2 (2%)
+
+        advanceGameDays(GuildInterestTicker.GAME_DAYS_PER_INTEREST_PERIOD - 1);
+        assertEquals(1_000, ironclad().treasuryGold());
+        assertTrue(broadcaster.messages.isEmpty());
+
+        // Simulate a server restart: a fresh ticker restores the persisted counter instead of resetting.
+        ticker = new GuildInterestTicker(worldClock, guildService, broadcaster, stateRepository);
+
+        // One more in-game day now reaches the payout boundary — proof the accrued progress was not lost.
+        advanceGameDays(1);
+        assertEquals(1_020, ironclad().treasuryGold());
+    }
+
     private Username inviteBob() {
         guildService.invite(ALICE, BOB, true);
         return BOB;
@@ -162,6 +183,21 @@ class GuildInterestTickerTest {
 
         @Override
         public void broadcastGlobal(Message message, Set<Username> exclude) {
+        }
+    }
+
+    /** In-memory stand-in for the persisted accrual counter, surviving a simulated ticker "restart". */
+    private static final class InMemoryInterestStateRepository implements GuildInterestStateRepository {
+        private long gameDaysElapsed;
+
+        @Override
+        public long loadGameDaysElapsed() {
+            return gameDaysElapsed;
+        }
+
+        @Override
+        public void saveGameDaysElapsed(long value) {
+            this.gameDaysElapsed = value;
         }
     }
 

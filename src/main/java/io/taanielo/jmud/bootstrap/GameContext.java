@@ -108,6 +108,7 @@ import io.taanielo.jmud.core.gathering.ResourceGatheringService;
 import io.taanielo.jmud.core.gathering.ResourceNode;
 import io.taanielo.jmud.core.gathering.ResourceNodeRespawnTicker;
 import io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository;
+import io.taanielo.jmud.core.guild.GuildInterestStateRepository;
 import io.taanielo.jmud.core.guild.GuildInterestTicker;
 import io.taanielo.jmud.core.guild.GuildQuestPool;
 import io.taanielo.jmud.core.guild.GuildQuestRotationTicker;
@@ -116,6 +117,7 @@ import io.taanielo.jmud.core.guild.GuildRepository;
 import io.taanielo.jmud.core.guild.GuildRepositoryException;
 import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.GuildWarService;
+import io.taanielo.jmud.core.guild.repository.json.JsonGuildInterestStateRepository;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildQuestPoolRepository;
 import io.taanielo.jmud.core.guild.repository.json.JsonGuildRepository;
 import io.taanielo.jmud.core.healing.HealingBaseResolver;
@@ -635,7 +637,11 @@ public record GameContext(
         // level-scaled cut of each guild's current treasury is credited straight to treasuryGold — never
         // lifetimeDepositedGold, so interest can never drive leveling — and announced on the [Guild]
         // channel. Registered after WorldClock so the clock has already flipped on the boundary tick.
-        tickRegistry.register(new GuildInterestTicker(worldClock, guildService, messageBroadcaster));
+        // The elapsed-in-game-days accrual counter is persisted (issue #800) so it survives restarts;
+        // without that, a full ~24h period almost never elapses uninterrupted and interest never pays.
+        GuildInterestStateRepository guildInterestStateRepository = new JsonGuildInterestStateRepository();
+        tickRegistry.register(new GuildInterestTicker(
+            worldClock, guildService, messageBroadcaster, guildInterestStateRepository));
 
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);

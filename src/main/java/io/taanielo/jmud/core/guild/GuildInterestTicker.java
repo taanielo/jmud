@@ -34,6 +34,12 @@ import io.taanielo.jmud.core.world.WorldClock;
  * <p>Register this ticker <em>after</em> the {@link WorldClock} so that on the boundary tick the clock has
  * already flipped to {@code DAY} before this ticker observes it. All guild-state mutation runs on the tick
  * thread via {@link GuildService#saveInterestState} (AGENTS.md §5).
+ *
+ * <p>The elapsed-in-game-days counter is persisted through {@link GuildInterestStateRepository} so accrual
+ * survives server restarts (issue #800): because a full period is ~864 in-game days (~24h of continuous
+ * uptime at the default clock), a purely in-memory counter meant that any restart reset progress to zero
+ * and interest was, in a restart-prone environment, silently never credited. The counter is restored at
+ * construction and re-persisted (write-behind, never blocking the tick thread) each time it advances.
  */
 public class GuildInterestTicker implements Tickable {
 
@@ -48,23 +54,31 @@ public class GuildInterestTicker implements Tickable {
     private final WorldClock worldClock;
     private final GuildService guildService;
     private final MessageBroadcaster messageBroadcaster;
+    private final GuildInterestStateRepository stateRepository;
     private TimeOfDay previousTimeOfDay;
     private long gameDaysElapsed;
 
     /**
-     * Creates the interest ticker.
+     * Creates the interest ticker, restoring the persisted elapsed-in-game-days counter so accrual
+     * resumes where the last run left off rather than resetting on restart (issue #800).
      *
      * @param worldClock         the deterministic day/night clock whose transitions drive interest
      * @param guildService       the authoritative owner of guild state and persistence
      * @param messageBroadcaster the sanctioned fan-out used to announce interest to online members
+     * @param stateRepository    persistence port for the elapsed-in-game-days accrual counter
      */
     public GuildInterestTicker(
-        WorldClock worldClock, GuildService guildService, MessageBroadcaster messageBroadcaster) {
+        WorldClock worldClock,
+        GuildService guildService,
+        MessageBroadcaster messageBroadcaster,
+        GuildInterestStateRepository stateRepository) {
         this.worldClock = Objects.requireNonNull(worldClock, "worldClock is required");
         this.guildService = Objects.requireNonNull(guildService, "guildService is required");
         this.messageBroadcaster =
             Objects.requireNonNull(messageBroadcaster, "messageBroadcaster is required");
+        this.stateRepository = Objects.requireNonNull(stateRepository, "stateRepository is required");
         this.previousTimeOfDay = worldClock.timeOfDay();
+        this.gameDaysElapsed = Math.max(0, stateRepository.loadGameDaysElapsed());
     }
 
     /**
@@ -81,6 +95,9 @@ public class GuildInterestTicker implements Tickable {
             return;
         }
         gameDaysElapsed++;
+        // Persist every advance (write-behind, never blocks the tick thread) so accrual survives a
+        // restart mid-period rather than resetting to zero and never reaching a payout (issue #800).
+        stateRepository.saveGameDaysElapsed(gameDaysElapsed);
         if (gameDaysElapsed % GAME_DAYS_PER_INTEREST_PERIOD != 0) {
             return;
         }
