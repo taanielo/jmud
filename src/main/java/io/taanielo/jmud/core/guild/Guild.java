@@ -57,6 +57,14 @@ public record Guild(
     int warWins
 ) {
 
+    /**
+     * The maximum value the {@code int}-backed {@link #treasuryGold()} and {@link #lifetimeDepositedGold()}
+     * fields may hold. Deposits and interest are computed in {@code long} and clamped to this cap before
+     * being stored, so an established guild's balance can never wrap past {@link Integer#MAX_VALUE} into a
+     * negative value that would permanently brick the treasury (issue #785).
+     */
+    public static final int TREASURY_CAP = Integer.MAX_VALUE;
+
     public Guild {
         Objects.requireNonNull(id, "Guild id is required");
         Objects.requireNonNull(name, "Guild name is required");
@@ -236,9 +244,11 @@ public record Guild(
         if (amount < 0) {
             throw new IllegalArgumentException("Deposit amount must not be negative");
         }
+        int newTreasury = clampToTreasuryCap((long) treasuryGold + amount);
+        int newLifetime = clampToTreasuryCap((long) lifetimeDepositedGold + amount);
         return new Guild(
-            id, name, leaderId, members, treasuryGold + amount, vaultedItems,
-            lifetimeDepositedGold + amount, activeGuildQuest, activeWar, warWins);
+            id, name, leaderId, members, newTreasury, vaultedItems,
+            newLifetime, activeGuildQuest, activeWar, warWins);
     }
 
     /**
@@ -270,9 +280,21 @@ public record Guild(
         if (interest < 0) {
             throw new IllegalArgumentException("Interest must not be negative");
         }
+        int newTreasury = clampToTreasuryCap((long) treasuryGold + interest);
         return new Guild(
-            id, name, leaderId, members, treasuryGold + interest, vaultedItems, lifetimeDepositedGold,
+            id, name, leaderId, members, newTreasury, vaultedItems, lifetimeDepositedGold,
             activeGuildQuest, activeWar, warWins);
+    }
+
+    /**
+     * Clamps a {@code long} gold total to {@link #TREASURY_CAP}, so a balance computed in wide arithmetic
+     * can be stored back into an {@code int}-backed field without ever wrapping to a negative value.
+     *
+     * @param value the candidate balance, computed in {@code long} to avoid mid-calculation overflow
+     * @return {@code value} capped at {@link #TREASURY_CAP}
+     */
+    private static int clampToTreasuryCap(long value) {
+        return (int) Math.min(value, TREASURY_CAP);
     }
 
     /**
