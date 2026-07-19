@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "id": "skill.berserker-rage",
+  "name": "berserker rage",
+  "type": "SKILL",
+  "level": 85,
+  "cost": {
+    "move": 18
+  },
+  "cooldown": {
+    "ticks": 20
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["berserk", "rage", "berserkerrage"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "berserker-rage"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You give yourself over to a berserker rage, and a red battle-fury floods your limbs; your blows land harder and faster, though you throw your guard to the wind."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} gives themselves over to a berserker rage, muscles corded and eyes blazing."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} roars and gives themselves over to a berserker rage, all fury and no guard."
+    }
+  ]
+}

@@ -146,6 +146,31 @@ direct-damage/effect pipeline and the single-target control abilities follow the
 damage+effect pattern. `HELP <class>` and `TRAIN LIST` pick these up automatically from
 `trainable_ability_ids`.
 
+Epic tier (#765). Every class now has an eighth trainable ability gated at **level 85**, landing
+mid-Coda (81-88) one zone before the level-96 cap raised by The Encore (#727), so the long 75-96
+endgame stretch — the longest flat stretch the leveling curve had, and the very last one before the
+cap — is no longer flat past the mythic tier. Each epic ability introduces a new mechanic for its
+class rather than a bigger number: warrior `skill.berserker-rage` (the warrior's first personal
+self-buff — a reckless red battle-fury trading guard for harder, faster blows), adventurer
+`skill.battle-standard` (the generalist's first group buff — a planted banner rallying the whole
+party's attack and defense), bard `spell.lullaby` (the bard's first single-target crowd control — a
+droning refrain that drags a foe into a helpless enchanted sleep), cleric `spell.holy-fire` (the
+cleric's first damage-over-time — a clinging pillar of holy flame), druid `spell.hibernate` (the
+druid's first single-target incapacitate — a wintry stillness forcing a foe into hibernation), mage
+`spell.ignite` (the mage's first damage-over-time — clinging arcane flame), necromancer
+`spell.curse-of-tongues` (the necromancer's first single-target silence — a curse twisting speech to
+gibberish), paladin `spell.crusade` (the paladin's first group offensive buff — a rallying call to
+holy war sharpening every ally's strikes), ranger `skill.serpent-sting` (the ranger's first
+damage-over-time — a venom-tipped arrow), rogue `skill.kidney-shot` (the rogue's first hard stun — a
+brutal blow that drops a foe helpless) and shaman `spell.cleansing-waters` (the shaman's first cleanse
+— spirit-waters washing a root, silence or stun off an ally). Eleven new status effects back the
+buff/DoT/control/cleanse abilities (`berserker-rage`, `battle-standard`, `slumbering`, `holy-fire`,
+`hibernating`, `ignited`, `tongue-tied`, `crusade`, `serpent-stung`, `kidney-shot`, `cleansed`); the
+control effects carry a `control` classification per the #719 CC schema (`slumbering`, `hibernating`,
+`kidney-shot` as STUN, `tongue-tied` as SILENCE), the single-target control/DoT abilities follow the
+arcane-shackles damage+effect pattern, and `spell.cleansing-waters` reuses the purify CURE-by-control
+pipeline. `HELP <class>` and `TRAIN LIST` pick these up automatically from `trainable_ability_ids`.
+
 ## Races
 
 | Race | Stat profile | Creation description | Attribute bonuses | Balance pass |

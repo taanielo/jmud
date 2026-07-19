@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "id": "spell.crusade",
+  "name": "crusade",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 14
+  },
+  "cooldown": {
+    "ticks": 16
+  },
+  "targeting": "BENEFICIAL_GROUP",
+  "aliases": ["crusader", "zeal"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "crusade"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You call the whole party to a holy crusade, and righteous zeal sharpens every ally's strikes to a keen, unerring edge."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} calls the whole room to a holy crusade, wreathing every ally in righteous zeal."
+    }
+  ]
+}

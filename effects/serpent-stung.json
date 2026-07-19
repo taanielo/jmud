@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "id": "serpent-stung",
+  "name": "Serpent Sting",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "modifiers": [
+    {
+      "stat": "damage_per_tick",
+      "op": "add",
+      "amount": 6
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A serpent's venom courses through your veins, burning hotter with every heartbeat."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name} shudders as a serpent's venom courses through their veins."
+    },
+    {
+      "phase": "tick",
+      "channel": "self",
+      "text": "The serpent venom burns deeper through your veins."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The last of the serpent venom burns itself out of your blood."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The serpent venom afflicting {name} finally burns itself out."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is racked by a serpent's venom coursing through their veins."
+    }
+  ]
+}

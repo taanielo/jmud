@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "id": "tongue-tied",
+  "name": "Cursed with Tongues",
+  "duration_ticks": 6,
+  "tick_interval": 1,
+  "stacking": "refresh",
+  "control": "silence",
+  "modifiers": [
+    {
+      "stat": "attack",
+      "op": "add",
+      "amount": -3
+    },
+    {
+      "stat": "hit_chance",
+      "op": "add",
+      "amount": -4
+    }
+  ],
+  "messages": [
+    {
+      "phase": "apply",
+      "channel": "self",
+      "text": "A curse of tongues twists your words to gibberish; you cannot shape a single word of power."
+    },
+    {
+      "phase": "apply",
+      "channel": "room",
+      "text": "{name}'s speech twists to gibberish under a curse of tongues."
+    },
+    {
+      "phase": "expire",
+      "channel": "self",
+      "text": "The curse of tongues lifts and your voice returns to you."
+    },
+    {
+      "phase": "expire",
+      "channel": "room",
+      "text": "The curse of tongues twisting {name}'s speech lifts."
+    },
+    {
+      "phase": "examine",
+      "channel": "room",
+      "text": "{name} is cursed with tongues, their speech twisted to gibberish and unable to voice a spell."
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "id": "spell.cleansing-waters",
+  "name": "cleansing waters",
+  "type": "SPELL",
+  "level": 85,
+  "cost": {
+    "mana": 12
+  },
+  "cooldown": {
+    "ticks": 10
+  },
+  "targeting": "BENEFICIAL",
+  "aliases": ["cleanse", "cleansing", "cleansingwaters"],
+  "effects": [
+    {
+      "kind": "EFFECT",
+      "effect_id": "cleansed"
+    },
+    {
+      "kind": "CURE",
+      "control": "ROOT"
+    },
+    {
+      "kind": "CURE",
+      "control": "SILENCE"
+    },
+    {
+      "kind": "CURE",
+      "control": "STUN"
+    }
+  ],
+  "messages": [
+    {
+      "phase": "use",
+      "channel": "self",
+      "text": "You pour a wave of cleansing spirit-waters over {target}, washing away the root, silence or stun that bound them."
+    },
+    {
+      "phase": "use",
+      "channel": "target",
+      "text": "{source} pours a wave of cleansing spirit-waters over you, washing away whatever held you bound."
+    },
+    {
+      "phase": "use",
+      "channel": "room",
+      "text": "{source} pours a wave of cleansing spirit-waters over {target}."
+    }
+  ]
+}
