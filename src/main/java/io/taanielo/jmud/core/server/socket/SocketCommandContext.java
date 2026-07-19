@@ -466,6 +466,28 @@ public interface SocketCommandContext extends Client {
     default void wayfind(String args) {}
 
     /**
+     * Handles the {@code AUTOWALK} command: resolves the destination area exactly like {@code WAYFIND}
+     * and, when the shortest route is pure walking, begins auto-walking one room per tick toward that
+     * area's waypoint. {@code AUTOWALK STOP} cancels an in-progress walk; a route requiring the ferry
+     * is refused with a pointer to {@code WAYFIND}. The walk auto-cancels on any manual command, on
+     * entering combat, on a blocked step, and on arrival.
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     *
+     * @param args the raw argument after {@code AUTOWALK} (an area name/id, or {@code STOP})
+     */
+    default void autoWalk(String args) {}
+
+    /**
+     * Cancels any in-progress {@code AUTOWALK} for the caller, printing a one-line notice. Invoked by
+     * {@link SocketCommandDispatcher} for every command other than {@code AUTOWALK} itself, so any
+     * manual input immediately overrides autopilot (issue #767).
+     *
+     * <p>The default implementation is a no-op so that existing test stubs do not need to be updated.
+     */
+    default void cancelAutoWalkIfActive() {}
+
+    /**
      * Handles the {@code CORPSE} command: reports where the player's tracked corpse lies, how much
      * gold it holds, how long remains before it decays, and turn-by-turn directions back to it — or
      * that they have no corpse in the world. With the {@code ALL} keyword it lists every outstanding

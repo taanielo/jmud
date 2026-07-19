@@ -98,6 +98,15 @@ public class PlayerSession {
      */
     private final SpellCastState spellCastState = new SpellCastState();
 
+    /**
+     * Per-session auto-walk state (issue #767). Holds the single in-progress {@code AUTOWALK}, stepped
+     * one room per tick on the tick thread by {@link PlayerTicker}. Like {@link #spellCastState} above
+     * this is transient session state — never written to the persisted {@link Player}, so there is no
+     * save-schema change — and it is cancelled on death, logout, and reconnect. Every access is on the
+     * tick thread (AGENTS.md §5), so no synchronization is required.
+     */
+    private final AutoWalkState autoWalkState = new AutoWalkState();
+
     /** Single composed ticker — one subscription per player session. */
     private final PlayerTicker playerTicker;
     private TickSubscription playerTickerSubscription;
@@ -195,7 +204,7 @@ public class PlayerSession {
         this.respawnTicker = new PlayerRespawnTicker(
             this::getPlayer, respawnCallback, roomService, DeathSettings.respawnTicks()
         );
-        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker, spellCastState);
+        this.playerTicker = new PlayerTicker(commandQueue, abilityCooldowns, respawnTicker, spellCastState, autoWalkState);
         this.textStyler = TextStylers.forEnabled(OutputStyleSettings.ansiEnabledByDefault());
     }
 
@@ -225,6 +234,16 @@ public class PlayerSession {
      */
     public SpellCastState getSpellCastState() {
         return spellCastState;
+    }
+
+    /**
+     * Returns this session's auto-walk state, the single home for an in-progress {@code AUTOWALK}
+     * (issue #767).
+     *
+     * @return the auto-walk state; never null
+     */
+    public AutoWalkState getAutoWalkState() {
+        return autoWalkState;
     }
 
     /**
@@ -642,6 +661,7 @@ public class PlayerSession {
             return;
         }
         spellCastState.cancelSilently();
+        autoWalkState.cancel();
         abilityCooldowns.clear();
         respawnTicker.schedule();
     }
@@ -724,6 +744,7 @@ public class PlayerSession {
         clearAway();
         clearLfg();
         spellCastState.cancelSilently();
+        autoWalkState.cancel();
     }
 
     /**
@@ -762,6 +783,7 @@ public class PlayerSession {
     public void close() {
         connected = false;
         spellCastState.cancelSilently();
+        autoWalkState.cancel();
         if (playerTickerSubscription != null) {
             playerTickerSubscription.unsubscribe();
         }

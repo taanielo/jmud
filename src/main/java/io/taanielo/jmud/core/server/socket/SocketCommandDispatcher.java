@@ -71,6 +71,14 @@ public class SocketCommandDispatcher {
             return;
         }
         trimmed = expandAlias(context, trimmed);
+        // Any typed input other than AUTOWALK itself immediately cancels an in-progress auto-walk, so a
+        // manual direction (or any command, even an unknown one) always overrides autopilot and no queued
+        // autopilot step lands after it (issue #767). AUTOWALK is skipped because it owns its own
+        // start/replace/STOP semantics. Checked on the raw first token so it fires before command
+        // resolution, covering unknown/ambiguous input too.
+        if (!"AUTOWALK".equals(SocketCommandParsing.firstToken(trimmed))) {
+            context.cancelAutoWalkIfActive();
+        }
         AuditSubject actor = resolveActor(context);
         auditService.emit(new AuditEvent(
             "command.received",
