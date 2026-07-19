@@ -3,6 +3,7 @@ package io.taanielo.jmud.core.mob;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import io.taanielo.jmud.core.action.GameActionResult;
@@ -21,6 +23,7 @@ import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.combat.AttackDefinition;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.repository.AttackRepository;
+import io.taanielo.jmud.core.persistence.PersistenceQueue;
 import io.taanielo.jmud.core.player.Player;
 import io.taanielo.jmud.core.player.PlayerRepository;
 import io.taanielo.jmud.core.world.Direction;
@@ -54,6 +57,18 @@ class MobRegistryEnrageTest {
     private static final String ENRAGE_LINE =
         "'s eyes blaze with fury — it grows enraged!";
 
+    /**
+     * Every {@link Harness} built during a test, closed after the test so its write-behind
+     * {@link PersistenceQueue} worker thread never leaks past the test that created it.
+     */
+    private final List<Harness> harnesses = new ArrayList<>();
+
+    @AfterEach
+    void closeHarnesses() {
+        harnesses.forEach(Harness::close);
+        harnesses.clear();
+    }
+
     @Test
     void fightPastThresholdEnragesOnceAndBoostsDamage() {
         // threshold 3, x3 damage. Gated on !firstEngagement, so the opening swing starts the clock:
@@ -61,17 +76,17 @@ class MobRegistryEnrageTest {
         Harness h = new Harness(List.of(enrageBoss(3, 3.0)));
 
         for (int i = 0; i < 3; i++) {
-            h.registry.tick();
+            h.tick();
         }
         assertEquals(0, h.enrageMessageCount(), "the mob must not enrage before the threshold");
         assertEquals(17, h.lastPlayerHp(), "three unboosted 1-damage hits leave the player at 17");
 
-        h.registry.tick(); // 4th sustained decision crosses the threshold
+        h.tick(); // 4th sustained decision crosses the threshold
         assertEquals(1, h.enrageMessageCount(), "the mob enrages exactly once when the threshold is crossed");
         assertTrue(h.contains("The Boss" + ENRAGE_LINE), "the enrage announcement names the mob");
         assertEquals(14, h.lastPlayerHp(), "the enraging hit already lands boosted 3 damage (17 -> 14)");
 
-        h.registry.tick();
+        h.tick();
         assertEquals(1, h.enrageMessageCount(), "enrage announces only once per encounter");
         assertEquals(11, h.lastPlayerHp(), "the boost persists for the rest of the fight (14 -> 11)");
     }
@@ -81,7 +96,7 @@ class MobRegistryEnrageTest {
         Harness h = new Harness(List.of(nonEnrageBoss()));
 
         for (int i = 0; i < 6; i++) {
-            h.registry.tick();
+            h.tick();
         }
         assertEquals(0, h.enrageMessageCount(), "a mob with no enrage threshold never enrages");
         assertEquals(20 - 6, h.lastPlayerHp(), "every hit stays at the unboosted 1 damage");
@@ -96,7 +111,7 @@ class MobRegistryEnrageTest {
         boss.takeDamage(boss.currentHp() - 1); // 1 HP: guaranteed below the flee threshold
         h.registry.setMobFleeSettings(100, 100);
 
-        h.registry.tick();
+        h.tick();
 
         assertEquals(0, h.enrageMessageCount(),
             "a mob breaking off to flee must not also enrage on the same decision");
@@ -111,7 +126,7 @@ class MobRegistryEnrageTest {
         healer.engage(h.playerName);
         ally.takeDamage(30); // 50 -> 20, below the 50% heal threshold
 
-        h.registry.tick();
+        h.tick();
 
         assertEquals(20 + HEAL_AMOUNT, ally.currentHp(), "the healer spends the decision mending its ally");
         assertEquals(0, h.enrageMessageCount(),
@@ -126,11 +141,11 @@ class MobRegistryEnrageTest {
         MobInstance leader = h.mob("the Leader");
         leader.engage(h.playerName); // an existing fight for the pack mob to reinforce
 
-        h.registry.tick(); // pack mob joins this tick (first engagement)
+        h.tick(); // pack mob joins this tick (first engagement)
         assertEquals(0, h.enrageMessageCount(),
             "a pack mob must not enrage on the very tick it joins the fight");
 
-        h.registry.tick(); // now already engaged: its clock advances and crosses the threshold
+        h.tick(); // now already engaged: its clock advances and crosses the threshold
         assertEquals(1, h.enrageMessageCount(),
             "once engaged, the pack mob's clock advances and it enrages as normal");
         assertTrue(h.contains("The Pack Hound" + ENRAGE_LINE));
@@ -188,13 +203,15 @@ class MobRegistryEnrageTest {
 
     // ── harness ───────────────────────────────────────────────────────
 
-    private static final class Harness {
+    private final class Harness implements AutoCloseable {
         private final MobRegistry registry;
+        private final PersistenceQueue persistenceQueue;
         private final Username playerName;
         private final List<GameMessage> published = new ArrayList<>();
         private final AtomicReference<Player> lastSource = new AtomicReference<>();
 
         Harness(List<MobTemplate> templates) {
+            harnesses.add(this);
             Player player = player("hero");
             this.playerName = player.getUsername();
             MobTemplateRepository templateRepo = new StubMobTemplateRepository(templates);
@@ -204,11 +221,31 @@ class MobRegistryEnrageTest {
             StubPlayerRepository playerRepo = new StubPlayerRepository(player);
             PlayerEventBus bus = new PlayerEventBus();
             bus.register(playerName, this::capture);
+            this.persistenceQueue = MobRegistryTestSupport.persistenceQueueFor(playerRepo);
             this.registry = new MobRegistry(
                 templateRepo, new StubItemRepository(), attackRepo, roomService, playerRepo,
-                MobRegistryTestSupport.persistenceQueueFor(playerRepo), bus,
+                persistenceQueue, bus,
                 MobRegistryTestSupport.random());
             registry.init();
+        }
+
+        /**
+         * Advances the world one tick and then synchronously drains the write-behind persistence
+         * queue. {@link MobRegistry} reloads its combat target from the {@link PlayerRepository}
+         * every tick and enqueues each damage save asynchronously, so without this drain the next
+         * tick's {@code loadPlayer} would race the background writer thread and observe stale HP —
+         * the source of this test's historical flakiness.
+         */
+        void tick() {
+            registry.tick();
+            if (!persistenceQueue.flush(Duration.ofSeconds(5))) {
+                throw new IllegalStateException("Persistence queue did not drain within 5s");
+            }
+        }
+
+        @Override
+        public void close() {
+            persistenceQueue.close();
         }
 
         private void capture(GameActionResult result) {
