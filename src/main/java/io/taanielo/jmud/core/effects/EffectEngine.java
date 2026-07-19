@@ -156,6 +156,22 @@ public class EffectEngine {
         return Optional.empty();
     }
 
+    /**
+     * Looks up an effect's definition by id without touching any target, so callers that need to read
+     * an effect's static classification (e.g. its {@linkplain EffectDefinition#control() control type}
+     * and {@link EffectDefinition#durationTicks() duration}) can do so before deciding how to apply it.
+     * Used by the mob crowd-control path (issue #763), which reuses the same authored control data the
+     * player effect path uses but drives its own transient mob lockout rather than the effect stack.
+     *
+     * @param id the effect id to resolve
+     * @return the matching definition, or empty when no effect with that id is authored
+     * @throws EffectRepositoryException if the underlying repository lookup fails
+     */
+    public Optional<EffectDefinition> definition(EffectId id) throws EffectRepositoryException {
+        Objects.requireNonNull(id, "Effect id is required");
+        return repository.findById(id);
+    }
+
     private EffectDefinition definitionOrThrow(EffectId id) throws EffectRepositoryException {
         Optional<EffectDefinition> definition = repository.findById(id);
         if (definition.isEmpty()) {

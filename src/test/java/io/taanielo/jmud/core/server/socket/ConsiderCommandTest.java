@@ -232,6 +232,27 @@ class ConsiderCommandTest {
         assertEquals("", SocketCommandContextImpl.enrageHintLine(false));
     }
 
+    @Test
+    void controlledStateHintShownForEachLockout() {
+        assertEquals(
+            "It is rooted in place and cannot flee.",
+            SocketCommandContextImpl.controlledStateLine(
+                io.taanielo.jmud.core.effects.ControlType.ROOT));
+        assertEquals(
+            "It is silenced and cannot voice its signature spell.",
+            SocketCommandContextImpl.controlledStateLine(
+                io.taanielo.jmud.core.effects.ControlType.SILENCE));
+        assertEquals(
+            "It is stunned and cannot act.",
+            SocketCommandContextImpl.controlledStateLine(
+                io.taanielo.jmud.core.effects.ControlType.STUN));
+    }
+
+    @Test
+    void controlledStateHintEmptyForUncontrolledMobs() {
+        assertEquals("", SocketCommandContextImpl.controlledStateLine(null));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
 
     /**

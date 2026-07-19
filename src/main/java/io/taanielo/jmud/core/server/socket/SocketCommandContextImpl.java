@@ -3764,6 +3764,13 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (!enrageHint.isEmpty()) {
             hints.add(enrageHint);
         }
+        // Discoverability hint for a live crowd-control lockout (issue #763): unlike the static hints
+        // above this reflects the mob's current state, so a party can see that a player-cast root,
+        // silence, or stun has landed and coordinate around the window while it lasts.
+        String controlHint = controlledStateLine(found.activeControl());
+        if (!controlHint.isEmpty()) {
+            hints.add(controlHint);
+        }
         if (hints.isEmpty()) {
             writeLineWithPrompt(tierLine);
         } else {
@@ -3801,6 +3808,26 @@ class SocketCommandContextImpl implements SocketCommandContext {
         return canEnrage
             ? "It looks like it will wear down slowly, then grow dangerous."
             : "";
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability line for a mob currently held by a
+     * player-cast crowd-control lockout (issue #763), or an empty string when the mob is uncontrolled.
+     * Unlike the static template hints this reflects live encounter state, so a party can confirm a
+     * root/silence/stun landed and coordinate around the lockout window while it is active.
+     *
+     * @param control the mob's active control classification, or {@code null} when uncontrolled
+     * @return the controlled-state sentence, or an empty string when the mob is uncontrolled
+     */
+    static String controlledStateLine(@Nullable io.taanielo.jmud.core.effects.ControlType control) {
+        if (control == null) {
+            return "";
+        }
+        return switch (control) {
+            case ROOT -> "It is rooted in place and cannot flee.";
+            case SILENCE -> "It is silenced and cannot voice its signature spell.";
+            case STUN -> "It is stunned and cannot act.";
+        };
     }
 
     /**
