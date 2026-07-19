@@ -46,6 +46,7 @@ import io.taanielo.jmud.core.tick.system.CooldownSystem;
 import io.taanielo.jmud.core.world.Direction;
 import io.taanielo.jmud.core.world.RoomId;
 import io.taanielo.jmud.core.world.RoomService;
+import io.taanielo.jmud.core.world.area.WayfindService.AutoWalkStep;
 import io.taanielo.jmud.core.world.repository.InMemoryRoomRepository;
 import io.taanielo.jmud.core.world.repository.RepositoryException;
 
@@ -265,13 +266,17 @@ class PlayerTickerTest {
         PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), walk);
 
         List<Direction> walked = new ArrayList<>();
-        // Mirrors SocketCommandContextImpl#advanceAutoWalk: pop one step, "move", cancel on arrival.
-        walk.begin("Frozen Peaks", List.of(Direction.NORTH, Direction.UP, Direction.EAST), () -> {
-            walked.add(walk.nextStep());
-            if (!walk.hasNextStep()) {
-                walk.cancel();
-            }
-        });
+        // Mirrors SocketCommandContextImpl#advanceAutoWalk: peek one step, "move", pop, cancel on arrival.
+        walk.begin("Frozen Peaks", List.of(
+            new AutoWalkStep.Walk(Direction.NORTH),
+            new AutoWalkStep.Walk(Direction.UP),
+            new AutoWalkStep.Walk(Direction.EAST)), () -> {
+                walked.add(((AutoWalkStep.Walk) walk.peekNextStep()).direction());
+                walk.advanceStep();
+                if (!walk.hasNextStep()) {
+                    walk.cancel();
+                }
+            });
 
         ticker.tick();
         assertEquals(List.of(Direction.NORTH), walked);
@@ -297,12 +302,15 @@ class PlayerTickerTest {
         PlayerTicker ticker = new PlayerTicker(queue, cooldowns, idleRespawnTicker(), new SpellCastState(), walk);
 
         List<Direction> walked = new ArrayList<>();
-        walk.begin("Frozen Peaks", List.of(Direction.NORTH, Direction.UP), () -> {
-            walked.add(walk.nextStep());
-            if (!walk.hasNextStep()) {
-                walk.cancel();
-            }
-        });
+        walk.begin("Frozen Peaks", List.of(
+            new AutoWalkStep.Walk(Direction.NORTH),
+            new AutoWalkStep.Walk(Direction.UP)), () -> {
+                walked.add(((AutoWalkStep.Walk) walk.peekNextStep()).direction());
+                walk.advanceStep();
+                if (!walk.hasNextStep()) {
+                    walk.cancel();
+                }
+            });
 
         // A manual command dispatched this tick cancels the walk (the dispatcher hook), and because the
         // auto-walk stage runs after the command drain, no autopilot step executes after it.

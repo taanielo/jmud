@@ -165,13 +165,12 @@ public class WayfindService {
      * with the exact same exact-id / exact-name / partial-match / ambiguity rules as {@code WAYFIND}
      * and then classifying the shortest route to that area's waypoint.
      *
-     * <p>Auto-walk only automates pure walking: when the shortest route requires the ferry (i.e. the
-     * best route {@link #findBestRoute} finds contains a ferry leg), this returns a
-     * {@link AutoWalkPlan.Blocked} pointing the player at {@code WAYFIND} to cross manually, mirroring
-     * the ferry-leg detection already used to render ferry routes. A resolvable, purely-walkable
-     * destination returns {@link AutoWalkPlan.Route} carrying the ordered directions to follow. Every
-     * other outcome (unknown area, ambiguous query, blank query, already-at-entrance, no route, data
-     * read failure) returns {@link AutoWalkPlan.Blocked} with a ready-to-print message.
+     * <p>Auto-walk automates walking and, when the shortest route crosses the world's single ferry, a
+     * lone ferry leg: the best route {@link #findBestRoute} finds is translated step-for-step into an
+     * ordered list of {@link AutoWalkStep}s (walked compass moves plus at most one boarding-and-riding
+     * ferry step), returned as {@link AutoWalkPlan.Route} for the walker to execute one action per
+     * tick. Every other outcome (unknown area, ambiguous query, blank query, already-at-entrance, no
+     * route, data read failure) returns {@link AutoWalkPlan.Blocked} with a ready-to-print message.
      *
      * <p>This is a pure in-memory read with no mutation, safe on the tick thread (AGENTS.md §5).
      *
@@ -225,15 +224,10 @@ public class WayfindService {
         if (steps.isEmpty()) {
             return new AutoWalkPlan.Blocked("You are already at the entrance to " + destination.name() + ".");
         }
-        if (steps.stream().anyMatch(step -> step instanceof FerryStep)) {
-            return new AutoWalkPlan.Blocked("The route to " + destination.name()
-                + " crosses the Coastal Ferry, which AUTOWALK cannot board for you. Use WAYFIND "
-                + destination.name() + " to read the directions and cross manually.");
-        }
-        List<Direction> directions = steps.stream()
-            .map(step -> ((WalkStep) step).direction())
+        List<AutoWalkStep> autoWalkSteps = steps.stream()
+            .map(WayfindService::toAutoWalkStep)
             .toList();
-        return new AutoWalkPlan.Route(destination.name(), directions);
+        return new AutoWalkPlan.Route(destination.name(), autoWalkSteps);
     }
 
     /**
@@ -317,13 +311,28 @@ public class WayfindService {
             List<Direction> legFromDock) {
         List<RouteStep> steps = new ArrayList<>();
         legToDock.forEach(direction -> steps.add(walkStep(direction)));
-        steps.add(new FerryStep(ferry.name(), roomNames.apply(boardingDock), roomNames.apply(arrivalDock)));
+        steps.add(new FerryStep(
+            ferry.name(), roomNames.apply(boardingDock), roomNames.apply(arrivalDock),
+            ferry.deckRoomId(), arrivalDock));
         legFromDock.forEach(direction -> steps.add(walkStep(direction)));
         return List.copyOf(steps);
     }
 
     private static RouteStep walkStep(Direction direction) {
         return new WalkStep(direction);
+    }
+
+    /**
+     * Translates an internal rendered {@link RouteStep} into the executable {@link AutoWalkStep} the
+     * auto-walker drives one action per tick: a walked compass move becomes an {@link AutoWalkStep.Walk},
+     * and a ferry crossing becomes an {@link AutoWalkStep.Ferry} carrying the deck room to board and the
+     * dock the ferry sets the player down at.
+     */
+    private static AutoWalkStep toAutoWalkStep(RouteStep step) {
+        return switch (step) {
+            case WalkStep walk -> new AutoWalkStep.Walk(walk.direction());
+            case FerryStep ferry -> new AutoWalkStep.Ferry(ferry.ferryName(), ferry.deckRoomId(), ferry.arrivalDock());
+        };
     }
 
     /**
@@ -412,30 +421,77 @@ public class WayfindService {
         }
     }
 
-    /** A single ferry crossing from one dock to another aboard a named ferry. */
-    private record FerryStep(String ferryName, String boardingDock, String arrivalDock) implements RouteStep {
+    /**
+     * A single ferry crossing from one dock to another aboard a named ferry. Beyond the display names
+     * used to render the route line, it carries the ferry's {@code deckRoomId} (the room a player boards
+     * by stepping onto) and the {@code arrivalDock} room id (where the ferry sets the player down) so
+     * the same leg can be automated by {@code AUTOWALK}.
+     */
+    private record FerryStep(
+        String ferryName,
+        String boardingDockName,
+        String arrivalDockName,
+        RoomId deckRoomId,
+        RoomId arrivalDock) implements RouteStep {
         @Override
         public String label() {
-            return "board the " + ferryName + " at " + boardingDock + " and ride to " + arrivalDock;
+            return "board the " + ferryName + " at " + boardingDockName + " and ride to " + arrivalDockName;
         }
     }
 
     /**
-     * The outcome of planning an {@code AUTOWALK}: either a walkable {@link Route} to begin, or a
-     * {@link Blocked} message to print (unknown/ambiguous area, ferry-required, already-there, etc.).
+     * A single executable leg of an {@code AUTOWALK} plan: either a walked compass move or a ferry
+     * boarding-and-riding leg. Unlike the private rendered {@link RouteStep}s, these carry the room ids
+     * the walker needs to drive the leg on the tick thread (AGENTS.md §5).
+     */
+    public sealed interface AutoWalkStep permits AutoWalkStep.Walk, AutoWalkStep.Ferry {
+
+        /**
+         * A single walked compass move.
+         *
+         * @param direction the direction to move one room
+         */
+        record Walk(Direction direction) implements AutoWalkStep {
+            public Walk {
+                Objects.requireNonNull(direction, "Direction is required");
+            }
+        }
+
+        /**
+         * A single ferry leg: board the ferry by stepping onto its {@code deckRoomId}, wait for the
+         * scheduled departure to carry the player to {@code arrivalDock}, then continue.
+         *
+         * @param ferryName   the ferry's display name, for status lines
+         * @param deckRoomId  the deck room the player boards by stepping onto
+         * @param arrivalDock the dock room the ferry sets the player down at, ending the leg
+         */
+        record Ferry(String ferryName, RoomId deckRoomId, RoomId arrivalDock) implements AutoWalkStep {
+            public Ferry {
+                Objects.requireNonNull(ferryName, "Ferry name is required");
+                Objects.requireNonNull(deckRoomId, "Deck room id is required");
+                Objects.requireNonNull(arrivalDock, "Arrival dock is required");
+            }
+        }
+    }
+
+    /**
+     * The outcome of planning an {@code AUTOWALK}: either a resolvable {@link Route} to begin, or a
+     * {@link Blocked} message to print (unknown/ambiguous area, already-there, no route, etc.).
      */
     public sealed interface AutoWalkPlan permits AutoWalkPlan.Route, AutoWalkPlan.Blocked {
 
         /**
-         * A resolvable, purely-walkable route to a destination area's waypoint.
+         * A resolvable route to a destination area's waypoint: an ordered list of walked moves and at
+         * most one ferry leg, executed one action per tick.
          *
          * @param destinationName the destination area's display name
-         * @param directions      the ordered compass directions to follow, one per tick; never empty
+         * @param steps           the ordered steps to follow (walked moves plus at most one ferry leg);
+         *                        never empty
          */
-        record Route(String destinationName, List<Direction> directions) implements AutoWalkPlan {
+        record Route(String destinationName, List<AutoWalkStep> steps) implements AutoWalkPlan {
             public Route {
                 Objects.requireNonNull(destinationName, "Destination name is required");
-                directions = List.copyOf(directions);
+                steps = List.copyOf(steps);
             }
         }
 

@@ -254,12 +254,16 @@ class WayfindServiceTest {
         assertTrue(plan instanceof WayfindService.AutoWalkPlan.Route);
         WayfindService.AutoWalkPlan.Route route = (WayfindService.AutoWalkPlan.Route) plan;
         assertEquals("Frozen Peaks", route.destinationName());
-        assertEquals(List.of(Direction.NORTH, Direction.UP), route.directions());
+        assertEquals(
+            List.of(
+                new WayfindService.AutoWalkStep.Walk(Direction.NORTH),
+                new WayfindService.AutoWalkStep.Walk(Direction.UP)),
+            route.steps());
     }
 
     @Test
-    void planAutoWalkRefusesFerryRouteAndPointsAtWayfind() {
-        // Only the ferry crosses to the island — AUTOWALK must refuse rather than automate the ferry.
+    void planAutoWalkAutomatesRouteAcrossFerry() {
+        // Only the ferry crosses to the island — AUTOWALK must now automate the ferry leg (issue #768).
         corridor("start", Direction.NORTH, "north-dock");
         corridor("south-dock", Direction.EAST, "isle-shore");
         roomNames.put(RoomId.of("north-dock"), "North Dock");
@@ -279,10 +283,16 @@ class WayfindServiceTest {
 
         WayfindService.AutoWalkPlan plan = service.planAutoWalk(RoomId.of("start"), "shrouded isle");
 
-        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Blocked);
-        String message = ((WayfindService.AutoWalkPlan.Blocked) plan).message();
-        assertTrue(message.contains("Coastal Ferry"));
-        assertTrue(message.contains("WAYFIND Shrouded Isle"));
+        assertTrue(plan instanceof WayfindService.AutoWalkPlan.Route);
+        WayfindService.AutoWalkPlan.Route route = (WayfindService.AutoWalkPlan.Route) plan;
+        assertEquals("Shrouded Isle", route.destinationName());
+        assertEquals(
+            List.of(
+                new WayfindService.AutoWalkStep.Walk(Direction.NORTH),
+                new WayfindService.AutoWalkStep.Ferry(
+                    "Coastal Ferry", RoomId.of("coastal-ferry-deck"), RoomId.of("south-dock")),
+                new WayfindService.AutoWalkStep.Walk(Direction.EAST)),
+            route.steps());
     }
 
     @Test

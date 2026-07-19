@@ -7,17 +7,19 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
-import io.taanielo.jmud.core.world.Direction;
+import io.taanielo.jmud.core.world.area.WayfindService.AutoWalkStep;
 
 /**
- * Tracks a single player's in-progress {@code AUTOWALK} — an automated multi-step walk toward a
- * charted area's waypoint, advancing one room per game tick.
+ * Tracks a single player's in-progress {@code AUTOWALK} — an automated multi-step journey toward a
+ * charted area's waypoint, advancing one action per game tick.
  *
- * <p>The walk holds a precomputed queue of compass {@link Direction directions} (the pure-walking
- * route resolved by {@code WayfindService} when the command began) and a {@code stepAction} supplied
- * by the command context. Each tick the {@link PlayerTicker} calls {@link #tick()}, which runs the
- * step action; that action pops the next direction, drives it through the real movement chokepoint,
- * and cancels the walk when it completes, is blocked, or is interrupted.
+ * <p>The journey holds a precomputed queue of {@link AutoWalkStep steps} (the route resolved by
+ * {@code WayfindService} when the command began) and a {@code stepAction} supplied by the command
+ * context. Each step is either a walked compass move or a single ferry leg (board the deck, wait for
+ * the scheduled departure, ride to the arrival dock). Each tick the {@link PlayerTicker} calls
+ * {@link #tick()}, which runs the step action; that action peeks the head step, performs one tick's
+ * worth of it through the real movement chokepoint, and only pops it once the step is complete —
+ * cancelling the journey when it finishes, is blocked, or is interrupted.
  *
  * <p>This is <strong>session-transient</strong> state, modelled on
  * {@link io.taanielo.jmud.core.ability.SpellCastState}: it lives only for the duration of a login,
@@ -28,26 +30,26 @@ import io.taanielo.jmud.core.world.Direction;
 public final class AutoWalkState {
 
     private @Nullable String destinationName;
-    private @Nullable Deque<Direction> remaining;
+    private @Nullable Deque<AutoWalkStep> remaining;
     private @Nullable Runnable stepAction;
 
     /**
      * Begins (or replaces) an auto-walk toward the named destination along the given route.
      *
      * @param destinationName the display name of the destination area, for status lines
-     * @param route           the ordered pure-walking directions to the destination waypoint; must be
-     *                        non-empty
-     * @param stepAction      the per-tick action that performs one auto-walk step (pops the next
-     *                        direction, moves, and cancels on completion/block/interrupt)
+     * @param steps           the ordered steps to the destination waypoint (walked moves plus at most
+     *                        one ferry leg); must be non-empty
+     * @param stepAction      the per-tick action that performs one tick's worth of the head step (moves
+     *                        or waits, pops completed steps, and cancels on completion/block/interrupt)
      */
-    public void begin(String destinationName, List<Direction> route, Runnable stepAction) {
+    public void begin(String destinationName, List<AutoWalkStep> steps, Runnable stepAction) {
         Objects.requireNonNull(destinationName, "Destination name is required");
-        Objects.requireNonNull(route, "Route is required");
-        if (route.isEmpty()) {
+        Objects.requireNonNull(steps, "Steps are required");
+        if (steps.isEmpty()) {
             throw new IllegalArgumentException("Auto-walk requires a non-empty route");
         }
         this.destinationName = destinationName;
-        this.remaining = new ArrayDeque<>(route);
+        this.remaining = new ArrayDeque<>(steps);
         this.stepAction = Objects.requireNonNull(stepAction, "Step action is required");
     }
 
@@ -80,7 +82,7 @@ public final class AutoWalkState {
     }
 
     /**
-     * Returns whether at least one more queued direction remains to be walked.
+     * Returns whether at least one more queued step remains to be executed.
      *
      * @return {@code true} when another step is queued
      */
@@ -89,12 +91,26 @@ public final class AutoWalkState {
     }
 
     /**
-     * Pops and returns the next queued direction. Callers must guard with {@link #hasNextStep()}.
+     * Returns the next queued step without removing it. Callers must guard with {@link #hasNextStep()}.
      *
-     * @return the next direction to walk
+     * @return the next step to execute
      * @throws IllegalStateException when no step is queued
      */
-    public Direction nextStep() {
+    public AutoWalkStep peekNextStep() {
+        if (remaining == null || remaining.isEmpty()) {
+            throw new IllegalStateException("No queued auto-walk step");
+        }
+        return remaining.peekFirst();
+    }
+
+    /**
+     * Removes and returns the head step, marking it complete. Callers must guard with
+     * {@link #hasNextStep()}.
+     *
+     * @return the completed step
+     * @throws IllegalStateException when no step is queued
+     */
+    public AutoWalkStep advanceStep() {
         if (remaining == null || remaining.isEmpty()) {
             throw new IllegalStateException("No queued auto-walk step");
         }
@@ -102,7 +118,7 @@ public final class AutoWalkState {
     }
 
     /**
-     * Returns the number of directions still queued (0 when not walking).
+     * Returns the number of steps still queued (0 when not walking).
      *
      * @return the remaining step count
      */

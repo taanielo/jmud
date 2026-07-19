@@ -3441,9 +3441,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
             case WayfindService.AutoWalkPlan.Blocked blocked -> writeLineWithPrompt(blocked.message());
             case WayfindService.AutoWalkPlan.Route route -> {
                 // begin() replaces any walk already in progress, recomputed fresh from the current room.
-                walk.begin(route.destinationName(), route.directions(), this::advanceAutoWalk);
+                walk.begin(route.destinationName(), route.steps(), this::advanceAutoWalk);
                 writeLineWithPrompt("You set off toward " + route.destinationName() + " ("
-                    + route.directions().size() + " step(s)). Type any command to stop.");
+                    + route.steps().size() + " step(s)). Type any command to stop.");
             }
         }
     }
@@ -3460,12 +3460,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     /**
-     * Advances the caller's in-progress {@code AUTOWALK} by one step. Invoked once per tick by the
+     * Advances the caller's in-progress {@code AUTOWALK} by one action. Invoked once per tick by the
      * {@link PlayerTicker} auto-walk stage (after the command drain, so a manual command this tick has
      * already cancelled the walk). Cancels the walk — with a one-line reason — when the player has left
-     * the world, has been pulled into combat, or the next step is blocked; and reports arrival when the
-     * final queued step lands. Reuses {@link #performMove} so every movement check (control effects,
+     * the world, has been pulled into combat, or a step is blocked; and reports arrival when the final
+     * queued step lands. Reuses {@link #performMove} so every movement check (control effects,
      * move-point cost, locked doors) is shared with a manual move, never bypassed (issue #767).
+     *
+     * <p>Walked steps advance one room per tick. A ferry step spans several ticks: the walker steps
+     * onto the ferry's deck, waits (doing nothing) while the tick-driven ferry sails, and completes the
+     * leg only once carried to the arrival dock — respecting the ferry schedule rather than teleporting
+     * (issue #768). All cancellation semantics apply throughout the ferry leg.
      *
      * <p>Runs on the tick thread (AGENTS.md §5).
      */
@@ -3487,7 +3492,18 @@ class SocketCommandContextImpl implements SocketCommandContext {
             walk.cancel();
             return;
         }
-        Direction direction = walk.nextStep();
+        switch (walk.peekNextStep()) {
+            case WayfindService.AutoWalkStep.Walk step -> advanceWalkStep(walk, step.direction(), destination);
+            case WayfindService.AutoWalkStep.Ferry step -> advanceFerryStep(walk, player, step, destination);
+        }
+    }
+
+    /**
+     * Executes one walked {@code AUTOWALK} step: moves one room in {@code direction} through the shared
+     * movement chokepoint, then pops the step. Cancels on a blocked step and announces arrival when it
+     * was the final step. Runs on the tick thread (AGENTS.md §5).
+     */
+    private void advanceWalkStep(AutoWalkState walk, Direction direction, String destination) {
         MoveStepOutcome outcome = performMove(direction);
         if (outcome != MoveStepOutcome.MOVED) {
             // performMove already printed the refusal a manual move would show; add the travel notice.
@@ -3495,10 +3511,60 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
             return;
         }
+        walk.advanceStep();
         if (!walk.hasNextStep()) {
             walk.cancel();
             writeLineWithPrompt("You arrive at " + destination + ".");
         }
+    }
+
+    /**
+     * Executes one tick's worth of a ferry {@code AUTOWALK} step. Depending on where the player is
+     * standing this tick it: completes the leg (once carried to the arrival dock, pops the step and
+     * either continues or announces arrival); waits idle (while aboard the deck, letting the tick-driven
+     * ferry sail); or boards (from a dock, steps onto the deck through the shared movement chokepoint,
+     * re-boarding if a previous departure set the player down at the wrong dock). Cancels on a blocked
+     * boarding move or a lost location. Runs on the tick thread (AGENTS.md §5).
+     */
+    private void advanceFerryStep(
+            AutoWalkState walk, Player player, WayfindService.AutoWalkStep.Ferry step, String destination) {
+        Optional<RoomId> location = roomService.findPlayerLocation(player.getUsername());
+        if (location.isEmpty()) {
+            walk.cancel();
+            writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
+            return;
+        }
+        RoomId current = location.get();
+        if (current.equals(step.arrivalDock())) {
+            // The ferry has set us down at the destination dock — the leg is done.
+            walk.advanceStep();
+            if (!walk.hasNextStep()) {
+                walk.cancel();
+                writeLineWithPrompt("You arrive at " + destination + ".");
+            }
+            return;
+        }
+        if (current.equals(step.deckRoomId())) {
+            // Aboard and waiting for the scheduled departure to carry us on — do nothing this tick.
+            return;
+        }
+        // Standing at a dock: step onto the deck to board (or re-board after a wrong-dock drop-off).
+        Optional<Direction> onto = directionTo(current, step.deckRoomId());
+        if (onto.isEmpty() || performMove(onto.get()) != MoveStepOutcome.MOVED) {
+            walk.cancel();
+            writeLineWithPrompt("Your journey toward " + destination + " is interrupted here.");
+        }
+    }
+
+    /**
+     * Returns the exit {@link Direction} leading from {@code from} to {@code to}, or empty when no exit
+     * of that room reaches it. Used to find the move that steps a player from a dock onto a ferry deck.
+     */
+    private Optional<Direction> directionTo(RoomId from, RoomId to) {
+        return roomService.getExits(from).entrySet().stream()
+            .filter(entry -> entry.getValue().equals(to))
+            .map(Map.Entry::getKey)
+            .findFirst();
     }
 
     @Override
