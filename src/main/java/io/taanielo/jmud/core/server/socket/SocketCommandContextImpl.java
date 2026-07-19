@@ -5658,6 +5658,8 @@ class SocketCommandContextImpl implements SocketCommandContext {
         GuildLevel level = guild.level();
         connection.writeLine("Guild level: " + level.rank() + "/" + GuildLevel.FIVE.rank()
             + " (vault capacity " + GuildService.vaultCapacity(guild) + " slots).");
+        connection.writeLine("Treasury interest: " + level.interestRatePercent()
+            + "% of the balance per day, paid at dawn (never affects leveling).");
         OptionalInt nextThreshold = guild.nextLevelThreshold();
         if (nextThreshold.isPresent()) {
             int remaining = nextThreshold.getAsInt() - guild.lifetimeDepositedGold();

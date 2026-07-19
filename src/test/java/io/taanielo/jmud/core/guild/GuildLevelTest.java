@@ -51,4 +51,13 @@ class GuildLevelTest {
         assertFalse(GuildLevel.FOUR.isMax());
         assertTrue(GuildLevel.FIVE.isMax());
     }
+
+    @Test
+    void interestRateRisesOnePercentPerLevelToFive() {
+        assertEquals(1, GuildLevel.ONE.interestRatePercent());
+        assertEquals(2, GuildLevel.TWO.interestRatePercent());
+        assertEquals(3, GuildLevel.THREE.interestRatePercent());
+        assertEquals(4, GuildLevel.FOUR.interestRatePercent());
+        assertEquals(5, GuildLevel.FIVE.interestRatePercent());
+    }
 }

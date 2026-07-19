@@ -239,6 +239,70 @@ class GuildTest {
     }
 
     @Test
+    void dailyInterestIsLevelScaledFloorOfTreasury() {
+        // Level 1 (1%): 1000 -> 10.
+        Guild lvl1 = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).creditTreasuryInterest(1_000);
+        assertEquals(10, lvl1.dailyTreasuryInterest());
+
+        // Odd balance floors down: 1099 * 1% = 10.99 -> 10.
+        Guild odd = Guild.found(GuildId.of("g2"), "Oddments", ALICE).creditTreasuryInterest(1_099);
+        assertEquals(10, odd.dailyTreasuryInterest());
+
+        // Sub-threshold balance floors to zero: 50 * 1% = 0.5 -> 0.
+        Guild tiny = Guild.found(GuildId.of("g3"), "Tiny", ALICE).creditTreasuryInterest(50);
+        assertEquals(0, tiny.dailyTreasuryInterest());
+    }
+
+    @Test
+    void dailyInterestUsesTheGuildsCurrentLevelRate() {
+        // 5,000 lifetime gold -> level 4 (4%); interest is on the *current* treasury balance.
+        Guild lvl4 = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).depositTreasury(5_000);
+        assertEquals(GuildLevel.FOUR, lvl4.level());
+        assertEquals(200, lvl4.dailyTreasuryInterest());
+    }
+
+    @Test
+    void emptyTreasuryEarnsNoInterest() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertEquals(0, guild.treasuryGold());
+        assertEquals(0, guild.dailyTreasuryInterest());
+    }
+
+    @Test
+    void creditingInterestRaisesTreasuryButNeverLifetimeGoldOrLevel() {
+        // Level 2 (2%) guild funded by a 600-gold deposit; crediting interest must not level it up.
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).depositTreasury(600);
+        int before = guild.dailyTreasuryInterest();
+
+        Guild credited = guild.creditTreasuryInterest(before);
+
+        assertEquals(600 + before, credited.treasuryGold());
+        assertEquals(600, credited.lifetimeDepositedGold());
+        assertEquals(GuildLevel.TWO, credited.level());
+    }
+
+    @Test
+    void repeatedInterestCreditsNeverAdvanceLevel() {
+        // Even if interest compounds the treasury toward a higher threshold, the level cannot move,
+        // because level is a pure function of lifetimeDepositedGold, which interest never touches.
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE).creditTreasuryInterest(400);
+        for (int day = 0; day < 100; day++) {
+            guild = guild.creditTreasuryInterest(guild.dailyTreasuryInterest());
+        }
+
+        assertEquals(0, guild.lifetimeDepositedGold());
+        assertEquals(GuildLevel.ONE, guild.level());
+    }
+
+    @Test
+    void negativeInterestThrows() {
+        Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
+
+        assertThrows(IllegalArgumentException.class, () -> guild.creditTreasuryInterest(-1));
+    }
+
+    @Test
     void foundedGuildIsNotAtWarWithZeroWarWins() {
         Guild guild = Guild.found(GuildId.of("g1"), "Ironclad", ALICE);
 

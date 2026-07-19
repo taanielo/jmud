@@ -105,6 +105,7 @@ import io.taanielo.jmud.core.gathering.ResourceGatheringService;
 import io.taanielo.jmud.core.gathering.ResourceNode;
 import io.taanielo.jmud.core.gathering.ResourceNodeRespawnTicker;
 import io.taanielo.jmud.core.gathering.repository.json.JsonResourceNodeRepository;
+import io.taanielo.jmud.core.guild.GuildInterestTicker;
 import io.taanielo.jmud.core.guild.GuildQuestPool;
 import io.taanielo.jmud.core.guild.GuildQuestRotationTicker;
 import io.taanielo.jmud.core.guild.GuildQuestService;
@@ -625,6 +626,11 @@ public record GameContext(
         tickRegistry.register(
             new DailyQuestRotationTicker(worldClock, dailyQuestService, messageBroadcaster));
         tickRegistry.register(new GuildQuestRotationTicker(worldClock, guildQuestService));
+        // Passive guild-treasury interest (issue #773): once per game day (same NIGHT→DAY boundary), a
+        // level-scaled cut of each guild's current treasury is credited straight to treasuryGold — never
+        // lifetimeDepositedGold, so interest can never drive leveling — and announced on the [Guild]
+        // channel. Registered after WorldClock so the clock has already flipped on the boundary tick.
+        tickRegistry.register(new GuildInterestTicker(worldClock, guildService, messageBroadcaster));
 
         DuelService duelService = new DuelService();
         tickRegistry.register(duelService);

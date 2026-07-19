@@ -99,7 +99,15 @@ public class GuildCommand extends RegistrableCommand {
              + "  level 1 (0 gold) — 40 slots      level 4 (5,000 gold) — 70 slots\n"
              + "  level 2 (500 gold) — 50 slots    level 5 (15,000 gold) — 80 slots\n"
              + "  level 3 (2,000 gold) — 60 slots\n"
-             + "GUILD and GUILD VAULT show your level, lifetime total, and progress to the next level.";
+             + "GUILD and GUILD VAULT show your level, lifetime total, and progress to the next level.\n"
+             + "\n"
+             + "Treasury interest: once per in-game day (at dawn) a guild with gold banked in its treasury\n"
+             + "earns passive interest — a level-scaled cut of its current balance, credited straight to\n"
+             + "the treasury and announced to online members. The rate rises with guild level:\n"
+             + "  level 1 — 1%    level 2 — 2%    level 3 — 3%    level 4 — 4%    level 5 — 5%\n"
+             + "Interest is floored to whole gold and skipped entirely for an empty treasury. It adds to\n"
+             + "the treasury balance ONLY — it never counts toward the lifetime deposited total, so\n"
+             + "interest can never drive a guild's level. GUILD and GUILD VAULT show your current rate.";
     }
 
     @Override
