@@ -155,4 +155,54 @@ class MobTemplateTest {
         assertThrows(IllegalArgumentException.class,
             () -> elementalTemplate(Map.of(DamageType.PHYSICAL, 20), Map.of()));
     }
+
+    private MobTemplate reinforcementTemplate(
+        Integer hpPercent, MobId addId, int count) {
+        return new MobTemplate(
+            MobId.of("mob.boss"), "the Boss", 100, null, null, true,
+            List.of(), SPAWN_ROOM, 1, 30, 5, null, List.of(), false,
+            null, null, false, null, null, false, false, 0, Map.of(), Map.of(), null,
+            null, 1.0, hpPercent, addId, count);
+    }
+
+    @Test
+    void reinforcementDefaultsToNoneViaLegacyConstructor() {
+        MobTemplate mobTemplate = template(30, null);
+
+        assertFalse(mobTemplate.reinforcementCapable(),
+            "a template built via a pre-reinforcement constructor never calls reinforcements");
+        assertNull(mobTemplate.reinforcementHpPercent());
+        assertNull(mobTemplate.reinforcementMobId());
+        assertEquals(0, mobTemplate.reinforcementCount());
+    }
+
+    @Test
+    void reinforcementCapableReflectsAuthoredFields() {
+        MobTemplate boss = reinforcementTemplate(50, MobId.of("mob.add"), 3);
+
+        assertTrue(boss.reinforcementCapable());
+        assertEquals(50, boss.reinforcementHpPercent());
+        assertEquals(MobId.of("mob.add"), boss.reinforcementMobId());
+        assertEquals(3, boss.reinforcementCount());
+    }
+
+    @Test
+    void rejectsReinforcementHpPercentOutOfRange() {
+        assertThrows(IllegalArgumentException.class,
+            () -> reinforcementTemplate(0, MobId.of("mob.add"), 3));
+        assertThrows(IllegalArgumentException.class,
+            () -> reinforcementTemplate(101, MobId.of("mob.add"), 3));
+    }
+
+    @Test
+    void rejectsReinforcementThresholdWithoutAddId() {
+        assertThrows(IllegalArgumentException.class,
+            () -> reinforcementTemplate(50, null, 3));
+    }
+
+    @Test
+    void rejectsNonPositiveReinforcementCountWhenThresholdPresent() {
+        assertThrows(IllegalArgumentException.class,
+            () -> reinforcementTemplate(50, MobId.of("mob.add"), 0));
+    }
 }

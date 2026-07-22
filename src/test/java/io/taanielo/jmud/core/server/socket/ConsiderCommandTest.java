@@ -233,6 +233,18 @@ class ConsiderCommandTest {
     }
 
     @Test
+    void reinforcementHintShownForReinforcementCapableMobs() {
+        assertEquals(
+            "It looks like it will call for aid when wounded.",
+            SocketCommandContextImpl.reinforcementHintLine(true));
+    }
+
+    @Test
+    void reinforcementHintEmptyForOrdinaryMobs() {
+        assertEquals("", SocketCommandContextImpl.reinforcementHintLine(false));
+    }
+
+    @Test
     void controlledStateHintShownForEachLockout() {
         assertEquals(
             "It is rooted in place and cannot flee.",

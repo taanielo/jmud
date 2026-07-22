@@ -3815,6 +3815,15 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
         if (!firstEngagement && mob.advanceEnrage()) {
             announceEnrage(mob);
         }
+        // Reinforcement wave (issue #809): the first committed AI decision on which a
+        // reinforcement-capable boss's live HP has dropped to/below its authored threshold summons a
+        // burst of lower-tier adds native to its zone into the room, exactly once per encounter (reset
+        // on disengage/respawn like enrage). Gated on {@code !firstEngagement} for the same reasons as
+        // enrage — a fresh pull is at full HP anyway — and placed after the telegraph, flee (#567), and
+        // healer (#733) gates above, so a mid-wind-up, mid-flee, or heal tick never triggers a wave.
+        if (!firstEngagement && mob.tryTriggerReinforcement()) {
+            summonReinforcements(mob);
+        }
         // A silenced mob (issue #763) is barred from voicing its signature spell: force its basic
         // attack regardless of specialAttackId/specialAbilityUsed, mirroring how silence blocks a
         // player's CAST while leaving melee untouched. The special is not consumed, so it becomes
@@ -3864,6 +3873,60 @@ public class MobRegistry implements Tickable, NpcStealPort, MobContentReloader, 
             ? "The " + name.substring(4)
             : "The " + name;
         broadcastToRoom(mob.roomId(), subject + "'s eyes blaze with fury — it grows enraged!");
+    }
+
+    /**
+     * Summons this boss's authored reinforcement wave (issue #809): announces the call for aid to the
+     * mob's room and spawns {@link MobTemplate#reinforcementCount()} fresh instances of
+     * {@link MobTemplate#reinforcementMobId()} — an existing lower-tier mob native to the boss's zone —
+     * into the boss's current room via {@link #spawnInstance(MobId, RoomId)}. The adds are ordinary
+     * mob instances that fight, die, and drop their own loot per their own template (aggressive adds
+     * engage the room on the next tick through the normal aggro gate). Called exactly once per
+     * encounter, on the AI decision that first crosses the boss's HP threshold. Runs on the tick thread
+     * (AGENTS.md §5).
+     *
+     * @param boss the boss calling in reinforcements
+     */
+    private void summonReinforcements(MobInstance boss) {
+        MobId addId = boss.template().reinforcementMobId();
+        if (addId == null) {
+            return;
+        }
+        RoomId room = boss.roomId();
+        announceReinforcements(boss);
+        int summoned = 0;
+        for (int i = 0; i < boss.template().reinforcementCount(); i++) {
+            if (spawnInstance(addId, room).isPresent()) {
+                summoned++;
+            }
+        }
+        if (summoned == 0) {
+            log.warn("Boss {} called reinforcements but no template '{}' was found to spawn",
+                boss.template().name(), addId.getValue());
+        } else {
+            log.debug("Boss {} summoned {} reinforcement(s) of {} into {}",
+                boss.template().name(), summoned, addId.getValue(), room);
+        }
+    }
+
+    /**
+     * Announces to everyone in the boss's room that it has just called in a reinforcement wave
+     * (issue #809), telegraphing the new threat so a party can react — kill the adds, cleave through
+     * them, or tank and ignore them. Called exactly once per encounter, on the AI decision that
+     * crosses the boss's {@link MobTemplate#reinforcementHpPercent()} threshold. Runs on the tick
+     * thread (AGENTS.md §5).
+     *
+     * @param boss the boss summoning reinforcements
+     */
+    private void announceReinforcements(MobInstance boss) {
+        String name = boss.template().name();
+        // Boss names are authored lower-case-"the"-prefixed ("the Coda"); render a natural
+        // sentence-initial subject ("The Coda") rather than a doubled "The the Coda".
+        String subject = name.regionMatches(true, 0, "the ", 0, 4)
+            ? "The " + name.substring(4)
+            : "The " + name;
+        broadcastToRoom(boss.roomId(),
+            subject + " calls out, and fresh voices coalesce to its defence!");
     }
 
     /**

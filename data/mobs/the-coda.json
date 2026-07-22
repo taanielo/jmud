@@ -39,5 +39,8 @@
     "max": 1450
   },
   "enrage_ticks": 25,
-  "enrage_damage_multiplier": 1.7
+  "enrage_damage_multiplier": 1.7,
+  "reinforcement_hp_percent": 50,
+  "reinforcement_mob_id": "coda-loosed-overtone",
+  "reinforcement_count": 2
 }

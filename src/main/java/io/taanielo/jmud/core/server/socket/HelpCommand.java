@@ -167,7 +167,15 @@ public class HelpCommand extends RegistrableCommand {
         "  against a capstone boss: bring your burst cooldowns and end the fight before the clock runs",
         "  out. CONSIDER a foe first — if it \"will wear down slowly, then grow dangerous,\" it enrages,",
         "  so plan to spike it down rather than out-heal it. Enrage is per-fight: break off cleanly (or",
-        "  kill it) and a fresh pull starts calm again, its patience reset.");
+        "  kill it) and a fresh pull starts calm again, its patience reset.",
+        "",
+        "  A few capstone bosses also call REINFORCEMENTS. The first time you wound one past a hidden",
+        "  threshold (around half health), it calls out and a wave of lesser creatures from its own",
+        "  lair surges into the room to its defence, immediately hostile. This turns a pure damage race",
+        "  into a tactical choice: cleave or crowd-control the adds, kill them first, or tank and burn",
+        "  the boss down through them. Bring your area attacks and CC for the moment. CONSIDER a foe",
+        "  first — if it \"will call for aid when wounded,\" plan for the wave before you commit. Like",
+        "  enrage, it fires once per fight and resets when you break off or kill the boss.");
 
     private static final List<String> COOLDOWNS_TOPIC = List.of(
         "Cooldowns",
@@ -260,6 +268,8 @@ public class HelpCommand extends RegistrableCommand {
         Map.entry("riposte", COMBAT_TOPIC),
         Map.entry("enrage", COMBAT_TOPIC),
         Map.entry("enrages", COMBAT_TOPIC),
+        Map.entry("reinforcement", COMBAT_TOPIC),
+        Map.entry("reinforcements", COMBAT_TOPIC),
         Map.entry("telegraph", COMBAT_TOPIC),
         Map.entry("cooldowns", COOLDOWNS_TOPIC),
         Map.entry("cooldown", COOLDOWNS_TOPIC),

@@ -34,6 +34,9 @@ public record MobTemplateDto(
     Integer healMax,
     Integer healThreshold,
     Integer enrageTicks,
-    Double enrageDamageMultiplier
+    Double enrageDamageMultiplier,
+    Integer reinforcementHpPercent,
+    String reinforcementMobId,
+    Integer reinforcementCount
 ) {
 }

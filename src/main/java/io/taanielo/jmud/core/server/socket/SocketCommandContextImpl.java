@@ -3969,6 +3969,14 @@ class SocketCommandContextImpl implements SocketCommandContext {
         if (!enrageHint.isEmpty()) {
             hints.add(enrageHint);
         }
+        // Discoverability hint for reinforcement-capable bosses (issue #809): warns a party that
+        // wounding the boss past a threshold summons a wave of adds, so they can plan to cleave/CC
+        // rather than tunnel single-target, mirroring the elemental (#717), healer (#733), and enrage
+        // (#745) hints above.
+        String reinforcementHint = reinforcementHintLine(found.template().reinforcementCapable());
+        if (!reinforcementHint.isEmpty()) {
+            hints.add(reinforcementHint);
+        }
         // Discoverability hint for a live crowd-control lockout (issue #763): unlike the static hints
         // above this reflects the mob's current state, so a party can see that a player-cast root,
         // silence, or stun has landed and coordinate around the window while it lasts.
@@ -4012,6 +4020,21 @@ class SocketCommandContextImpl implements SocketCommandContext {
     static String enrageHintLine(boolean canEnrage) {
         return canEnrage
             ? "It looks like it will wear down slowly, then grow dangerous."
+            : "";
+    }
+
+    /**
+     * Formats the optional {@code CONSIDER} discoverability hint for a reinforcement-capable boss
+     * (issue #809), or an empty string when the mob never calls for aid. Mirrors {@link #enrageHintLine}
+     * so a party can spot that wounding the boss will summon a wave of adds — and plan to cleave or
+     * crowd-control them — before committing to the pull rather than learning mid-fight.
+     *
+     * @param canReinforce whether the considered mob carries an authored reinforcement threshold
+     * @return the reinforcement warning sentence, or an empty string when the mob never reinforces
+     */
+    static String reinforcementHintLine(boolean canReinforce) {
+        return canReinforce
+            ? "It looks like it will call for aid when wounded."
             : "";
     }
 
