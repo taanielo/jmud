@@ -41,7 +41,7 @@ class BountyExpiryTickerTest {
 
     @Test
     void tick_refundsExpiredBountyAndMailsPoster() {
-        bountyRepo.stored.add(new Bounty(Username.of("alice"), "mob.goblin", "Goblin", 100, 0L));
+        bountyRepo.stored.add(Bounty.onMob(Username.of("alice"), "mob.goblin", "Goblin", 100, 0L));
         Player poster = playerNamed("alice", 400);
         List<Player> persisted = new ArrayList<>();
         BountyExpiryTicker ticker = new BountyExpiryTicker(
@@ -59,7 +59,7 @@ class BountyExpiryTickerTest {
 
     @Test
     void tick_doesNothing_whenNoBountiesExpired() {
-        bountyRepo.stored.add(new Bounty(Username.of("alice"), "mob.goblin", "Goblin", 100, 0L));
+        bountyRepo.stored.add(Bounty.onMob(Username.of("alice"), "mob.goblin", "Goblin", 100, 0L));
         List<Player> persisted = new ArrayList<>();
         BountyExpiryTicker ticker = new BountyExpiryTicker(
             service, () -> 50L, () -> EXPIRY_TICKS,
@@ -73,7 +73,7 @@ class BountyExpiryTickerTest {
 
     @Test
     void tick_skipsBounty_whenPosterCannotBeResolved() {
-        bountyRepo.stored.add(new Bounty(Username.of("ghost"), "mob.goblin", "Goblin", 100, 0L));
+        bountyRepo.stored.add(Bounty.onMob(Username.of("ghost"), "mob.goblin", "Goblin", 100, 0L));
         List<Player> persisted = new ArrayList<>();
         BountyExpiryTicker ticker = new BountyExpiryTicker(
             service, () -> EXPIRY_TICKS, () -> EXPIRY_TICKS,

@@ -76,7 +76,8 @@ class BountyServiceTest {
         assertEquals(400, result.updatedActor().getGold(), "stake is debited from the poster");
         assertEquals(1, bountyRepo.findAll().size());
         assertEquals(100, bountyRepo.findAll().get(0).reward());
-        assertEquals(GOBLIN_ID, bountyRepo.findAll().get(0).mobTemplateId());
+        assertEquals(GOBLIN_ID, bountyRepo.findAll().get(0).targetId());
+        assertTrue(bountyRepo.findAll().get(0).targetsMob());
     }
 
     @Test
@@ -219,6 +220,131 @@ class BountyServiceTest {
         assertEquals(0, total, "an un-bountied kill pays nothing");
         assertEquals(1, bountyRepo.findAll().size(), "unrelated bounties are untouched");
         assertTrue(broadcaster.global.isEmpty(), "no announcement on an un-bountied kill");
+    }
+
+    // ── player-target bounties (issue #807) ────────────────────────────
+
+    @Test
+    void postOnPlayer_escrowsGoldAndCreatesPlayerBounty() {
+        BountyService service = service();
+        Player poster = player("Alice", 500);
+
+        BountyResult result = service.postOnPlayer(poster, Username.of("Grimjaw"), 150, 10);
+
+        assertTrue(result.success(), result.message());
+        assertEquals(350, result.updatedActor().getGold(), "stake is debited from the poster");
+        assertEquals(1, bountyRepo.findAll().size());
+        Bounty bounty = bountyRepo.findAll().get(0);
+        assertTrue(bounty.targetsPlayer());
+        assertEquals("Grimjaw", bounty.targetId());
+        assertEquals(150, bounty.reward());
+    }
+
+    @Test
+    void postOnPlayer_rejectsSelfTarget() {
+        BountyService service = service();
+        Player poster = player("Alice", 500);
+
+        BountyResult result = service.postOnPlayer(poster, Username.of("alice"), 100, 10);
+
+        assertFalse(result.success());
+        assertTrue(bountyRepo.findAll().isEmpty(), "no bounty is created on oneself");
+    }
+
+    @Test
+    void postOnPlayer_rejectsUnaffordableStake() {
+        BountyService service = service();
+        Player poster = player("Alice", 50);
+
+        BountyResult result = service.postOnPlayer(poster, Username.of("Grimjaw"), 100, 10);
+
+        assertFalse(result.success());
+        assertTrue(bountyRepo.findAll().isEmpty());
+    }
+
+    @Test
+    void postOnPlayer_secondBackerStacksReward() {
+        BountyService service = service();
+        service.postOnPlayer(player("Alice", 500), Username.of("Grimjaw"), 100, 10);
+        service.postOnPlayer(player("Bob", 500), Username.of("Grimjaw"), 250, 20);
+
+        List<BountyListing> listings = service.listings(30, EXPIRY_TICKS);
+        assertEquals(1, listings.size());
+        assertEquals(BountyTargetKind.PLAYER, listings.get(0).targetKind());
+        assertEquals("Grimjaw", listings.get(0).targetName());
+        assertEquals(350, listings.get(0).totalReward(), "reward pools across backers");
+        assertEquals(2, listings.get(0).backerCount());
+    }
+
+    @Test
+    void claimPlayerBounty_paysWinnerAndAnnouncesAndClosesEntries() {
+        BountyService service = service();
+        service.postOnPlayer(player("Alice", 500), Username.of("Grimjaw"), 100, 10);
+        service.postOnPlayer(player("Bob", 500), Username.of("Grimjaw"), 250, 12);
+
+        int total = service.claimPlayerBounty(Username.of("Grimjaw"), Username.of("Hero"));
+
+        assertEquals(350, total, "the winner earns the full pooled reward");
+        assertTrue(bountyRepo.findAll().isEmpty(), "paid entries close");
+        assertEquals(1, broadcaster.global.size());
+        String announcement = broadcaster.global.get(0);
+        assertTrue(announcement.contains("Hero"), announcement);
+        assertTrue(announcement.contains("Grimjaw"), announcement);
+        assertTrue(announcement.contains("350"), announcement);
+    }
+
+    @Test
+    void claimPlayerBounty_onUnbountiedLoserIsNoOp() {
+        BountyService service = service();
+        service.postOnPlayer(player("Alice", 500), Username.of("Grimjaw"), 100, 10);
+
+        int total = service.claimPlayerBounty(Username.of("Innocent"), Username.of("Hero"));
+
+        assertEquals(0, total, "an un-bountied duel pays nothing");
+        assertEquals(1, bountyRepo.findAll().size(), "unrelated bounties are untouched");
+        assertTrue(broadcaster.global.isEmpty(), "no announcement on an un-bountied duel");
+    }
+
+    @Test
+    void claimPlayerBounty_ignoresMobBountiesWithSameName() {
+        BountyService service = service(combatMob(GOBLIN_ID, "Grimjaw"));
+        service.post(player("Alice", 500), "grimjaw", 100, 10);
+
+        int total = service.claimPlayerBounty(Username.of("Grimjaw"), Username.of("Hero"));
+
+        assertEquals(0, total, "a mob bounty is never claimed by a duel win");
+        assertEquals(1, bountyRepo.findAll().size(), "the mob bounty is untouched");
+    }
+
+    @Test
+    void cancel_refundsPlayerTargetStakeInFull() {
+        BountyService service = service();
+        Player poster = player("Alice", 500);
+        Player afterPost = service.postOnPlayer(poster, Username.of("Grimjaw"), 120, 10).updatedActor();
+        assertEquals(380, afterPost.getGold());
+
+        BountyResult cancel = service.cancel(afterPost, "Grimjaw");
+
+        assertTrue(cancel.success(), cancel.message());
+        assertEquals(500, cancel.updatedActor().getGold(), "the full stake is refunded");
+        assertTrue(bountyRepo.findAll().isEmpty(), "the cancelled bounty is closed");
+    }
+
+    @Test
+    void expireBounties_refundsPlayerTargetStakeAndMails() {
+        BountyService service = service();
+        Player poster = player("Alice", 500);
+        Player afterPost = service.postOnPlayer(poster, Username.of("Grimjaw"), 100, 10).updatedActor();
+
+        long expiry = 100;
+        List<Bounty> expired = service.expireBounties(10 + expiry, expiry);
+        assertEquals(1, expired.size());
+
+        Player refunded = service.applyExpiredRefund(afterPost, expired.get(0), 200);
+        assertEquals(500, refunded.getGold(), "the full stake is refunded");
+        assertFalse(refunded.mailbox().isEmpty(), "a refund note is mailed to the poster");
+        assertTrue(refunded.mailbox().messages().get(0).body().contains("Grimjaw"),
+            "the refund note names the player target");
     }
 
     // ── fakes ─────────────────────────────────────────────────────────
