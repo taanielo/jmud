@@ -94,6 +94,22 @@ import io.taanielo.jmud.core.world.TimeOfDay;
  *                  it has {@link #enrageCapable() enraged}; only meaningful when {@code enrageTicks} is
  *                  present, in which case it must be strictly greater than {@code 1.0}. Defaults to
  *                  {@code 1.0} (no boost) for mobs that never enrage.
+ * @param reinforcementHpPercent optional per-encounter reinforcement threshold (issue #809): the HP
+ *                  percentage, in {@code [1, 100]}, at or below which a fight against this mob first
+ *                  summons a wave of {@link #reinforcementCount()} fresh instances of
+ *                  {@link #reinforcementMobId()} into its room, announced to the room. {@code null} (the
+ *                  default) means the mob never calls reinforcements, so existing mob data is unaffected.
+ *                  When present it must be accompanied by a non-null {@link #reinforcementMobId()} and a
+ *                  positive {@link #reinforcementCount()}. Only a handful of capstone/world bosses author
+ *                  it. Reinforcement is transient, per-{@link MobInstance} encounter state that fires at
+ *                  most once and resets on disengage/respawn, mirroring enrage.
+ * @param reinforcementMobId optional id of the (existing, lower-tier) mob template summoned as a
+ *                  reinforcement wave when this mob crosses {@link #reinforcementHpPercent()};
+ *                  {@code null} unless reinforcements are configured. The summoned adds are ordinary mob
+ *                  instances that fight, die, and drop their own loot per their own template.
+ * @param reinforcementCount how many reinforcement instances to summon when the threshold is crossed;
+ *                  {@code 0} (the default) for mobs that never reinforce, and must be positive when
+ *                  {@link #reinforcementHpPercent()} is present.
  */
 public record MobTemplate(
     MobId id,
@@ -122,7 +138,10 @@ public record MobTemplate(
     Map<DamageType, Integer> vulnerabilities,
     @Nullable HealerProfile healerProfile,
     @Nullable Integer enrageTicks,
-    double enrageDamageMultiplier
+    double enrageDamageMultiplier,
+    @Nullable Integer reinforcementHpPercent,
+    @Nullable MobId reinforcementMobId,
+    int reinforcementCount
 ) {
 
     /**
@@ -161,6 +180,19 @@ public record MobTemplate(
             if (enrageDamageMultiplier <= 1.0) {
                 throw new IllegalArgumentException(
                     "Mob enrageDamageMultiplier must be greater than 1.0 when enrageTicks is present");
+            }
+        }
+        if (reinforcementHpPercent != null || reinforcementMobId != null || reinforcementCount != 0) {
+            if (reinforcementHpPercent == null || reinforcementMobId == null) {
+                throw new IllegalArgumentException(
+                    "Mob reinforcement requires both reinforcementHpPercent and reinforcementMobId");
+            }
+            if (reinforcementHpPercent < 1 || reinforcementHpPercent > 100) {
+                throw new IllegalArgumentException("Mob reinforcementHpPercent must be in [1, 100]");
+            }
+            if (reinforcementCount <= 0) {
+                throw new IllegalArgumentException(
+                    "Mob reinforcementCount must be positive when reinforcementHpPercent is present");
             }
         }
         lootTable = List.copyOf(lootTable);
@@ -500,7 +532,49 @@ public record MobTemplate(
         this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
             respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
             charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, resistances,
-            vulnerabilities, healerProfile, null, 1.0);
+            vulnerabilities, healerProfile, null, 1.0, null, null, 0);
+    }
+
+    /**
+     * Convenience constructor preserving the pre-reinforcement canonical arity (issue #809): defaults
+     * {@link #reinforcementHpPercent()} / {@link #reinforcementMobId()} to {@code null} and
+     * {@link #reinforcementCount()} to {@code 0} (a mob that never calls reinforcements). Keeps every
+     * existing caller and the enrage-era JSON mapper source-compatible with the constructor that
+     * previously ended at {@code enrageDamageMultiplier}.
+     */
+    public MobTemplate(
+        MobId id,
+        String name,
+        int maxHp,
+        AttackId attackId,
+        AttackId specialAttackId,
+        boolean aggressive,
+        List<LootEntry> lootTable,
+        RoomId spawnRoomId,
+        int maxCount,
+        int respawnTicks,
+        int xpReward,
+        GoldDrop goldDrop,
+        List<String> tags,
+        boolean wanders,
+        @Nullable Integer nightRespawnTicks,
+        @Nullable Integer summonDurationTicks,
+        boolean charmable,
+        @Nullable DialogueId dialogueId,
+        @Nullable FactionId factionId,
+        boolean worldBoss,
+        boolean worldEvent,
+        int parryChancePercent,
+        Map<DamageType, Integer> resistances,
+        Map<DamageType, Integer> vulnerabilities,
+        @Nullable HealerProfile healerProfile,
+        @Nullable Integer enrageTicks,
+        double enrageDamageMultiplier
+    ) {
+        this(id, name, maxHp, attackId, specialAttackId, aggressive, lootTable, spawnRoomId, maxCount,
+            respawnTicks, xpReward, goldDrop, tags, wanders, nightRespawnTicks, summonDurationTicks,
+            charmable, dialogueId, factionId, worldBoss, worldEvent, parryChancePercent, resistances,
+            vulnerabilities, healerProfile, enrageTicks, enrageDamageMultiplier, null, null, 0);
     }
 
     /**
@@ -513,6 +587,18 @@ public record MobTemplate(
      */
     public boolean enrageCapable() {
         return enrageTicks != null;
+    }
+
+    /**
+     * Returns whether this mob is authored to summon a <em>reinforcement wave</em> when wounded
+     * (issue #809) — i.e. carries a {@link #reinforcementHpPercent()} threshold and a
+     * {@link #reinforcementMobId()} to spawn, and therefore calls in a burst of lower-tier adds the
+     * first time its HP drops to/below that threshold in an encounter.
+     *
+     * @return {@code true} when this mob has an authored reinforcement threshold and add id
+     */
+    public boolean reinforcementCapable() {
+        return reinforcementHpPercent != null && reinforcementMobId != null;
     }
 
     /**

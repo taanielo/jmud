@@ -108,6 +108,15 @@ public class MobInstance {
      */
     private final AtomicBoolean enraged = new AtomicBoolean(false);
     /**
+     * Whether this mob has already summoned its reinforcement wave in the current combat encounter
+     * (issue #809). Set exactly once, on the first committed AI decision on which its live HP has
+     * dropped to/below {@link MobTemplate#reinforcementHpPercent()} of its max HP (see
+     * {@link #tryTriggerReinforcement()}). Reset alongside {@link #enraged} when the encounter ends,
+     * mirroring {@link #specialAbilityUsed}, so a fresh pull never starts pre-triggered and repeated
+     * pulls never stack infinite adds. Transient, server-only state that never touches player saves.
+     */
+    private final AtomicBoolean reinforcementTriggered = new AtomicBoolean(false);
+    /**
      * The crowd-control lockout a player has landed on this mob this encounter (issue #763), or
      * {@code null} when the mob is uncontrolled. Paired with {@link #controlTicksRemaining}: the
      * lockout is only in force while the counter is positive. A {@link ControlType#STUN} suppresses
@@ -379,6 +388,7 @@ public class MobInstance {
             clearTaunt();
             clearTelegraph();
             clearEnrage();
+            clearReinforcement();
             clearControl();
         }
     }
@@ -574,6 +584,45 @@ public class MobInstance {
     private void clearEnrage() {
         enrageDecisions.set(0);
         enraged.set(false);
+    }
+
+    /**
+     * Triggers this encounter's reinforcement wave exactly once (issue #809) when the mob's live HP
+     * first drops to or below its authored {@link MobTemplate#reinforcementHpPercent()} of max HP. A
+     * no-op returning {@code false} when the mob is not
+     * {@link MobTemplate#reinforcementCapable() reinforcement-capable}, has already summoned this
+     * encounter, or is still above the threshold. Must only be called from the tick thread, on a
+     * committed AI decision, so the caller announces the wave and spawns the adds. Modeled directly on
+     * {@link #advanceEnrage()}; resets on disengage/respawn like enrage.
+     *
+     * @return {@code true} on the single decision that first crosses the reinforcement threshold (the
+     *         caller summons the wave); {@code false} otherwise
+     */
+    public boolean tryTriggerReinforcement() {
+        Integer thresholdPercent = template.reinforcementHpPercent();
+        if (thresholdPercent == null || reinforcementTriggered.get()) {
+            return false;
+        }
+        // Integer HP comparison: currentHp/maxHp <= percent/100 ⟺ currentHp*100 <= maxHp*percent.
+        if ((long) hp.get() * 100 <= (long) maxHp * thresholdPercent) {
+            reinforcementTriggered.set(true);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns whether this mob has already summoned its reinforcement wave in the current encounter
+     * (issue #809).
+     *
+     * @return {@code true} once the reinforcement threshold has been crossed this encounter
+     */
+    public boolean hasSummonedReinforcements() {
+        return reinforcementTriggered.get();
+    }
+
+    private void clearReinforcement() {
+        reinforcementTriggered.set(false);
     }
 
     /**
@@ -815,6 +864,7 @@ public class MobInstance {
         clearTaunt();
         clearTelegraph();
         clearEnrage();
+        clearReinforcement();
         clearControl();
         currentRoomId = template.spawnRoomId();
     }

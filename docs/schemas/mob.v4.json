@@ -176,6 +176,21 @@
       "type": "number",
       "exclusiveMinimum": 1.0,
       "description": "Multiplier applied to this mob's landed melee/special damage once it has enraged (see enrage_ticks). Must be strictly greater than 1.0 and is only meaningful alongside enrage_ticks. Omit for mobs that never enrage."
+    },
+    "reinforcement_hp_percent": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "description": "Optional per-encounter reinforcement threshold (issue #809): the HP percent (1-100) at or below which a fight against this mob first summons a wave of reinforcement_count fresh instances of reinforcement_mob_id into its room, announced to the room. Fires at most once per encounter and resets on disengage/respawn, mirroring enrage. Requires reinforcement_mob_id and a positive reinforcement_count when present. Omit for mobs that never call reinforcements (today's behaviour); only a handful of capstone/world bosses author it."
+    },
+    "reinforcement_mob_id": {
+      "type": ["string", "null"],
+      "description": "Optional id of the existing, lower-tier mob template summoned as a reinforcement wave when this mob crosses reinforcement_hp_percent. The summoned adds are ordinary mob instances that fight, die, and drop their own loot per their own template. Required when reinforcement_hp_percent is present; omit otherwise. Author an existing trash mob native to this boss's own zone (no new mob content)."
+    },
+    "reinforcement_count": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "description": "How many reinforcement instances to summon when reinforcement_hp_percent is crossed. Required (and must be positive) when reinforcement_hp_percent is present; ignored/omitted otherwise."
     }
   }
 }

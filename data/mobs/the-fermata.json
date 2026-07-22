@@ -39,5 +39,8 @@
     "max": 1180
   },
   "enrage_ticks": 28,
-  "enrage_damage_multiplier": 1.6
+  "enrage_damage_multiplier": 1.6,
+  "reinforcement_hp_percent": 50,
+  "reinforcement_mob_id": "interval-held-note",
+  "reinforcement_count": 3
 }

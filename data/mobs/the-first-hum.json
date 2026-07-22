@@ -39,5 +39,8 @@
     "max": 1100
   },
   "enrage_ticks": 30,
-  "enrage_damage_multiplier": 1.5
+  "enrage_damage_multiplier": 1.5,
+  "reinforcement_hp_percent": 50,
+  "reinforcement_mob_id": "undersong-drowned-chorister",
+  "reinforcement_count": 3
 }

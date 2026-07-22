@@ -39,5 +39,8 @@
     "max": 1700
   },
   "enrage_ticks": 22,
-  "enrage_damage_multiplier": 1.75
+  "enrage_damage_multiplier": 1.75,
+  "reinforcement_hp_percent": 50,
+  "reinforcement_mob_id": "encore-wisp",
+  "reinforcement_count": 2
 }

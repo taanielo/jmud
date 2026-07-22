@@ -51,6 +51,10 @@ public class MobTemplateDtoMapper {
         Integer enrageTicks = dto.enrageTicks();
         double enrageDamageMultiplier =
             dto.enrageDamageMultiplier() == null ? 1.0 : dto.enrageDamageMultiplier();
+        Integer reinforcementHpPercent = dto.reinforcementHpPercent();
+        MobId reinforcementMobId =
+            dto.reinforcementMobId() != null ? MobId.of(dto.reinforcementMobId()) : null;
+        int reinforcementCount = dto.reinforcementCount() == null ? 0 : dto.reinforcementCount();
         return new MobTemplate(
             MobId.of(dto.id()),
             dto.name(),
@@ -78,7 +82,10 @@ public class MobTemplateDtoMapper {
             vulnerabilities,
             healerProfile,
             enrageTicks,
-            enrageDamageMultiplier
+            enrageDamageMultiplier,
+            reinforcementHpPercent,
+            reinforcementMobId,
+            reinforcementCount
         );
     }
 
