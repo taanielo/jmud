@@ -36,6 +36,7 @@ import io.taanielo.jmud.core.ability.AbilityTargetResolver;
 import io.taanielo.jmud.core.ability.AbilityUseResult;
 import io.taanielo.jmud.core.ability.DefaultAbilityEffectResolver;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.character.CharacterAttributesResolver;
 import io.taanielo.jmud.core.combat.AttackId;
 import io.taanielo.jmud.core.combat.CombatAction;
@@ -153,6 +154,13 @@ public class GameActionService {
      * duels resolve exactly as before with no guild-war side effect.
      */
     private @Nullable GuildWarService guildWarService;
+    /**
+     * Optional player-funded bounty service, consulted when a duel resolves so an open player-target
+     * bounty on the loser's head pays its pooled reward to the winner (issue #807). {@code null} until
+     * the composition root wires the shared instance via {@link #setBountyService(BountyService)}; while
+     * absent, duels resolve with no bounty side effect.
+     */
+    private @Nullable BountyService bountyService;
     /**
      * Shared party registry, used by {@link #resurrect} to confirm the caster and their target
      * belong to the same party. {@code null} until the composition root wires the shared instance via
@@ -497,6 +505,19 @@ public class GameActionService {
      */
     public void setGuildWarService(GuildWarService guildWarService) {
         this.guildWarService = Objects.requireNonNull(guildWarService, "Guild war service is required");
+    }
+
+    /**
+     * Injects the shared bounty service so that a resolved duel pays any open player-target bounty on the
+     * loser's head to the winner (issue #807).
+     *
+     * <p>Called once by the composition root. When absent, duels resolve exactly as before with no bounty
+     * side effect, so tests and non-bounty code paths need no extra wiring.
+     *
+     * @param bountyService the shared bounty service
+     */
+    public void setBountyService(BountyService bountyService) {
+        this.bountyService = Objects.requireNonNull(bountyService, "Bounty service is required");
     }
 
     /**
@@ -899,6 +920,21 @@ public class GameActionService {
             messages.add(GameMessage.toPlayer(
                 loser.getUsername(),
                 "You lose " + transfer + " gold from the wager."));
+        }
+        // Player-funded bounty payout (issue #807): if the loser has an open player-target bounty on
+        // their head, its pooled reward — already escrowed from the backers at post time, so no gold is
+        // created here — pays in full to the winner. A duel is strictly 1v1, so the whole pool goes to
+        // the single winner with no party split. claimPlayerBounty() also fires the server-wide [Bounty]
+        // announcement and closes the paid entries; a no-op on an un-bountied loser. Runs on the tick
+        // thread alongside every other mutation here (AGENTS.md §5).
+        if (bountyService != null) {
+            int bountyReward = bountyService.claimPlayerBounty(loser.getUsername(), survivor.getUsername());
+            if (bountyReward > 0) {
+                updatedSurvivor = updatedSurvivor.addGold(bountyReward);
+                messages.add(GameMessage.toSource(
+                    "You claim the " + bountyReward + " gold bounty on "
+                        + loser.getUsername().getValue() + "'s head!"));
+            }
         }
         messages.add(GameMessage.toSource("Duel ended."));
         messages.add(GameMessage.toPlayer(

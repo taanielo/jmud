@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import io.taanielo.jmud.core.authentication.Username;
 import io.taanielo.jmud.core.bounty.Bounty;
 import io.taanielo.jmud.core.bounty.BountyRepository;
+import io.taanielo.jmud.core.bounty.BountyTargetKind;
 import io.taanielo.jmud.core.world.repository.json.JsonDataMapper;
 
 /**
@@ -38,7 +39,8 @@ import io.taanielo.jmud.core.world.repository.json.JsonDataMapper;
 @Slf4j
 public class JsonBountyRepository implements BountyRepository, AutoCloseable {
 
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
+    private static final int LEGACY_MOB_ONLY_SCHEMA_VERSION = 1;
     private static final String WORLD_STATE_DIR = "world-state";
     private static final String FILE_NAME = "bounties.json";
     private static final long IDLE_POLL_MILLIS = 25;
@@ -128,8 +130,8 @@ public class JsonBountyRepository implements BountyRepository, AutoCloseable {
             log.warn("Failed to read bounty store {}; treating as empty: {}", filePath, e.getMessage());
             return List.of();
         }
-        if (dto == null || dto.schemaVersion() != SCHEMA_VERSION) {
-            if (dto != null && dto.schemaVersion() != SCHEMA_VERSION) {
+        if (dto == null || !isSupportedVersion(dto.schemaVersion())) {
+            if (dto != null) {
                 log.warn("Ignoring bounty store {} with unsupported schema version {}",
                     filePath, dto.schemaVersion());
             }
@@ -146,16 +148,40 @@ public class JsonBountyRepository implements BountyRepository, AutoCloseable {
         return List.copyOf(bounties);
     }
 
+    private static boolean isSupportedVersion(int version) {
+        return version == SCHEMA_VERSION || version == LEGACY_MOB_ONLY_SCHEMA_VERSION;
+    }
+
     private Optional<Bounty> toDomain(BountyDto dto) {
-        if (dto == null || dto.backer() == null || dto.mobTemplateId() == null || dto.mobName() == null) {
+        if (dto == null || dto.backer() == null) {
+            return Optional.empty();
+        }
+        // v2 uses the generic target_* fields; v1 files carry only the legacy mob_* fields, which map to
+        // a MOB-kind bounty. Fall back gracefully so a pre-v2 file loads unchanged.
+        String targetId = dto.targetId() != null ? dto.targetId() : dto.mobTemplateId();
+        String targetName = dto.targetName() != null ? dto.targetName() : dto.mobName();
+        BountyTargetKind kind = parseKind(dto.targetKind());
+        if (targetId == null || targetName == null) {
             return Optional.empty();
         }
         try {
             return Optional.of(new Bounty(
-                Username.of(dto.backer()), dto.mobTemplateId(), dto.mobName(), dto.reward(), dto.postedTick()));
+                Username.of(dto.backer()), kind, targetId, targetName, dto.reward(), dto.postedTick()));
         } catch (IllegalArgumentException e) {
             log.warn("Ignoring invalid bounty entry in {}: {}", filePath, e.getMessage());
             return Optional.empty();
+        }
+    }
+
+    private BountyTargetKind parseKind(@Nullable String raw) {
+        if (raw == null) {
+            return BountyTargetKind.MOB;
+        }
+        try {
+            return BountyTargetKind.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            log.warn("Unknown bounty target kind '{}' in {}; defaulting to MOB", raw, filePath);
+            return BountyTargetKind.MOB;
         }
     }
 
@@ -189,8 +215,8 @@ public class JsonBountyRepository implements BountyRepository, AutoCloseable {
             List<BountyDto> dtos = new ArrayList<>(current.size());
             for (Bounty bounty : current) {
                 dtos.add(new BountyDto(
-                    bounty.backer().getValue(), bounty.mobTemplateId(), bounty.mobName(),
-                    bounty.reward(), bounty.postedTick()));
+                    bounty.backer().getValue(), bounty.targetKind().name(), bounty.targetId(),
+                    bounty.targetName(), null, null, bounty.reward(), bounty.postedTick()));
             }
             BountiesFileDto file = new BountiesFileDto(SCHEMA_VERSION, dtos);
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(filePath.toFile(), file);

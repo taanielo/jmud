@@ -78,7 +78,7 @@ public class BountyExpiryTicker implements Tickable {
             Player poster = posterLookup.find(bounty.backer()).orElse(null);
             if (poster == null) {
                 log.warn("Cannot refund expired bounty on {} — poster {} not found",
-                    bounty.mobName(), bounty.backer().getValue());
+                    bounty.targetName(), bounty.backer().getValue());
                 continue;
             }
             Player updated = bountyService.applyExpiredRefund(poster, bounty, tick);

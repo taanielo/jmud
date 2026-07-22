@@ -26,6 +26,9 @@ import io.taanielo.jmud.core.ability.BasicAbilityCostResolver;
 import io.taanielo.jmud.core.authentication.Password;
 import io.taanielo.jmud.core.authentication.User;
 import io.taanielo.jmud.core.authentication.Username;
+import io.taanielo.jmud.core.bounty.Bounty;
+import io.taanielo.jmud.core.bounty.BountyRepository;
+import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.character.ClassId;
 import io.taanielo.jmud.core.character.Race;
@@ -52,6 +55,8 @@ import io.taanielo.jmud.core.guild.GuildService;
 import io.taanielo.jmud.core.guild.GuildWarService;
 import io.taanielo.jmud.core.messaging.Message;
 import io.taanielo.jmud.core.messaging.MessageBroadcaster;
+import io.taanielo.jmud.core.mob.MobTemplate;
+import io.taanielo.jmud.core.mob.MobTemplateRepository;
 import io.taanielo.jmud.core.player.DuelService;
 import io.taanielo.jmud.core.player.EncumbranceService;
 import io.taanielo.jmud.core.player.Player;
@@ -288,6 +293,54 @@ class GameActionServicePlayerDuelTest {
         service.endPlayerDuel(survivor, loser);
 
         assertEquals(1, guildService.guildOf(survivor.getUsername()).orElseThrow().activeWar().ownPoints());
+    }
+
+    @Test
+    void endPlayerDuelPaysPlayerBountyOnLoserToWinner() {
+        Player survivor = attacker.withGold(0);
+        Player loser = playerWithHp("target", 0).withGold(50);
+        duelService.activate(survivor.getUsername(), loser.getUsername());
+
+        InMemoryBountyRepo bountyRepo = new InMemoryBountyRepo();
+        bountyRepo.save(List.of(
+            Bounty.onPlayer(Username.of("backerA"), loser.getUsername(), 100, 0L),
+            Bounty.onPlayer(Username.of("backerB"), loser.getUsername(), 250, 0L)));
+        BountyService bountyService = new BountyService(
+            bountyRepo, new EmptyMobTemplateRepo(), new NoOpBroadcaster(), 5);
+
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+        service.setBountyService(bountyService);
+
+        GameActionResult result = service.endPlayerDuel(survivor, loser);
+
+        assertEquals(350, result.updatedSource().getGold(), "winner claims the full pooled bounty");
+        assertEquals(50, result.updatedTarget().getGold(), "the loser's gold is untouched by a bounty payout");
+        assertTrue(bountyRepo.findAll().isEmpty(), "the claimed player bounty closes");
+        assertTrue(result.messages().stream().anyMatch(m ->
+            m.type() == GameMessage.Type.SOURCE && m.text().contains("350 gold bounty")));
+    }
+
+    @Test
+    void endPlayerDuelBountyPayoutStacksWithWager() {
+        Player winner = attacker.withGold(0);
+        Player loser = playerWithHp("target", 0).withGold(300);
+        duelService.requestDuel(winner.getUsername(), loser.getUsername(), 100L);
+        duelService.activate(winner.getUsername(), loser.getUsername());
+
+        InMemoryBountyRepo bountyRepo = new InMemoryBountyRepo();
+        bountyRepo.save(List.of(Bounty.onPlayer(Username.of("backer"), loser.getUsername(), 500, 0L)));
+        BountyService bountyService = new BountyService(
+            bountyRepo, new EmptyMobTemplateRepo(), new NoOpBroadcaster(), 5);
+
+        GameActionService service = service(defaultCombat(), resolver(loser), _ -> false);
+        service.setBountyService(bountyService);
+
+        GameActionResult result = service.endPlayerDuel(winner, loser);
+
+        assertEquals(600, result.updatedSource().getGold(),
+            "winner collects the 100 wager plus the 500 bounty");
+        assertEquals(200, result.updatedTarget().getGold(),
+            "loser forfeits only the wager, never the escrowed bounty");
     }
 
     @Test
@@ -658,6 +711,27 @@ class GameActionServicePlayerDuelTest {
         @Override
         public void delete(GuildId guildId) {
             saved.remove(guildId);
+        }
+    }
+
+    private static final class InMemoryBountyRepo implements BountyRepository {
+        private List<Bounty> bounties = List.of();
+
+        @Override
+        public List<Bounty> findAll() {
+            return bounties;
+        }
+
+        @Override
+        public void save(List<Bounty> updated) {
+            this.bounties = List.copyOf(updated);
+        }
+    }
+
+    private static final class EmptyMobTemplateRepo implements MobTemplateRepository {
+        @Override
+        public List<MobTemplate> findAll() {
+            return List.of();
         }
     }
 

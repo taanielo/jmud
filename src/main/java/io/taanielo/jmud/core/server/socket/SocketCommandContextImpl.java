@@ -56,6 +56,7 @@ import io.taanielo.jmud.core.bounty.BountyListing;
 import io.taanielo.jmud.core.bounty.BountyResult;
 import io.taanielo.jmud.core.bounty.BountyService;
 import io.taanielo.jmud.core.bounty.BountySettings;
+import io.taanielo.jmud.core.bounty.BountyTargetKind;
 import io.taanielo.jmud.core.character.ClassDefinition;
 import io.taanielo.jmud.core.combat.DamageType;
 import io.taanielo.jmud.core.combat.SetBonusResolver;
@@ -276,6 +277,9 @@ class SocketCommandContextImpl implements SocketCommandContext {
         }
         if (context.guildWarService() != null) {
             this.gameActionService.setGuildWarService(context.guildWarService());
+        }
+        if (context.bountyService() != null) {
+            this.gameActionService.setBountyService(context.bountyService());
         }
         if (context.weatherEngine() != null) {
             this.gameActionService.setWeatherEngine(context.weatherEngine());
@@ -6800,16 +6804,17 @@ class SocketCommandContextImpl implements SocketCommandContext {
     }
 
     private void bountyUsage() {
-        writeLineWithPrompt("Usage: BOUNTY POST <mob> <gold> | BOUNTY LIST | BOUNTY CANCEL <mob>");
+        writeLineWithPrompt(
+            "Usage: BOUNTY POST <mob|player> <gold> | BOUNTY LIST | BOUNTY CANCEL <mob|player>");
     }
 
     private void bountyPost(BountyService bountyService, Player player, String rest, long currentTick) {
         int lastSpace = rest.lastIndexOf(' ');
         if (rest.isBlank() || lastSpace < 0) {
-            writeLineWithPrompt("Usage: BOUNTY POST <mob> <gold>");
+            writeLineWithPrompt("Usage: BOUNTY POST <mob|player> <gold>");
             return;
         }
-        String mobInput = rest.substring(0, lastSpace).trim();
+        String targetInput = rest.substring(0, lastSpace).trim();
         String goldInput = rest.substring(lastSpace + 1).trim();
         int gold;
         try {
@@ -6818,11 +6823,25 @@ class SocketCommandContextImpl implements SocketCommandContext {
             writeLineWithPrompt("'" + goldInput + "' is not a valid amount of gold.");
             return;
         }
-        BountyResult result = bountyService.post(player, mobInput, gold, currentTick);
+        // Tiebreak: a target that resolves to a known player (online or persisted) is a player-target
+        // bounty; otherwise it falls back to mob-type resolution. So a name shared by a mob and a player
+        // is treated as the player.
+        Username targetPlayer = resolveKnownPlayerName(targetInput);
+        BountyResult result = targetPlayer != null
+            ? bountyService.postOnPlayer(player, targetPlayer, gold, currentTick)
+            : bountyService.post(player, targetInput, gold, currentTick);
         if (result.success() && result.updatedActor() != null) {
             session.replacePlayer(result.updatedActor());
         }
         writeLineWithPrompt(result.message());
+    }
+
+    private @Nullable Username resolveKnownPlayerName(String name) {
+        if (name.isBlank()) {
+            return null;
+        }
+        Player resolved = resolvePlayerByUsername(Username.of(name));
+        return resolved != null ? resolved.getUsername() : null;
     }
 
     private void bountyList(BountyService bountyService, long currentTick) {
@@ -6832,11 +6851,12 @@ class SocketCommandContextImpl implements SocketCommandContext {
             return;
         }
         connection.writeLine("Open bounties:");
-        connection.writeLine(String.format("%-24s %-10s %-9s %-12s %s",
-            "Mob", "Reward", "Backers", "Age (ticks)", "Expires in"));
+        connection.writeLine(String.format("%-7s %-24s %-10s %-9s %-12s %s",
+            "Type", "Target", "Reward", "Backers", "Age (ticks)", "Expires in"));
         for (BountyListing listing : listings) {
-            connection.writeLine(String.format("%-24s %-10d %-9d %-12d %d",
-                listing.mobName(), listing.totalReward(), listing.backerCount(),
+            String type = listing.targetKind() == BountyTargetKind.PLAYER ? "Player" : "Mob";
+            connection.writeLine(String.format("%-7s %-24s %-10d %-9d %-12d %d",
+                type, listing.targetName(), listing.totalReward(), listing.backerCount(),
                 listing.ageTicks(), listing.remainingTicks()));
         }
         sendPrompt();
@@ -6844,7 +6864,7 @@ class SocketCommandContextImpl implements SocketCommandContext {
 
     private void bountyCancel(BountyService bountyService, Player player, String rest) {
         if (rest.isBlank()) {
-            writeLineWithPrompt("Usage: BOUNTY CANCEL <mob>");
+            writeLineWithPrompt("Usage: BOUNTY CANCEL <mob|player>");
             return;
         }
         BountyResult result = bountyService.cancel(player, rest);
